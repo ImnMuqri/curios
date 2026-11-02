@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { orderView, type OrderView } from '@curios/core/orders';
+import { pickupLine } from '@curios/core/pickup';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import { formatRinggit } from '@curios/core/store';
 import type { OwnerOrder } from '@curios/db-read';
@@ -127,7 +128,6 @@ type Ask = { tone: 'biru' | 'grey' | 'hijau' | 'merah'; title: string; text: str
 export function OrderDetail({
   order,
   now,
-  pickupNote,
   move,
   act,
   say,
@@ -135,8 +135,6 @@ export function OrderDetail({
 }: {
   order: OrderRow;
   now: Date;
-  /** Where pickup happens, as the Store settings say it. */
-  pickupNote: string | null;
   move: OrderMove;
   /** The owner's moves on what was sent by email: new links, a new code, another time, the email again. */
   act: DigitalAct;
@@ -626,9 +624,12 @@ export function OrderDetail({
               </span>
               <span>
                 <b>
-                  {order.method === null ? null : `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${dayLabel(order.day)}`}
+                  {order.method === null ? null : (pickupLine({ ...order, dayLabel: dayLabel(order.day) }) ?? `Delivery · ${dayLabel(order.day)}`)}
                 </b>
-                {(order.method === 'PICKUP' ? pickupNote : order.address) ? <span>{order.method === 'PICKUP' ? pickupNote : order.address}</span> : null}
+                {/* Where to hand it over: the pickup place's address as the order kept it, or the customer's. */}
+                {(order.method === 'PICKUP' ? order.pickupPlaceAddress : order.address) ? (
+                  <span>{order.method === 'PICKUP' ? order.pickupPlaceAddress : order.address}</span>
+                ) : null}
               </span>
             </div>
             {order.note ? (

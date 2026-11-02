@@ -1,6 +1,7 @@
 import { normalizeClaim } from '@curios/core';
 import { digitalFacts, type DigitalDelivery, type ItemKind } from '@curios/core/digital';
 import { customerSteps, isOrderCodeShape, orderView, type OrderStatus } from '@curios/core/orders';
+import { pickupLine } from '@curios/core/pickup';
 import type { Prisma, PrismaClient } from '@curios/db';
 
 /**
@@ -32,7 +33,7 @@ export interface OrderCard {
   sent?: boolean;
   /** "1× Kek coklat moist 2kg, 1× Kek batik". */
   summary: string;
-  /** "Pickup · Sat 17 Oct". */
+  /** "Pickup · Sat 17 Oct, 10am–12pm · Home", or "Delivery · Sat 17 Oct". */
   when: string;
   totalCents: number;
   /**
@@ -114,6 +115,10 @@ export interface CardOrder {
   refundedAt: Date | null;
   /** When the digital items were emailed; null until then (and on an order with none). */
   sentAt?: Date | null;
+  /** The pickup place and time the order kept; null on an order from before places. */
+  pickupPlaceName?: string | null;
+  pickupFrom?: number | null;
+  pickupTo?: number | null;
   lines: { itemName: string; optionLabel: string | null; quantity: number }[];
 }
 
@@ -152,6 +157,7 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
   })();
 
   const date = day === null ? null : new Date(`${day}T00:00:00Z`);
+  const dayLabel = date === null ? null : `${EN_DAY[date.getUTCDay()]} ${date.getUTCDate()} ${EN_MONTH[date.getUTCMonth()]}`;
   const needsPay = view === 'awaitingPayment' || view === 'toCheck';
 
   return {
@@ -166,7 +172,16 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
       .map((line) => `${line.quantity}× ${line.itemName}${line.optionLabel ? ` ${line.optionLabel}` : ''}`)
       .join(', '),
     // A digital-only order has no day to show yet.
-    when: date === null ? '' : `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${EN_DAY[date.getUTCDay()]} ${date.getUTCDate()} ${EN_MONTH[date.getUTCMonth()]}`,
+    when:
+      dayLabel === null
+        ? ''
+        : (pickupLine({
+            method: order.method,
+            dayLabel,
+            pickupFrom: order.pickupFrom ?? null,
+            pickupTo: order.pickupTo ?? null,
+            pickupPlaceName: order.pickupPlaceName ?? null,
+          }) ?? `Delivery · ${dayLabel}`),
     totalCents: order.totalCents,
     note: needsPay ? 'Your order page has the full details and how to pay.' : 'Your order page has the full details.',
   };
@@ -185,6 +200,9 @@ const CARD_SELECT = {
   paidAt: true,
   refundedAt: true,
   sentAt: true,
+  pickupPlaceName: true,
+  pickupFrom: true,
+  pickupTo: true,
   lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, quantity: true } },
 } satisfies Prisma.OrderSelect;
 

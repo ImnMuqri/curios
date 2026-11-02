@@ -38,6 +38,10 @@ const base: OrderRow = {
   method: null,
   day: null,
   address: null,
+  pickupPlaceName: null,
+  pickupPlaceAddress: null,
+  pickupFrom: null,
+  pickupTo: null,
   note: null,
   itemsCents: 21400,
   deliveryCents: 0,
@@ -72,7 +76,7 @@ const base: OrderRow = {
 function show(order: OrderRow, act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} pickupNote={null} move={vi.fn()} act={act} say={say} onChanged={onChanged} />);
+  render(<OrderDetail order={order} now={now} move={vi.fn()} act={act} say={say} onChanged={onChanged} />);
   return { act, say, onChanged };
 }
 const card = () => within(screen.getByRole('region', { name: /Sent by email/ }));
@@ -119,7 +123,7 @@ describe('Sent by email', () => {
   });
 
   it('replaces Getting it to them on a digital-only order, and sits beside it on a mixed one', () => {
-    const { unmount } = render(<OrderDetail order={base} now={now} pickupNote={null} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+    const { unmount } = render(<OrderDetail order={base} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.queryByText('Getting it to them')).toBeNull();
     unmount();
     show({ ...base, method: 'PICKUP', day: '2026-10-17', lines: [physical, base.lines[0]!] });
@@ -223,7 +227,7 @@ describe('a digital-only order in Orders', () => {
     };
     const move = vi.fn(async () => undefined);
     const say = vi.fn();
-    render(<OrderDetail order={order} now={now} pickupNote={null} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
+    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
     expect(box.getByText('Their kek coklat recipe e-book goes to mira.hassan@gmail.example the moment you do.')).toBeInTheDocument();
     expect(within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem')[3]!.textContent).toBe('SentWhen you mark it paid');
@@ -237,7 +241,7 @@ describe('a digital-only order in Orders', () => {
     expect(ownerView(order)).toBe('awaitingPayment');
     const move = vi.fn(async () => undefined);
     const say = vi.fn();
-    render(<OrderDetail order={order} now={now} pickupNote={null} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
+    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
     expect(box.queryByRole('button', { name: 'Mark paid' })).toBeNull();
     fireEvent.click(box.getByRole('button', { name: 'Mark paid and send' }));
@@ -252,7 +256,7 @@ describe('a digital-only order in Orders', () => {
   });
 
   it('shows the buyer’s note on a digital-only order, and nothing where there is none', () => {
-    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} pickupNote={null} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.getByText('Note from Mira')).toBeInTheDocument();
     expect(screen.getByText(/Please send it to my work email too\./)).toBeInTheDocument();
     unmount();

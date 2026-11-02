@@ -27,7 +27,8 @@ export function ShopView(props: {
   items: ViewItem[];
   whatsapp: string | null;
   pickupEnabled: boolean;
-  pickupNote: string | null;
+  /** The shop's pickup places, in order; the terms name the first. */
+  pickupPlaces: { name: string }[];
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   minNoticeDays: number;
@@ -85,13 +86,14 @@ export function ShopView(props: {
 
   const priced = useMemo(() => priceBasket(basket, props.items), [basket, props.items]);
   const count = priced.lines.reduce((sum, line) => sum + line.quantity, 0);
+  const [firstPlace, ...morePlaces] = props.pickupPlaces;
 
   return (
     <section className={styles.shop} data-variant={props.variant === 'embedded' ? 'embedded' : undefined}>
       {props.showBack !== false ? <a className={styles.back} href={`/${props.handle}`}>← {copy.back}</a> : null}
       {props.description ? <p className={styles.about}>{props.description}</p> : null}
       <ul className={styles.terms}>
-        {props.pickupEnabled ? <li>{copy.pickup(props.pickupNote)}</li> : null}
+        {props.pickupEnabled ? <li>{copy.pickup(firstPlace ? copy.placesMore(firstPlace.name, morePlaces.length) : null)}</li> : null}
         {props.deliveryMode !== 'NONE' ? (
           <li>{copy.delivery(props.deliveryMode === 'FLAT' && props.deliveryFeeCents ? formatRinggit(props.deliveryFeeCents) : null)}</li>
         ) : null}

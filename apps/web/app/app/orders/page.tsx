@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEAD_RETENTION_MONTHS, SESSION_COOKIE } from '@curios/core';
-import { getOrderStats, getOwnerOrdersPage, getOwnerPage, getOwnerStore } from '@curios/db-read';
+import { getOrderStats, getOwnerOrdersPage, getOwnerPage } from '@curios/db-read';
 import { Callout } from '@curios/ui';
 import { avatarUrl } from '../../../lib/avatar-url.js';
 import { PageHead } from '../_ui/page-head.js';
@@ -45,11 +45,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const now = new Date();
   const query = await searchParams;
   const before = typeof query.before === 'string' && query.before ? query.before : undefined;
-  const [listed, stats, store] = await Promise.all([
-    getOwnerOrdersPage(owner.accountId, { before, now }),
-    getOrderStats(owner.accountId, now),
-    getOwnerStore(owner.accountId),
-  ]);
+  const [listed, stats] = await Promise.all([getOwnerOrdersPage(owner.accountId, { before, now }), getOrderStats(owner.accountId, now)]);
   // A cursor that pages nothing (the order deleted, or never this owner's finished one) is the first page again.
   if (!listed) redirect('/app/orders');
   const { orders, older } = listed;
@@ -73,7 +69,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       keptMonths={LEAD_RETENTION_MONTHS}
       shopUrl={shopUrl}
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}${shopUrl}`}
-      pickupNote={store?.settings.pickupNote ?? null}
     />
   );
 }

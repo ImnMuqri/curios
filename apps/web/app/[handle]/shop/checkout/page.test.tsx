@@ -40,7 +40,7 @@ const shop: Checkout = {
   shopDescription: null,
   shopHalal: false,
   pickupEnabled: true,
-  pickupNote: 'Seksyen 7',
+  pickupPlaces: [{ id: 'home', name: 'Home', address: 'Seksyen 7', mapUrl: null, note: null, anyTime: true, windows: [] }],
   deliveryMode: 'FLAT',
   deliveryFeeCents: 1000,
   deliveryNote: 'Around Shah Alam',

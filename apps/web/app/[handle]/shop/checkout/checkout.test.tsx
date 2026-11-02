@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Checkout } from './checkout.js';
+import type { PublicPickupPlace } from '@curios/db-read';
 import { shopCopy } from '../copy.js';
 
 const copy = shopCopy('en');
@@ -18,7 +19,7 @@ const base = {
   items,
   whatsapp: '60123456789' as string | null,
   pickupEnabled: true,
-  pickupNote: 'Seksyen 7, Shah Alam · 10am to 6pm' as string | null,
+  pickupPlaces: [{ id: 'home', name: 'Home', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }] as PublicPickupPlace[],
   deliveryMode: 'FLAT' as 'NONE' | 'FLAT' | 'RIDER',
   deliveryFeeCents: 1000 as number | null,
   deliveryNote: 'Around Shah Alam · 2pm to 6pm' as string | null,
@@ -111,12 +112,12 @@ describe('Checkout', () => {
     expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
   });
 
-  it('shows pickup and delivery as the shop offers them, with their notes and the fee', async () => {
+  it('shows pickup and delivery as the shop offers them, with where to collect, the delivery note and the fee', async () => {
     const user = userEvent.setup();
     const { unmount } = render(<Checkout {...base} />);
     const pickup = await screen.findByRole('radio', { name: /Pickup/ });
     expect(pickup).toHaveAttribute('aria-checked', 'true');
-    expect(within(pickup).getByText('Seksyen 7, Shah Alam · 10am to 6pm')).toBeInTheDocument();
+    expect(within(pickup).getByText('Home')).toBeInTheDocument();
     expect(within(pickup).getByText(copy.free)).toBeInTheDocument();
     const delivery = screen.getByRole('radio', { name: /Delivery/ });
     expect(within(delivery).getByText('Around Shah Alam · 2pm to 6pm')).toBeInTheDocument();
@@ -192,6 +193,7 @@ describe('Checkout', () => {
       ],
       method: 'PICKUP',
       day: '2026-10-17',
+      pickupPlaceId: 'home',
       customerName: 'Mira Hassan',
       phone: '012-987 6543',
       address: null,
@@ -637,5 +639,100 @@ describe('Checkout: how you’ll pay', () => {
     await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
 
     await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/keklina/order/tok_abc'));
+  });
+});
+
+describe('Checkout: where and when to collect', () => {
+  const home: PublicPickupPlace = {
+    id: 'home',
+    name: 'Home',
+    address: 'No 12, Jalan Mawar, Seksyen 7',
+    mapUrl: null,
+    note: null,
+    anyTime: false,
+    windows: [
+      { id: 'w1', from: 600, to: 720 },
+      { id: 'w2', from: 840, to: 960 },
+    ],
+  };
+  const stall: PublicPickupPlace = { id: 'stall', name: 'Bazaar stall', address: 'Bazaar Ramadan, Seksyen 13', mapUrl: null, note: null, anyTime: true, windows: [] };
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+
+  /** The times answer from `times()`, each order from `orders()`, in turn. */
+  function routes(times: () => { id: string; from: number; to: number; full: boolean }[], orders: () => Response) {
+    const spy = vi.fn(async (url: string, _init?: RequestInit) => (String(url).includes('/pickup-times?') ? json(200, { windows: times() }) : orders()));
+    vi.stubGlobal('fetch', spy);
+    return spy;
+  }
+  const orderCalls = (spy: ReturnType<typeof routes>) => spy.mock.calls.filter(([url]) => String(url).endsWith('/store/keklina/orders'));
+  const timeCalls = (spy: ReturnType<typeof routes>) => spy.mock.calls.filter(([url]) => String(url).includes('/pickup-times?'));
+
+  it('holds Place order until a time is picked at a place with set times, then sends the place and time', async () => {
+    const user = userEvent.setup();
+    const fetch = routes(
+      () => [
+        { id: 'w1', from: 600, to: 720, full: false },
+        { id: 'w2', from: 840, to: 960, full: false },
+      ],
+      () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 }),
+    );
+    render(<Checkout {...base} pickupPlaces={[home, stall]} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    expect(placeButton('RM215')).toBeDisabled();
+    await user.click(within(screen.getByRole('radiogroup', { name: copy.pickupWhere })).getByRole('radio', { name: /Home/ }));
+    expect(placeButton('RM215')).toBeDisabled();
+    await user.click(await screen.findByRole('radio', { name: '10am–12pm' }));
+    expect(placeButton('RM215')).toBeEnabled();
+
+    await user.click(placeButton('RM215'));
+    const [, init] = orderCalls(fetch)[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string)).toMatchObject({ method: 'PICKUP', day: '2026-10-17', pickupPlaceId: 'home', pickupWindowId: 'w1' });
+    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+  });
+
+  it('a time that filled up meanwhile: says so, asks for the times again and keeps the form', async () => {
+    const user = userEvent.setup();
+    let taken = false;
+    const fetch = routes(
+      () => [
+        { id: 'w1', from: 600, to: 720, full: taken },
+        { id: 'w2', from: 840, to: 960, full: false },
+      ],
+      () => {
+        taken = true;
+        return json(409, { error: { code: 'PICKUP_TIME_FULL', message: 'That pickup time just filled up. Pick another.' } });
+      },
+    );
+    render(<Checkout {...base} pickupPlaces={[home]} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.click(await screen.findByRole('radio', { name: '10am–12pm' }));
+    await user.click(placeButton('RM215'));
+
+    expect(await screen.findByText(copy.pickupTimeFull)).toBeInTheDocument();
+    expect(timeCalls(fetch)).toHaveLength(2);
+    expect(await screen.findByRole('radio', { name: `10am–12pm · ${copy.pickupFull}` })).toBeDisabled();
+    // Nothing typed is lost, and another time places the order.
+    expect(screen.getByLabelText(copy.name)).toHaveValue('Mira Hassan');
+    expect(screen.getByRole('button', { name: 'Sat 17' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByRole('heading', { name: copy.orderPlaced })).toBeNull();
+    expect(placeButton('RM215')).toBeDisabled();
+    await user.click(screen.getByRole('radio', { name: '2pm–4pm' }));
+    expect(placeButton('RM215')).toBeEnabled();
+  });
+
+  it('a shop with pickup but no places yet takes pickup as before, with no place asked or sent', async () => {
+    const user = userEvent.setup();
+    const fetch = routes(() => [], () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 }));
+    render(<Checkout {...base} pickupPlaces={[]} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    expect(screen.queryByText(copy.pickupWhere)).toBeNull();
+    await user.click(placeButton('RM215'));
+    const body = JSON.parse((orderCalls(fetch)[0] as [string, RequestInit])[1].body as string) as Record<string, unknown>;
+    expect(body).not.toHaveProperty('pickupPlaceId');
+    expect(body).not.toHaveProperty('pickupWindowId');
+    expect(timeCalls(fetch)).toHaveLength(0);
   });
 });

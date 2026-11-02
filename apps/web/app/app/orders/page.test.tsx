@@ -5,8 +5,7 @@ import type { OwnerOrder, OwnerPage } from '@curios/db-read';
 const getOwnerOrdersPage = vi.fn();
 const getOrderStats = vi.fn();
 const getOwnerPage = vi.fn();
-const getOwnerStore = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerOrdersPage, getOrderStats, getOwnerPage, getOwnerStore }));
+vi.mock('@curios/db-read', () => ({ getOwnerOrdersPage, getOrderStats, getOwnerPage }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -55,6 +54,10 @@ const order: OwnerOrder = {
   method: 'PICKUP',
   day: '2026-10-17',
   address: null,
+  pickupPlaceName: null,
+  pickupPlaceAddress: null,
+  pickupFrom: null,
+  pickupTo: null,
   note: null,
   itemsCents: 9500,
   deliveryCents: 0,
@@ -91,7 +94,6 @@ describe('OrdersPage', () => {
     getOwnerPage.mockResolvedValue(page);
     getOwnerOrdersPage.mockResolvedValue({ orders: [order], older: null });
     getOrderStats.mockResolvedValue({ toCheck: 1, toMake: 0, paidThisWeekCents: 0 });
-    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings: { pickupNote: 'Seksyen 7, Shah Alam' }, items: [] });
   });
   afterEach(() => vi.unstubAllEnvs());
 
@@ -113,7 +115,7 @@ describe('OrdersPage', () => {
     const [row] = props.orders as Record<string, unknown>[];
     expect(row).toMatchObject({ id: 'o1', receiptUrl: 'https://cdn.example/receipts/p1/abc.jpg', lines: [expect.objectContaining({ photoUrl: 'https://cdn.example/items/p1/coklat.webp' })] });
     expect(row).not.toHaveProperty('receiptKey');
-    expect(props).toMatchObject({ shopUrl: '/keklina/shop', pickupNote: 'Seksyen 7, Shah Alam', keptMonths: 12, selected: null });
+    expect(props).toMatchObject({ shopUrl: '/keklina/shop', keptMonths: 12, selected: null });
     expect(getOrderStats).toHaveBeenCalledWith('acc1', expect.any(Date));
     expect(props.now).toBe((getOrderStats.mock.calls[0]![1] as Date).toISOString());
   });

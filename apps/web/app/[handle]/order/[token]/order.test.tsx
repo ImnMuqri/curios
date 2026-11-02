@@ -95,6 +95,16 @@ describe('OrderView', () => {
     expect(sheet).toContainElement(screen.getByRole('heading', { name: copy.yourOrder }));
   });
 
+  it('says where and when to collect, in the page’s language', () => {
+    const at = { pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home' };
+    const { unmount } = render(<OrderView {...withOrder(at)} />);
+    expect(within(screen.getByRole('region', { name: copy.yourOrder })).getByText('Pickup · Sat 17 Oct, 10am–12pm · Home')).toBeInTheDocument();
+    unmount();
+    const ms = shopCopy('ms');
+    render(<OrderView {...withOrder(at, { language: 'ms' })} />);
+    expect(screen.getByText(`${ms.pickupLabel} · ${ms.dayLong('2026-10-17')}, 10am–12pm · Home`)).toBeInTheDocument();
+  });
+
   it('shows the order, its code and its total', () => {
     render(<OrderView {...base} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
@@ -357,6 +367,10 @@ const order: PublicOrder = {
   method: 'PICKUP',
   day: '2026-10-17',
   address: null,
+  pickupPlaceName: 'Home',
+  pickupPlaceAddress: 'Seksyen 7, Shah Alam',
+  pickupFrom: 600,
+  pickupTo: 720,
   note: null,
   itemsCents: 21500,
   deliveryCents: 0,
@@ -711,6 +725,8 @@ describe('/[handle]/order/[token]', () => {
     expect(screen.getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p1/abc.jpg');
     expect(screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
     expect(screen.getByRole('main').closest('[data-on-accent]')).not.toBeNull();
+    // The pickup place and time the order kept.
+    expect(within(screen.getByRole('region', { name: copy.yourOrder })).getByText('Pickup · Sat 17 Oct, 10am–12pm · Home')).toBeInTheDocument();
   });
 
   it('for a suspended page shows the order and the unavailable line, but nothing to pay with', async () => {

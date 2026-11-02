@@ -524,7 +524,7 @@ export function StoreEditor({
                     language={look.language}
                     items={previewItems.map((i) => ({ ...previewItem(i), photoUrl: i.photoUrl }))}
                     pickupEnabled={settings.pickupEnabled}
-                    pickupNote={settings.pickupNote}
+                    pickupPlaces={pickupPlaces}
                     deliveryMode={settings.deliveryMode}
                     canTakeOrders={previewTakesOrders}
                     nextDay={previewNextDay}

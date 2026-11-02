@@ -18,7 +18,7 @@ const base = {
   items,
   whatsapp: '60123456789' as string | null,
   pickupEnabled: true,
-  pickupNote: null,
+  pickupPlaces: [],
   deliveryMode: 'NONE' as const,
   deliveryFeeCents: null,
   minNoticeDays: 1,
@@ -165,8 +165,12 @@ describe('ShopView', () => {
   });
 
   it('states pickup, delivery and notice', () => {
-    render(<ShopView {...base} pickupNote="Shah Alam" deliveryMode="FLAT" deliveryFeeCents={800} minNoticeDays={2} />);
+    const { unmount } = render(<ShopView {...base} pickupPlaces={[{ name: 'Shah Alam' }]} deliveryMode="FLAT" deliveryFeeCents={800} minNoticeDays={2} />);
     expect(screen.getByText('Pickup: Shah Alam')).toBeInTheDocument();
+    unmount();
+    // Several places: the first, and how many more.
+    render(<ShopView {...base} pickupPlaces={[{ name: 'Shah Alam' }, { name: 'Bangi' }, { name: 'Kajang' }]} deliveryMode="FLAT" deliveryFeeCents={800} minNoticeDays={2} />);
+    expect(screen.getByText('Pickup: Shah Alam +2 more')).toBeInTheDocument();
     expect(screen.getByText('Delivery: RM8')).toBeInTheDocument();
     expect(screen.getByText('Order at least 2 days ahead')).toBeInTheDocument();
   });

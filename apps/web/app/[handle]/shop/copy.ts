@@ -128,6 +128,16 @@ export interface ShopCopy {
   notePlaceholder: (name: string) => string;
   items: string;
   pickupOn: string;
+  // Where and when to collect (checkout's pickup picker).
+  pickupWhere: string;
+  pickupTime: string;
+  pickupFull: string;
+  pickupAnyTime: string;
+  pickupTimeFull: string;
+  /** The link to a pickup place on a map. */
+  pickupMap: string;
+  /** The first pickup place and how many more: "Home +2 more". */
+  placesMore: (first: string, more: number) => string;
   deliveryOn: string;
   pickADay: string;
   total: string;
@@ -472,6 +482,13 @@ const EN: ShopCopy = {
   notePlaceholder: (name) => `Anything ${name} should know`,
   items: 'Items',
   pickupOn: 'Pickup on',
+  pickupWhere: 'Where',
+  pickupTime: 'Time',
+  pickupFull: 'Full',
+  pickupAnyTime: 'Any time that day',
+  pickupTimeFull: 'That pickup time just filled up. Pick another.',
+  pickupMap: 'Map',
+  placesMore: (first, more) => (more > 0 ? `${first} +${more} more` : first),
   deliveryOn: 'Delivery on',
   pickADay: 'Pick a day',
   total: 'Total',
@@ -773,6 +790,13 @@ const MS: ShopCopy = {
   notePlaceholder: (name) => `Apa-apa yang ${name} perlu tahu`,
   items: 'Barang',
   pickupOn: 'Ambil pada',
+  pickupWhere: 'Di mana',
+  pickupTime: 'Masa',
+  pickupFull: 'Penuh',
+  pickupAnyTime: 'Bila-bila masa hari itu',
+  pickupTimeFull: 'Masa ambil itu baru penuh. Pilih yang lain.',
+  pickupMap: 'Peta',
+  placesMore: (first, more) => (more > 0 ? `${first} +${more} lagi` : first),
   deliveryOn: 'Hantar pada',
   pickADay: 'Pilih hari',
   total: 'Jumlah',

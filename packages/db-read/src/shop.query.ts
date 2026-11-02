@@ -120,7 +120,8 @@ export interface PublicShop {
   /** The owner says the shop sells halal food. */
   shopHalal: boolean;
   pickupEnabled: boolean;
-  pickupNote: string | null;
+  /** Where to collect, in the owner's order; empty only on a page from before places (any time, no place). */
+  pickupPlaces: PublicPickupPlace[];
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   minNoticeDays: number;
@@ -128,6 +129,17 @@ export interface PublicShop {
   closedDays: number[];
   deliveryNote: string | null;
   items: PublicItem[];
+}
+
+/** A pickup place as a customer sees it: its windows without their limits (the API says which are full on a day). */
+export interface PublicPickupPlace {
+  id: string;
+  name: string;
+  address: string;
+  mapUrl: string | null;
+  note: string | null;
+  anyTime: boolean;
+  windows: { id: string; from: number; to: number }[];
 }
 
 /**
@@ -139,6 +151,7 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
   const page = await prismaRead.page.findUnique({
     where: { handle: handle.toLowerCase(), ...PUBLIC_PAGE_WHERE },
     select: {
+      id: true,
       mode: true,
       storeEnabled: true,
       handle: true,
@@ -158,7 +171,6 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
       shopDescription: true,
       shopHalal: true,
       pickupEnabled: true,
-      pickupNote: true,
       deliveryMode: true,
       deliveryFeeCents: true,
       minNoticeDays: true,
@@ -168,7 +180,7 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
     },
   });
   if (!page || page.mode !== 'BUSINESS' || !page.storeEnabled) return null;
-  const { mode: _mode, storeEnabled: _open, items, ...shop } = page;
+  const { id: pageId, mode: _mode, storeEnabled: _open, items, ...shop } = page;
   const publicItems: PublicItem[] = items.map(({ files, sessions, _count, accessUrl, sessionMinutes, sessionPlace, kind, delivery, ...item }) => ({
     ...item,
     ...digitalFacts(
@@ -185,7 +197,10 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
       now,
     ),
   }));
-  return { ...shop, items: publicItems };
+  // With pickup off, no places: there is nowhere to collect from.
+  const places = shop.pickupEnabled ? await getPickupPlaces(pageId) : [];
+  const pickupPlaces = places.map(({ windows, ...place }) => ({ ...place, windows: windows.map(({ limit: _limit, ...w }) => w) }));
+  return { ...shop, pickupPlaces, items: publicItems };
 }
 
 /**

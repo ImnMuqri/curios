@@ -17,7 +17,7 @@ const base = {
   language: 'en',
   items,
   pickupEnabled: true,
-  pickupNote: 'Seksyen 7, Shah Alam' as string | null,
+  pickupPlaces: [{ name: 'Seksyen 7, Shah Alam' }],
   deliveryMode: 'FLAT' as const,
   canTakeOrders: true,
   nextDay: '2026-10-17' as string | null,
@@ -84,8 +84,13 @@ describe('ShopPageView', () => {
     expect(screen.getByText('Next pickup Sat 17 Oct')).toBeInTheDocument();
   });
 
+  it('names the first pickup place and how many more', () => {
+    render(<ShopPageView {...base} pickupPlaces={[{ name: 'Seksyen 7, Shah Alam' }, { name: 'Bangi' }]} />);
+    expect(screen.getByText('Seksyen 7, Shah Alam +1 more')).toBeInTheDocument();
+  });
+
   it('leaves the area out when there is none, and says Pickup alone or Delivery alone', () => {
-    const { rerender } = render(<ShopPageView {...base} pickupNote={null} deliveryMode="NONE" />);
+    const { rerender } = render(<ShopPageView {...base} pickupPlaces={[]} deliveryMode="NONE" />);
     expect(screen.queryByText('Seksyen 7, Shah Alam')).toBeNull();
     expect(screen.getByText('Pickup')).toBeInTheDocument();
     rerender(<ShopPageView {...base} pickupEnabled={false} />);

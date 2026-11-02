@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { windowLabel } from '@curios/core/pickup';
 import { formatRinggit } from '@curios/core/store';
 import type { OrderStats } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
@@ -74,7 +75,6 @@ export function OrdersScreen({
   keptMonths,
   shopUrl,
   publicUrl,
-  pickupNote,
   move,
   act,
   onChanged,
@@ -91,7 +91,6 @@ export function OrdersScreen({
   shopUrl: string;
   /** The shop's full address, for "Copy your link". */
   publicUrl: string;
-  pickupNote: string | null;
   move: OrderMove;
   act: DigitalAct;
   onChanged: () => void;
@@ -237,6 +236,7 @@ export function OrdersScreen({
                           <span>
                             #{order.number} · {plural(n, 'item')}
                             {order.method === null ? ' · Digital' : ` · ${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} ${dayLabel(order.day).split(' ')[0]}`}
+                            {order.method === 'PICKUP' && order.pickupFrom !== null && order.pickupTo !== null ? `, ${windowLabel(order.pickupFrom, order.pickupTo)}` : null}
                           </span>
                         </span>
                         <span className={styles.rowEnd}>
@@ -260,7 +260,7 @@ export function OrdersScreen({
             <p className={inbox.listNote}>Newest first · kept for {keptMonths} months</p>
           </div>
           <div className={inbox.detail}>
-            {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} move={move} act={act} say={say} onChanged={onChanged} /> : null}
+            {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} move={move} act={act} say={say} onChanged={onChanged} /> : null}
           </div>
         </div>
       )}

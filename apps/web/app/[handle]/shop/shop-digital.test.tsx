@@ -36,7 +36,7 @@ const shopBase = {
   language: 'en',
   items: [cake, ebook, voucher, cls],
   pickupEnabled: true,
-  pickupNote: null,
+  pickupPlaces: [],
   deliveryMode: 'NONE' as const,
   canTakeOrders: true,
   nextDay: null,

@@ -18,6 +18,10 @@ const base: OrderRow = {
   method: 'PICKUP',
   day: '2026-10-17',
   address: null,
+  pickupPlaceName: null,
+  pickupPlaceAddress: null,
+  pickupFrom: null,
+  pickupTo: null,
   note: null,
   itemsCents: 23500,
   deliveryCents: 0,
@@ -73,7 +77,6 @@ function show(list = orders, extra: { selected?: string | null; stats?: OrderSta
       keptMonths={12}
       shopUrl="/keklina/shop"
       publicUrl="https://curios.my/keklina/shop"
-      pickupNote="Seksyen 7, Shah Alam. 10am to 6pm."
       move={move}
       act={vi.fn()}
       onChanged={onChanged}
@@ -152,6 +155,11 @@ describe('OrdersScreen, the list', () => {
     expect(rows().getByRole('button', { name: /Wei Ling/ })).toHaveTextContent('Paid');
     expect(rows().getByRole('button', { name: /Farid Azman/ })).toHaveTextContent('Refund owed');
     expect(rows().getByRole('button', { name: /Siti Nur/ })).toHaveTextContent('Completed');
+  });
+
+  it('adds the pickup time an order kept to its row', () => {
+    show([{ ...base, pickupPlaceName: 'Home', pickupPlaceAddress: 'Seksyen 7', pickupFrom: 600, pickupTo: 720 }]);
+    expect(rows().getByRole('button', { name: /Mira Hassan/ })).toHaveTextContent('#13 · 3 items · Pickup Sat, 10am–12pm');
   });
 
   it('opens the newest first, and the one chosen', () => {

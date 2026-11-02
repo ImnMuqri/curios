@@ -89,6 +89,13 @@ describe('orderCard', () => {
     });
   });
 
+  it('says the pickup time and place an order kept, and only the day on one from before places', () => {
+    const at = { ...base, pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home, Seksyen 7' };
+    expect(orderCard(at, 'Kek Lina', now).when).toBe('Pickup · Sat 5 Dec, 10am–12pm · Home, Seksyen 7');
+    expect(orderCard({ ...base, pickupFrom: null, pickupTo: null, pickupPlaceName: null }, 'Kek Lina', now).when).toBe('Pickup · Sat 5 Dec');
+    expect(orderCard({ ...at, method: 'DELIVERY' }, 'Kek Lina', now).when).toBe('Delivery · Sat 5 Dec');
+  });
+
   it('says who is checking a receipt, and who is getting it ready', () => {
     const checking = orderCard({ ...base, receiptUploadedAt: now }, 'Kek Lina', now);
     expect(checking.pill).toBe('Receipt sent · Kek Lina is checking');

@@ -24,6 +24,11 @@ export interface OwnerOrder {
   /** The calendar day (Malaysia), `YYYY-MM-DD`; null for a digital-only order. */
   day: string | null;
   address: string | null;
+  /** The pickup place and time as they were when the order was placed (minutes after midnight); null without them. */
+  pickupPlaceName: string | null;
+  pickupPlaceAddress: string | null;
+  pickupFrom: number | null;
+  pickupTo: number | null;
   note: string | null;
   itemsCents: number;
   deliveryCents: number;
@@ -157,6 +162,10 @@ async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number, now
       method: true,
       day: true,
       address: true,
+      pickupPlaceName: true,
+      pickupPlaceAddress: true,
+      pickupFrom: true,
+      pickupTo: true,
       note: true,
       itemsCents: true,
       deliveryCents: true,
@@ -344,6 +353,11 @@ export interface PublicOrder {
   method: OrderMethod | null;
   day: string | null;
   address: string | null;
+  /** The pickup place and time as they were when the order was placed (minutes after midnight); null without them. */
+  pickupPlaceName: string | null;
+  pickupPlaceAddress: string | null;
+  pickupFrom: number | null;
+  pickupTo: number | null;
   note: string | null;
   itemsCents: number;
   deliveryCents: number;
@@ -422,6 +436,10 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
       method: true,
       day: true,
       address: true,
+      pickupPlaceName: true,
+      pickupPlaceAddress: true,
+      pickupFrom: true,
+      pickupTo: true,
       note: true,
       itemsCents: true,
       deliveryCents: true,
@@ -562,7 +580,6 @@ function publicLine(line: LineRow, paid: boolean): PublicOrderLine {
 
 export interface Checkout extends PublicShop {
   pickupEnabled: boolean;
-  pickupNote: string | null;
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   deliveryNote: string | null;

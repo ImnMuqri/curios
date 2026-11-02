@@ -1,5 +1,6 @@
 import { OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
 import { isRiderDelivery } from './orders.js';
+import { pickupLine } from './pickup.js';
 import { formatMalaysianPhone } from './phone.js';
 import { formatRinggit } from './store.js';
 
@@ -38,6 +39,10 @@ export interface NewOrderMailInput {
   voucherLabel?: string | null;
   /** A voucher took the total to RM0, so the order was paid as it was placed (and a digital one sent). */
   paidWithVoucher?: boolean;
+  /** The pickup place and time the order kept (minutes after midnight); absent or null on an order without them. */
+  pickupPlaceName?: string | null;
+  pickupFrom?: number | null;
+  pickupTo?: number | null;
 }
 
 /** What a voucher took off, as one row above the total ("RAYA10 −RM9.50"); null with no discount. */
@@ -68,6 +73,18 @@ function shortDay(day: string): string {
   return `${WEEKDAYS[date.getUTCDay()]} ${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
 }
 
+/** "Pickup · Sat 17 Oct, 10am–12pm · Home" or "Delivery · Sat 17 Oct", with the rider's line on a rider delivery. */
+function gettingItLine(o: Pick<NewOrderMailInput, 'deliveryCents' | 'pickupPlaceName' | 'pickupFrom' | 'pickupTo'> & { method: 'PICKUP' | 'DELIVERY'; day: string }): string {
+  const pickup = pickupLine({
+    method: o.method,
+    dayLabel: shortDay(o.day),
+    pickupFrom: o.pickupFrom ?? null,
+    pickupTo: o.pickupTo ?? null,
+    pickupPlaceName: o.pickupPlaceName ?? null,
+  });
+  return pickup ?? `Delivery · ${shortDay(o.day)}${isRiderDelivery(o) ? ' · Rider fee paid separately' : ''}`;
+}
+
 /** Sent to the owner when a customer places an order, unless they switched it off. */
 export function newOrderMail(o: NewOrderMailInput): Mail {
   const total = formatRinggit(o.totalCents);
@@ -82,10 +99,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
   const voucher = voucherRow(o);
   const delivery = deliveryRow(o);
   const totalLabel = free ? 'Paid' : 'Total';
-  const gettingIt =
-    o.method === null || o.day === null
-      ? 'By email'
-      : `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}${isRiderDelivery({ method: o.method, deliveryCents: o.deliveryCents }) ? ' · Rider fee paid separately' : ''}`;
+  const gettingIt = o.method === null || o.day === null ? 'By email' : gettingItLine({ ...o, method: o.method, day: o.day });
   const customer = `${o.customerName} · ${formatMalaysianPhone(o.phone)}`;
   const facts: [string, string][] = [
     ['Getting it', gettingIt],
@@ -159,7 +173,7 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
   const weekday = WEEKDAY_NAMES[new Date(`${o.day}T00:00:00Z`).getUTCDay()];
   const said = `The bank confirmed it through CHIP, so there’s nothing to check. Just get it ready for ${weekday}.`;
   const small = 'The money is in your CHIP account. CHIP pays it out to your bank on its usual schedule.';
-  const gettingIt = `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}${isRiderDelivery(o) ? ' · Rider fee paid separately' : ''}`;
+  const gettingIt = gettingItLine(o);
   const facts: [string, string][] = [
     ['Getting it', gettingIt],
     ['Customer', `${o.customerName} · ${formatMalaysianPhone(o.phone)}`],

@@ -144,6 +144,9 @@ describe('placing a pickup order at a place and time', () => {
       pickupFrom: 600,
       pickupTo: 720,
     });
+    // The owner's new-order email says where and when.
+    const mail = mailQueue.add.mock.calls.at(-1)![1];
+    expect(mail.text).toMatch(/Getting it: Pickup · \w{3} \d{1,2} \w{3}, 10am–12pm · Stall\n/);
   });
 
   it('an any-time place takes no window, and one sent is ignored', async () => {

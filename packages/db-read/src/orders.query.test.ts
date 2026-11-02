@@ -357,6 +357,20 @@ describe('getOrderByToken', () => {
     expect(await getCheckout(owner.handle, NOW)).toBeNull();
   });
 
+  it('returns the pickup place and time the order kept, to the customer and the owner, and null on one without', async () => {
+    const owner = await anOwner();
+    const token = randomUUID();
+    const snapshot = { pickupPlaceName: 'Home', pickupPlaceAddress: '12 Jalan Mawar', pickupFrom: 600, pickupTo: 720 };
+    await anOrder(owner.pageId, snapshot, token);
+    const oldToken = randomUUID();
+    await anOrder(owner.pageId, {}, oldToken);
+    expect(await getOrderByToken(token)).toMatchObject(snapshot);
+    expect(await getOrderByToken(oldToken)).toMatchObject({ pickupPlaceName: null, pickupPlaceAddress: null, pickupFrom: null, pickupTo: null });
+    const orders = await getOwnerOrders(owner.accountId);
+    expect(orders.map((o) => o.pickupPlaceName).sort()).toEqual(['Home', null]);
+    expect(orders.find((o) => o.pickupPlaceName === 'Home')).toMatchObject(snapshot);
+  });
+
   it('returns what a voucher took off and its label, and 0 and null on an order with none', async () => {
     const owner = await anOwner();
     const voucher = await write.shopVoucher.create({ data: { pageId: owner.pageId, mode: 'CODE', code: 'RAYA', kind: 'AMOUNT', amountCents: 500 } });
@@ -493,6 +507,20 @@ describe('getCheckout', () => {
     expect((await getCheckout(spent.handle, NOW))?.canTakeOrders).toBe(false);
     const paid = await anOwner({ ordersPlaced: 3, paidUntil: new Date('2026-12-01T00:00:00Z') });
     expect((await getCheckout(paid.handle, NOW))?.canTakeOrders).toBe(true);
+  });
+
+  it('lists the pickup places in the owner’s order, with their times but not their limits, and none while pickup is off', async () => {
+    const owner = await anOwner({ pickupEnabled: true });
+    await write.pickupPlace.create({ data: { pageId: owner.pageId, name: 'Stall', address: 'Pasar Tani', anyTime: false, position: 1, windows: { create: [{ fromMinute: 600, toMinute: 720, limit: 5, position: 0 }] } } });
+    await write.pickupPlace.create({ data: { pageId: owner.pageId, name: 'Home', address: '12 Jalan Mawar', mapUrl: 'https://maps.example/home', note: 'Ring twice', position: 0 } });
+    const places = (await getCheckout(owner.handle, NOW))?.pickupPlaces;
+    expect(places).toEqual([
+      { id: expect.any(String), name: 'Home', address: '12 Jalan Mawar', mapUrl: 'https://maps.example/home', note: 'Ring twice', anyTime: true, windows: [] },
+      { id: expect.any(String), name: 'Stall', address: 'Pasar Tani', mapUrl: null, note: null, anyTime: false, windows: [{ id: expect.any(String), from: 600, to: 720 }] },
+    ]);
+
+    await write.page.update({ where: { id: owner.pageId }, data: { pickupEnabled: false } });
+    expect((await getCheckout(owner.handle, NOW))?.pickupPlaces).toEqual([]);
   });
 
   it('counts the free orders the admin set: with 5, a page with 3 placed still takes orders', async () => {

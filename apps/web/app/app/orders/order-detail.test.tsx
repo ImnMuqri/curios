@@ -16,6 +16,10 @@ const mira: OrderRow = {
   method: 'PICKUP',
   day: '2026-10-17',
   address: null,
+  pickupPlaceName: null,
+  pickupPlaceAddress: null,
+  pickupFrom: null,
+  pickupTo: null,
   note: "Please write 'Selamat hari jadi Aisyah' on the coklat one. Thank you!",
   itemsCents: 23500,
   deliveryCents: 0,
@@ -98,7 +102,7 @@ const refundOwed: OrderRow = {
 function show(order: OrderRow, move: OrderMove = vi.fn(async () => undefined), act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} pickupNote="Seksyen 7, Shah Alam. 10am to 6pm." move={move} act={act} say={say} onChanged={onChanged} />);
+  render(<OrderDetail order={order} now={now} move={move} act={act} say={say} onChanged={onChanged} />);
   return { move, act, say, onChanged };
 }
 
@@ -173,15 +177,20 @@ describe('OrderDetail, who and where it is', () => {
     expect(screen.getByText('12, Jalan Bunga Raya 7/3, Seksyen 7, Shah Alam')).toBeInTheDocument();
   });
 
-  it('shows the item’s photo, the pickup place and the customer’s note', () => {
-    const { container } = render(
-      <OrderDetail order={mira} now={now} pickupNote="Seksyen 7, Shah Alam. 10am to 6pm." move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />,
-    );
+  it('shows the item’s photo, the pickup place and time with its address, and the customer’s note', () => {
+    const at: OrderRow = { ...mira, pickupPlaceName: 'Home', pickupPlaceAddress: 'Seksyen 7, Shah Alam', pickupFrom: 600, pickupTo: 720 };
+    const { container, unmount } = render(<OrderDetail order={at} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
     expect(container.querySelector('img[src="https://cdn.example/items/coklat.webp"]')).not.toBeNull();
     expect(screen.getByText('3 items')).toBeInTheDocument();
-    expect(screen.getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
-    expect(screen.getByText('Seksyen 7, Shah Alam. 10am to 6pm.')).toBeInTheDocument();
+    expect(screen.getByText('Pickup · Sat 17 Oct, 10am–12pm · Home')).toBeInTheDocument();
+    expect(screen.getByText('Seksyen 7, Shah Alam')).toBeInTheDocument();
     expect(screen.getByText('Note from Mira')).toBeInTheDocument();
+    unmount();
+
+    // An order from before pickup places kept no place: the day alone, and no address.
+    render(<OrderDetail order={mira} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+    expect(screen.getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
+    expect(screen.queryByText('Seksyen 7, Shah Alam')).toBeNull();
   });
 });
 
@@ -387,7 +396,7 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
     const say = vi.fn();
     const onChanged = vi.fn();
-    const props = { now, pickupNote: null, move, act: vi.fn(), say, onChanged };
+    const props = { now, move, act: vi.fn(), say, onChanged };
     const { rerender } = render(<OrderDetail order={mira} {...props} />);
 
     const button = actionBox().getByRole('button', { name: 'Mark paid' });

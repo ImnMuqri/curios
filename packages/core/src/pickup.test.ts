@@ -74,6 +74,10 @@ describe('pickupLine', () => {
     expect(pickupLine({ ...base, method: 'PICKUP' })).toBe('Pickup · Sat 5 Dec');
   });
 
+  it('takes the word for pickup in the page’s language', () => {
+    expect(pickupLine({ ...base, method: 'PICKUP', pickupFrom: 600, pickupTo: 720, label: 'Ambil sendiri' })).toBe('Ambil sendiri · Sat 5 Dec, 10am–12pm');
+  });
+
   it('is null for delivery', () => {
     expect(pickupLine({ ...base, method: 'DELIVERY' })).toBeNull();
     expect(pickupLine({ ...base, method: null })).toBeNull();

@@ -317,6 +317,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       free,
       sent,
       voucherLabel: picked?.voucher.label ?? null,
+      pickup,
       notify: page.notifyOrders,
       ownerEmail: page.account.email,
     };
@@ -347,6 +348,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         voucherLabel: placed.voucherLabel,
         paidWithVoucher: placed.free,
         day: placed.day,
+        pickupPlaceName: placed.pickup?.place.name ?? null,
+        pickupFrom: placed.pickup?.window?.fromMinute ?? null,
+        pickupTo: placed.pickup?.window?.toMinute ?? null,
         note,
         lines: placed.lines.map((line) => ({
           itemName: line.itemName,

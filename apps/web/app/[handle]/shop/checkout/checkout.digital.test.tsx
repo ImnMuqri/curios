@@ -37,7 +37,7 @@ const base = {
   items,
   whatsapp: null as string | null,
   pickupEnabled: true,
-  pickupNote: 'Seksyen 7',
+  pickupPlaces: [{ id: 'home', name: 'Seksyen 7', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }],
   deliveryMode: 'FLAT' as const,
   deliveryFeeCents: 1000,
   deliveryNote: null,

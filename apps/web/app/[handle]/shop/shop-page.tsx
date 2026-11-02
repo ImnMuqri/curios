@@ -41,7 +41,8 @@ export function ShopPageView(props: {
   language: string;
   items: ViewItem[];
   pickupEnabled: boolean;
-  pickupNote: string | null;
+  /** The shop's pickup places, in order; the sign names the first and how many more. */
+  pickupPlaces: { name: string }[];
   deliveryMode: DeliveryMode;
   canTakeOrders: boolean;
   /** The next day an order could be for (an ISO date), or null (paused, or no way to get the order). */
@@ -166,6 +167,8 @@ export function ShopPageView(props: {
   const delivers = props.deliveryMode !== 'NONE';
   const how = props.pickupEnabled ? (delivers ? copy.pickupOrDelivery : copy.pickupOnly) : delivers ? copy.deliveryOnly : null;
   const day = props.nextDay ? copy.dayLong(props.nextDay) : null;
+  const [firstPlace, ...morePlaces] = props.pickupEnabled ? props.pickupPlaces : [];
+  const area = firstPlace ? copy.placesMore(firstPlace.name, morePlaces.length) : null;
   // A paused shop honours no voucher, so it advertises none.
   const vouchers = props.canTakeOrders ? props.vouchers : undefined;
   const promo = shopPromo(vouchers);
@@ -202,10 +205,10 @@ export function ShopPageView(props: {
         ) : null}
         <h1 className={styles.name}>{props.displayName}</h1>
         <ul className={styles.facts}>
-          {props.pickupNote ? (
+          {area ? (
             <li>
               <Icon d={ICON.area} />
-              {props.pickupNote}
+              {area}
             </li>
           ) : null}
           {how ? (

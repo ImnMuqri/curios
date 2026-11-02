@@ -5,7 +5,7 @@ import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX, openDays, orderTotals } from '@c
 import { formatRinggit, type DeliveryMode } from '@curios/core/store';
 import { normalizeVoucherCode, pickVoucher, voucherSaving, type VoucherTerms } from '@curios/core/vouchers';
 import { isDigitalOnly, type DigitalFacts } from '@curios/core/digital';
-import type { ShopItem } from '@curios/db-read';
+import type { PublicPickupPlace, ShopItem } from '@curios/db-read';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
 import {
   basketMessage,
@@ -21,6 +21,7 @@ import {
 import { shopCopy } from '../copy.js';
 import { payingKey, retryKey } from './paying.js';
 import { payButtonText, PayWays, useOnlineOffer, usePayChoice } from './pay-ways.js';
+import { PickupPicker } from './pickup-picker.js';
 import { Placed } from './placed.js';
 import { ShopCover } from '../shop-cover.js';
 import styles from './checkout.module.css';
@@ -45,7 +46,8 @@ export interface CheckoutProps {
   /** The owner's WhatsApp, for the fallback when checkout pauses under the visitor. */
   whatsapp: string | null;
   pickupEnabled: boolean;
-  pickupNote: string | null;
+  /** Where to collect, in the owner's order. Empty on a page from before places: pickup at any time, no place asked. */
+  pickupPlaces: PublicPickupPlace[];
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   deliveryNote: string | null;
@@ -89,7 +91,7 @@ interface PlacedOrder {
 const goTo = (url: string) => window.location.assign(url);
 
 /** Where a refusal is said: under the field it is about, or above Place order. */
-type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'email' | 'form'; message: string };
+type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'pickup' | 'email' | 'form'; message: string };
 
 /** The refusals that belong to one field. Anything else is said above Place order. */
 const FIELD_OF: Record<string, Problem['field']> = {
@@ -98,6 +100,8 @@ const FIELD_OF: Record<string, Problem['field']> = {
   ORDER_DATE: 'day',
   METHOD_OFF: 'method',
   EMAIL_REQUIRED: 'email',
+  PICKUP_PLACE_REQUIRED: 'pickup',
+  PICKUP_TIME_REQUIRED: 'pickup',
 };
 
 /** What PRICES_CHANGED sends back: the shelf and the delivery as they are now. */
@@ -137,6 +141,12 @@ export function Checkout(props: CheckoutProps) {
     props.pickupEnabled ? 'PICKUP' : props.deliveryMode !== 'NONE' ? 'DELIVERY' : null,
   );
   const [day, setDay] = useState<string | null>(null);
+  // One place is the place; with several the customer picks. A time only at a place with set times.
+  const places = props.pickupPlaces;
+  const [placeId, setPlaceId] = useState<string | null>(places.length === 1 ? places[0]!.id : null);
+  const [windowId, setWindowId] = useState<string | null>(null);
+  /** Bumped to ask for the pickup times again, after a time filled up or went. */
+  const [timesAsked, setTimesAsked] = useState(0);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -156,6 +166,7 @@ export function Checkout(props: CheckoutProps) {
   const addressRef = useRef<HTMLTextAreaElement>(null);
   const daysRef = useRef<HTMLDivElement>(null);
   const methodsRef = useRef<HTMLDivElement>(null);
+  const pickupRef = useRef<HTMLDivElement>(null);
   const formErrorRef = useRef<HTMLParagraphElement>(null);
 
   // Place order sits at the foot of the screen; a refusal about a field far
@@ -168,6 +179,7 @@ export function Checkout(props: CheckoutProps) {
       address: addressRef.current,
       day: daysRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]') ?? daysRef.current?.querySelector('button') ?? null,
       method: methodsRef.current?.querySelector<HTMLElement>('[role="radio"]') ?? null,
+      pickup: pickupRef.current?.querySelector<HTMLElement>('[role="radio"]:not(:disabled)') ?? null,
       form: formErrorRef.current,
     }[problem.field];
     target?.focus();
@@ -241,11 +253,17 @@ export function Checkout(props: CheckoutProps) {
   const flatFee = delivery.mode === 'FLAT' && delivery.feeCents ? formatRinggit(delivery.feeCents) : null;
   const deliveryPrice = delivery.mode === 'RIDER' ? copy.riderFee : (flatFee ?? copy.free);
 
+  const pickupPlace = places.find((p) => p.id === placeId) ?? null;
+  // A shop without places takes pickup as before; with places, a place, and a time where it has set times.
+  const pickupReady = method !== 'PICKUP' || places.length === 0 || (pickupPlace !== null && (pickupPlace.anyTime || windowId !== null));
+  const pickupSent =
+    !digitalOnly && method === 'PICKUP' && pickupPlace !== null ? { pickupPlaceId: pickupPlace.id, ...(windowId ? { pickupWindowId: windowId } : {}) } : {};
+
   const canPlace =
     priced.lines.length > 0 &&
     name.trim() !== '' &&
     phone.replace(/\D/g, '').length >= PHONE_MIN_DIGITS &&
-    (digitalOnly || (day !== null && method !== null && (method !== 'DELIVERY' || address.trim() !== ''))) &&
+    (digitalOnly || (day !== null && method !== null && (method !== 'DELIVERY' || address.trim() !== '') && pickupReady)) &&
     (!anyDigital || EMAIL.test(email.trim())) &&
     !soldOutLine &&
     (free || pick.ready) &&
@@ -308,6 +326,7 @@ export function Checkout(props: CheckoutProps) {
           body: JSON.stringify({
             lines: priced.lines.map(({ itemId, optionId, quantity, sessionId }) => ({ itemId, optionId, quantity, ...(sessionId ? { sessionId } : {}) })),
             ...(digitalOnly ? {} : { method, day }),
+            ...pickupSent,
             ...(anyDigital ? { email: email.trim() } : {}),
             customerName: name.trim(),
             phone: sentPhone,
@@ -398,6 +417,11 @@ export function Checkout(props: CheckoutProps) {
           );
         }
         setPricesChanged(true);
+      } else if (error.code === 'PICKUP_TIME_FULL' || error.code === 'PICKUP_TIME_GONE') {
+        // Taken by someone else meanwhile, or removed by the owner: the times are asked again, which unpicks it.
+        // Checked before prices, so a basket that also changed hears so on the next try.
+        setTimesAsked((n) => n + 1);
+        setProblem({ field: 'pickup', message: error.code === 'PICKUP_TIME_FULL' ? copy.pickupTimeFull : error.message });
       } else if (error.code === 'ORDERS_PAUSED') {
         setFallback('paused');
       } else if (error.code === 'ORDER_TOO_LARGE') {
@@ -625,7 +649,7 @@ export function Checkout(props: CheckoutProps) {
                   <i className={styles.radio} aria-hidden="true" />
                   <span className={styles.methodText}>
                     <b>{copy.pickupLabel}</b>
-                    {props.pickupNote ? <span>{props.pickupNote}</span> : null}
+                    {places[0] ? <span>{copy.placesMore(places[0].name, places.length - 1)}</span> : null}
                   </span>
                   <em>{copy.free}</em>
                 </button>
@@ -700,6 +724,33 @@ export function Checkout(props: CheckoutProps) {
               <p id="ck-day-error" className={styles.error}>
                 {problem.message}
               </p>
+            ) : null}
+            {method === 'PICKUP' && places.length > 0 ? (
+              <div ref={pickupRef}>
+                <PickupPicker
+                  copy={copy}
+                  handle={props.handle}
+                  places={places}
+                  day={day}
+                  placeId={placeId}
+                  windowId={windowId}
+                  refresh={timesAsked}
+                  onPlace={(id) => {
+                    setPlaceId(id);
+                    if (problem?.field === 'pickup') setProblem(null);
+                  }}
+                  onWindow={(id) => {
+                    setWindowId(id);
+                    // Unpicking (a new day, a time gone) keeps the message that said why.
+                    if (id !== null && problem?.field === 'pickup') setProblem(null);
+                  }}
+                />
+                {problem?.field === 'pickup' ? (
+                  <p className={styles.error} role="alert">
+                    {problem.message}
+                  </p>
+                ) : null}
+              </div>
             ) : null}
           </section>
           )}

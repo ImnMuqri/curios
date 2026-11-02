@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { isFailReason, type FailReason } from '@curios/core/chip-status';
 import { customerSteps, isRiderDelivery, orderView, type OrderStatus } from '@curios/core/orders';
+import { pickupLine } from '@curios/core/pickup';
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
@@ -33,6 +34,10 @@ export interface OrderViewProps {
     /** Null for a digital-only order: nothing to pick up or deliver. */
     method: 'PICKUP' | 'DELIVERY' | null;
     day: string | null;
+    /** The pickup place and time the order kept (minutes after midnight); absent or null on an order without them. */
+    pickupPlaceName?: string | null;
+    pickupFrom?: number | null;
+    pickupTo?: number | null;
     itemsCents: number;
     deliveryCents: number;
     totalCents: number;
@@ -538,7 +543,14 @@ export function OrderView(props: OrderViewProps) {
               copy.byEmail
             ) : (
               <>
-                {order.method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel} · {copy.dayLong(order.day)}
+                {pickupLine({
+                  method: order.method,
+                  dayLabel: copy.dayLong(order.day),
+                  pickupFrom: order.pickupFrom ?? null,
+                  pickupTo: order.pickupTo ?? null,
+                  pickupPlaceName: order.pickupPlaceName ?? null,
+                  label: copy.pickupLabel,
+                }) ?? `${copy.deliveryLabel} · ${copy.dayLong(order.day)}`}
                 {isRiderDelivery({ method: order.method, deliveryCents: order.deliveryCents }) ? ` · ${copy.riderPaidSeparately}` : null}
               </>
             )}

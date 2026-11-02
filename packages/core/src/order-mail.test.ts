@@ -51,6 +51,13 @@ describe('newOrderMail', () => {
     expect(mail.text).toContain('Total: RM190');
   });
 
+  it('says where and when a pickup is, and only the day on an order from before places', () => {
+    const at = { ...order, pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home, Seksyen 7' };
+    expect(newOrderMail(at).html).toContain('Pickup · Sat 17 Oct, 10am–12pm · Home, Seksyen 7');
+    expect(newOrderMail(at).text).toContain('Getting it: Pickup · Sat 17 Oct, 10am–12pm · Home, Seksyen 7');
+    expect(newOrderMail({ ...order, pickupFrom: null, pickupTo: null, pickupPlaceName: null }).text).toContain('Getting it: Pickup · Sat 17 Oct\n');
+  });
+
   it('says how they get it, who they are and their note', () => {
     const mail = newOrderMail(order);
     expect(mail.html).toContain('>Getting it<');
@@ -207,6 +214,12 @@ describe('paidOrderMail', () => {
     expect(mail.html).not.toMatch(/receipt/i);
     expect(mail.html).not.toContain('>Note<');
     expect(mail.text).toContain('Paid: RM215');
+  });
+
+  it('says where and when a paid pickup is', () => {
+    const mail = paidOrderMail({ ...paid, pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home, Seksyen 7' });
+    expect(mail.html).toContain('Pickup · Sat 17 Oct, 10am–12pm · Home, Seksyen 7');
+    expect(paidOrderMail(paid).text).toContain('Getting it: Pickup · Sat 17 Oct\n');
   });
 
   it('gives how they get it, who they are, and how they paid with the reference', () => {

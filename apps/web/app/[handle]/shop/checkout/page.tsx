@@ -45,7 +45,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
         items={shop.items.map((i) => ({ ...i, photoUrl: avatarUrl(i.photoKey) }))}
         whatsapp={whatsappNumber(shop.links)}
         pickupEnabled={shop.pickupEnabled}
-        pickupNote={shop.pickupNote}
+        pickupPlaces={shop.pickupPlaces}
         deliveryMode={shop.deliveryMode}
         deliveryFeeCents={shop.deliveryFeeCents}
         deliveryNote={shop.deliveryNote}

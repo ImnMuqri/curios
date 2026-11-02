@@ -57,8 +57,11 @@ const noChip: ChipState = { connected: false, brandName: null, methods: [], chec
 const chipOn: ChipState = { connected: true, brandName: 'Kek Lina Bakes', methods: ['fpx'], checkedAt: new Date('2026-10-16T01:00:00Z'), isTest: false };
 const NOW = new Date('2026-10-16T02:00:00Z');
 
+/** The owner's one pickup place, which the shop preview's sign names. */
+const places = [{ id: 'p1', name: 'Seksyen 7', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }];
+
 function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }, chip = noChip) {
-  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} {...calls} />);
+  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} pickupPlaces={places} {...calls} />);
   return calls;
 }
 

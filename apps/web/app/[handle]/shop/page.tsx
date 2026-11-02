@@ -58,7 +58,7 @@ export default async function ShopPage({
             language={shop.language}
             items={shop.items.map((i) => ({ ...i, photoUrl: avatarUrl(i.photoKey) }))}
             pickupEnabled={shop.pickupEnabled}
-            pickupNote={shop.pickupNote}
+            pickupPlaces={shop.pickupPlaces}
             deliveryMode={shop.deliveryMode}
             canTakeOrders={shop.canTakeOrders}
             nextDay={nextDay}

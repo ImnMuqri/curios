@@ -52,7 +52,8 @@ export function windowProblem(
 
 /**
  * `Pickup · Sat 5 Dec, 10am–12pm · Home, Seksyen 7`, each part only when there.
- * Null for anything but pickup: callers keep their own delivery wording.
+ * Null for anything but pickup: callers keep their own delivery wording. A page
+ * in Malay passes its own word for pickup as `label`.
  */
 export function pickupLine(o: {
   method: 'PICKUP' | 'DELIVERY' | null;
@@ -60,6 +61,7 @@ export function pickupLine(o: {
   pickupFrom: number | null;
   pickupTo: number | null;
   pickupPlaceName: string | null;
+  label?: string;
 }): string | null {
   if (o.method !== 'PICKUP') return null;
   const when = [
@@ -68,5 +70,5 @@ export function pickupLine(o: {
   ]
     .filter(Boolean)
     .join(', ');
-  return ['Pickup', when || null, o.pickupPlaceName].filter(Boolean).join(' · ');
+  return [o.label ?? 'Pickup', when || null, o.pickupPlaceName].filter(Boolean).join(' · ');
 }

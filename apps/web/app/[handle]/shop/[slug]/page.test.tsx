@@ -43,7 +43,7 @@ const shop = {
   shopDescription: null,
   shopHalal: true,
   pickupEnabled: true,
-  pickupNote: null,
+  pickupPlaces: [],
   deliveryMode: 'NONE',
   deliveryFeeCents: null,
   minNoticeDays: 2,

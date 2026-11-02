@@ -38,7 +38,7 @@ const shop: Checkout = {
   pickupEnabled: true,
   shopDescription: 'Cakes for every Raya.',
   shopHalal: false,
-  pickupNote: 'Shah Alam',
+  pickupPlaces: [{ id: 'p1', name: 'Shah Alam', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }],
   deliveryMode: 'FLAT',
   deliveryFeeCents: 800,
   minNoticeDays: 2,
@@ -88,7 +88,7 @@ describe('/[handle]/shop', () => {
     expect(props.copy).toBeUndefined();
         expect(props.handle).toBe('nadia');
     expect(props.displayName).toBe('Nadia Bakes');
-    expect(props.pickupNote).toBe('Shah Alam');
+    expect(props.pickupPlaces).toEqual([expect.objectContaining({ name: 'Shah Alam' })]);
     expect(props.description).toBe('Cakes for every Raya.');
     expect(props.halal).toBe(false);
     expect((props.items as { id: string; photoUrl: string | null }[]).map((i) => [i.id, i.photoUrl])).toEqual([

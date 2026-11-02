@@ -18,7 +18,7 @@ const base = {
   items,
   whatsapp: '60123456789' as string | null,
   pickupEnabled: true,
-  pickupNote: null as string | null,
+  pickupPlaces: [],
   deliveryMode: 'NONE' as const,
   deliveryFeeCents: null as number | null,
   deliveryNote: null as string | null,
