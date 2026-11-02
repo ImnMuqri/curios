@@ -318,7 +318,9 @@
 }
 
 .orderStep i {
+  /* Over the lines, as on the order page: the next step's line starts at this circle's centre and would cut through it. */
   position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   width: 20px;
