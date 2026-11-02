@@ -213,7 +213,7 @@ describe('POST /store/chip', () => {
     const res = await connect(live, owner.cookie);
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().error).toEqual({ code: 'CHIP_TEST_KEY', message: 'This is a test key. Connect your live secret key from your CHIP dashboard, under Developers.' });
+    expect(res.json().error).toEqual({ code: 'CHIP_TEST_KEY', message: 'This is a test key. In your CHIP dashboard, turn off Viewing test data under Developers, then make a live key under Keys.' });
     expect(client.cancelPurchase).toHaveBeenCalledWith(probe.id);
     expect(await account(live, owner.pageId)).toBeNull();
   });
@@ -260,7 +260,7 @@ describe('POST /store/chip', () => {
       client.listPaymentMethods.mockRejectedValueOnce(new ChipRefusedError(`CHIP refused GET with ${status}: {"detail":"no"}`, status));
       const res = await connect(app, owner.cookie);
       expect(res.statusCode).toBe(400);
-      expect(res.json().error).toEqual({ code: 'CHIP_KEY_REFUSED', message: "That key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers." });
+      expect(res.json().error).toEqual({ code: 'CHIP_KEY_REFUSED', message: "That live key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers." });
     }
     client.getPublicKey.mockRejectedValueOnce(new ChipRefusedError('CHIP refused GET /public_key/ with 401: {}', 401));
     expect((await connect(app, owner.cookie)).json().error.code).toBe('CHIP_KEY_REFUSED');
@@ -378,7 +378,7 @@ describe('POST /store/chip/test', () => {
     const res = await call(live, 'POST', '/store/chip/test', owner.cookie);
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().error).toEqual({ code: 'CHIP_TEST_KEY', message: 'This is a test key. Connect your live secret key from your CHIP dashboard, under Developers.' });
+    expect(res.json().error).toEqual({ code: 'CHIP_TEST_KEY', message: 'This is a test key. In your CHIP dashboard, turn off Viewing test data under Developers, then make a live key under Keys.' });
     expect(client.cancelPurchase).toHaveBeenCalledWith(purchase.id);
     expect(await account(live, owner.pageId)).toBeNull();
   });

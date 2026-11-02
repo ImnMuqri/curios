@@ -156,7 +156,7 @@ describe('StoreScreen, against the API', () => {
     await userEvent.click(tab('Payment'));
     await userEvent.click(screen.getByRole('button', { name: 'Connect CHIP' }));
     fireEvent.change(screen.getByLabelText('Brand ID'), { target: { value: 'brand-uuid' } });
-    fireEvent.change(screen.getByLabelText('Secret key'), { target: { value: 'the-secret-key' } });
+    fireEvent.change(screen.getByLabelText('Live key'), { target: { value: 'the-secret-key' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Check and connect' })); });
 
     expect(apiFetch).toHaveBeenCalledTimes(1);

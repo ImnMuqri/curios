@@ -115,7 +115,7 @@ export async function connectChip(
   const brandId = input.brandId.trim();
   const secretKey = input.secretKey.trim();
   if (!BRAND_ID.test(brandId)) throw new InvalidChipKeyError("That Brand ID doesn't look right. Copy it from your CHIP dashboard, under Developers.");
-  if (!SECRET_KEY.test(secretKey)) throw new InvalidChipKeyError("That secret key doesn't look right. Copy it from your CHIP dashboard, under Developers.");
+  if (!SECRET_KEY.test(secretKey)) throw new InvalidChipKeyError("That live key doesn't look right. Copy it from your CHIP dashboard: Developers, then Keys.");
 
   const client = deps.clientFor({ secretKey, brandId });
   const methods = await withOwnerKey(() => client.listPaymentMethods(CHECK_AMOUNT_CENTS));

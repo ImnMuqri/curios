@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ApiError } from '../../../lib/api.js';
 import { PaymentTab } from './payment-tab.js';
 import type { ChipApi, ChipState, SettingsPatch, StoreSettings } from './store-types.js';
@@ -163,11 +163,20 @@ describe('PaymentTab, online payments', () => {
     expect(view.container.textContent).not.toContain('Boost');
   });
 
-  it('asks for the Brand ID and secret key, monospace and never autofilled, and Cancel goes back', () => {
+  it('asks for the Brand ID and live key, as CHIP names them, with the steps to find both', () => {
     show();
     fireEvent.click(screen.getByRole('button', { name: 'Connect CHIP' }));
-    expect(screen.getByText('Copy these from your CHIP dashboard, under Developers. We only use them to take payments for your orders.')).toBeInTheDocument();
-    for (const label of ['Brand ID', 'Secret key']) {
+    const steps = within(screen.getByRole('list', { name: 'How to connect' })).getAllByRole('listitem');
+    expect(steps.map((step) => step.textContent)).toEqual([
+      'Sign in to your CHIP dashboard.',
+      'Open Developers, and check Viewing test data is off.',
+      'Under Brands, copy your Brand ID.',
+      'Under Keys, press New live key, name it Curios, then open it and copy the key.',
+      'Paste both here and press Check and connect.',
+    ]);
+    expect(within(steps[0]!).getByRole('link', { name: 'CHIP dashboard' })).toHaveAttribute('href', 'https://portal.chip-in.asia');
+    expect(screen.getByText('We only use them to take payments for your orders.')).toBeInTheDocument();
+    for (const label of ['Brand ID', 'Live key']) {
       const field = screen.getByLabelText(label);
       expect(field).toHaveValue('');
       expect(field).toHaveAttribute('autocomplete', 'off');
@@ -181,7 +190,7 @@ describe('PaymentTab, online payments', () => {
     const props = show();
     fireEvent.click(screen.getByRole('button', { name: 'Connect CHIP' }));
     fireEvent.change(screen.getByLabelText('Brand ID'), { target: { value: 'brand-uuid' } });
-    fireEvent.change(screen.getByLabelText('Secret key'), { target: { value: 'the-secret-key' } });
+    fireEvent.change(screen.getByLabelText('Live key'), { target: { value: 'the-secret-key' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Check and connect' })); });
 
     expect(props.chipApi.connect).toHaveBeenCalledWith('brand-uuid', 'the-secret-key');
@@ -190,16 +199,16 @@ describe('PaymentTab, online payments', () => {
       <PaymentTab displayName="Kek Lina" settings={settings} qr={{ has: false, url: null }} uploadsEnabled chip={{ ...connected, brandName: null, checkedAt: NOW }} now={NOW} {...props} />,
     );
     expect(screen.getByText('Connected to CHIP')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Secret key')).toBeNull();
+    expect(screen.queryByLabelText('Live key')).toBeNull();
     expect(props.view.container.innerHTML).not.toContain('the-secret-key');
   });
 
   it('keeps the form, with the API’s reason, when CHIP refuses the key', async () => {
-    const props = show({}, { chipApi: { connect: async () => { throw new ApiError(400, 'CHIP_KEY_REFUSED', "That key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers."); } } });
+    const props = show({}, { chipApi: { connect: async () => { throw new ApiError(400, 'CHIP_KEY_REFUSED', "That live key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers."); } } });
     fireEvent.click(screen.getByRole('button', { name: 'Connect CHIP' }));
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Check and connect' })); });
-    expect(screen.getByRole('alert')).toHaveTextContent("That key or Brand ID didn't work.");
-    expect(screen.getByLabelText('Secret key')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent("That live key or Brand ID didn't work.");
+    expect(screen.getByLabelText('Live key')).toBeInTheDocument();
     expect(props.onChip).not.toHaveBeenCalled();
   });
 

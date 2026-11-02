@@ -17,6 +17,8 @@ const NOT_CONNECTED: ChipState = { connected: false, brandName: null, methods: [
 
 /** Where CHIP's own sign-up starts. */
 const CHIP_SIGN_UP = 'https://www.chip-in.asia';
+/** Where an owner signs in to find their Brand ID and make a live key. */
+const CHIP_DASHBOARD = 'https://portal.chip-in.asia';
 
 /**
  * The API replaces a 5xx message with a generic sentence and keeps only an allow-listed
@@ -31,7 +33,7 @@ function chipError(failure: unknown): string {
 
 /**
  * "Online payments" (Store board): the owner's own CHIP account. Not connected, it
- * says what CHIP does; connecting, it asks for the Brand ID and secret key; connected,
+ * says what CHIP does; connecting, it asks for the Brand ID and live key (CHIP's name for the secret key); connected,
  * it names the brand and offers the RM1 test and Disconnect. The secret key is only
  * ever typed here and sent once; it is never read back, and is cleared once sent.
  */
@@ -134,14 +136,36 @@ function OnlinePayments({
       ) : form ? (
         <div className={styles.gw}>
           <b>Connect CHIP</b>
-          <p>Copy these from your CHIP dashboard, under Developers. We only use them to take payments for your orders.</p>
+          {/* CHIP's own names, in the order its dashboard shows them: a "live key", never "secret key". */}
+          <ol className={styles.gwSteps} aria-label="How to connect">
+            <li>
+              Sign in to your{' '}
+              <a href={CHIP_DASHBOARD} target="_blank" rel="noreferrer">
+                CHIP dashboard
+              </a>
+              .
+            </li>
+            <li>
+              Open <b>Developers</b>, and check <b>Viewing test data</b> is off.
+            </li>
+            <li>
+              Under <b>Brands</b>, copy your Brand ID.
+            </li>
+            <li>
+              Under <b>Keys</b>, press <b>New live key</b>, name it Curios, then open it and copy the key.
+            </li>
+            <li>
+              Paste both here and press <b>Check and connect</b>.
+            </li>
+          </ol>
+          <p>We only use them to take payments for your orders.</p>
           <div className={`${styles.grid2} ${styles.gwForm}`}>
             <label className={`${ui.float} ${styles.mono}`}>
               <em>Brand ID</em>
               <input value={brandId} autoComplete="off" spellCheck={false} onChange={(event) => setBrandId(event.target.value)} />
             </label>
             <label className={`${ui.float} ${styles.mono}`}>
-              <em>Secret key</em>
+              <em>Live key</em>
               <input value={secretKey} autoComplete="off" spellCheck={false} onChange={(event) => setSecretKey(event.target.value)} />
             </label>
           </div>

@@ -839,6 +839,32 @@
   transform: translateY(-2px);
 }
 
+/* Connecting: CHIP's dashboard steps, numbered. */
+.gwSteps {
+  display: grid;
+  gap: 6px;
+  max-width: 44em;
+  margin: 10px 0 4px;
+  padding-left: 20px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.gwSteps li::marker {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.gwSteps b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.gwSteps a {
+  color: var(--biru);
+  text-decoration: underline;
+}
+
 /* Connected: one plain row (v3), the tick, what is connected, its buttons on the right. */
 .gwOn {
   display: flex;

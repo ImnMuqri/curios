@@ -114,7 +114,7 @@ export class ChipKeyRefusedError extends Error {
   readonly statusCode = 400;
   readonly code = 'CHIP_KEY_REFUSED';
   constructor() {
-    super("That key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers.");
+    super("That live key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers.");
     this.name = 'ChipKeyRefusedError';
   }
 }
@@ -124,7 +124,7 @@ export class ChipTestKeyError extends Error {
   readonly statusCode = 400;
   readonly code = 'CHIP_TEST_KEY';
   constructor() {
-    super('This is a test key. Connect your live secret key from your CHIP dashboard, under Developers.');
+    super('This is a test key. In your CHIP dashboard, turn off Viewing test data under Developers, then make a live key under Keys.');
     this.name = 'ChipTestKeyError';
   }
 }
