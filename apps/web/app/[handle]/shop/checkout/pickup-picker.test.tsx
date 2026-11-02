@@ -4,7 +4,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicPickupPlace } from '@curios/db-read';
 import { shopCopy } from '../copy.js';
-import { PickupPicker } from './pickup-picker.js';
+import { PickupTime, PickupWhere } from './pickup-picker.js';
 
 const copy = shopCopy('en');
 
@@ -28,24 +28,25 @@ function reply(windows: { id: string; from: number; to: number; full: boolean }[
   return spy;
 }
 
-/** The picker as checkout holds it: the place and time in state, the day from outside. */
+/** The two halves as checkout holds them: the place and time in state, the day from outside, Where above Time. */
 function Host({ places, day, onWindow }: { places: PublicPickupPlace[]; day: string | null; onWindow?: (id: string | null) => void }) {
   const [placeId, setPlaceId] = useState<string | null>(places.length === 1 ? places[0]!.id : null);
   const [windowId, setWindowId] = useState<string | null>(null);
   return (
-    <PickupPicker
-      copy={copy}
-      handle="keklina"
-      places={places}
-      day={day}
-      placeId={placeId}
-      windowId={windowId}
-      onPlace={setPlaceId}
-      onWindow={(id) => {
-        setWindowId(id);
-        onWindow?.(id);
-      }}
-    />
+    <>
+      <PickupWhere copy={copy} places={places} placeId={placeId} onPlace={setPlaceId} />
+      <PickupTime
+        copy={copy}
+        handle="keklina"
+        place={places.find((p) => p.id === placeId) ?? null}
+        day={day}
+        windowId={windowId}
+        onWindow={(id) => {
+          setWindowId(id);
+          onWindow?.(id);
+        }}
+      />
+    </>
   );
 }
 
@@ -123,5 +124,19 @@ describe('PickupPicker', () => {
     rerender(<Host places={[home]} day="2026-10-19" onWindow={onWindow} />);
     expect(onWindow).toHaveBeenLastCalledWith(null);
     expect(await screen.findByRole('radio', { name: '10am–12pm' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('says when the times could not be read, and asks again on Try again', async () => {
+    const user = userEvent.setup();
+    const fetch = vi.fn(async (_url: string) => new Response('{}', { status: 500, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', fetch);
+    render(<Host places={[home]} day="2026-10-17" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.pickupTimesFailed);
+
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ windows: [{ id: 'w1', from: 600, to: 720, full: false }] }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    await user.click(screen.getByRole('button', { name: copy.tryAgain }));
+    expect(await screen.findByRole('radio', { name: '10am–12pm' })).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

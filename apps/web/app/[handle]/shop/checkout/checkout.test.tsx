@@ -667,7 +667,7 @@ describe('Checkout: where and when to collect', () => {
   const orderCalls = (spy: ReturnType<typeof routes>) => spy.mock.calls.filter(([url]) => String(url).endsWith('/store/keklina/orders'));
   const timeCalls = (spy: ReturnType<typeof routes>) => spy.mock.calls.filter(([url]) => String(url).includes('/pickup-times?'));
 
-  it('holds Place order until a time is picked at a place with set times, then sends the place and time', async () => {
+  it('asks where, then the day, then the time, holding Place order until a time is picked, then sends the place and time', async () => {
     const user = userEvent.setup();
     const fetch = routes(
       () => [
@@ -678,11 +678,20 @@ describe('Checkout: where and when to collect', () => {
     );
     render(<Checkout {...base} pickupPlaces={[home, stall]} />);
     await screen.findByText('Kek coklat moist');
-    await fillDetails(user);
+    await user.type(screen.getByLabelText(copy.name), 'Mira Hassan');
+    await user.type(screen.getByLabelText(copy.whatsappNumber), '012-987 6543');
+    const where = screen.getByRole('radiogroup', { name: copy.pickupWhere });
+    const sat = screen.getByRole('button', { name: 'Sat 17' });
+    // The place comes above the day pills.
+    expect(where.compareDocumentPosition(sat) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(within(where).getByRole('radio', { name: /Home/ }));
+    expect(screen.queryByRole('radiogroup', { name: copy.pickupTime })).toBeNull();
+    await user.click(sat);
     expect(placeButton('RM215')).toBeDisabled();
-    await user.click(within(screen.getByRole('radiogroup', { name: copy.pickupWhere })).getByRole('radio', { name: /Home/ }));
-    expect(placeButton('RM215')).toBeDisabled();
-    await user.click(await screen.findByRole('radio', { name: '10am–12pm' }));
+    const time = await screen.findByRole('radiogroup', { name: copy.pickupTime });
+    // And the times under them.
+    expect(sat.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await user.click(within(time).getByRole('radio', { name: '10am–12pm' }));
     expect(placeButton('RM215')).toBeEnabled();
 
     await user.click(placeButton('RM215'));
@@ -711,6 +720,8 @@ describe('Checkout: where and when to collect', () => {
     await user.click(placeButton('RM215'));
 
     expect(await screen.findByText(copy.pickupTimeFull)).toBeInTheDocument();
+    // Focus goes to the message, not to a time that may be about to go.
+    expect(screen.getByRole('alert')).toHaveFocus();
     expect(timeCalls(fetch)).toHaveLength(2);
     expect(await screen.findByRole('radio', { name: `10am–12pm · ${copy.pickupFull}` })).toBeDisabled();
     // Nothing typed is lost, and another time places the order.
@@ -734,5 +745,33 @@ describe('Checkout: where and when to collect', () => {
     expect(body).not.toHaveProperty('pickupPlaceId');
     expect(body).not.toHaveProperty('pickupWindowId');
     expect(timeCalls(fetch)).toHaveLength(0);
+  });
+
+  it('says a time that went in the page’s language, and asks for the times again', async () => {
+    const user = userEvent.setup();
+    const ms = shopCopy('ms');
+    const fetch = routes(
+      () => [{ id: 'w1', from: 600, to: 720, full: false }],
+      () => json(400, { error: { code: 'PICKUP_TIME_GONE', message: "That pickup time isn't offered any more. Pick another." } }),
+    );
+    render(<Checkout {...base} language="ms" pickupPlaces={[home]} />);
+    await screen.findByText('Kek coklat moist');
+    await user.type(screen.getByLabelText(ms.name), 'Mira Hassan');
+    await user.type(screen.getByLabelText(ms.whatsappNumber), '012-987 6543');
+    await user.click(screen.getByRole('button', { name: ms.dayPill('2026-10-17') }));
+    await user.click(await screen.findByRole('radio', { name: '10am–12pm' }));
+    await user.click(screen.getByRole('button', { name: /RM215/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(ms.pickupTimeGone);
+    expect(timeCalls(fetch)).toHaveLength(2);
+  });
+
+  it('a shop that added a place after checkout opened: the refusal is still said', async () => {
+    const user = userEvent.setup();
+    routes(() => [], () => json(400, { error: { code: 'PICKUP_PLACE_REQUIRED', message: 'Pick where to collect it.' } }));
+    render(<Checkout {...base} pickupPlaces={[]} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.click(placeButton('RM215'));
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.pickupPlaceRequired);
   });
 });

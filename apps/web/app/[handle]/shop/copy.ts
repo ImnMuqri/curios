@@ -134,6 +134,13 @@ export interface ShopCopy {
   pickupFull: string;
   pickupAnyTime: string;
   pickupTimeFull: string;
+  pickupTimeGone: string;
+  /** The API's PICKUP_PLACE_REQUIRED and PICKUP_TIME_REQUIRED, in the page's language. */
+  pickupPlaceRequired: string;
+  pickupTimeRequired: string;
+  /** The day's times could not be read; "Try again" asks once more. */
+  pickupTimesFailed: string;
+  tryAgain: string;
   /** The link to a pickup place on a map. */
   pickupMap: string;
   /** The first pickup place and how many more: "Home +2 more". */
@@ -487,6 +494,11 @@ const EN: ShopCopy = {
   pickupFull: 'Full',
   pickupAnyTime: 'Any time that day',
   pickupTimeFull: 'That pickup time just filled up. Pick another.',
+  pickupTimeGone: "That pickup time isn't offered any more. Pick another.",
+  pickupPlaceRequired: 'Pick where to collect it.',
+  pickupTimeRequired: 'Pick a pickup time.',
+  pickupTimesFailed: 'The pickup times could not be loaded.',
+  tryAgain: 'Try again',
   pickupMap: 'Map',
   placesMore: (first, more) => (more > 0 ? `${first} +${more} more` : first),
   deliveryOn: 'Delivery on',
@@ -795,6 +807,11 @@ const MS: ShopCopy = {
   pickupFull: 'Penuh',
   pickupAnyTime: 'Bila-bila masa hari itu',
   pickupTimeFull: 'Masa ambil itu baru penuh. Pilih yang lain.',
+  pickupTimeGone: 'Masa ambil itu tiada lagi. Pilih yang lain.',
+  pickupPlaceRequired: 'Pilih tempat untuk ambil.',
+  pickupTimeRequired: 'Pilih masa ambil.',
+  pickupTimesFailed: 'Masa ambil tidak dapat dimuatkan.',
+  tryAgain: 'Cuba lagi',
   pickupMap: 'Peta',
   placesMore: (first, more) => (more > 0 ? `${first} +${more} lagi` : first),
   deliveryOn: 'Hantar pada',

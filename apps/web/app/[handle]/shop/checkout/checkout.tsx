@@ -21,7 +21,7 @@ import {
 import { shopCopy } from '../copy.js';
 import { payingKey, retryKey } from './paying.js';
 import { payButtonText, PayWays, useOnlineOffer, usePayChoice } from './pay-ways.js';
-import { PickupPicker } from './pickup-picker.js';
+import { PickupTime, PickupWhere } from './pickup-picker.js';
 import { Placed } from './placed.js';
 import { ShopCover } from '../shop-cover.js';
 import styles from './checkout.module.css';
@@ -100,9 +100,15 @@ const FIELD_OF: Record<string, Problem['field']> = {
   ORDER_DATE: 'day',
   METHOD_OFF: 'method',
   EMAIL_REQUIRED: 'email',
-  PICKUP_PLACE_REQUIRED: 'pickup',
-  PICKUP_TIME_REQUIRED: 'pickup',
 };
+
+/** The pickup refusals, said in the page's language under Getting it. */
+const PICKUP_SAYS = new Map<string, 'pickupPlaceRequired' | 'pickupTimeRequired' | 'pickupTimeFull' | 'pickupTimeGone'>([
+  ['PICKUP_PLACE_REQUIRED', 'pickupPlaceRequired'],
+  ['PICKUP_TIME_REQUIRED', 'pickupTimeRequired'],
+  ['PICKUP_TIME_FULL', 'pickupTimeFull'],
+  ['PICKUP_TIME_GONE', 'pickupTimeGone'],
+]);
 
 /** What PRICES_CHANGED sends back: the shelf and the delivery as they are now. */
 interface Reload {
@@ -166,7 +172,7 @@ export function Checkout(props: CheckoutProps) {
   const addressRef = useRef<HTMLTextAreaElement>(null);
   const daysRef = useRef<HTMLDivElement>(null);
   const methodsRef = useRef<HTMLDivElement>(null);
-  const pickupRef = useRef<HTMLDivElement>(null);
+  const pickupErrorRef = useRef<HTMLParagraphElement>(null);
   const formErrorRef = useRef<HTMLParagraphElement>(null);
 
   // Place order sits at the foot of the screen; a refusal about a field far
@@ -179,7 +185,8 @@ export function Checkout(props: CheckoutProps) {
       address: addressRef.current,
       day: daysRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]') ?? daysRef.current?.querySelector('button') ?? null,
       method: methodsRef.current?.querySelector<HTMLElement>('[role="radio"]') ?? null,
-      pickup: pickupRef.current?.querySelector<HTMLElement>('[role="radio"]:not(:disabled)') ?? null,
+      // The message itself: the times it is about are being asked for again, and may all change.
+      pickup: pickupErrorRef.current,
       form: formErrorRef.current,
     }[problem.field];
     target?.focus();
@@ -417,11 +424,11 @@ export function Checkout(props: CheckoutProps) {
           );
         }
         setPricesChanged(true);
-      } else if (error.code === 'PICKUP_TIME_FULL' || error.code === 'PICKUP_TIME_GONE') {
-        // Taken by someone else meanwhile, or removed by the owner: the times are asked again, which unpicks it.
-        // Checked before prices, so a basket that also changed hears so on the next try.
-        setTimesAsked((n) => n + 1);
-        setProblem({ field: 'pickup', message: error.code === 'PICKUP_TIME_FULL' ? copy.pickupTimeFull : error.message });
+      } else if (PICKUP_SAYS.has(error.code)) {
+        // A time taken by someone else meanwhile, or removed by the owner: the times are asked again, which unpicks it.
+        // The API judges pickup before prices, so a basket whose prices also changed hears that on the next try.
+        if (error.code === 'PICKUP_TIME_FULL' || error.code === 'PICKUP_TIME_GONE') setTimesAsked((n) => n + 1);
+        setProblem({ field: 'pickup', message: copy[PICKUP_SAYS.get(error.code)!] });
       } else if (error.code === 'ORDERS_PAUSED') {
         setFallback('paused');
       } else if (error.code === 'ORDER_TOO_LARGE') {
@@ -694,6 +701,17 @@ export function Checkout(props: CheckoutProps) {
                 ) : null}
               </div>
             ) : null}
+            {method === 'PICKUP' && places.length > 0 ? (
+              <PickupWhere
+                copy={copy}
+                places={places}
+                placeId={placeId}
+                onPlace={(id) => {
+                  setPlaceId(id);
+                  if (problem?.field === 'pickup') setProblem(null);
+                }}
+              />
+            ) : null}
             <div className={`${styles.head} ${styles.dayHead}`}>
               <h2 id="ck-day">{copy.day}</h2>
               <span>{copy.dayHint(props.minNoticeDays, props.closedDays)}</span>
@@ -726,31 +744,25 @@ export function Checkout(props: CheckoutProps) {
               </p>
             ) : null}
             {method === 'PICKUP' && places.length > 0 ? (
-              <div ref={pickupRef}>
-                <PickupPicker
-                  copy={copy}
-                  handle={props.handle}
-                  places={places}
-                  day={day}
-                  placeId={placeId}
-                  windowId={windowId}
-                  refresh={timesAsked}
-                  onPlace={(id) => {
-                    setPlaceId(id);
-                    if (problem?.field === 'pickup') setProblem(null);
-                  }}
-                  onWindow={(id) => {
-                    setWindowId(id);
-                    // Unpicking (a new day, a time gone) keeps the message that said why.
-                    if (id !== null && problem?.field === 'pickup') setProblem(null);
-                  }}
-                />
-                {problem?.field === 'pickup' ? (
-                  <p className={styles.error} role="alert">
-                    {problem.message}
-                  </p>
-                ) : null}
-              </div>
+              <PickupTime
+                copy={copy}
+                handle={props.handle}
+                place={pickupPlace}
+                day={day}
+                windowId={windowId}
+                refresh={timesAsked}
+                onWindow={(id) => {
+                  setWindowId(id);
+                  // Unpicking (a new day, a time gone) keeps the message that said why.
+                  if (id !== null && problem?.field === 'pickup') setProblem(null);
+                }}
+              />
+            ) : null}
+            {problem?.field === 'pickup' ? (
+              // Outside the picker: a shop that had no places when checkout opened can still be told to pick one.
+              <p ref={pickupErrorRef} className={styles.error} role="alert" tabIndex={-1}>
+                {problem.message}
+              </p>
             ) : null}
           </section>
           )}
