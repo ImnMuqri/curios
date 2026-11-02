@@ -373,6 +373,7 @@ export function StoreEditor({
                 item={editingItem}
                 tint={editingIndex}
                 uploadsEnabled={uploadsEnabled}
+                paysOnline={chip.connected}
                 categories={categories}
                 api={itemsApi}
                 onSaved={saved}

@@ -84,10 +84,18 @@ function previewDigital(draft: DigitalDraft, saved: EditorItem | null): Pick<Edi
  * Done sends anything still waiting and goes back to the list, but not while
  * the fields cannot be saved.
  */
+/** CHIP lists no online banking for a total under RM1, so a basket of just this price is paid another way. */
+const ONLINE_MIN_CENTS = 100;
+const underOnlineMin = (pricing: CheckedItem['pricing']) => {
+  const { priceCents, options } = pricedFields(pricing);
+  return [priceCents, ...options.map((option) => option.priceCents)].some((cents) => cents !== null && cents < ONLINE_MIN_CENTS);
+};
+
 export function ItemEditor({
   item,
   tint,
   uploadsEnabled,
+  paysOnline = false,
   categories,
   api,
   onSaved,
@@ -100,6 +108,8 @@ export function ItemEditor({
   /** Which of the four soft tints the no-photo square wears. */
   tint: number;
   uploadsEnabled: boolean;
+  /** The shop takes online payment through CHIP, whose online banking starts at RM1. */
+  paysOnline?: boolean;
   /** The categories the owner's other items already use, offered in the select. */
   categories: string[];
   api: ItemsApi;
@@ -445,6 +455,9 @@ export function ItemEditor({
         </svg>
         {problem ?? `Customers see ${'error' in checked ? '' : priceLine(pricedFields(checked.pricing))}`}
       </p>
+      {paysOnline && !('error' in checked) && underOnlineMin(checked.pricing) ? (
+        <p className={ui.note}>Under RM1, a customer buying only this can’t pay by online banking: CHIP takes RM1 or more.</p>
+      ) : null}
 
       <SaveState status={autosave.status} error={autosave.error} retry={autosave.retry} />
       {error ? <Callout tone="error">{error}</Callout> : null}

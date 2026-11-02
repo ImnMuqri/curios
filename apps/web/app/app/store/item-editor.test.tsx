@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 vi.mock('../curios/resize-image.js', () => ({
   prepareOriginal: vi.fn(async () => ({ blob: new Blob(['x'], { type: 'image/webp' }), width: 1000, height: 750 })),
 }));
@@ -40,9 +40,9 @@ function api(over: Partial<ItemsApi> = {}): ItemsApi {
   };
 }
 
-function show(item: EditorItem | null, calls = api(), uploadsEnabled = true, categories: string[] = []) {
+function show(item: EditorItem | null, calls = api(), uploadsEnabled = true, categories: string[] = [], paysOnline = false) {
   const props = { onSaved: vi.fn(), onPreview: vi.fn(), onRemoved: vi.fn(), onClose: vi.fn() };
-  render(<ItemEditor item={item} tint={0} uploadsEnabled={uploadsEnabled} api={calls} categories={categories} {...props} />);
+  render(<ItemEditor item={item} tint={0} uploadsEnabled={uploadsEnabled} paysOnline={paysOnline} api={calls} categories={categories} {...props} />);
   return { calls, ...props };
 }
 
@@ -221,6 +221,22 @@ describe('ItemEditor, an existing item', () => {
 
     fireEvent.click(screen.getByRole('radio', { name: 'One price' }));
     expect(screen.getByLabelText('Price in ringgit')).toHaveValue('95');
+  });
+
+  it('says a price under RM1 cannot be paid online, only when the shop takes CHIP', () => {
+    const under = /can’t pay by online banking/;
+    show({ ...batik, priceCents: 50 }, api(), true, [], true);
+    expect(screen.getByText(under)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '1' } });
+    expect(screen.queryByText(under)).not.toBeInTheDocument();
+    cleanup();
+
+    show({ ...coklat, options: [{ id: 'o1', label: 'Sample', priceCents: 90 }, { id: 'o2', label: '1kg', priceCents: 9500 }] }, api(), true, [], true);
+    expect(screen.getByText(under)).toBeInTheDocument();
+    cleanup();
+
+    show({ ...batik, priceCents: 50 });
+    expect(screen.queryByText(under)).not.toBeInTheDocument();
   });
 
   it('turns a single price into a first option called Regular', () => {

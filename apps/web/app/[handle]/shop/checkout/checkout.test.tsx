@@ -448,7 +448,16 @@ describe('Checkout: how you’ll pay', () => {
     render(<Checkout {...connected} />);
     await screen.findByText('Kek coklat moist');
     const banks = within(screen.getByRole('radiogroup', { name: copy.yourBank })).getAllByRole('radio');
-    expect(banks.map((bank) => bank.textContent?.slice(1))).toEqual(['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now', 'Bank Islam', 'Hong Leong']);
+    expect(banks.map((bank) => bank.textContent)).toEqual(['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now', 'Bank Islam', 'Hong Leong']);
+    // Each bank wears its own logo, the same files the owner's bank picker shows.
+    expect(banks.map((bank) => bank.querySelector('img')?.getAttribute('src'))).toEqual([
+      '/banks/maybank.svg',
+      '/banks/cimb.png',
+      '/banks/publicbank.svg',
+      '/banks/rhb.svg',
+      '/banks/bankislam.png',
+      '/banks/hlb.svg',
+    ]);
     expect(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') })).toBeInTheDocument();
     expect(screen.getByText(`${copy.noteBank} ${copy.chipNote('Kek Lina')}`)).toBeInTheDocument();
 

@@ -17,6 +17,16 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * checked for the first draw, then what the API says at this total once it settles.
  * Null when the shop takes nothing online.
  */
+/** Each FPX bank's logo, the same files the owner's bank picker shows (public/banks). */
+const FPX_LOGOS: Record<FpxBankId, string> = {
+  maybank: '/banks/maybank.svg',
+  cimb: '/banks/cimb.png',
+  pbb: '/banks/publicbank.svg',
+  rhb: '/banks/rhb.svg',
+  bislam: '/banks/bankislam.png',
+  hlb: '/banks/hlb.svg',
+};
+
 export function useOnlineOffer(handle: string, chipMethods: string[] | null, totalCents: number): OnlineOffer | null {
   const [offer, setOffer] = useState<OnlineOffer | null>(chipMethods ? onlineOffer(chipMethods) : null);
   const hasChip = chipMethods !== null;
@@ -141,7 +151,7 @@ export function PayWays({
           <div className={styles.picks} role="radiogroup" aria-labelledby={`${idPrefix}-bank`}>
             {FPX_BANKS.map((b) => (
               <button key={b.id} type="button" role="radio" aria-checked={pick.bank === b.id} className={styles.pick} data-mark={b.id} onClick={() => pick.setBank(b.id)}>
-                <i aria-hidden="true">{b.name.charAt(0)}</i>
+                <img className={styles.bankLogo} src={FPX_LOGOS[b.id]} alt="" width={24} height={24} />
                 {b.name}
               </button>
             ))}
