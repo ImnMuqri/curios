@@ -22,7 +22,7 @@ import { ItemsList } from './items-list.js';
 import { PayPreview } from './pay-preview.js';
 import { PaymentTab } from './payment-tab.js';
 import { orNull, useSettingText } from './setting-field.js';
-import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
+import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type PickupPlaceView, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 import styles from './store.module.css';
 import { VouchersTab } from './vouchers-tab.js';
 
@@ -67,6 +67,16 @@ function trackedVouchers(api: VouchersApi, track: SaveTrack): VouchersApi {
     add: (input) => track(api.add(input)),
     update: (id, patch) => track(api.update(id, patch)),
     remove: (id) => track(api.remove(id)),
+  };
+}
+
+function trackedPickup(api: PickupApi, track: SaveTrack): PickupApi {
+  return {
+    list: () => track(api.list()),
+    add: (place) => track(api.add(place)),
+    save: (id, place) => track(api.save(id, place)),
+    remove: (id) => track(api.remove(id)),
+    reorder: (ids) => track(api.reorder(ids)),
   };
 }
 
@@ -124,11 +134,13 @@ export function StoreEditor({
   chip: initialChip,
   orders,
   vouchers: initialVouchers = [],
+  pickupPlaces = [],
   initialTab = 'items',
   settingsApi: rawSettings,
   itemsApi: rawItems,
   chipApi,
   vouchersApi: rawVouchers,
+  pickupApi: rawPickup,
 }: {
   initial: StoreSettings;
   items: EditorItem[];
@@ -148,18 +160,22 @@ export function StoreEditor({
   orders: { paused: string | null; nextNumber: number };
   /** The owner's vouchers, as the read gives them. */
   vouchers?: OwnerVoucher[];
+  /** The owner's pickup places, as the read gives them. */
+  pickupPlaces?: PickupPlaceView[];
   /** The tab to open on; Items when there is none. */
   initialTab?: Tab;
   settingsApi: SettingsApi;
   itemsApi: ItemsApi;
   chipApi: ChipApi;
   vouchersApi: VouchersApi;
+  pickupApi: PickupApi;
 }) {
   const { state, track } = useSaveStatus();
   const settingsApi = useMemo(() => trackedSettings(rawSettings, track), [rawSettings, track]);
   const itemsApi = useMemo(() => trackedItems(rawItems, track), [rawItems, track]);
 
   const vouchersApi = useMemo(() => trackedVouchers(rawVouchers, track), [rawVouchers, track]);
+  const pickupApi = useMemo(() => trackedPickup(rawPickup, track), [rawPickup, track]);
 
   const [settings, setSettings] = useState(initial);
   const [qr, setQr] = useState({ has: Boolean(initial.paymentQrKey), url: qrUrl });
@@ -443,7 +459,7 @@ export function StoreEditor({
           </div>
 
           <div role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden={tab !== 'delivery'} className={`${ui.panel} ${styles.panel}`}>
-            <DeliveryTab settings={settings} save={save} today={todayDate} />
+            <DeliveryTab settings={settings} save={save} today={todayDate} places={pickupPlaces} pickupApi={pickupApi} />
           </div>
 
           <div role="tabpanel" id="panel-vouchers" aria-labelledby="tab-vouchers" hidden={tab !== 'vouchers'} className={`${ui.panel} ${styles.panel}`}>

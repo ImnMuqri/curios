@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { DeliveryTab } from './delivery-tab.js';
-import type { SettingsPatch, StoreSettings } from './store-types.js';
+import type { PickupApi, SettingsPatch, StoreSettings } from './store-types.js';
 
 const settings: StoreSettings = {
   enabled: true, shopDescription: null, shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'NONE',
@@ -10,12 +10,15 @@ const settings: StoreSettings = {
   closedDays: [0], deliveryNote: null,
 };
 
+const pickupApi: PickupApi = { list: vi.fn(), add: vi.fn(), save: vi.fn(), remove: vi.fn(), reorder: vi.fn() };
+const places = [{ id: 'p1', name: 'Seksyen 7 stall', address: 'Seksyen 7', mapUrl: null, note: null, anyTime: true, windows: [] }];
+
 // A Friday.
 const today = new Date(2026, 9, 16);
 
 function show(over: Partial<StoreSettings> = {}, save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   const saveFn = vi.fn(save ?? (async (patch: SettingsPatch) => ({ ...settings, ...over, ...patch })));
-  render(<DeliveryTab settings={{ ...settings, ...over }} save={saveFn} today={today} />);
+  render(<DeliveryTab settings={{ ...settings, ...over }} save={saveFn} today={today} places={places} pickupApi={pickupApi} />);
   return saveFn;
 }
 
@@ -28,7 +31,7 @@ describe('DeliveryTab, pickup', () => {
     const save = show();
     await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Allow pickup' })); });
     expect(save).toHaveBeenCalledWith({ pickupEnabled: false });
-    expect(screen.queryByLabelText('Where and when')).toBeNull();
+    expect(screen.queryByRole('button', { name: '+ Add pickup place' })).toBeNull();
   });
 
   it('puts the switch back, with the reason, when that would leave an open shop no way to hand over', async () => {
@@ -38,13 +41,11 @@ describe('DeliveryTab, pickup', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('turn on pickup or delivery');
   });
 
-  it('saves the pickup note once the owner pauses', async () => {
-    vi.useFakeTimers();
-    const save = show();
-    fireEvent.change(screen.getByLabelText('Where and when'), { target: { value: 'Seksyen 9, 10am to 6pm' } });
-    expect(screen.getByText('22/120')).toBeInTheDocument();
-    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
-    expect(save).toHaveBeenCalledWith({ pickupNote: 'Seksyen 9, 10am to 6pm' });
+  it('lists the pickup places while pickup is on, in place of a note field', () => {
+    show();
+    expect(screen.getByText('Seksyen 7 stall')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '+ Add pickup place' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Where and when')).toBeNull();
   });
 });
 
@@ -100,7 +101,7 @@ describe('DeliveryTab, notice', () => {
   });
 
   it('crosses out the days a customer cannot have, and names the first they can', () => {
-    const { container } = render(<DeliveryTab settings={settings} save={vi.fn()} today={today} />);
+    const { container } = render(<DeliveryTab settings={settings} save={vi.fn()} today={today} places={places} pickupApi={pickupApi} />);
     const days = [...container.querySelectorAll('[data-when]')].map((day) => [day.textContent, day.getAttribute('data-when')]);
     expect(days).toEqual([
       ['Today16', 'before'],

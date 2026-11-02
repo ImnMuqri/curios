@@ -311,3 +311,35 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
   });
   return { mode, items: ownerItems, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest }, chip };
 }
+
+/** One of the owner's pickup places, with its times in minutes after midnight (Malaysia time). */
+export interface OwnerPickupPlace {
+  id: string;
+  name: string;
+  address: string;
+  mapUrl: string | null;
+  note: string | null;
+  anyTime: boolean;
+  windows: { id: string; from: number; to: number; limit: number | null }[];
+}
+
+/** A shop's pickup places in the owner's order, each with its windows in theirs. */
+export async function getPickupPlaces(pageId: string): Promise<OwnerPickupPlace[]> {
+  const rows = await prismaRead.pickupPlace.findMany({
+    where: { pageId },
+    orderBy: [{ position: 'asc' }, { id: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      address: true,
+      mapUrl: true,
+      note: true,
+      anyTime: true,
+      windows: { orderBy: [{ position: 'asc' }, { id: 'asc' }], select: { id: true, fromMinute: true, toMinute: true, limit: true } },
+    },
+  });
+  return rows.map(({ windows, ...place }) => ({
+    ...place,
+    windows: windows.map((w) => ({ id: w.id, from: w.fromMinute, to: w.toMinute, limit: w.limit })),
+  }));
+}

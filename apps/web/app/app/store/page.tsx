@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { orderState, SESSION_COOKIE } from '@curios/core';
-import { getMyCurios, getOwnerPage, getOwnerStore, getOwnerVouchers, getSettings, type OwnerPage } from '@curios/db-read';
+import { getMyCurios, getOwnerPage, getOwnerStore, getOwnerVouchers, getPickupPlaces, getSettings, type OwnerPage } from '@curios/db-read';
 import { shortDate } from '../billing/billing-copy.js';
 import { Callout } from '@curios/ui';
 import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
@@ -49,6 +49,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
     getSettings(),
   ]);
   if (!store || !page || !owned) redirect('/app/onboarding');
+  const pickupPlaces = await getPickupPlaces(owned.id);
 
   if (store.mode === 'PERSONAL') {
     return (
@@ -92,6 +93,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       now={new Date()}
       chip={store.chip}
       vouchers={vouchers}
+      pickupPlaces={pickupPlaces}
       initialTab={initialTab}
       orders={{ paused: pausedWhy(owned, new Date(), freeOrders), nextNumber: owned.ordersPlaced + 1 }}
     />

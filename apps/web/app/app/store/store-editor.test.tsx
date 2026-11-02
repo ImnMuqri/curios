@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { writeBasket } from '../../[handle]/shop/basket.js';
 import { StoreEditor } from './store-editor.js';
 import type { OwnerVoucher } from '@curios/core/vouchers';
-import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -49,7 +49,8 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   };
   const chipApi: ChipApi = { connect: vi.fn(), disconnect: vi.fn(async () => undefined), test: vi.fn() };
   const vouchersApi: VouchersApi = { add: vi.fn(), update: vi.fn(), remove: vi.fn(async () => undefined) };
-  return { settingsApi, itemsApi, chipApi, vouchersApi };
+  const pickupApi: PickupApi = { list: vi.fn(), add: vi.fn(), save: vi.fn(), remove: vi.fn(), reorder: vi.fn() };
+  return { settingsApi, itemsApi, chipApi, vouchersApi, pickupApi };
 }
 
 const noChip: ChipState = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };

@@ -167,3 +167,34 @@ export type ShopLook = {
   whatsapp: string | null;
 };
 
+
+/** One pickup place and its times, as `GET /store/pickup-places` answers (the API's own shape; the web app cannot import apps/api). */
+export type PickupPlaceView = {
+  id: string;
+  name: string;
+  address: string;
+  mapUrl: string | null;
+  note: string | null;
+  anyTime: boolean;
+  /** Minutes after midnight, Malaysia time. */
+  windows: { id: string; from: number; to: number; limit: number | null }[];
+};
+
+/** What the owner sends for a place. A window sent with its `id` keeps that id. */
+export type PlaceInput = {
+  name: string;
+  address: string;
+  mapUrl: string | null;
+  note: string | null;
+  anyTime: boolean;
+  windows: { id?: string; from: number; to: number; limit: number | null }[];
+};
+
+/** Every call answers the shop's whole list of places, so the screen never merges. */
+export type PickupApi = {
+  list: () => Promise<PickupPlaceView[]>;
+  add: (place: PlaceInput) => Promise<PickupPlaceView[]>;
+  save: (id: string, place: PlaceInput) => Promise<PickupPlaceView[]>;
+  remove: (id: string) => Promise<PickupPlaceView[]>;
+  reorder: (ids: string[]) => Promise<PickupPlaceView[]>;
+};

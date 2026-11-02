@@ -1235,11 +1235,6 @@
   color: var(--muted);
 }
 
-.pickupNote {
-  margin-top: 10px;
-  animation: fadeUp 300ms ease both;
-}
-
 .deliveryTiles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1923,9 +1918,64 @@
   background: var(--surface);
 }
 
+/* The pickup places: the list sits under the switch, the add row and form below it. */
+.pickupPlaces {
+  margin-top: 12px;
+}
+
+.optional {
+  font-style: normal;
+  font-weight: 400;
+  color: var(--faint);
+}
+
+.pickupWindows {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.pickupWindow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+  align-items: end;
+  gap: 12px;
+}
+
+.pickupMove {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.pickupMove svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pickupMove:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.pickupMove:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 @media (max-width: 560px) {
   .vGroup,
-  .vGrid {
+  .vGrid,
+  .pickupWindow {
     grid-template-columns: minmax(0, 1fr);
   }
 }
@@ -1933,7 +1983,6 @@
 @media (prefers-reduced-motion: reduce) {
   .editor,
   .option,
-  .pickupNote,
   .fee,
   .dg,
   .scan,

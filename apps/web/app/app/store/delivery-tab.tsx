@@ -2,14 +2,15 @@
 
 import { useState } from 'react';
 import { Callout } from '@curios/ui';
-import { DELIVERY_FEE_MAX_CENTS, DELIVERY_NOTE_MAX, MIN_NOTICE_DAYS_MAX, PICKUP_NOTE_MAX, parseRinggit, type DeliveryMode } from '@curios/core/store';
+import { DELIVERY_FEE_MAX_CENTS, DELIVERY_NOTE_MAX, MIN_NOTICE_DAYS_MAX, parseRinggit, type DeliveryMode } from '@curios/core/store';
 import ui from '../_ui/editor.module.css';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
 import { useAutosave } from '../_ui/use-autosave.js';
+import { PickupPlaces } from './pickup-places.js';
 import { centsText } from './pricing.js';
 import { orNull, useSettingText } from './setting-field.js';
-import type { SettingsPatch, StoreSettings } from './store-types.js';
+import type { PickupApi, PickupPlaceView, SettingsPatch, StoreSettings } from './store-types.js';
 import styles from './store.module.css';
 
 const FEE_SENTENCE = 'Give flat delivery a fee above RM0, up to RM500.';
@@ -36,8 +37,8 @@ function feePatch(text: string): SettingsPatch | { problem: string } {
 }
 
 /**
- * Pickup, delivery and notice. Switches and tiles save at once; the note and
- * the fee as the owner pauses. Flat delivery is only sent once it has a fee
+ * Pickup, delivery and notice. Switches and tiles save at once; the delivery
+ * note and the fee as the owner pauses. Pickup has its places, each saved by its own form. Flat delivery is only sent once it has a fee
  * the API will take, so choosing it first and typing the fee second works.
  * A change that would leave an open shop with no way to hand over is refused
  * by the API, and the choice goes back with its reason.
@@ -46,17 +47,21 @@ export function DeliveryTab({
   settings,
   save,
   today,
+  places,
+  pickupApi,
 }: {
   settings: StoreSettings;
   save: (patch: SettingsPatch) => Promise<StoreSettings>;
   /** Passed in so the strip of days is the same on the server and in the browser. */
   today: Date;
+  /** The owner's pickup places, as the read gives them. */
+  places: PickupPlaceView[];
+  pickupApi: PickupApi;
 }) {
   const [mode, setMode] = useState(settings.deliveryMode);
   const [pickup, setPickup] = useState(settings.pickupEnabled);
   const [notice, setNotice] = useState(settings.minNoticeDays);
   const [error, setError] = useState('');
-  const note = useSettingText(settings.pickupNote ?? '', (text) => ({ pickupNote: orNull(text) }), save);
   const deliveryNote = useSettingText(settings.deliveryNote ?? '', (text) => ({ deliveryNote: orNull(text) }), save);
   const [closed, setClosed] = useState(settings.closedDays);
   const closedSave = useAutosave((daysClosed: number[]) => save({ closedDays: daysClosed }), 300);
@@ -131,18 +136,7 @@ export function DeliveryTab({
             <i />
           </button>
         </div>
-        {pickup ? (
-          <div className={`${ui.float} ${styles.pickupNote}`}>
-            <label>
-              <em>Where and when</em>
-              <input value={note.text} maxLength={PICKUP_NOTE_MAX} autoComplete="off" onChange={(event) => note.change(event.target.value)} />
-            </label>
-            <small aria-hidden="true">
-              {[...note.text].length}/{PICKUP_NOTE_MAX}
-            </small>
-          </div>
-        ) : null}
-        <SaveState status={note.autosave.status} error={note.autosave.error} retry={note.autosave.retry} />
+        {pickup ? <PickupPlaces places={places} api={pickupApi} /> : null}
       </section>
 
       <section className={ui.section} aria-labelledby="delivery-title">

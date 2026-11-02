@@ -6,7 +6,7 @@ import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { sendFile } from '../../../lib/send-file.js';
 import { resizeContained } from '../curios/resize-image.js';
 import { StoreEditor } from './store-editor.js';
-import type { ChipApi, ChipState, EditorItem, Frame, ItemRow, ItemsApi, PhotosResult, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings, VouchersApi } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, Frame, ItemRow, ItemsApi, PhotosResult, PickupApi, PickupPlaceView, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings, VouchersApi } from './store-types.js';
 
 /** The crop as the API reads it off a photo upload: x,y,size, each a share of the picture. */
 const frameHeader = (frame: Frame) => ({ 'x-photo-frame': `${frame.x},${frame.y},${frame.size}` });
@@ -29,6 +29,7 @@ export function StoreScreen({
   chip,
   orders,
   vouchers,
+  pickupPlaces,
   initialTab,
 }: {
   initial: StoreSettings;
@@ -43,6 +44,8 @@ export function StoreScreen({
   orders: { paused: string | null; nextNumber: number };
   /** The owner's vouchers, as db-read gives them. */
   vouchers?: OwnerVoucher[];
+  /** The owner's pickup places, as db-read gives them. */
+  pickupPlaces?: PickupPlaceView[];
   /** The tab to open on (`?tab=payment`); Items when there is none. */
   initialTab?: 'items' | 'payment' | 'delivery' | 'vouchers';
 }) {
@@ -107,6 +110,17 @@ export function StoreScreen({
     },
   };
 
+  // Every answer is the shop's whole list of places.
+  const places = async (path: string, init?: { method: string; body?: unknown }) =>
+    (await apiFetch<{ places: PickupPlaceView[] }>(`/store/pickup-places${path}`, init ? { method: init.method, body: init.body === undefined ? undefined : JSON.stringify(init.body) } : undefined)).places;
+  const pickupApi: PickupApi = {
+    list: () => places(''),
+    add: (place) => places('', { method: 'POST', body: place }),
+    save: (id, place) => places(`/${id}`, { method: 'PUT', body: place }),
+    remove: (id) => places(`/${id}`, { method: 'DELETE' }),
+    reorder: (ids) => places('/order', { method: 'POST', body: { ids } }),
+  };
+
   return (
     <StoreEditor
       initial={initial}
@@ -119,11 +133,13 @@ export function StoreScreen({
       chip={chip}
       orders={orders}
       vouchers={vouchers}
+      pickupPlaces={pickupPlaces}
       initialTab={initialTab}
       settingsApi={settingsApi}
       itemsApi={itemsApi}
       chipApi={chipApi}
       vouchersApi={vouchersApi}
+      pickupApi={pickupApi}
     />
   );
 }

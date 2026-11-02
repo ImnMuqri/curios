@@ -7,7 +7,8 @@ const getMyCurios = vi.fn();
 const getOwnerPage = vi.fn();
 const getSettings = vi.fn();
 const getOwnerVouchers = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage, getSettings, getOwnerVouchers }));
+const getPickupPlaces = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage, getSettings, getOwnerVouchers, getPickupPlaces }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -42,13 +43,14 @@ const page = {
 const noChip = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
 
 // The owner's page as getOwnerPage reads it: only what orderState needs matters here.
-const owned = { mode: 'BUSINESS', paidUntil: new Date('2099-01-01T00:00:00Z'), ordersPlaced: 12, ordersAtTrialReset: 0 };
+const owned = { id: 'page1', mode: 'BUSINESS', paidUntil: new Date('2099-01-01T00:00:00Z'), ordersPlaced: 12, ordersAtTrialReset: 0 };
 
 describe('StorePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getSettings.mockResolvedValue(defaultSettings());
     getOwnerVouchers.mockResolvedValue([]);
+    getPickupPlaces.mockResolvedValue([]);
     redirect.mockImplementation((url: string) => {
       throw new Error(`NEXT_REDIRECT:${url}`);
     });
@@ -125,6 +127,14 @@ describe('StorePage', () => {
     render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(getOwnerVouchers).toHaveBeenCalledWith('acc1');
     expect(StoreScreen.mock.calls[0]![0].vouchers).toEqual([{ id: 'v1' }]);
+  });
+
+  it('hands over the shop’s pickup places, read by its page id', async () => {
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
+    getPickupPlaces.mockResolvedValue([{ id: 'p1' }]);
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
+    expect(getPickupPlaces).toHaveBeenCalledWith('page1');
+    expect(StoreScreen.mock.calls[0]![0].pickupPlaces).toEqual([{ id: 'p1' }]);
   });
 
   it('hands the items over with their picture URLs worked out here', async () => {
