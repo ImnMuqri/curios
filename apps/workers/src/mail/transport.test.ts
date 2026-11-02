@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createMailer, senderFor, smtpOptions } from './transport.js';
+import { createMailer, mailTransport, resendTransport, senderFor, smtpOptions } from './transport.js';
 
 function recordingTransport() {
   const sent: Array<Record<string, unknown>> = [];
@@ -171,5 +171,84 @@ describe('senderFor', () => {
     expect(senderFor('Kek "Lina"\r\nBcc: x@y.z <evil>', 'hello@curios.my')).toBe('"Kek Lina Bcc: x@y.z evil via Curios" <hello@curios.my>');
     expect(senderFor(undefined, 'Curios <hello@curios.my>')).toBe('Curios <hello@curios.my>');
     expect(senderFor('  ', 'Curios <hello@curios.my>')).toBe('Curios <hello@curios.my>');
+  });
+});
+
+describe('resendTransport', () => {
+  function recordingFetch(status = 200, body: unknown = { id: 'e1' }) {
+    const calls: Array<{ url: string; init: { method: string; headers: Record<string, string>; body: string } }> = [];
+    const fetch = async (url: string, init: { method: string; headers: Record<string, string>; body: string }) => {
+      calls.push({ url, init });
+      return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    };
+    return { calls, fetch };
+  }
+
+  it('posts the email to Resend over HTTPS, with its reply-to and threading headers', async () => {
+    const { calls, fetch } = recordingFetch();
+    await resendTransport('re_key', fetch).sendMail({
+      from: 'Curios Support <support@curios.my>',
+      to: 'nadia@example.com',
+      subject: 'Re: Help',
+      text: 'plain',
+      html: '<p>laid out</p>',
+      replyTo: 'support@curios.my',
+      messageId: '<a@curios.my>',
+      inReplyTo: '<b@mail.example>',
+      references: ['<c@mail.example>', '<b@mail.example>'],
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe('https://api.resend.com/emails');
+    expect(calls[0]!.init.method).toBe('POST');
+    expect(calls[0]!.init.headers.Authorization).toBe('Bearer re_key');
+    expect(JSON.parse(calls[0]!.init.body)).toEqual({
+      from: 'Curios Support <support@curios.my>',
+      to: ['nadia@example.com'],
+      subject: 'Re: Help',
+      text: 'plain',
+      html: '<p>laid out</p>',
+      reply_to: 'support@curios.my',
+      headers: { 'Message-ID': '<a@curios.my>', 'In-Reply-To': '<b@mail.example>', References: '<c@mail.example> <b@mail.example>' },
+    });
+  });
+
+  it('sends no html or headers it was not given', async () => {
+    const { calls, fetch } = recordingFetch();
+    await resendTransport('re_key', fetch).sendMail({ from: 'Curios <hello@curios.my>', to: 'nadia@example.com', subject: 'Hi', text: 'plain' });
+    expect(JSON.parse(calls[0]!.init.body)).toEqual({ from: 'Curios <hello@curios.my>', to: ['nadia@example.com'], subject: 'Hi', text: 'plain' });
+  });
+
+  it('throws on a refusal with the status and Resend’s error name, never its message', async () => {
+    const { fetch } = recordingFetch(422, { statusCode: 422, name: 'validation_error', message: 'Invalid `to` field: nadia@example.com' });
+    const sending = resendTransport('re_key', fetch).sendMail({ from: 'Curios <hello@curios.my>', to: 'nadia@example.com', subject: 'Hi', text: 'plain' });
+    await expect(sending).rejects.toThrow('Resend refused the email: 422 validation_error');
+    await expect(sending).rejects.not.toThrow(/nadia/);
+  });
+});
+
+describe('mailTransport', () => {
+  const keys = ['NODE_ENV', 'RESEND_API_KEY'] as const;
+  let before: Record<string, string | undefined> = {};
+  beforeEach(() => {
+    before = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  });
+  afterEach(() => {
+    for (const k of keys) {
+      if (before[k] === undefined) delete process.env[k];
+      else process.env[k] = before[k];
+    }
+  });
+
+  it('sends through Resend’s API in production, where the host blocks SMTP', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.RESEND_API_KEY = 're_key';
+    expect(mailTransport().kind).toBe('resend');
+  });
+
+  it('keeps SMTP outside production, so a development key never mails a real address', () => {
+    process.env.NODE_ENV = 'development';
+    process.env.RESEND_API_KEY = 're_key';
+    expect(mailTransport().kind).toBe('smtp');
   });
 });

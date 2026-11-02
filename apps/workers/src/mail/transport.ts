@@ -65,6 +65,56 @@ export function smtpOptions(): SmtpOptions {
   };
 }
 
+type SendOptions = Parameters<Transport['sendMail']>[0];
+type Fetch = (url: string, init: { method: string; headers: Record<string, string>; body: string }) => Promise<Response>;
+
+/**
+ * Resend's sending API (https://resend.com/docs/api-reference/emails/send-email), over HTTPS.
+ * Production runs on Railway, whose plan blocks outbound SMTP (25, 465 and 587): every
+ * SMTP send there timed out. A refusal throws with the status and Resend's error name
+ * only, since its message can carry the recipient's address.
+ */
+export function resendTransport(apiKey: string, fetch: Fetch = globalThis.fetch): Transport {
+  return {
+    async sendMail(options: SendOptions) {
+      const headers: Record<string, string> = {
+        ...(options.messageId ? { 'Message-ID': options.messageId } : {}),
+        ...(options.inReplyTo ? { 'In-Reply-To': options.inReplyTo } : {}),
+        ...(options.references?.length ? { References: options.references.join(' ') } : {}),
+      };
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          from: options.from,
+          to: [options.to],
+          subject: options.subject,
+          text: options.text,
+          ...(options.html ? { html: options.html } : {}),
+          ...(options.replyTo ? { reply_to: options.replyTo } : {}),
+          ...(Object.keys(headers).length > 0 ? { headers } : {}),
+        }),
+      });
+      if (!response.ok) {
+        const name = ((await response.json().catch(() => null)) as { name?: unknown } | null)?.name;
+        throw new Error(`Resend refused the email: ${response.status}${typeof name === 'string' ? ` ${name}` : ''}`);
+      }
+      return response.json();
+    },
+  };
+}
+
+/**
+ * How mail leaves this process: Resend's API in production (RESEND_API_KEY, which the
+ * support worker already needs), SMTP everywhere else. Outside production it stays SMTP
+ * even with a key set, so a developer's key never mails a real address instead of Mailpit.
+ */
+export function mailTransport(): { kind: 'resend' | 'smtp'; transport: Transport } {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (apiKey && process.env.NODE_ENV === 'production') return { kind: 'resend', transport: resendTransport(apiKey) };
+  return { kind: 'smtp', transport: createTransport(smtpOptions()) };
+}
+
 /** `"Kek Lina via Curios" <orders@curios.my>`: the shop's name, made safe to sit in a header, over the configured address. */
 export function senderFor(fromName: string | undefined, configured: string): string {
   const name = [...(fromName ?? '')]
@@ -84,8 +134,8 @@ export function senderFor(fromName: string | undefined, configured: string): str
  * Local development points SMTP_* at Mailpit, which needs no account, so a
  * fresh clone completes a signup without configuring anything -- the property
  * BACKEND.md was protecting when it ruled out email on the login path.
- * Production points the same variables at a hosted sender, and nothing above
- * this line knows which, so the choice stays reversible.
+ * Production sends through Resend's API instead (mailTransport), and nothing
+ * above this line knows which, so the choice stays reversible.
  *
  * Plain text always, and HTML alongside when the sender laid the email out
  * (renderMailHtml in @curios/core, the design handoff's Emails board). The
@@ -97,7 +147,7 @@ export function senderFor(fromName: string | undefined, configured: string): str
  * out as Curios Support whatever fromName says, with its threading headers.
  */
 export function createMailer(transport?: Transport): Mailer {
-  const resolved: Transport = transport ?? createTransport(smtpOptions());
+  const resolved: Transport = transport ?? mailTransport().transport;
 
   return {
     async send(message: MailMessage): Promise<void> {
