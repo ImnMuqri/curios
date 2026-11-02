@@ -543,6 +543,18 @@ body{margin:0;background:#2a0b16}
 .sp-shopw .sp-top{background:transparent}
 .sp-shopw .sp-top .sp-ib{background:rgba(25,31,44,.3);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .sp-shopw .sp-sign,.sp-shopw .sp-own,.sp-shopw .sp-grid{position:relative}
+
+/* payment failed (2 Nov) */
+@keyframes pfPop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:none}}
+.pf .pf-ic{display:grid;place-items:center;width:76px;height:76px;margin:0 auto 14px;border-radius:50%;background:#fdecea;color:#c4372d;animation:pfPop 420ms cubic-bezier(.34,1.4,.64,1) both}
+.pf .pf-ic svg{width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:3;stroke-linecap:round}
+.pf-box .code span{background:#6b5a60!important;animation:none!important}
+.pf-lines{margin-top:14px;padding-top:6px;border-top:1px solid #f3e8eb;text-align:left}
+.pf-lines>div{display:flex;justify-content:space-between;gap:10px;padding:6px 0;font-size:13.5px;color:#6f6266}
+.pf-lines b{font-weight:600;color:#191f2c}
+.pf-lines .pf-t{margin-top:4px;padding-top:10px;border-top:1px solid #f3e8eb;color:#191f2c;font-weight:600}.pf-lines .pf-t b{font-size:16px}
+.pf-alt{display:block;width:100%;height:52px;margin-top:10px;border:0;border-radius:26px;background:#ffffff;box-shadow:inset 0 0 0 1px #ead7dd;font:inherit;font-size:15px;font-weight:600;color:#3d0f1e;cursor:pointer}
+.pf-alt:hover{box-shadow:inset 0 0 0 1px #d9bcc5}
 </style>
 </helmet>
 
@@ -671,6 +683,22 @@ body{margin:0;background:#2a0b16}
 </div>
 <button type="button" class="cta2" onClick="{{ toOrderPay }}">{{placedCta}}<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
 <p class="sm2">{{placedNote}}</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ rPayfail }}" hint-placeholder-val="{{ false }}">
+<div class="lp placed pf">
+<span class="pf-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 7l10 10M17 7L7 17"></path></svg></span>
+<h2>Payment didn’t go through</h2>
+<p class="cksub" style="text-align: center">Nothing was taken. Kek Lina has saved your order for <b>30 minutes</b>.</p>
+<div class="codebox pf-box">
+<small>Your order code</small>
+<div class="code" aria-label="Order code {{code}}"><sc-for list="{{ codeChars }}" as="c" hint-placeholder-count="4"><span>{{c.ch}}</span></sc-for></div>
+<div class="pf-lines"><sc-for list="{{ olines }}" as="l" hint-placeholder-count="2"><div><span>{{l.name}}</span><b>{{l.amt}}</b></div></sc-for><div class="pf-t"><span>Total</span><b>{{orderRM}}</b></div></div>
+</div>
+<button type="button" class="cta2" onClick="{{ payAgain }}">Pay {{orderRM}} again<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
+<button type="button" class="pf-alt" onClick="{{ toCheckout }}">Pay another way</button>
+<p class="sm2">Tried with {{failVia}}. The bank said: cancelled.</p>
 </div>
 </sc-if>
 
@@ -835,8 +863,8 @@ class Component extends DCLogic {
       self.setState({ basket: next });
     };
     return {
-      rShop: st.route === 'shop', rItem: st.route === 'item', rPlaced: st.route === 'placed', rPage: st.route === 'page', rCheckout: st.route === 'checkout', rOrder: st.route === 'order', rFaq: st.route === 'faq', rFaqQ: st.route === 'faqq',
-      routes: [['page', 'Page', { tab: 'links' }], ['ask', 'Ask', { tab: 'ask' }], ['shop', 'Shop'], ['item', 'Product', { item: 'coklat', shOpt: 0, shQty: 1, dmode: false }], ['checkout', 'Checkout', { dmode: false, basket: self.B0 }], ['placed', 'Order placed', { dmode: false, basket: self.B0 }], ['order', 'Order page', { dmode: false, basket: self.B0 }], ['item', 'Digital item', { item: 'class', shOpt: 0, shQty: 1, slot: 0, dmode: true }], ['checkout', 'Checkout, digital', { dmode: true, basket: self.BD }], ['order', 'Order, digital', { dmode: true, basket: self.BD, pay: 'paid' }], ['faq', 'FAQ'], ['faqq', 'FAQ question']].map((r) => {
+      rShop: st.route === 'shop', rItem: st.route === 'item', rPlaced: st.route === 'placed', rPayfail: st.route === 'payfail', payAgain: go('placed', { pay: 'paid' }), failVia: ({ fpx: 'FPX · Maybank2u', wallet: 'Touch ’n Go eWallet', card: 'card' })[st.how || 'fpx'] || 'online banking', rPage: st.route === 'page', rCheckout: st.route === 'checkout', rOrder: st.route === 'order', rFaq: st.route === 'faq', rFaqQ: st.route === 'faqq',
+      routes: [['page', 'Page', { tab: 'links' }], ['ask', 'Ask', { tab: 'ask' }], ['shop', 'Shop'], ['item', 'Product', { item: 'coklat', shOpt: 0, shQty: 1, dmode: false }], ['checkout', 'Checkout', { dmode: false, basket: self.B0 }], ['placed', 'Order placed', { dmode: false, basket: self.B0 }], ['payfail', 'Payment failed', { dmode: false, basket: self.B0, how: 'fpx', chip: true }], ['order', 'Order page', { dmode: false, basket: self.B0 }], ['item', 'Digital item', { item: 'class', shOpt: 0, shQty: 1, slot: 0, dmode: true }], ['checkout', 'Checkout, digital', { dmode: true, basket: self.BD }], ['order', 'Order, digital', { dmode: true, basket: self.BD, pay: 'paid' }], ['faq', 'FAQ'], ['faqq', 'FAQ question']].map((r) => {
         const route = r[0] === 'ask' ? 'page' : r[0];
         const on = st.route === route && (route !== 'page' || (r[2] && r[2].tab === tab)) && (!r[2] || r[2].dmode === undefined || !!st.dmode === r[2].dmode);
         return { label: r[1], on: on, go: go(route, r[2]) };

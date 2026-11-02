@@ -651,3 +651,32 @@ At ≤760px the old row of icons at the top is gone. CSS is in the block marked 
 - **More:** opens a sheet above the pill with Facts & sources (Knowledge), plus Billing and Settings (Account). The page behind is dimmed (`rgba(25,31,44,.35)`). Close it on tap outside, Esc or picking a page. The current page shows blue in the sheet, and More is blue while you're on one of those pages.
 - **Inbox:** on phone, Orders, Questions and Leads show a tab row (`.v2itab`) at the top with their own counts, so the owner switches between them there.
 - Content gets 96px of bottom padding so the pill never covers the last row.
+
+## Payment result pages (2 Nov 2026)
+
+### Subscription (owner pays Curios): Peek happy or sad
+Board: `Billing.dc.html`. To view it, use the preview bar's **Payment → Paid / Failed** buttons. Paying through the Billing modal also lands on the paid page now; it used to show a toast. CSS is in the block marked `/* payment result pages: Peek happy / sad (2 Nov) */`, and the markup is the `.pr` overlay. Screens: `Billing-paid.*`, `Billing-payment-failed.*`, plus the animation in `Billing-payment-result.peek.gif`.
+
+- Make it a full page at the CHIP return URL, not a modal. Grey ground `#edeff4`, logo on the left, **Back to Billing** on the right.
+- **Desktop:** one white card, 880px wide, 16px radius, split in two.
+  - Left side (42%) is Peek's art panel: `#e8edff` with falling confetti when paid, `#f1f2f5` when failed.
+  - Right side: kicker, a 32px Bricolage title, a short line, a receipt box (`#f5f6fa`), then the buttons.
+- **Phone (≤760px):** the art panel stacks on top (240px tall). The buttons go full width and stack.
+- **Peek** is the real mascot, with only pose and eyes changed. Don't redraw him.
+  - **Paid:** he looks up, both hands raised, and jumps in a loop: squash on landing, shadow shrinks while he's in the air, hands bob.
+  - **Failed:** he looks down with a small frown and sways slowly. One hand scratches his head, a sweat drop falls, and a "?" bubble pulses.
+  - Under `prefers-reduced-motion`, all of this stops.
+- **Copy:**
+  - Paid: "Payment received / Welcome to Business, {name}." plus the new paid-until date. "Nothing renews by itself." Buttons: **Go to dashboard** and **Download receipt**.
+  - Failed: "Not charged / That didn't go through." plus "your plan is still fine until {current date}". Then what was tried and the bank's reason (map CHIP's status to plain words). Buttons: **Try again** and **Pick another bank** (both reopen the pay flow), plus a "Need help?" link.
+
+### Shop (customer pays the owner)
+The success page already exists ("Paid. Order placed" with the order code), so keep it.
+
+The new failed page is in `Public.dc.html` as route `payfail` ("Payment failed" in the preview's route bar). CSS is in the block marked `/* payment failed (2 Nov) */`. Screens: `Shop-payment-failed.*`.
+
+- It uses the same layout as the placed page: a red cross in a soft circle, then "Payment didn't go through".
+- "Nothing was taken. {Shop} has saved your order for **30 minutes**." Hold the order (and any stock or slot) for 30 minutes, then release it.
+- The order code tiles turn grey (`#6b5a60`), with the order lines and total under them.
+- **Pay {total} again** is the main button and goes back to CHIP for the same order. **Pay another way** goes back to checkout with the basket kept.
+- At the bottom, a small line: "Tried with {method}. The bank said: {reason}."
