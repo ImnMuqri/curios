@@ -457,7 +457,14 @@ export function Checkout(props: CheckoutProps) {
       <h1 className={styles.title}>{copy.checkout}</h1>
 
       <div className={styles.sheet} data-testid="sheet">
-      {!loaded ? null : priced.lines.length === 0 ? (
+      {!loaded ? null : priced.lines.length === 0 && sending ? (
+        // Placed, so the basket is cleared, and on its way to CHIP's page (sending stays on until it opens).
+        <div className={styles.empty} role="status">
+          <span className={styles.handoffSpinner} aria-hidden="true" />
+          <b>{copy.toPayment}</b>
+          <p>{copy.toPaymentBody}</p>
+        </div>
+      ) : priced.lines.length === 0 ? (
         <div className={styles.empty}>
           <span className={styles.emptyIcon} aria-hidden="true">
             <svg viewBox="0 0 24 24">
@@ -852,7 +859,8 @@ export function Checkout(props: CheckoutProps) {
               )}
             </div>
           ) : (
-            <button type="button" className={styles.go} disabled={!canPlace} onClick={() => void place()}>
+            <button type="button" className={styles.go} disabled={!canPlace} aria-busy={sending} onClick={() => void place()}>
+              {sending ? <span className={styles.goSpinner} aria-hidden="true" /> : null}
               {goText}
             </button>
           )}

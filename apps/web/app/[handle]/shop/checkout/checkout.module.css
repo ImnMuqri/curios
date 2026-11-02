@@ -507,6 +507,24 @@
   cursor: default;
 }
 
+/* Placing: still the accent, with a spinner, not the faded "not yet" of a form left unfinished. */
+.go[aria-busy='true'] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  opacity: 1;
+}
+
+.goSpinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: handoffSpin 800ms linear infinite;
+}
+
 .pausedBar {
   display: grid;
   gap: 8px;
@@ -558,6 +576,22 @@
   margin: 0;
   color: var(--lp-soft);
   font-size: 13.5px;
+}
+
+.handoffSpinner {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+  border: 3px solid var(--lp-line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: handoffSpin 800ms linear infinite;
+}
+
+@keyframes handoffSpin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .emptyIcon {
@@ -997,6 +1031,12 @@
 
   .tick {
     stroke-dashoffset: 0;
+  }
+
+  /* Still turning, slowly: it is the only sign the page is working. */
+  .handoffSpinner,
+  .goSpinner {
+    animation-duration: 2.4s;
   }
 
   .pick,

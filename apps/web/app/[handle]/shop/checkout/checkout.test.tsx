@@ -515,6 +515,30 @@ describe('Checkout: how you’ll pay', () => {
     expect(saved()).toEqual([]);
     // So the order page can say "Paid. Order placed" when the customer comes back.
     expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBe('1');
+    // The basket is cleared once the order is placed, but until the bank's page opens this one
+    // says where the customer is going, never that the basket is empty.
+    expect(screen.getByRole('status')).toHaveTextContent(copy.toPayment);
+    expect(screen.queryByText(copy.emptyBasket)).toBeNull();
+  });
+
+  it('shows the button working while the order is being placed', async () => {
+    const user = userEvent.setup();
+    api({});
+    render(<Checkout {...connected} navigate={vi.fn()} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    // The order request never answers: the page is caught mid-placing.
+    const slow = vi.fn(async (url: string) =>
+      url.includes('/pay-methods')
+        ? new Response(JSON.stringify(ALL), { status: 200, headers: { 'content-type': 'application/json' } })
+        : new Promise<Response>(() => {}),
+    );
+    vi.stubGlobal('fetch', slow);
+    const go = screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') });
+    await user.click(go);
+    expect(go).toHaveAttribute('aria-busy', 'true');
+    expect(go).toBeDisabled();
   });
 
   it('a CHIP failure when paying falls back to the QR with a message', async () => {

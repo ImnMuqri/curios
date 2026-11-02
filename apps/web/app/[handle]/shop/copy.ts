@@ -204,6 +204,9 @@ export interface ShopCopy {
   paidWithVoucher: string;
   emptyBasket: string;
   emptyBasketBody: string;
+  /** Placed and on its way to CHIP's page: the basket is already cleared, so it must not read as empty. */
+  toPayment: string;
+  toPaymentBody: string;
   pricesChanged: string;
   failed: string;
   // The placed screen.
@@ -522,6 +525,8 @@ const EN: ShopCopy = {
   paidWithVoucher: 'Paid with a voucher',
   emptyBasket: 'Your basket is empty',
   emptyBasketBody: 'Add something from the shop and it shows up here.',
+  toPayment: 'Taking you to pay',
+  toPaymentBody: 'Your order is placed. Keep this page open.',
   pricesChanged: 'Prices changed since you opened the shop. Check your basket and try again.',
   failed: 'Something failed. Try again.',
   orderPlaced: 'Order placed',
@@ -815,6 +820,8 @@ const MS: ShopCopy = {
   paidWithVoucher: 'Dibayar dengan baucar',
   emptyBasket: 'Bakul anda kosong',
   emptyBasketBody: 'Tambah sesuatu dari kedai dan ia akan muncul di sini.',
+  toPayment: 'Membawa anda ke pembayaran',
+  toPaymentBody: 'Pesanan anda sudah dibuat. Biarkan halaman ini terbuka.',
   pricesChanged: 'Harga berubah sejak anda buka kedai. Semak bakul anda dan cuba lagi.',
   failed: 'Ada yang tidak kena. Cuba lagi.',
   orderPlaced: 'Tempahan dibuat',
