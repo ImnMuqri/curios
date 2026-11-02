@@ -202,16 +202,16 @@ model AuthIdentity {
 }
 
 model Page {
-  id                  String         @id @default(cuid())
+  id                  String              @id @default(cuid())
   accountId           String
-  account             Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  handle              String         @unique
-  skeleton            String         @unique
-  mode                PageMode       @default(BUSINESS)
+  account             Account             @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  handle              String              @unique
+  skeleton            String              @unique
+  mode                PageMode            @default(BUSINESS)
   displayName         String
   bio                 String?
-  language            String         @default("en")
-  published           Boolean        @default(false)
+  language            String              @default("en")
+  published           Boolean             @default(false)
   /// Paid through this instant. Null means never paid. A one-off CHIP purchase
   /// extends it or, with auto-renew, a saved card charged by the renewal job
   /// does; there is no subscription to activate, suspend or reconcile, because
@@ -224,7 +224,7 @@ model Page {
   /// Leads ever captured, and never decremented. A counter rather than
   /// count(Lead) because slice 5 gave owners a lead delete -- counting rows
   /// would let somebody delete their three trial leads and get three more.
-  leadsCaptured       Int            @default(0)
+  leadsCaptured       Int                 @default(0)
   /// When the owner spent their one trial reset. Null means unused, and the
   /// reset's conditional update requires null -- so a second click changes no
   /// rows rather than granting a second trial.
@@ -236,7 +236,7 @@ model Page {
   /// Whether the owner is emailed each lead (Settings, "Email me when"). On by
   /// default: a lead nobody hears about is the one thing this product exists
   /// to prevent.
-  notifyLeads         Boolean        @default(true)
+  notifyLeads         Boolean             @default(true)
   /// The paidUntil the owner was last told had ended, the on-the-day sibling
   /// of renewalReminderFor and claimed the same way.
   planEndedMailFor    DateTime?
@@ -244,12 +244,12 @@ model Page {
   /// most people do not want an AI page about themselves ranking for their own
   /// name. Business pages are always indexed, so this is read only for personal
   /// pages -- see shouldIndex in @curios/core.
-  allowSearchIndexing Boolean        @default(false)
+  allowSearchIndexing Boolean             @default(false)
   /// Soft is the default look; High contrast is the owner's alternative.
-  style               PageStyle      @default(SOFT)
+  style               PageStyle           @default(SOFT)
   /// #rrggbb, validated by isHexColor before it is written.
-  accentColor         String         @default("#2340c8")
-  headingFont         HeadingFont    @default(JAKARTA)
+  accentColor         String              @default("#2340c8")
+  headingFont         HeadingFont         @default(JAKARTA)
   /// The object key of the uploaded picture in storage. Null is no picture.
   avatarKey           String?
   /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
@@ -259,27 +259,27 @@ model Page {
   /// for a cover from before this was kept.
   coverTop            String?
   coverBottom         String?
-  background          PageBackground @default(PAPER)
+  background          PageBackground      @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.
   backgroundColor     String?
   /// Social profiles shown as icons under the name: { instagram, whatsapp, tiktok, email, facebook, youtube }, each a handle. @curios/core/socials reads and writes it.
-  socials             Json           @default("{}")
+  socials             Json                @default("{}")
   /// The shop. Off until the owner opens it, and it can only be opened with a
   /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
-  storeEnabled        Boolean        @default(false)
+  storeEnabled        Boolean             @default(false)
   /// "About your shop": shown above the items, before the notice.
   shopDescription     String?
   /// The owner's statement that the shop sells halal food, shown on the
   /// shop and product pages. Shop-wide, not per item.
-  shopHalal           Boolean        @default(false)
-  pickupEnabled       Boolean        @default(false)
+  shopHalal           Boolean             @default(false)
+  pickupEnabled       Boolean             @default(false)
   /// Where pickup happens, as the owner wants it said: "Seksyen 7, Shah Alam".
   pickupNote          String?
-  deliveryMode        DeliveryMode   @default(NONE)
+  deliveryMode        DeliveryMode        @default(NONE)
   /// Sen. Set only while deliveryMode is FLAT.
   deliveryFeeCents    Int?
-  minNoticeDays       Int            @default(1)
+  minNoticeDays       Int                 @default(1)
   /// The owner's DuitNow QR, an object key in storage.
   paymentQrKey        String?
   bankName            String?
@@ -288,32 +288,33 @@ model Page {
   bankAccountNumber   String?
   /// The shop tile's index among the page's tiles. Clamped on read by
   /// withShopTile, so a stale value after links are removed still shows it.
-  shopTilePosition    Int            @default(0)
+  shopTilePosition    Int                 @default(0)
   /// Null is automatic, as Link.size is.
   shopTileSize        TileSize?
   /// Orders ever placed, and never decremented: the order number's source and
   /// the trial allowance's count. A counter rather than count(Order) so an
   /// owner cannot delete trial orders to get more, as with leadsCaptured.
-  ordersPlaced        Int            @default(0)
+  ordersPlaced        Int                 @default(0)
   /// ordersPlaced as it stood when the owner spent their trial reset, so the
   /// allowance counts only orders since. Zero until then.
-  ordersAtTrialReset  Int            @default(0)
+  ordersAtTrialReset  Int                 @default(0)
   /// Weekdays the shop does not hand over on, 0 (Sunday) to 6 (Saturday).
   /// Checkout skips them when it offers a day.
-  closedDays          Int[]          @default([])
+  closedDays          Int[]               @default([])
   /// Words about delivery the owner wants the customer to read at checkout:
   /// "Shah Alam only, rider after 5pm". The fee itself is deliveryFeeCents.
   deliveryNote        String?
   /// Whether the owner is emailed each order, the sibling of notifyLeads. On by
   /// default: an order nobody hears about is a customer left waiting.
-  notifyOrders        Boolean        @default(true)
+  notifyOrders        Boolean             @default(true)
   /// Whether the owner is emailed when a receipt comes in, so Mark paid is not
   /// left until they next open the dashboard.
-  notifyReceipts      Boolean        @default(true)
-  createdAt           DateTime       @default(now())
+  notifyReceipts      Boolean             @default(true)
+  createdAt           DateTime            @default(now())
   links               Link[]
   items               Item[]
   vouchers            ShopVoucher[]
+  pickupPlaces        PickupPlace[]
   facts               Fact[]
   topics              Topic[]
   faqRedirects        FaqRedirect[]
@@ -351,50 +352,50 @@ model Link {
 /// ItemOption, never both -- pricingProblem in @curios/core/store, checked by
 /// the API on every write.
 model Item {
-  id          String       @id @default(cuid())
-  pageId      String
-  page        Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  name        String
+  id             String           @id @default(cuid())
+  pageId         String
+  page           Page             @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name           String
   /// The item's link word, made from the name when it is created and frozen
   /// after, so a shared link survives a rename. Unique per page; itemSlug in
   /// @curios/core/slug makes it.
-  slug        String
-  description String?
+  slug           String
+  description    String?
   /// Free text the owner types, trimmed; null when blank. The shop groups by it.
-  category    String?
+  category       String?
   /// One short word on the card (Best seller, Pre-order, New, or the owner's
   /// own), at most ITEM_TAG_MAX characters; null when blank.
-  tag         String?
+  tag            String?
   /// The owner's own reference (a SKU), at most ITEM_SKU_MAX characters; null when
   /// blank. Never shown in the shop. Not ItemCode, which is a digital item's codes.
-  sku         String?
+  sku            String?
   /// An object key in storage, like Page.avatarKey.
-  photoKey    String?
-  priceCents  Int?
+  photoKey       String?
+  priceCents     Int?
   /// Off hides it from the shop and from the chat.
-  available   Boolean      @default(true)
-  position    Int
-  createdAt   DateTime     @default(now())
-  options     ItemOption[]
-  orderLines  OrderLine[]
-  vouchers    ShopVoucher[]
+  available      Boolean          @default(true)
+  position       Int
+  createdAt      DateTime         @default(now())
+  options        ItemOption[]
+  orderLines     OrderLine[]
+  vouchers       ShopVoucher[]
   /// PHYSICAL items are posted or collected; DIGITAL ones are delivered by `delivery`.
-  kind        ItemKind     @default(PHYSICAL)
-  delivery    DigitalDelivery?
+  kind           ItemKind         @default(PHYSICAL)
+  delivery       DigitalDelivery?
   /// LINK: the https URL, never shown before payment.
-  accessUrl   String?
+  accessUrl      String?
   /// LINK: an optional note, at most ACCESS_NOTE_MAX characters.
-  accessNote  String?
+  accessNote     String?
   /// SESSION: how long it runs.
   sessionMinutes Int?
   sessionPlace   SessionPlace?
   /// SESSION: the meeting URL (ONLINE) or the place (IN_PERSON).
   sessionWhere   String?
-  files       ItemFile[]
-  codes       ItemCode[]
-  sessions    ItemSession[]
+  files          ItemFile[]
+  codes          ItemCode[]
+  sessions       ItemSession[]
   /// Up to ITEM_PHOTOS_MAX square photos, in `position` order.
-  photos      ItemPhoto[]
+  photos         ItemPhoto[]
 
   @@unique([pageId, slug])
   @@index([pageId, position])
@@ -938,99 +939,148 @@ model RenewalCard {
 /// the server; the lines below are copies, so a later edit to an Item cannot
 /// rewrite what was sold.
 model Order {
-  id                String         @id @default(cuid())
-  pageId            String
-  page              Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  id                 String         @id @default(cuid())
+  pageId             String
+  page               Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
   /// The page's own running number, from Page.ordersPlaced. What the owner
   /// sees as #12.
-  number            Int
+  number             Int
   /// Four characters, unique per page. What a customer says to the chat; never
   /// a secret on its own, since the chat also asks the last 4 phone digits.
-  code              String
+  code               String
   /// hashSessionValue of the order link's secret. Only the hash is stored, so
   /// a database read cannot open anybody's order page.
-  tokenHash         String         @unique
+  tokenHash          String         @unique
   /// The order token sealed with PAYMENT_SECRETS_KEY (sealSecret), so later emails can carry the order link. Null where there is no key.
-  tokenSealed       String?
-  customerName      String
+  tokenSealed        String?
+  customerName       String
   /// E.164, as Lead.phone is.
-  phone             String
+  phone              String
   /// Null for a digital-only order.
-  method            OrderMethod?
+  method             OrderMethod?
   /// The calendar day (Malaysia) of pickup or delivery. Null for a digital-only order.
-  day               DateTime?      @db.Date
+  day                DateTime?      @db.Date
   /// Set only for DELIVERY.
-  address           String?
-  note              String?
+  address            String?
+  note               String?
   /// Sen. The three are stored, not derived, so the order shows what the
   /// customer was told even if the delivery fee changes later.
-  itemsCents        Int
-  deliveryCents     Int
-  totalCents        Int
+  itemsCents         Int
+  deliveryCents      Int
+  totalCents         Int
   /// The uploaded receipt, an object key under receipts/<pageId>/. Null until
   /// the customer sends one.
-  receiptKey        String?
+  receiptKey         String?
   /// Its content type, sniffed from the first bytes, never the client's word.
-  receiptType       String?
-  receiptUploadedAt DateTime?
+  receiptType        String?
+  receiptUploadedAt  DateTime?
   /// When the owner said "Not received": the receipt is cleared (receiptKey and
   /// receiptType go null) and this time is set, so the order page can ask the
   /// customer to pay and upload again.
-  receiptRejectedAt DateTime?
-  status            OrderStatus    @default(PLACED)
-  paidAt            DateTime?
-  completedAt       DateTime?
-  cancelledAt       DateTime?
+  receiptRejectedAt  DateTime?
+  status             OrderStatus    @default(PLACED)
+  paidAt             DateTime?
+  completedAt        DateTime?
+  cancelledAt        DateTime?
   /// When the owner marked the money returned after a paid order was
   /// cancelled. Null with CANCELLED and paidAt set is a refund still owed.
-  refundedAt        DateTime?
+  refundedAt         DateTime?
   /// How it was paid; null until it is. Orders paid before this column existed stay null.
-  paidVia           OrderPaidVia?
+  paidVia            OrderPaidVia?
   /// The CHIP purchase that pays (or paid) this order online, on the owner's own account.
-  chipPurchaseId    String?        @unique
+  chipPurchaseId     String?        @unique
   /// When that purchase stops being payable (its due_strict time): past it, nobody can pay it.
-  chipPurchaseDueAt DateTime?
+  chipPurchaseDueAt  DateTime?
   /// When CHIP took a payment for this order after it was paid another way (QR or by
   /// hand): the customer paid twice, and one of the two is the owner's to refund in CHIP.
-  chipPaidTwiceAt   DateTime?
+  chipPaidTwiceAt    DateTime?
   /// When the owner marked that second payment refunded. Kept apart from refundedAt,
   /// which is the cancelled order's refund, so an order paid twice and then cancelled
   /// still shows the refund it owes.
-  secondRefundedAt  DateTime?
+  secondRefundedAt   DateTime?
   /// The customer's email, asked for only when they pay online (CHIP needs one for the receipt).
-  payerEmail        String?
+  payerEmail         String?
   /// Where digital items are sent; required at checkout when any line is digital.
-  email             String?
+  email              String?
   /// When the digital items were delivered (the email sent).
-  sentAt            DateTime?
+  sentAt             DateTime?
   /// How CHIP says it was paid, for the order page: "FPX · Maybank2u".
-  paidMethodLabel   String?
+  paidMethodLabel    String?
   /// CHIP's reference for the payment, shown beside it.
-  paidRef           String?
+  paidRef            String?
   /// What the voucher took off, in sen; 0 with none. itemsCents is the full price, totalCents is after this.
-  discountCents     Int            @default(0)
+  discountCents      Int            @default(0)
   /// SetNull: deleting a voucher must not delete the orders it was used on.
-  voucherId         String?
-  voucher           ShopVoucher?   @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  voucherId          String?
+  voucher            ShopVoucher?   @relation(fields: [voucherId], references: [id], onDelete: SetNull)
   /// The code or name at the time of the order, copied for the same reason.
-  voucherLabel      String?
-  createdAt         DateTime       @default(now())
-  lines             OrderLine[]
-  conversations     Conversation[]
+  voucherLabel       String?
+  /// The place and window the customer chose, with SetNull so deleting either keeps the order.
+  pickupPlaceId      String?
+  pickupPlace        PickupPlace?   @relation(fields: [pickupPlaceId], references: [id], onDelete: SetNull)
+  /// The place's name and address at the time of the order, copied so a later edit or removal cannot rewrite it.
+  pickupPlaceName    String?
+  pickupPlaceAddress String?
+  pickupWindowId     String?
+  pickupWindow       PickupWindow?  @relation(fields: [pickupWindowId], references: [id], onDelete: SetNull)
+  /// The window's from and to, minutes after midnight in Malaysia time, copied for the same reason.
+  pickupFrom         Int?
+  pickupTo           Int?
+  /// The CHIP method the customer last tried ("fpx", "card"), so a retry can say what happened.
+  chipTriedMethod    String?
+  createdAt          DateTime       @default(now())
+  lines              OrderLine[]
+  conversations      Conversation[]
 
   @@unique([pageId, number])
   @@unique([pageId, code])
   @@index([pageId, createdAt])
   @@index([voucherId])
+  @@index([pickupWindowId, day])
+}
+
+/// Where a shop's customers collect orders. An owner has a few (at most 10, enforced in the API).
+model PickupPlace {
+  id        String         @id @default(cuid())
+  pageId    String
+  page      Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name      String
+  address   String
+  /// An https: link to the place on a map.
+  mapUrl    String?
+  note      String?
+  /// True: any time that day, so it has no windows. False: only its windows.
+  anyTime   Boolean        @default(true)
+  position  Int
+  createdAt DateTime       @default(now())
+  windows   PickupWindow[]
+  orders    Order[]
+
+  @@index([pageId, position])
+}
+
+/// A set time at a pickup place. Minutes after midnight in Malaysia time, 0 <= from < to <= 1440.
+model PickupWindow {
+  id         String      @id @default(cuid())
+  placeId    String
+  place      PickupPlace @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  fromMinute Int
+  toMinute   Int
+  /// Orders it takes per day; null for no limit.
+  limit      Int?
+  position   Int
+  orders     Order[]
+
+  @@index([placeId, position])
 }
 
 model OrderLine {
-  id             String  @id @default(cuid())
+  id             String           @id @default(cuid())
   orderId        String
-  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  order          Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
   /// SetNull: deleting an Item must not delete the history of selling it.
   itemId         String?
-  item           Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  item           Item?            @relation(fields: [itemId], references: [id], onDelete: SetNull)
   /// The name and price at the time of the order, copied for the same reason.
   itemName       String
   optionLabel    String?
@@ -1060,14 +1110,14 @@ model OrderLine {
 /// A member of the Curios team who signs in to the admin app. Separate from
 /// Account: owners and admins never share a login or a session.
 model AdminUser {
-  id              String          @id @default(cuid())
-  email           String          @unique
+  id              String           @id @default(cuid())
+  email           String           @unique
   name            String
   passwordHash    String
-  role            AdminRole       @default(OWNER)
+  role            AdminRole        @default(OWNER)
   disabledAt      DateTime?
   lastLoginAt     DateTime?
-  createdAt       DateTime        @default(now())
+  createdAt       DateTime         @default(now())
   sessions        AdminSession[]
   actions         AdminAction[]
   reportsDecided  Report[]
@@ -1134,12 +1184,12 @@ model Report {
   decidedBy      AdminUser?   @relation(fields: [decidedById], references: [id], onDelete: SetNull)
   decidedAt      DateTime?
   createdAt      DateTime     @default(now())
-
-  @@index([pageId, status])
-  @@index([status, createdAt])
   // Also a partial unique index, ("pageId", "reporterIpHash") WHERE status = 'OPEN': one open report
   // per address per page. Prisma cannot express a partial index, so it is in the migration
   // 20261027040000_report_once_per_address only; leave it out of any `migrate diff` that drops it.
+
+  @@index([pageId, status])
+  @@index([status, createdAt])
 }
 
 /// One row per setting the admin has changed; a key with no row is at its default (see
