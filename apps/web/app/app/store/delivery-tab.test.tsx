@@ -55,6 +55,32 @@ describe('DeliveryTab, pickup', () => {
     expect(screen.getByText('Bangi office')).toBeInTheDocument();
   });
 
+  it('with no place yet, turning pickup on opens the add-place form instead of saving, and adding the first place turns it on', async () => {
+    const added = { ...places[0]!, id: 'p2', name: 'Bangi office' };
+    const api: PickupApi = { ...pickupApi, add: vi.fn(async () => [added]) };
+    const save = vi.fn(async (patch: SettingsPatch) => ({ ...settings, pickupEnabled: false, ...patch }));
+    render(<DeliveryTab settings={{ ...settings, pickupEnabled: false }} save={save} today={today} places={[]} pickupApi={api} />);
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Allow pickup' })); });
+    expect(save).not.toHaveBeenCalled();
+    expect(screen.getByRole('form', { name: 'New pickup place' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Bangi office' } });
+    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Lot 3' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Add place' })); });
+    expect(save).toHaveBeenCalledWith({ pickupEnabled: true });
+    expect(screen.getByRole('switch', { name: 'Allow pickup' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Bangi office')).toBeInTheDocument();
+  });
+
+  it('with no place yet, cancelling the add-place form leaves pickup off', async () => {
+    const save = vi.fn();
+    render(<DeliveryTab settings={{ ...settings, pickupEnabled: false }} save={save} today={today} places={[]} pickupApi={pickupApi} />);
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Allow pickup' })); });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('form', { name: 'New pickup place' })).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Allow pickup' })).toHaveAttribute('aria-checked', 'false');
+    expect(save).not.toHaveBeenCalled();
+  });
+
   it('lists the pickup places while pickup is on, in place of a note field', () => {
     show();
     expect(screen.getByText('Seksyen 7 stall')).toBeInTheDocument();

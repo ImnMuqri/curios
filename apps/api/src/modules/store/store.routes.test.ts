@@ -37,13 +37,15 @@ beforeEach(() => {
   store.remove.mockClear();
 });
 
-async function anOwner(on: FastifyInstance, mode: 'BUSINESS' | 'PERSONAL' = 'BUSINESS') {
+/** An owner whose page has one pickup place (unless `place: false`), so turning pickup on is allowed. */
+async function anOwner(on: FastifyInstance, mode: 'BUSINESS' | 'PERSONAL' = 'BUSINESS', { place = true } = {}) {
   const slug = randomUUID().slice(0, 8);
+  const pickupPlaces = place ? { create: { name: 'Kedai', address: '1 Jalan Mawar', position: 0 } } : undefined;
   const account = await on.prisma.account.create({
     data: {
       email: `store-${randomUUID()}@example.com`,
       emailVerifiedAt: new Date(),
-      pages: { create: { handle: `st-${slug}`, skeleton: `st-${slug}`, displayName: 'Kek Lina', mode } },
+      pages: { create: { handle: `st-${slug}`, skeleton: `st-${slug}`, displayName: 'Kek Lina', mode, pickupPlaces } },
     },
     select: { id: true, pages: { select: { id: true } } },
   });
@@ -109,6 +111,22 @@ describe('PATCH /store/settings', () => {
     const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { pickupEnabled: true, pickupNote: ' Seksyen 7 ', minNoticeDays: 2, ...bank });
     expect(res.statusCode).toBe(200);
     expect(res.json().settings).toMatchObject({ pickupEnabled: true, pickupNote: 'Seksyen 7', minNoticeDays: 2, bankAccountNumber: '514012345678' });
+  });
+
+  it('refuses to turn pickup on with no pickup place, and changes nothing', async () => {
+    const owner = await anOwner(app, 'BUSINESS', { place: false });
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { pickupEnabled: true, minNoticeDays: 2 });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toEqual({ code: 'PICKUP_NO_PLACE', message: 'Add a pickup place first.' });
+    expect((await call(app, 'GET', '/store', owner.cookie)).json().settings).toMatchObject({ pickupEnabled: false, minNoticeDays: 1 });
+  });
+
+  it('keeps a page already on pickup with no place (from before places) saving its other settings', async () => {
+    const owner = await anOwner(app, 'BUSINESS', { place: false });
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { pickupEnabled: true } });
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { pickupEnabled: true, minNoticeDays: 2 });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().settings).toMatchObject({ pickupEnabled: true, minNoticeDays: 2 });
   });
 
   it('refuses to open a shop with no way to pay, saying what is missing', async () => {

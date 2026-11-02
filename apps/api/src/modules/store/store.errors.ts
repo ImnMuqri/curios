@@ -413,6 +413,16 @@ export class PickupPlacesFullError extends Error {
   }
 }
 
+/** Turning pickup on with no place would offer customers a pickup with nowhere to go. */
+export class PickupNoPlaceError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_NO_PLACE';
+  constructor() {
+    super('Add a pickup place first.');
+    this.name = 'PickupNoPlaceError';
+  }
+}
+
 /** Removing the only place while pickup is on would leave customers a pickup with nowhere to go. */
 export class PickupLastPlaceError extends Error {
   readonly statusCode = 400;

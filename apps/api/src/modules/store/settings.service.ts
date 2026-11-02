@@ -13,7 +13,7 @@ import {
   type DeliveryMode,
 } from '@curios/core/store';
 import type { TileSize } from '@curios/core/bento';
-import { InvalidStoreSettingError, StoreNotReadyError } from './store.errors.js';
+import { InvalidStoreSettingError, PickupNoPlaceError, StoreNotReadyError } from './store.errors.js';
 import { storePageFor } from './store-page.js';
 
 export interface StoreSettings {
@@ -95,7 +95,14 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
   const next: StoreSettings = { ...current };
 
   if (patch.shopHalal !== undefined) next.shopHalal = patch.shopHalal;
-  if (patch.pickupEnabled !== undefined) next.pickupEnabled = patch.pickupEnabled;
+  if (patch.pickupEnabled !== undefined) {
+    // Turning pickup on needs a place to collect from. A page already on with none (from before
+    // places existed) keeps its any-time pickup, so only the switch from off is refused.
+    if (patch.pickupEnabled && !current.pickupEnabled && (await prisma.pickupPlace.count({ where: { pageId: page.id } })) === 0) {
+      throw new PickupNoPlaceError();
+    }
+    next.pickupEnabled = patch.pickupEnabled;
+  }
   if (patch.shopDescription !== undefined) next.shopDescription = optionalText(patch.shopDescription, SHOP_DESCRIPTION_MAX, 'the shop description');
   if (patch.pickupNote !== undefined) next.pickupNote = optionalText(patch.pickupNote, PICKUP_NOTE_MAX, 'the pickup note');
   if (patch.bankName !== undefined) next.bankName = optionalText(patch.bankName, BANK_NAME_MAX, 'the bank name');

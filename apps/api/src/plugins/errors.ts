@@ -170,10 +170,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   'VOUCHER_INVALID',
   'VOUCHER_CODE_TAKEN',
   'VOUCHER_UNKNOWN',
-  // Pickup places: what an owner may save, the ten-place cap, and the last place while pickup is on.
+  // Pickup places: what an owner may save, the ten-place cap, the last place while pickup is on, and turning pickup on with none.
   'PICKUP_PLACE_INVALID',
   'PICKUP_PLACES_FULL',
   'PICKUP_LAST_PLACE',
+  'PICKUP_NO_PLACE',
   // Placing an order (slice 18): each tells the visitor what to do next --
   // order on WhatsApp, reload the basket, or fix one field.
   'STORE_CLOSED',

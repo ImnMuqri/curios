@@ -74,8 +74,17 @@ export function DeliveryTab({
   const feeProblem = 'problem' in feeCheck ? feeCheck.problem : '';
   const noticeSave = useAutosave((days: number) => save({ minNoticeDays: days }), 300);
 
+  // Pickup needs somewhere to collect from: with no place yet, turning it on opens the form for one
+  // instead, and adding that place turns pickup on (the API refuses pickup with no place).
+  const [firstPlace, setFirstPlace] = useState(false);
+
   async function choosePickup(next: boolean) {
     setError('');
+    if (next && places.length === 0) return setFirstPlace(true);
+    await savePickup(next);
+  }
+
+  async function savePickup(next: boolean) {
     setPickup(next);
     try {
       await save({ pickupEnabled: next });
@@ -139,7 +148,21 @@ export function DeliveryTab({
             <i />
           </button>
         </div>
-        {pickup ? <PickupPlaces places={places} onPlaces={setPlaces} api={pickupApi} /> : null}
+        {pickup || firstPlace ? (
+          <PickupPlaces
+            places={places}
+            onPlaces={(next) => {
+              setPlaces(next);
+              if (firstPlace && next.length > 0) {
+                setFirstPlace(false);
+                void savePickup(true);
+              }
+            }}
+            api={pickupApi}
+            startAdding={firstPlace}
+            onStopAdding={() => setFirstPlace(false)}
+          />
+        ) : null}
       </section>
 
       <section className={ui.section} aria-labelledby="delivery-title">

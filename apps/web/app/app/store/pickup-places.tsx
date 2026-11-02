@@ -196,8 +196,26 @@ function PlaceForm({ api, editing, onSaved, onCancel }: { api: PickupApi; editin
  * times. Every API answer is the whole list, so it replaces what is shown; the list lives in the parent so it survives the screen being hidden. Removing asks inside the page
  * first, and the API's words (the last place cannot go) show in a callout.
  */
-export function PickupPlaces({ places, onPlaces: setPlaces, api }: { places: PickupPlaceView[]; onPlaces: (places: PickupPlaceView[]) => void; api: PickupApi }) {
-  const [adding, setAdding] = useState(false);
+export function PickupPlaces({
+  places,
+  onPlaces: setPlaces,
+  api,
+  startAdding = false,
+  onStopAdding,
+}: {
+  places: PickupPlaceView[];
+  onPlaces: (places: PickupPlaceView[]) => void;
+  api: PickupApi;
+  /** Opens with the add form showing: pickup being turned on with no place yet. */
+  startAdding?: boolean;
+  /** The add form closed, by cancel or by saving. */
+  onStopAdding?: () => void;
+}) {
+  const [adding, setAddingState] = useState(startAdding);
+  const setAdding = (next: boolean) => {
+    setAddingState(next);
+    if (!next) onStopAdding?.();
+  };
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState('');
