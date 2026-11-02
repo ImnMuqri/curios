@@ -135,8 +135,12 @@ export interface ShopCopy {
   pickupAnyTime: string;
   pickupTimeFull: string;
   pickupTimeGone: string;
-  /** The API's PICKUP_PLACE_REQUIRED and PICKUP_TIME_REQUIRED, in the page's language. */
-  pickupPlaceRequired: string;
+  /**
+   * The API's PICKUP_PLACE_REQUIRED, in the page's language. Checkout never sends a pickup without a place
+   * the shop offers, so it means the shop's places changed since the page loaded (one removed, or a first added).
+   */
+  pickupPlacesChanged: string;
+  /** The API's PICKUP_TIME_REQUIRED, in the page's language. */
   pickupTimeRequired: string;
   /** The day's times could not be read; "Try again" asks once more. */
   pickupTimesFailed: string;
@@ -495,7 +499,7 @@ const EN: ShopCopy = {
   pickupAnyTime: 'Any time that day',
   pickupTimeFull: 'That pickup time just filled up. Pick another.',
   pickupTimeGone: "That pickup time isn't offered any more. Pick another.",
-  pickupPlaceRequired: 'Pick where to collect it.',
+  pickupPlacesChanged: "This shop's pickup places just changed. Reload the page to see them.",
   pickupTimeRequired: 'Pick a pickup time.',
   pickupTimesFailed: 'The pickup times could not be loaded.',
   tryAgain: 'Try again',
@@ -808,7 +812,7 @@ const MS: ShopCopy = {
   pickupAnyTime: 'Bila-bila masa hari itu',
   pickupTimeFull: 'Masa ambil itu baru penuh. Pilih yang lain.',
   pickupTimeGone: 'Masa ambil itu tiada lagi. Pilih yang lain.',
-  pickupPlaceRequired: 'Pilih tempat untuk ambil.',
+  pickupPlacesChanged: 'Tempat ambil kedai ini baru berubah. Muat semula halaman untuk melihatnya.',
   pickupTimeRequired: 'Pilih masa ambil.',
   pickupTimesFailed: 'Masa ambil tidak dapat dimuatkan.',
   tryAgain: 'Cuba lagi',

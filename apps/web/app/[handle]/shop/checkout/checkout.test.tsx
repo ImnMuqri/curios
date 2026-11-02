@@ -765,13 +765,28 @@ describe('Checkout: where and when to collect', () => {
     expect(timeCalls(fetch)).toHaveLength(2);
   });
 
-  it('a shop that added a place after checkout opened: the refusal is still said', async () => {
+  it('a shop that added a place after checkout opened: says the places changed, and to reload', async () => {
     const user = userEvent.setup();
     routes(() => [], () => json(400, { error: { code: 'PICKUP_PLACE_REQUIRED', message: 'Pick where to collect it.' } }));
     render(<Checkout {...base} pickupPlaces={[]} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
     await user.click(placeButton('RM215'));
-    expect(await screen.findByRole('alert')).toHaveTextContent(copy.pickupPlaceRequired);
+    expect(await screen.findByRole('alert')).toHaveTextContent(copy.pickupPlacesChanged);
+    expect(copy.pickupPlacesChanged).toMatch(/[Rr]eload/);
+  });
+
+  it('a place the shop removed after checkout opened: says the places changed, and to reload, in the page’s language', async () => {
+    const user = userEvent.setup();
+    const ms = shopCopy('ms');
+    routes(() => [], () => json(400, { error: { code: 'PICKUP_PLACE_REQUIRED', message: 'Pick where to collect it.' } }));
+    render(<Checkout {...base} language="ms" pickupPlaces={[stall]} />);
+    await screen.findByText('Kek coklat moist');
+    await user.type(screen.getByLabelText(ms.name), 'Mira Hassan');
+    await user.type(screen.getByLabelText(ms.whatsappNumber), '012-987 6543');
+    await user.click(screen.getByRole('button', { name: ms.dayPill('2026-10-17') }));
+    await user.click(screen.getByRole('button', { name: /RM215/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(ms.pickupPlacesChanged);
+    expect(ms.pickupPlacesChanged).toMatch(/[Mm]uat semula/);
   });
 });

@@ -103,8 +103,10 @@ const FIELD_OF: Record<string, Problem['field']> = {
 };
 
 /** The pickup refusals, said in the page's language under Getting it. */
-const PICKUP_SAYS = new Map<string, 'pickupPlaceRequired' | 'pickupTimeRequired' | 'pickupTimeFull' | 'pickupTimeGone'>([
-  ['PICKUP_PLACE_REQUIRED', 'pickupPlaceRequired'],
+// Checkout sends a pickup only with a place the shop offered when the page loaded, so a place refused means
+// the shop's places changed meanwhile (one removed, or a first added): picking again will not help, reloading will.
+const PICKUP_SAYS = new Map<string, 'pickupPlacesChanged' | 'pickupTimeRequired' | 'pickupTimeFull' | 'pickupTimeGone'>([
+  ['PICKUP_PLACE_REQUIRED', 'pickupPlacesChanged'],
   ['PICKUP_TIME_REQUIRED', 'pickupTimeRequired'],
   ['PICKUP_TIME_FULL', 'pickupTimeFull'],
   ['PICKUP_TIME_GONE', 'pickupTimeGone'],
