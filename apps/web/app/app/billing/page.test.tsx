@@ -30,7 +30,7 @@ vi.mock('next/navigation', () => ({ redirect }));
 
 // Both client components are recorded rather than rendered: these tests are
 // about what the page decides to offer, not about what those two do with it.
-const PayButtons = vi.fn((_props: { options: Record<string, unknown>[]; timeline?: { today: string; paidUntil: string | null } }) => null);
+const PayButtons = vi.fn((_props: { options: Record<string, unknown>[]; initialOpen?: boolean; timeline?: { today: string; paidUntil: string | null } }) => null);
 vi.mock('./pay-buttons.js', () => ({ PayButtons }));
 const AutoRenew = vi.fn((_props: { card: Record<string, unknown> }) => null);
 vi.mock('./auto-renew.js', () => ({ AutoRenew }));
@@ -62,9 +62,9 @@ const page: OwnerPage = {
   payByQr: true,
 };
 
-async function renderWith(owned: OwnerPage | null, payment?: string, card?: string) {
+async function renderWith(owned: OwnerPage | null, payment?: string, pay?: string) {
   getOwnerPage.mockResolvedValueOnce(owned);
-  render(await BillingPage({ searchParams: Promise.resolve({ payment, card }) }));
+  render(await BillingPage({ searchParams: Promise.resolve({ payment, pay }) }));
 }
 
 // These check the figures, not how they count up (count-up.test.tsx does): motion off.
@@ -208,16 +208,19 @@ describe('BillingPage', () => {
     expect(screen.getByText('Personal pages are free. There is nothing to pay for.')).toBeInTheDocument();
   });
 
-  it('says a confirmed payment in the board’s toast, with the new date', async () => {
+  it('says nothing for ?payment=paid: a paid payment has its own page now', async () => {
     await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') }, 'paid');
 
-    expect(await screen.findByRole('status')).toHaveTextContent('Paid. You’re covered until 14 Dec 2026.');
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
-  it('still says confirming when CHIP said paid before its callback reached us', async () => {
-    await renderWith(page, 'paid');
+  it('opens the pay sheet on arrival for ?pay=1, and not otherwise', async () => {
+    await renderWith(page, undefined, '1');
+    expect(PayButtons.mock.calls[0]?.[0]).toMatchObject({ initialOpen: true });
 
-    expect(screen.getByRole('status')).toHaveTextContent('We are still confirming your payment with CHIP.');
+    PayButtons.mockClear();
+    await renderWith(page);
+    expect(PayButtons.mock.calls[0]?.[0]).toMatchObject({ initialOpen: false });
   });
 
   it('shows the banner for a payment that failed', async () => {
@@ -375,26 +378,6 @@ describe('BillingPage', () => {
     expect(screen.getByText(/Renews only if you turn on auto-renew\./)).toBeInTheDocument();
   });
 
-  it('shows the card=off banner when the plan was paid without a saved card', async () => {
-    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') }, 'paid', 'off');
-
-    expect(screen.getByText(/auto-renew couldn’t be turned on for this payment/)).toBeInTheDocument();
-  });
-
-  it('says nothing about a card on a hand-typed ?payment=paid&card=off for a page that has not paid', async () => {
-    await renderWith(page, 'paid', 'off');
-
-    expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
-  });
-
-  it('says nothing about a missing card when the page does have one', async () => {
-    getRenewalCard.mockResolvedValue({ cardLabel: null, plan: 'MONTHLY', failedAttempts: 0 });
-
-    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') }, 'paid', 'off');
-
-    expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
-  });
-
   it('keeps the turn-off on a lapsed page with a card, so the next try can still be stopped', async () => {
     // The job charges up to 3 days after paidUntil; the Terms say the owner can stop it.
     vi.useFakeTimers({ now: new Date('2026-10-13T04:00:00.000Z'), toFake: ['Date'] });
@@ -414,12 +397,6 @@ describe('BillingPage', () => {
     } finally {
       vi.useRealTimers();
     }
-  });
-
-  it('says nothing about a card on a hand-typed ?card=off with no payment', async () => {
-    await renderWith(page, undefined, 'off');
-
-    expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
   });
 
   it('says there are no payments yet', async () => {

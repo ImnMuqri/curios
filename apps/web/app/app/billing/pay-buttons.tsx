@@ -62,17 +62,20 @@ export function payError(failure: unknown): string {
 export function PlanPay({
   options,
   timeline,
+  initialOpen = false,
   onPay,
   navigate,
 }: {
   options: PayOption[];
   timeline?: PayTimeline;
+  /** The dialog is already open on arrival: "Try again" on a failed payment's page lands here. */
+  initialOpen?: boolean;
   onPay: (plan: BillingPlan, autoRenew: boolean) => Promise<{ url: string }>;
   navigate: (url: string) => void;
 }) {
   const [chosen, setChosen] = useState<BillingPlan>(options[0]?.plan ?? 'MONTHLY');
   const [autoRenew, setAutoRenew] = useState(false);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const option = options.find((o) => o.plan === chosen) ?? options[0]!;
@@ -227,11 +230,12 @@ export function PlanPay({
  * options arrive as plain data: this file must not import the @curios/core barrel,
  * whose node:crypto import has no place in a browser bundle.
  */
-export function PayButtons({ options, timeline }: { options: PayOption[]; timeline?: PayTimeline }) {
+export function PayButtons({ options, timeline, initialOpen }: { options: PayOption[]; timeline?: PayTimeline; initialOpen?: boolean }) {
   return (
     <PlanPay
       options={options}
       timeline={timeline}
+      initialOpen={initialOpen}
       onPay={(plan, autoRenew) => apiFetch<{ url: string }>('/billing/purchases', { method: 'POST', body: JSON.stringify({ plan, autoRenew }) })}
       navigate={(url) => window.location.assign(url)}
     />

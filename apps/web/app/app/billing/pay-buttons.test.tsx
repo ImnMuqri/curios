@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../../lib/api.js';
-import { PlanPay, payError, type PayOption } from './pay-buttons.js';
+import { PayButtons, PlanPay, payError, type PayOption } from './pay-buttons.js';
 
 const options: PayOption[] = [
   { plan: 'MONTHLY', name: 'Monthly', price: 'RM49', note: 'One month at a time', period: 'a month', unit: 'month', afterShort: '14 Dec', afterLong: '14 Dec 2026', paidPct: 50 },
@@ -43,6 +43,12 @@ describe('PlanPay', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Continue to CHIP' }));
     expect(onPay).toHaveBeenCalledWith('ANNUAL', false);
     expect(navigate).toHaveBeenCalledWith('https://gate.chip-in.asia/p/abc/');
+  });
+
+  it('starts with the dialog open when asked to, as Try again lands on it', () => {
+    render(<PayButtons options={options} initialOpen />);
+
+    expect(screen.getByRole('dialog', { name: 'Add a month' })).toHaveTextContent('Business, 1 month');
   });
 
   it('raises nothing when the owner backs out', async () => {

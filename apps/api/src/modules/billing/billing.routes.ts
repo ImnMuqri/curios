@@ -1,6 +1,7 @@
 import type { FastifyBaseLogger, FastifyReply } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { failReason } from '@curios/core/chip-status';
 import {
   CHIP_DEFAULT_BASE_URL,
   billingDisabled,
@@ -153,7 +154,7 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
   );
 };
 
-/** A purchase nobody will ever pay: the banner says so, rather than "pending". */
+/** A purchase nobody will ever pay: the failed page says so, rather than "pending". */
 const FAILED_PURCHASE_STATUSES = new Set(['expired', 'cancelled', 'error', 'blocked']);
 
 export interface ChipRouteOptions {
@@ -175,8 +176,9 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
     { schema: { querystring: z.object({ payment: z.string().optional() }) } },
     async (request, reply) => {
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
-      const back = (payment: 'paid' | 'pending' | 'failed', cardOff = false) =>
-        reply.redirect(`${appUrl}/app/billing?payment=${payment}${cardOff ? '&card=off' : ''}`);
+      // Pending stays a banner on Billing; a result is a page of its own, which reads the
+      // payment by id and so needs the id.
+      const pending = () => reply.redirect(`${appUrl}/app/billing?payment=pending`);
 
       // The redirect is unsigned: it carries only our own payment id, so nothing in it is
       // trusted. The purchase is fetched from CHIP by the id we stored, and that -- not
@@ -198,7 +200,7 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
               select: { providerRef: true, autoRenew: true },
             })
           : null;
-        if (!payment?.providerRef) return back('pending');
+        if (!payment?.providerRef) return pending();
         purchaseId = payment.providerRef;
         autoRenew = payment.autoRenew;
 
@@ -209,7 +211,7 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
       } catch (error) {
         // The name only: a refused CHIP call carries CHIP's response body in its message.
         request.log.error({ err: errName(error), purchaseId, source: 'return' }, 'chip purchase could not be confirmed');
-        return back('pending');
+        return pending();
       }
 
       logOutcome(request.log, purchaseId, 'return', outcome);
@@ -218,9 +220,12 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
         // not renew itself, and the owner should hear that now rather than at expiry. Read
         // from the purchase, not this grant: CHIP's callback usually grants first, and
         // this return then sees already-granted.
-        return back('paid', autoRenew && !keptCard);
+        const cardOff = autoRenew && !keptCard;
+        return reply.redirect(`${appUrl}/app/billing/paid?payment=${paymentId}${cardOff ? '&card=off' : ''}`);
       }
-      return back(FAILED_PURCHASE_STATUSES.has(purchaseStatus) ? 'failed' : 'pending');
+      return FAILED_PURCHASE_STATUSES.has(purchaseStatus)
+        ? reply.redirect(`${appUrl}/app/billing/failed?payment=${paymentId}&reason=${failReason(purchaseStatus)}`)
+        : pending();
     },
   );
 

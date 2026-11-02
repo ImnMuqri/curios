@@ -111,6 +111,12 @@ export function paymentParts(payment: OwnerPayment): {
   };
 }
 
+/** The receipt's price as the board prints it: RM49.00, never RM49. */
+export function receiptPrice(cents: number): string {
+  const price = ringgit(cents);
+  return price.includes('.') ? price : `${price}.00`;
+}
+
 export interface PaymentBanner {
   tone: 'info' | 'error';
   text: string;
@@ -123,7 +129,7 @@ export interface PaymentBanner {
  */
 export function paymentBanner(value: string | undefined): PaymentBanner | null {
   switch (value) {
-    // A confirmed 'paid' is the page's toast, not a banner (paid-toast.tsx).
+    // A confirmed 'paid' is a page of its own (paid/page.tsx), not a banner.
     case 'pending':
       return {
         tone: 'info',
@@ -140,7 +146,7 @@ export function paymentBanner(value: string | undefined): PaymentBanner | null {
 }
 
 /**
- * The return redirect adds `card=off` when auto-renew was asked for but CHIP
+ * The paid page's line when the return redirect carried `card=off`: auto-renew was asked for but CHIP
  * kept no card. The plan itself is paid, so this is information, not an error.
  */
 export function cardOffBanner(): PaymentBanner {

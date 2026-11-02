@@ -293,9 +293,10 @@ describe('POST /billing/purchases', () => {
 describe('GET /billing/chip/return', () => {
   const visit = (paymentId: string) =>
     app.inject({ method: 'GET', url: `/billing/chip/return?payment=${paymentId}`, remoteAddress: from() });
-  const BACK = 'http://localhost:3000/app/billing?payment=';
+  const BILLING = 'http://localhost:3000/app/billing';
+  const BACK = `${BILLING}?payment=`;
 
-  it('fetches the purchase, grants it, and sends the owner back to the paid banner', async () => {
+  it('fetches the purchase, grants it, and sends the owner to the paid page', async () => {
     const owner = await anOwner();
     const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
     client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
@@ -303,7 +304,7 @@ describe('GET /billing/chip/return', () => {
     const res = await visit(paymentId);
 
     expect(res.statusCode).toBe(302);
-    expect(res.headers.location).toBe(`${BACK}paid`);
+    expect(res.headers.location).toBe(`${BILLING}/paid?payment=${paymentId}`);
     expect(client.getPurchase).toHaveBeenCalledWith(providerRef);
     expect(await statusOf(paymentId)).toBe('PAID');
     expect(await paidUntilOf(owner.pageId)).not.toBeNull();
@@ -316,8 +317,19 @@ describe('GET /billing/chip/return', () => {
 
     const res = await visit(paymentId);
 
-    expect(res.headers.location).toBe(`${BACK}failed`);
+    expect(res.headers.location).toBe(`${BILLING}/failed?payment=${paymentId}&reason=expired`);
     expect(await statusOf(paymentId)).toBe('PENDING');
+  });
+
+  it.each([
+    ['cancelled', 'cancelled'],
+    ['error', 'declined'],
+  ])('sends a %s purchase to the failed page with reason=%s', async (status, reason) => {
+    const owner = await anOwner();
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { status }));
+
+    expect((await visit(paymentId)).headers.location).toBe(`${BILLING}/failed?payment=${paymentId}&reason=${reason}`);
   });
 
   it('says pending for a purchase still waiting on the payer', async () => {
@@ -346,7 +358,7 @@ describe('GET /billing/chip/return', () => {
 
     const res = await visit(paymentId);
 
-    expect(res.headers.location).toBe(`${BACK}paid&card=off`);
+    expect(res.headers.location).toBe(`${BILLING}/paid?payment=${paymentId}&card=off`);
   });
 
   it('adds card=off when the callback granted first and no token came back', async () => {
@@ -359,7 +371,7 @@ describe('GET /billing/chip/return', () => {
     const res = await visit(paymentId);
 
     expect(await statusOf(paymentId)).toBe('PAID');
-    expect(res.headers.location).toBe(`${BACK}paid&card=off`);
+    expect(res.headers.location).toBe(`${BILLING}/paid?payment=${paymentId}&card=off`);
   });
 
   it('does not add card=off when the card was kept', async () => {
@@ -369,7 +381,7 @@ describe('GET /billing/chip/return', () => {
       aPurchase(providerRef, paymentId, { isRecurringToken: true, paymentMethod: 'visa', maskedPan: '411111******1111' }),
     );
 
-    expect((await visit(paymentId)).headers.location).toBe(`${BACK}paid`);
+    expect((await visit(paymentId)).headers.location).toBe(`${BILLING}/paid?payment=${paymentId}`);
   });
 
   it('does not add card=off when auto-renew was never asked', async () => {
@@ -377,7 +389,7 @@ describe('GET /billing/chip/return', () => {
     const { providerRef, paymentId } = await aPendingPayment(owner.pageId, false);
     client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
 
-    expect((await visit(paymentId)).headers.location).toBe(`${BACK}paid`);
+    expect((await visit(paymentId)).headers.location).toBe(`${BILLING}/paid?payment=${paymentId}`);
   });
 
   it('says pending for a payment id we never created, without asking CHIP', async () => {

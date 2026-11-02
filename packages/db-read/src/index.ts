@@ -20,6 +20,8 @@ export { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage } from 
 export type { ConversationUsage } from './usage.query.js';
 export { getRecentPayments, getRenewalCard, RECENT_PAYMENTS } from './payments.query.js';
 export type { OwnerPayment, OwnerRenewalCard } from './payments.query.js';
+export { getPaymentResult } from './payment-result.query.js';
+export type { PaymentResult } from './payment-result.query.js';
 export { getMyCurios, countPendingFacts, countNavBadges } from './my-curios.query.js';
 export type { MyCurios, NavBadges } from './my-curios.query.js';
 export { getKnowledge, sourceLabel } from './knowledge.query.js';

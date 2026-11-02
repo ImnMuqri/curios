@@ -879,16 +879,6 @@
   color: var(--ink-soft);
 }
 
-.bob {
-  animation: paBob 3.2s ease-in-out infinite;
-}
-
-.eyes {
-  transform-box: fill-box;
-  transform-origin: 50% 50%;
-  animation: paBlink 5s infinite;
-}
-
 .wave {
   transform-box: view-box;
   transform-origin: 118px 96px;
@@ -1041,18 +1031,6 @@
   }
 }
 
-@keyframes paBlink {
-  0%,
-  46%,
-  50%,
-  100% {
-    transform: scaleY(1);
-  }
-  48% {
-    transform: scaleY(0.1);
-  }
-}
-
 @keyframes paWave {
   0%,
   100% {
@@ -1149,8 +1127,6 @@
   .fchip,
   .res,
   .rl,
-  .bob,
-  .eyes,
   .wave,
   .cheer,
   .cheer2,

@@ -14,7 +14,7 @@ import {
 import { ringgit } from '@curios/core/money';
 import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSettings, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
-import { cardOffBanner, daysLeft, paymentBanner, paymentParts, planBadge, planSummary, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { daysLeft, paymentBanner, paymentParts, planBadge, planSummary, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 import { AutoRenew } from './auto-renew.js';
 import { PayButtons, type PayOption } from './pay-buttons.js';
 import { ResetTrial } from './reset-button.js';
@@ -22,7 +22,6 @@ import { UpgradeToBusiness } from './upgrade-button.js';
 import styles from './billing.module.css';
 import { PageHead } from '../_ui/page-head.js';
 import { CountUp } from '../_ui/count-up.js';
-import { PaidToast } from './paid-toast.js';
 import { NEAR_SHARE } from '../alerts.js';
 
 /** What Business includes, as the Billing board lists it. */
@@ -127,7 +126,7 @@ function Meter({ label, used, of, share, tone, children }: { label: string; used
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ payment?: string; card?: string }>;
+  searchParams: Promise<{ payment?: string; pay?: string }>;
 }) {
   const params = await searchParams;
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
@@ -141,10 +140,8 @@ export default async function BillingPage({
   const settings = await getSettings();
   const { freeLeads, freeOrders, prices } = settings;
   const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now }, freeLeads);
-  // Back from CHIP: a confirmed payment is the board's toast; one CHIP
-  // called paid before its callback reached us still reads as confirming.
-  const paidNow = params.payment === 'paid' && state.kind === 'paid';
-  const banner = paidNow ? null : paymentBanner(params.payment === 'paid' ? 'pending' : params.payment);
+  // Back from CHIP without an answer yet; a paid or failed payment has a page of its own.
+  const banner = paymentBanner(params.payment);
   const badge = planBadge(state);
   const personal = state.kind === 'personal';
 
@@ -172,9 +169,6 @@ export default async function BillingPage({
   const canReset = page.mode === 'BUSINESS' && page.paidUntil === null && page.trialResetAt === null &&
     (page.leadsCaptured >= 1 || page.ordersPlaced > page.ordersAtTrialReset);
 
-  // `card=off` rides only on a confirmed paid return that kept no card; typed by
-  // hand on any other page it claims nothing.
-  const cardBanner = paidNow && !card && params.card === 'off' ? cardOffBanner() : null;
   const head = planHead(state, now, card !== null, freeLeads);
   const paidUntil = state.kind === 'paid' ? state.paidUntil : null;
   const save = yearlySaving(prices);
@@ -195,15 +189,12 @@ export default async function BillingPage({
   return (
     <>
       <PageHead title="Billing" summary="Your plan, what this month has used, and what you have paid." />
-      {paidNow ? <PaidToast until={shortDate(state.paidUntil, true)} /> : null}
       <div className={styles.bl}>
-        {[banner, cardBanner].map((shown) =>
-          shown ? (
-            <p key={shown.text} className={styles.banner} data-tone={shown.tone} role="status">
-              {shown.text}
-            </p>
-          ) : null,
-        )}
+        {banner ? (
+          <p className={styles.banner} data-tone={banner.tone} role="status">
+            {banner.text}
+          </p>
+        ) : null}
 
         <div className={styles.top} data-personal={personal || undefined}>
           <section className={styles.card} aria-labelledby="plan-title">
@@ -267,6 +258,7 @@ export default async function BillingPage({
             ) : paymentsOn ? (
               <PayButtons
                 options={options}
+                initialOpen={params.pay === '1'}
                 timeline={state.kind === 'paid' || state.kind === 'lapsed' ? { today: shortDate(now), paidUntil: paidUntil ? shortDate(paidUntil) : null } : undefined}
               />
             ) : (
