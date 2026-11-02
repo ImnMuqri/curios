@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FPX_BANKS, chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, WALLETS } from './shop-pay.js';
+import { FPX_BANKS, chipWhitelist, choiceFromLabel, choiceLabel, onlineOffer, paidMethodLabel, payUrl, WALLETS } from './shop-pay.js';
 
 const ALL = ['fpx', 'fpx_b2b1', 'visa', 'mastercard', 'maestro', 'razer_tng', 'razer_grabpay', 'shopee_pay', 'duitnow_qr'];
 
@@ -74,5 +74,16 @@ describe('labels', () => {
     expect(paidMethodLabel({ paymentMethod: 'mastercard', maskedPan: null })).toBe('Mastercard card');
     expect(paidMethodLabel({ paymentMethod: 'something_new', maskedPan: null })).toBe('CHIP');
     expect(paidMethodLabel({ paymentMethod: null, maskedPan: null })).toBe('CHIP');
+  });
+});
+
+describe('choiceFromLabel', () => {
+  it('is the inverse of choiceLabel for every bank, every wallet and card', () => {
+    const choices = [...FPX_BANKS.map((bank) => ({ method: 'fpx' as const, bank: bank.id })), ...WALLETS.map((wallet) => ({ method: wallet.id })), { method: 'card' as const }];
+    for (const choice of choices) expect(choiceFromLabel(choiceLabel(choice))).toEqual(choice);
+  });
+
+  it('is null for anything it cannot map', () => {
+    for (const label of [null, '', 'FPX', 'FPX · Some Bank', 'CHIP', 'Visa card', 'card']) expect(choiceFromLabel(label)).toBeNull();
   });
 });

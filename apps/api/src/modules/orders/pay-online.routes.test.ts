@@ -313,6 +313,18 @@ describe('POST /store/orders/:token/pay', () => {
     expect(await orderOf(app, shop.orderId)).toMatchObject({ chipPurchaseId: second.id, payerEmail: 'b@example.com' });
   });
 
+  it('a second attempt with no email reuses the one the first was given (Pay again sends none)', async () => {
+    const shop = await aShopWithOrder(app);
+    const first = await startPayment(app, shop);
+    client.getPurchase.mockResolvedValueOnce({ ...first, status: 'viewed' });
+    client.createPurchase.mockResolvedValueOnce(aPurchase());
+
+    const res = await pay(app, shop.token, { method: 'card' });
+
+    expect(res.statusCode).toBe(200);
+    expect(client.createPurchase.mock.calls.at(-1)![0]).toMatchObject({ email: 'aisyah@example.com' });
+  });
+
   it('refuses to start a payment for a suspended page with 410, makes no purchase, and works again once it is back', async () => {
     const shop = await aShopWithOrder(app);
     await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: new Date(), suspendReason: 'x' } });

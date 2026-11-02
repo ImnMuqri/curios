@@ -104,10 +104,13 @@ const SLOW_MS = 20_000;
  * cannot ask CHIP at all ("unknown"), when the page also offers the QR.
  */
 function usePaymentCheck(token: string, pending: boolean) {
-  const [check, setCheck] = useState<'checking' | 'waiting' | 'failed' | null>(pending ? 'checking' : null);
+  const [checked, setChecked] = useState<{ check: 'checking' | 'waiting' | 'failed' | null; failed: { reason: FailReason; method: string | null } }>({
+    check: pending ? 'checking' : null,
+    // Why it failed and how it was tried, for the failed page; held with `check` so they change together.
+    failed: { reason: 'unfinished', method: null },
+  });
+  const setCheck = (check: 'checking' | 'waiting' | 'failed' | null) => setChecked((was) => ({ ...was, check }));
   const [paid, setPaid] = useState<Extract<PayStatus, { state: 'paid' }> | null>(null);
-  // Why it failed and how it was tried, for the failed page.
-  const [failed, setFailed] = useState<{ reason: FailReason; method: string | null }>({ reason: 'unfinished', method: null });
   useEffect(() => {
     if (!pending) return;
     let stopped = false;
@@ -124,8 +127,8 @@ function usePaymentCheck(token: string, pending: boolean) {
           return;
         }
         if (status.state === 'failed' || status.state === 'none') {
-          if (status.state === 'failed') setFailed({ reason: isFailReason(status.reason) ? status.reason : 'unfinished', method: status.method ?? null });
-          setCheck(status.state === 'failed' ? 'failed' : null);
+          if (status.state === 'failed') setChecked({ check: 'failed', failed: { reason: isFailReason(status.reason) ? status.reason : 'unfinished', method: status.method ?? null } });
+          else setCheck(null);
           return;
         }
         if (status.state === 'unknown') setCheck('waiting');
@@ -143,7 +146,7 @@ function usePaymentCheck(token: string, pending: boolean) {
       clearTimeout(timer);
     };
   }, [token, pending]);
-  return { check, paid, failed };
+  return { check: checked.check, paid, failed: checked.failed };
 }
 
 /** The kinds and count of a FILES line's files, for the line's small print. */

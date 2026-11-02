@@ -55,11 +55,57 @@ describe('PayFailed', () => {
     expect(screen.getByText('Tried with card. The bank said: it took too long.')).toBeInTheDocument();
   });
 
-  it('pay again opens the online choices for this order', async () => {
+  it('pay again, in one click, pays the same way: no picker, no email, straight to CHIP', async () => {
+    const user = userEvent.setup();
+    const fetch = vi.fn(async (_url: string, _init?: RequestInit) => json(200, { url: 'https://gate.chip-in.asia/p/y/?preferred=fpx' }));
+    vi.stubGlobal('fetch', fetch);
+    const navigate = vi.fn();
+    render(<PayFailed {...props} chipMethods={['fpx', 'visa']} navigate={navigate} />);
+
+    await user.click(screen.getByRole('button', { name: 'Pay RM260 again' }));
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('https://gate.chip-in.asia/p/y/?preferred=fpx'));
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(String(fetch.mock.calls[0]![0])).toMatch(/\/store\/orders\/tok_abc\/pay$/);
+    expect(JSON.parse(fetch.mock.calls[0]![1]!.body as string)).toEqual({ method: 'fpx', bank: 'maybank' });
+    expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
+    expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBe('1');
+  });
+
+  it('pay again reloads the order when it was paid after all, and says when it is too often', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', vi.fn(async () => json(409, { error: { code: 'ORDER_ALREADY_PAID', message: 'paid' } })));
+    const navigate = vi.fn();
+    const { unmount } = render(<PayFailed {...props} navigate={navigate} />);
+    await user.click(screen.getByRole('button', { name: 'Pay RM260 again' }));
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/keklina/order/tok_abc'));
+    unmount();
+
+    vi.stubGlobal('fetch', vi.fn(async () => json(429, { error: { code: 'RATE_LIMITED', message: 'slow' } })));
+    render(<PayFailed {...props} navigate={navigate} />);
+    await user.click(screen.getByRole('button', { name: 'Pay RM260 again' }));
+    expect(await screen.findByText(copy.payTooMany)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Pay RM260 again' })).toBeEnabled();
+  });
+
+  it('shows the picker when the way tried is unknown, or the shop no longer takes it', async () => {
     const user = userEvent.setup();
     vi.stubGlobal('fetch', vi.fn(async () => json(200, { fpx: true, wallets: [], card: false })));
-    render(<PayFailed {...props} />);
+    const { unmount } = render(<PayFailed {...props} method="Some new way" />);
+    await user.click(screen.getByRole('button', { name: 'Pay RM260 again' }));
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+    unmount();
 
+    // Tried by card; the shop's CHIP account now lists only FPX.
+    render(<PayFailed {...props} method="Card" />);
+    await user.click(screen.getByRole('button', { name: 'Pay RM260 again' }));
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+  });
+
+  it('shows the picker when the API says it needs an email after all', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/pay-methods') ? json(200, { fpx: true, wallets: [], card: false }) : json(400, { error: { code: 'EMAIL_REQUIRED', message: 'email' } }))));
+    render(<PayFailed {...props} />);
     await user.click(screen.getByRole('button', { name: 'Pay RM260 again' }));
     expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
   });

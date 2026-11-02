@@ -113,6 +113,20 @@ export function choiceLabel(choice: OnlineChoice): string {
 }
 
 /**
+ * The choice a label stands for, the inverse of choiceLabel: how "Pay again" knows what
+ * the customer tried. Null for anything that does not name one whole choice (no label,
+ * a bare "FPX" with no bank, a bank or wallet we no longer list).
+ */
+export function choiceFromLabel(label: string | null): OnlineChoice | null {
+  if (label === null) return null;
+  if (label === 'Card') return { method: 'card' };
+  const bank = FPX_BANKS.find((candidate) => label === `FPX · ${candidate.name}`);
+  if (bank) return { method: 'fpx', bank: bank.id };
+  const wallet = WALLETS.find((candidate) => label === candidate.paid);
+  return wallet ? { method: wallet.id } : null;
+}
+
+/**
  * How CHIP says the order was paid, for the order page's Paid row (board:
  * "FPX · Maybank2u", "Touch ’n Go eWallet", "Visa card ending 4242"). CHIP does
  * not name the FPX bank, so the bank comes from the purchase's notes, which say

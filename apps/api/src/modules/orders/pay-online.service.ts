@@ -283,6 +283,7 @@ export async function startOnlinePayment(
       customerName: true,
       phone: true,
       email: true,
+      payerEmail: true,
       chipPurchaseId: true,
       receiptKey: true,
       lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
@@ -293,8 +294,9 @@ export async function startOnlinePayment(
   // Paying a suspended page's order is refused; the order itself stays readable, and a payment already made still settles.
   if (order.page.suspendedAt !== null) throw new PageUnavailableError();
   refuseFor(order.status);
-  // CHIP's receipt goes to the email typed for it, or else to the one the order was placed with.
-  const payerEmail = input.email ?? order.email;
+  // CHIP's receipt goes to the email typed for it, or else to the one the order was placed with,
+  // or else to the one an earlier try was given ("Pay again" sends none).
+  const payerEmail = input.email ?? order.email ?? order.payerEmail;
   if (!payerEmail) throw new EmailRequiredError();
   // A receipt is with the shop to check: a second payment now would leave two for one order.
   if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);

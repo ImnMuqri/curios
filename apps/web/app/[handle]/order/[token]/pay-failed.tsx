@@ -2,11 +2,12 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { FAIL_BANK_SAID, type FailReason } from '@curios/core/chip-status';
+import { choiceFromLabel, onlineOffer, type OnlineChoice } from '@curios/core/shop-pay';
 import { formatRinggit } from '@curios/core/store';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
 import { defaultStorageKey, writeBasket, type BasketLine } from '../../shop/basket.js';
 import type { ShopCopy } from '../../shop/copy.js';
-import { RetryPay } from './retry-pay.js';
+import { payOrder, RetryPay } from './retry-pay.js';
 import checkout from '../../shop/checkout/checkout.module.css';
 import styles from './order.module.css';
 
@@ -17,10 +18,20 @@ function marked(text: string): ReactNode {
   return text.split('**').map((part, i) => (i % 2 === 1 ? <b key={i}>{part}</b> : <Fragment key={i}>{part}</Fragment>));
 }
 
+/** The choice the order was tried with, when the shop still takes it online; else null, and the customer picks again. */
+function sameWay(choice: OnlineChoice | null, chipMethods: string[] | null): OnlineChoice | null {
+  if (!choice || !chipMethods) return null;
+  const offer = onlineOffer(chipMethods);
+  const offered = choice.method === 'fpx' ? offer.fpx : choice.method === 'card' ? offer.card : offer.wallets.includes(choice.method);
+  return offered ? choice : null;
+}
+
 /**
  * The full page when the customer comes back from CHIP and the payment did not go
  * through (Public board, `payfail`): nothing was taken, the order is held, and the two
- * ways on. "Pay again" opens RetryPay (a new purchase on this order); "Pay another way"
+ * ways on. "Pay again" starts a new purchase on this order with the way it was tried, in
+ * one click, or, when that way is unknown or no longer offered, opens RetryPay's picker;
+ * "Pay another way"
  * gives the order's lines back to the basket, cancels the order and goes to checkout.
  */
 export function PayFailed(props: {
@@ -44,8 +55,23 @@ export function PayFailed(props: {
   useEffect(() => heading.current?.focus(), []);
   const [again, setAgain] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [note, setNote] = useState<'open' | 'tooMany' | 'failed' | null>(null);
+  const [paying, setPaying] = useState(false);
+  const [note, setNote] = useState<'open' | 'tooMany' | 'failed' | 'unavailable' | null>(null);
   const total = formatRinggit(props.totalCents);
+  const tried = sameWay(choiceFromLabel(props.method), props.chipMethods);
+
+  async function payAgain() {
+    if (paying) return;
+    if (!tried) return setAgain(true);
+    setPaying(true);
+    setNote(null);
+    // No email: the API reuses the one the order, or the first try, already has.
+    const outcome = await payOrder({ token: props.token, handle: props.handle, body: { ...tried }, navigate: props.navigate });
+    if (outcome === 'left') return;
+    setPaying(false);
+    if (outcome === 'emailNeeded') setAgain(true);
+    else setNote(outcome);
+  }
 
   async function payAnotherWay() {
     if (leaving) return;
@@ -114,7 +140,7 @@ export function PayFailed(props: {
       </div>
 
       {props.chipMethods && !again ? (
-        <button type="button" className={checkout.pay} onClick={() => setAgain(true)}>
+        <button type="button" className={checkout.pay} disabled={paying} onClick={() => void payAgain()}>
           {copy.payAgain(total)}
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M5 12h14M13 6l6 6-6 6" />
@@ -131,7 +157,7 @@ export function PayFailed(props: {
       </button>
       {note ? (
         <p className={styles.rejected} role="status">
-          {note === 'open' ? copy.payStillOpen : note === 'tooMany' ? copy.payTooMany : copy.failed}
+          {note === 'open' ? copy.payStillOpen : note === 'tooMany' ? copy.payTooMany : note === 'unavailable' ? copy.cantPayOnline(props.displayName) : copy.failed}
         </p>
       ) : null}
       <p className={styles.pfSmall}>{copy.triedWith(props.method, FAIL_BANK_SAID[props.reason])}</p>
