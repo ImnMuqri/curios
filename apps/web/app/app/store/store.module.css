@@ -1235,6 +1235,12 @@
   color: var(--muted);
 }
 
+/* The delivery note under the tiles, once a delivery mode is picked. */
+.deliveryNote {
+  margin-top: 10px;
+  animation: fadeUp 300ms ease both;
+}
+
 .deliveryTiles {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

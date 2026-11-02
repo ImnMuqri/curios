@@ -199,7 +199,7 @@ export function DeliveryTab({
         ) : null}
         <SaveState status={fee.autosave.status} error={fee.autosave.error} retry={fee.autosave.retry} />
         {mode !== 'NONE' ? (
-          <div className={`${ui.float} ${styles.pickupNote}`}>
+          <div className={`${ui.float} ${styles.deliveryNote}`}>
             <label>
               <em>Delivery note</em>
               <input
