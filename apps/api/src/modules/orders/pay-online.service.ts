@@ -211,6 +211,48 @@ const refuseFor = (status: string): void => {
 };
 
 /**
+ * Closes an order's CHIP purchase before anything that would leave it behind: a second purchase
+ * (paying again) or cancelling the order (paying another way). If it was paid, that pays the order,
+ * and going on would charge the customer twice. So it is `closed` only when CHIP calls it dead, or it
+ * is cancelled here; `paid` when CHIP says it was paid and settling it paid the order; and `open` for
+ * anything less (CHIP down, a cancel refused, a paid purchase that does not settle this order).
+ */
+async function closePurchase(
+  deps: PayOnlineDeps,
+  client: ChipClient,
+  account: ShopAccount,
+  order: { id: string; number: number; totalCents: number; chipPurchaseId: string; pageId: string },
+  now: Date,
+): Promise<'closed' | 'paid' | 'open'> {
+  const purchaseId = order.chipPurchaseId;
+  const settle = async (purchase: ChipPurchase) => {
+    const outcome = await settleChipPurchase(deps, order, purchase, now);
+    return outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice' ? 'paid' : 'open';
+  };
+  let purchase: ChipPurchase;
+  try {
+    purchase = await client.getPurchase(purchaseId);
+  } catch (error) {
+    deps.log.warn({ orderId: order.id, purchaseId, err: errName(error) }, 'order purchase could not be checked before closing it');
+    // A refused key is marked here too, so the owner's alert appears and checkout stops offering it.
+    await noteRefusal(deps, account, error, now);
+    return 'open';
+  }
+  if (wasPaid(purchase.status)) return settle(purchase);
+  // Overdue counts as dead for the order page, but CHIP may still take it: it is cancelled too.
+  if (DEAD_PURCHASE_STATUSES.has(purchase.status) && purchase.status !== 'overdue') return 'closed';
+  try {
+    await client.cancelPurchase(purchaseId);
+    return 'closed';
+  } catch (error) {
+    deps.log.warn({ orderId: order.id, purchaseId, err: errName(error) }, 'order purchase could not be cancelled');
+    // Most likely paid in between: look again, and settle it if so.
+    const again = await client.getPurchase(purchaseId).catch(() => null);
+    return again && wasPaid(again.status) ? settle(again) : 'open';
+  }
+}
+
+/**
  * Starts paying a placed order online, through the owner's own CHIP account.
  * The order is placed already, exactly as for the QR; this only creates a
  * purchase for it on the owner's brand with the owner's key and answers where
@@ -273,33 +315,9 @@ export async function startOnlinePayment(
   // earlier one is known to be dead, or is cancelled here; anything less is unavailable.
   const previousId = order.chipPurchaseId;
   if (previousId) {
-    const settled = async (purchase: ChipPurchase) => {
-      const outcome = await settleChipPurchase(deps, { ...order, pageId: account.pageId }, purchase, now);
-      if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderAlreadyPaidError();
-    };
-    let previous: ChipPurchase;
-    try {
-      previous = await client.getPurchase(previousId);
-    } catch (error) {
-      deps.log.warn({ orderId: order.id, purchaseId: previousId, err: errName(error) }, 'earlier order purchase could not be checked');
-      return unavailable('earlier purchase unknown');
-    }
-    if (wasPaid(previous.status)) {
-      await settled(previous);
-      return unavailable('earlier purchase paid but not this order');
-    }
-    // Overdue counts as dead for the order page, but CHIP may still take it: it is cancelled too.
-    if (!DEAD_PURCHASE_STATUSES.has(previous.status) || previous.status === 'overdue') {
-      try {
-        await client.cancelPurchase(previousId);
-      } catch (error) {
-        deps.log.warn({ orderId: order.id, purchaseId: previousId, err: errName(error) }, 'earlier order purchase could not be cancelled');
-        // Most likely paid in between: look again, and settle it if so.
-        const again = await client.getPurchase(previousId).catch(() => null);
-        if (again && wasPaid(again.status)) await settled(again);
-        return unavailable('earlier purchase could not be cancelled');
-      }
-    }
+    const closed = await closePurchase(deps, client, account, { ...order, chipPurchaseId: previousId, pageId: account.pageId }, now);
+    if (closed === 'paid') throw new OrderAlreadyPaidError();
+    if (closed === 'open') return unavailable('earlier purchase not closed');
   }
 
   const methods = await methodsAt(deps, account, client, order.totalCents, now);
@@ -739,48 +757,6 @@ async function basketLines(prisma: PrismaClient, orderId: string): Promise<Baske
 }
 
 /**
- * Closes the order's CHIP purchase while it is still within its due time, so the order can be let
- * go of: one CHIP calls dead already is closed, and any other is cancelled with the owner's key. A
- * purchase CHIP says was paid is settled and the move refused (ORDER_ALREADY_PAID); anything that
- * cannot be shown closed (CHIP down, the key gone, a cancel refused) keeps the order (ORDER_PAYMENT_OPEN).
- */
-async function closeOpenPurchase(
-  deps: PayOnlineDeps,
-  order: { id: string; number: number; totalCents: number; chipPurchaseId: string; pageId: string; page: { paymentAccount: ShopAccount | null } },
-  now: Date,
-): Promise<void> {
-  const account = order.page.paymentAccount;
-  const client = account ? await openOwnerClient(deps, account, now) : null;
-  if (!account || !client) throw new OrderPaymentOpenError();
-  const refuseIfPaid = async (purchase: ChipPurchase) => {
-    if (!wasPaid(purchase.status)) return;
-    const outcome = await settleChipPurchase(deps, order, purchase, now);
-    if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderAlreadyPaidError();
-    throw new OrderPaymentOpenError();
-  };
-  let purchase: ChipPurchase;
-  try {
-    purchase = await client.getPurchase(order.chipPurchaseId);
-  } catch (error) {
-    deps.log.warn({ orderId: order.id, err: errName(error) }, 'order purchase could not be checked before paying another way');
-    await noteRefusal(deps, account, error, now);
-    throw new OrderPaymentOpenError();
-  }
-  await refuseIfPaid(purchase);
-  // Overdue counts as dead for the order page, but CHIP may still take it: it is cancelled too.
-  if (DEAD_PURCHASE_STATUSES.has(purchase.status) && purchase.status !== 'overdue') return;
-  try {
-    await client.cancelPurchase(order.chipPurchaseId);
-  } catch (error) {
-    deps.log.warn({ orderId: order.id, purchaseId: order.chipPurchaseId, err: errName(error) }, 'order purchase could not be cancelled before paying another way');
-    // Most likely paid in between: look again, and settle it if so.
-    const again = await client.getPurchase(order.chipPurchaseId).catch(() => null);
-    if (again) await refuseIfPaid(again);
-    throw new OrderPaymentOpenError();
-  }
-}
-
-/**
  * "Pay another way" on the failed-payment page: the order is cancelled at once and gives back what
  * it held (codes, class seats, its place in a capped pickup window), and its lines come back for the
  * basket, so a new order can be placed without this one holding anything meanwhile. Only an unpaid
@@ -800,7 +776,12 @@ export async function payAnotherWay(deps: PayOnlineDeps, token: string, now: Dat
   if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
   const purchaseId = order.chipPurchaseId;
   if (purchaseId && order.chipPurchaseDueAt && order.chipPurchaseDueAt.getTime() > now.getTime()) {
-    await closeOpenPurchase(deps, { ...order, chipPurchaseId: purchaseId }, now);
+    // Still within its due time: closed here first, or the order is kept (the key gone counts as not closed).
+    const account = order.page.paymentAccount;
+    const client = account ? await openOwnerClient(deps, account, now) : null;
+    const closed = account && client ? await closePurchase(deps, client, account, { ...order, chipPurchaseId: purchaseId }, now) : 'open';
+    if (closed === 'paid') throw new OrderAlreadyPaidError();
+    if (closed === 'open') throw new OrderPaymentOpenError();
   }
   // Over the purchase looked at: a new one started meanwhile, a receipt or a payment leaves the order be.
   const cancelled = await deps.prisma.$transaction(async (tx) => {

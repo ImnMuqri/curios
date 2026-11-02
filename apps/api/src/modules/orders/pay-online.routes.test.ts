@@ -1169,9 +1169,28 @@ describe('POST /store/orders/:token/pay-another-way', () => {
   it('a second tap answers the same lines and does not fail', async () => {
     const shop = await aFailedOrder(app);
     const first = await anotherWay(app, shop.token);
+    expect(first.json().lines.length).toBeGreaterThan(0);
     const second = await anotherWay(app, shop.token);
     expect(second.statusCode).toBe(200);
     expect(second.json()).toEqual(first.json());
+  });
+
+  it('its place in a capped pickup window is free again: the order no longer counts for that window and day', async () => {
+    const shop = await aFailedOrder(app);
+    const place = await app.prisma.pickupPlace.create({
+      data: { pageId: shop.pageId, name: 'Kedai', address: '1 Jalan Mawar', anyTime: false, position: 0, windows: { create: { fromMinute: 600, toMinute: 720, limit: 1, position: 0 } } },
+      select: { id: true, windows: { select: { id: true } } },
+    });
+    const windowId = place.windows[0]!.id;
+    const day = new Date('2026-12-01T00:00:00Z');
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { method: 'PICKUP', address: null, day, pickupPlaceId: place.id, pickupWindowId: windowId } });
+    // As placing an order counts a window's taken places.
+    const taken = () => app.prisma.order.count({ where: { pickupWindowId: windowId, day, status: { not: 'CANCELLED' } } });
+    expect(await taken()).toBe(1);
+
+    expect((await anotherWay(app, shop.token)).statusCode).toBe(200);
+
+    expect(await taken()).toBe(0);
   });
 
   it('a class line comes back with its time, read before the seat is given back', async () => {
