@@ -6,6 +6,13 @@
 
 export type FailReason = 'cancelled' | 'expired' | 'declined' | 'unfinished';
 
+export const FAIL_REASONS: readonly FailReason[] = ['cancelled', 'expired', 'declined', 'unfinished'];
+
+/** For a reason that arrives from outside, such as a query string. */
+export function isFailReason(value: unknown): value is FailReason {
+  return FAIL_REASONS.includes(value as FailReason);
+}
+
 /** Anything CHIP reports that is not one of the named failures did not finish. */
 export function failReason(status: string): FailReason {
   if (status === 'cancelled') return 'cancelled';

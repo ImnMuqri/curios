@@ -429,18 +429,19 @@
   }
 }
 
+/* As specific as the rules above: a bare `.jump` would lose to `.happy .jump` and the jump would run on. */
 @media (prefers-reduced-motion: reduce) {
   .pr,
   .card,
   .conf i,
-  .jump,
-  .sh,
-  .armL,
-  .armR,
-  .tilt,
-  .scratch,
-  .drop,
-  .qm {
+  .happy .jump,
+  .happy .sh,
+  .happy .armL,
+  .happy .armR,
+  .sad .tilt,
+  .sad .scratch,
+  .sad .drop,
+  .sad .qm {
     animation: none;
   }
 }

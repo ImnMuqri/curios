@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { PaymentResult } from '@curios/db-read';
@@ -185,5 +187,28 @@ describe('the failed page', () => {
     getPaymentResult.mockResolvedValue(result);
 
     await expect(failed()).rejects.toThrow('NEXT_REDIRECT:/app/billing');
+  });
+});
+
+describe('result.module.css', () => {
+  // Compound selectors win over bare ones, so the reduced-motion block must name every
+  // animated selector exactly as it was declared, or Peek keeps moving.
+  it('stops every selector that sets an animation under prefers-reduced-motion', () => {
+    const source = readFileSync(join(import.meta.dirname, 'result.module.css'), 'utf8')
+      .replace(/\r\n/g, '\n')
+      .replace(/\/\*[\s\S]*?\*\//g, '');
+    const reducedAt = source.indexOf('@media (prefers-reduced-motion: reduce)');
+    expect(reducedAt).toBeGreaterThan(-1);
+    const reduced = source.slice(reducedAt);
+    const stopped = new Set(
+      [...reduced.matchAll(/([^{}]+)\{\s*animation:\s*none;?\s*\}/g)].flatMap((m) => m[1]!.split(',').map((sel) => sel.trim())),
+    );
+    const rest = source.slice(0, reducedAt).replace(/@keyframes\s+\w+\s*\{(?:[^{}]*\{[^{}]*\})*\s*\}/g, '');
+    const animated = [...rest.matchAll(/([^{}@]+)\{([^{}]*)\}/g)]
+      .filter((m) => /(^|[;\s])animation\s*:/.test(m[2]!) && !/animation:\s*none/.test(m[2]!))
+      .flatMap((m) => m[1]!.split(',').map((sel) => sel.trim()));
+
+    expect(animated.length).toBeGreaterThan(8);
+    expect(animated.filter((sel) => !stopped.has(sel))).toEqual([]);
   });
 });

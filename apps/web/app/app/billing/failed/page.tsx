@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
-import { FAIL_WHAT_HAPPENED, type FailReason } from '@curios/core/chip-status';
+import { FAIL_WHAT_HAPPENED, isFailReason, type FailReason } from '@curios/core/chip-status';
 import { supportAddress } from '@curios/core/support';
 import { getOwnerPage, getPaymentResult } from '@curios/db-read';
 import { resolveOwner } from '../../session.js';
@@ -12,7 +12,7 @@ import styles from '../result.module.css';
 
 /** The reason rides in the query, which anyone can edit: only the four we send are believed. */
 function reasonOf(value: string | undefined): FailReason {
-  return value === 'cancelled' || value === 'expired' || value === 'declined' ? value : 'unfinished';
+  return isFailReason(value) ? value : 'unfinished';
 }
 
 /**
