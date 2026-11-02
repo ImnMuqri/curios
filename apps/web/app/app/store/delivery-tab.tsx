@@ -38,8 +38,9 @@ function feePatch(text: string): SettingsPatch | { problem: string } {
 
 /**
  * Pickup, delivery and notice. Switches and tiles save at once; the delivery
- * note and the fee as the owner pauses. Pickup has its places, each saved by its own form. Flat delivery is only sent once it has a fee
- * the API will take, so choosing it first and typing the fee second works.
+ * note and the fee as the owner pauses. Pickup has its places, each saved by
+ * its own form. Flat delivery is only sent once it has a fee the API will
+ * take, so choosing it first and typing the fee second works.
  * A change that would leave an open shop with no way to hand over is refused
  * by the API, and the choice goes back with its reason.
  */
@@ -47,7 +48,7 @@ export function DeliveryTab({
   settings,
   save,
   today,
-  places,
+  places: initialPlaces,
   pickupApi,
 }: {
   settings: StoreSettings;
@@ -62,6 +63,8 @@ export function DeliveryTab({
   const [pickup, setPickup] = useState(settings.pickupEnabled);
   const [notice, setNotice] = useState(settings.minNoticeDays);
   const [error, setError] = useState('');
+  // Held here, not in the list, so turning pickup off and on again keeps what the owner changed.
+  const [places, setPlaces] = useState(initialPlaces);
   const deliveryNote = useSettingText(settings.deliveryNote ?? '', (text) => ({ deliveryNote: orNull(text) }), save);
   const [closed, setClosed] = useState(settings.closedDays);
   const closedSave = useAutosave((daysClosed: number[]) => save({ closedDays: daysClosed }), 300);
@@ -136,7 +139,7 @@ export function DeliveryTab({
             <i />
           </button>
         </div>
-        {pickup ? <PickupPlaces places={places} api={pickupApi} /> : null}
+        {pickup ? <PickupPlaces places={places} onPlaces={setPlaces} api={pickupApi} /> : null}
       </section>
 
       <section className={ui.section} aria-labelledby="delivery-title">

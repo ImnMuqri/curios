@@ -167,7 +167,6 @@ export type ShopLook = {
   whatsapp: string | null;
 };
 
-
 /** One pickup place and its times, as `GET /store/pickup-places` answers (the API's own shape; the web app cannot import apps/api). */
 export type PickupPlaceView = {
   id: string;

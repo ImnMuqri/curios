@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ApiError } from '../../../lib/api.js';
@@ -19,7 +20,11 @@ function show(places: PickupPlaceView[], over: Partial<PickupApi> = {}) {
     reorder: vi.fn(async () => places),
     ...over,
   };
-  render(<PickupPlaces places={places} api={api} />);
+  function Host() {
+    const [list, setList] = useState(places);
+    return <PickupPlaces places={list} onPlaces={setList} api={api} />;
+  }
+  render(<Host />);
   return api;
 }
 
@@ -101,6 +106,15 @@ describe('PickupPlaces', () => {
       anyTime: false,
       windows: [{ id: 'w1', from: 600, to: 720, limit: 3 }, { id: 'w2', from: 840, to: 960, limit: 5 }],
     }));
+  });
+
+  it('keeps a window that ends at midnight at 1440 when it is edited and saved', async () => {
+    const late: PickupPlaceView = { ...timed, windows: [{ id: 'w9', from: 1200, to: 1440, limit: null }] };
+    const api = show([late]);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Bangi office' }));
+    expect(screen.getByLabelText('To')).toHaveValue('23:59');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save place' })); });
+    expect(api.save).toHaveBeenCalledWith('p2', expect.objectContaining({ windows: [{ id: 'w9', from: 1200, to: 1440, limit: null }] }));
   });
 
   it('asks before removing, then removes', async () => {

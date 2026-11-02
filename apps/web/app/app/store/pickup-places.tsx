@@ -17,11 +17,14 @@ function minutesOf(text: string): number {
   return match ? Number(match[1]) * 60 + Number(match[2]) : Number.NaN;
 }
 
-/** Minutes back as `HH:MM`. A window that ends at midnight (1440) is shown as 23:59, the latest a time field holds. */
+/** Minutes back as `HH:MM`. A window that ends at midnight (1440) is shown as 23:59, the latest a time field holds; `endOf` turns it back. */
 function clockOf(minutes: number): string {
   const m = Math.min(minutes, 1439);
   return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 }
+
+/** An end time as minutes: 23:59 is the field's midnight, so it goes on as 1440 and an edit never moves a window that ends then. */
+const endOf = (text: string) => (text === '23:59' ? 1440 : minutesOf(text));
 
 /** A blank limit is none; text that is not a whole number goes on as NaN, for the rule to refuse. */
 const limitOf = (text: string) => (text.trim() === '' ? null : /^\d+$/.test(text.trim()) ? Number(text.trim()) : Number.NaN);
@@ -45,7 +48,7 @@ function draftOf(place: PickupPlaceView): Draft {
 }
 
 function windowsOf(draft: Draft): NonNullable<PlaceInput['windows']> {
-  return draft.windows.map((w) => ({ ...(w.id ? { id: w.id } : {}), from: minutesOf(w.from), to: minutesOf(w.to), limit: limitOf(w.limit) }));
+  return draft.windows.map((w) => ({ ...(w.id ? { id: w.id } : {}), from: minutesOf(w.from), to: endOf(w.to), limit: limitOf(w.limit) }));
 }
 
 function inputOf(draft: Draft): PlaceInput {
@@ -190,11 +193,10 @@ function PlaceForm({ api, editing, onSaved, onCancel }: { api: PickupApi; editin
 
 /**
  * Where customers collect: the owner's pickup places, each open any time that day or at the owner's own
- * times. Every API answer is the whole list, so it replaces what is shown. Removing asks inside the page
+ * times. Every API answer is the whole list, so it replaces what is shown; the list lives in the parent so it survives the screen being hidden. Removing asks inside the page
  * first, and the API's words (the last place cannot go) show in a callout.
  */
-export function PickupPlaces({ places: initial, api }: { places: PickupPlaceView[]; api: PickupApi }) {
-  const [places, setPlaces] = useState(initial);
+export function PickupPlaces({ places, onPlaces: setPlaces, api }: { places: PickupPlaceView[]; onPlaces: (places: PickupPlaceView[]) => void; api: PickupApi }) {
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -290,7 +292,7 @@ export function PickupPlaces({ places: initial, api }: { places: PickupPlaceView
                     >
                       Edit
                     </button>
-                    <button type="button" className={styles.ghost} aria-label={`Remove ${place.name}`} onClick={() => setConfirming(place.id)}>
+                    <button type="button" className={styles.ghost} aria-label={`Remove ${place.name}`} disabled={busy} onClick={() => setConfirming(place.id)}>
                       Remove
                     </button>
                   </>

@@ -49,7 +49,6 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
     getSettings(),
   ]);
   if (!store || !page || !owned) redirect('/app/onboarding');
-  const pickupPlaces = await getPickupPlaces(owned.id);
 
   if (store.mode === 'PERSONAL') {
     return (
@@ -64,6 +63,8 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       </>
     );
   }
+
+  const pickupPlaces = await getPickupPlaces(owned.id);
 
   // The header (title, save status, open switch) is the screen's own: it
   // follows saves only the client sees.

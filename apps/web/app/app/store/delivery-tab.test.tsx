@@ -41,6 +41,20 @@ describe('DeliveryTab, pickup', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('turn on pickup or delivery');
   });
 
+  it('keeps a place added this session when pickup is turned off and on again', async () => {
+    const added = { ...places[0]!, id: 'p2', name: 'Bangi office' };
+    const api: PickupApi = { ...pickupApi, add: vi.fn(async () => [...places, added]) };
+    render(<DeliveryTab settings={settings} save={vi.fn(async (patch: SettingsPatch) => ({ ...settings, ...patch }))} today={today} places={places} pickupApi={api} />);
+    fireEvent.click(screen.getByRole('button', { name: '+ Add pickup place' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Bangi office' } });
+    fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Lot 3' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Add place' })); });
+    expect(screen.getByText('Bangi office')).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Allow pickup' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Allow pickup' })); });
+    expect(screen.getByText('Bangi office')).toBeInTheDocument();
+  });
+
   it('lists the pickup places while pickup is on, in place of a note field', () => {
     show();
     expect(screen.getByText('Seksyen 7 stall')).toBeInTheDocument();
