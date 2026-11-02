@@ -13,12 +13,21 @@ export function isFailReason(value: unknown): value is FailReason {
   return FAIL_REASONS.includes(value as FailReason);
 }
 
+/** The CHIP statuses of a purchase that failed for good, each with its reason. */
+const FAILED: Record<string, FailReason> = {
+  cancelled: 'cancelled',
+  expired: 'expired',
+  error: 'declined',
+  failed: 'declined',
+  blocked: 'declined',
+};
+
+/** A purchase nobody will ever pay: the billing return sends these to the failed page, rather than "pending". */
+export const FAILED_PURCHASE_STATUSES: ReadonlySet<string> = new Set(Object.keys(FAILED));
+
 /** Anything CHIP reports that is not one of the named failures did not finish. */
 export function failReason(status: string): FailReason {
-  if (status === 'cancelled') return 'cancelled';
-  if (status === 'expired') return 'expired';
-  if (status === 'error' || status === 'failed' || status === 'blocked') return 'declined';
-  return 'unfinished';
+  return Object.hasOwn(FAILED, status) ? FAILED[status]! : 'unfinished';
 }
 
 /** The billing page's "What happened". */

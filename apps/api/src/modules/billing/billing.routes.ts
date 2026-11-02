@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger, FastifyReply } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { failReason } from '@curios/core/chip-status';
+import { FAILED_PURCHASE_STATUSES, failReason } from '@curios/core/chip-status';
 import {
   CHIP_DEFAULT_BASE_URL,
   billingDisabled,
@@ -153,9 +153,6 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
     },
   );
 };
-
-/** A purchase nobody will ever pay: the failed page says so, rather than "pending". */
-const FAILED_PURCHASE_STATUSES = new Set(['expired', 'cancelled', 'error', 'blocked']);
 
 export interface ChipRouteOptions {
   /** CHIP's settings, read once in app.ts; null when billing is switched off. */

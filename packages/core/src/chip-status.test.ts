@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FAIL_BANK_SAID, FAIL_WHAT_HAPPENED, failReason, isFailReason } from './chip-status';
+import { FAIL_BANK_SAID, FAIL_WHAT_HAPPENED, FAILED_PURCHASE_STATUSES, failReason, isFailReason } from './chip-status';
 
 describe('failReason', () => {
   it('names the CHIP statuses', () => {
@@ -18,6 +18,14 @@ describe('failReason', () => {
     expect(FAIL_BANK_SAID.expired).toBe('it took too long');
     expect(FAIL_BANK_SAID.declined).toBe('declined');
     expect(FAIL_BANK_SAID.unfinished).toBe("it didn't finish");
+  });
+});
+
+describe('FAILED_PURCHASE_STATUSES', () => {
+  it('is every status failReason names, and no other', () => {
+    expect([...FAILED_PURCHASE_STATUSES].sort()).toEqual(['blocked', 'cancelled', 'error', 'expired', 'failed']);
+    for (const status of FAILED_PURCHASE_STATUSES) expect(failReason(status)).not.toBe('unfinished');
+    for (const status of ['created', 'viewed', 'pending_execute', 'overdue', 'paid']) expect(FAILED_PURCHASE_STATUSES.has(status)).toBe(false);
   });
 });
 
