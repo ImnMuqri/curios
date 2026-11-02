@@ -112,7 +112,7 @@ function OnlinePayments({
               {chip.isTest ? <p>Test mode: payments here move no real money.</p> : null}
             </span>
             {confirming ? (
-              <span className={ui.confirm}>
+              <span className={`${ui.confirm} ${styles.gwConfirm}`}>
                 Disconnect CHIP? Customers can’t pay online until you connect again.
                 <button type="button" className={ui.confirmRemove} onClick={() => void disconnect()}>
                   Yes, disconnect

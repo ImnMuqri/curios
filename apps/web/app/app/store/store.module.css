@@ -917,6 +917,16 @@
   flex: none;
 }
 
+/* Disconnecting: the question takes its own line under the words, which keep their width. */
+.gwText:has(> .gwConfirm) {
+  flex-wrap: wrap;
+}
+
+.gwConfirm {
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+}
+
 .gwForm {
   margin-top: 12px;
 }
