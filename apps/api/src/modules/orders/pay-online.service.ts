@@ -730,6 +730,31 @@ export async function cancelChipBeforeOwnerMove(deps: PayOnlineDeps, accountId: 
   if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderJustPaidError();
 }
 
+/**
+ * Whether CHIP says the order's purchase was paid, settling it if so (on a cancelled order, as paid
+ * after the cancel, a refund owed). CHIP not answering counts as not paid: only past its due time,
+ * when the purchase can no longer be paid, or on an order already cancelled, is this asked.
+ */
+async function paidAtChip(
+  deps: PayOnlineDeps,
+  client: ChipClient,
+  account: ShopAccount,
+  order: { id: string; number: number; totalCents: number; chipPurchaseId: string; pageId: string },
+  now: Date,
+): Promise<boolean> {
+  let purchase: ChipPurchase;
+  try {
+    purchase = await client.getPurchase(order.chipPurchaseId);
+  } catch (error) {
+    deps.log.warn({ orderId: order.id, purchaseId: order.chipPurchaseId, err: errName(error) }, 'order purchase could not be checked before paying another way');
+    await noteRefusal(deps, account, error, now);
+    return false;
+  }
+  if (!wasPaid(purchase.status)) return false;
+  await settleChipPurchase(deps, order, purchase, now);
+  return true;
+}
+
 /** A line of a basket, as checkout places it again. */
 export interface BasketLine {
   itemId: string;
@@ -770,6 +795,10 @@ async function basketLines(prisma: PrismaClient, orderId: string): Promise<Baske
  * basket, so a new order can be placed without this one holding anything meanwhile. Only an unpaid
  * placed order with no receipt, whose CHIP purchase (if any) is past due or is closed here first.
  * Asked again, a cancelled order answers its lines again, so a second tap never fails.
+ *
+ * CHIP is asked about the purchase every time, past due or cancelled too: a slow bank approval can
+ * land at the due time, and handing the basket back then would have the customer pay twice. Paid,
+ * it is settled (on a cancelled order, as paid after the cancel) and the basket refused.
  */
 export async function payAnotherWay(deps: PayOnlineDeps, token: string, now: Date): Promise<{ lines: BasketLine[] }> {
   const order = await deps.prisma.order.findUnique({
@@ -780,16 +809,23 @@ export async function payAnotherWay(deps: PayOnlineDeps, token: string, now: Dat
   const lines = await basketLines(deps.prisma, order.id);
   // Paid after it was cancelled too: that money is the owner's to refund, never a basket to pay again.
   if (order.paidAt !== null || order.status === 'PAID' || order.status === 'COMPLETED') throw new OrderAlreadyPaidError();
-  if (order.status === 'CANCELLED') return { lines };
-  if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
   const purchaseId = order.chipPurchaseId;
+  const account = order.page.paymentAccount;
+  const client = purchaseId && account ? await openOwnerClient(deps, account, now) : null;
+  if (order.status === 'CANCELLED') {
+    if (purchaseId && account && client && (await paidAtChip(deps, client, account, { ...order, chipPurchaseId: purchaseId }, now))) throw new OrderAlreadyPaidError();
+    return { lines };
+  }
+  if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
   if (purchaseId && order.chipPurchaseDueAt && order.chipPurchaseDueAt.getTime() > now.getTime()) {
     // Still within its due time: closed here first, or the order is kept (the key gone counts as not closed).
-    const account = order.page.paymentAccount;
-    const client = account ? await openOwnerClient(deps, account, now) : null;
     const closed = account && client ? await closePurchase(deps, client, account, { ...order, chipPurchaseId: purchaseId }, now) : 'open';
     if (closed === 'paid') throw new OrderAlreadyPaidError();
     if (closed === 'open') throw new OrderPaymentOpenError();
+  } else if (purchaseId && account && client && (await paidAtChip(deps, client, account, { ...order, chipPurchaseId: purchaseId }, now))) {
+    // Past its due time it can no longer be paid, but a payment made before then may only now be known.
+    // CHIP not answering leaves it at that, and the order is cancelled.
+    throw new OrderAlreadyPaidError();
   }
   // Over the purchase looked at: a new one started meanwhile, a receipt or a payment leaves the order be.
   const cancelled = await deps.prisma.$transaction(async (tx) => {

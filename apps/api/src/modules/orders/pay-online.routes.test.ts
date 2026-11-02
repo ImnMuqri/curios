@@ -1277,15 +1277,53 @@ describe('POST /store/orders/:token/pay-another-way', () => {
     expect((await orderOf(app, shop.orderId)).status).toBe('PLACED');
   });
 
-  it('an order whose purchase is past due, or that has none, is cancelled without asking CHIP', async () => {
+  it('an order whose purchase is past due is cancelled without cancelling at CHIP, and one with none without asking CHIP', async () => {
     const pastDue = await aFailedOrder(app);
     await app.prisma.order.update({ where: { id: pastDue.orderId }, data: { chipPurchaseDueAt: new Date(Date.now() - 60_000) } });
     const qr = await aShopWithOrder(app);
 
     expect((await anotherWay(app, pastDue.token)).statusCode).toBe(200);
+    expect(client.cancelPurchase).not.toHaveBeenCalled();
+    client.getPurchase.mockClear();
     expect((await anotherWay(app, qr.token)).statusCode).toBe(200);
     expect(client.getPurchase).not.toHaveBeenCalled();
     expect((await orderOf(app, qr.orderId)).status).toBe('CANCELLED');
+  });
+
+  it('a past-due purchase CHIP says was paid (a slow bank approval) answers 409 ORDER_ALREADY_PAID, and the order is not cancelled', async () => {
+    const shop = await aFailedOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { chipPurchaseDueAt: new Date(Date.now() - 60_000) } });
+    client.getPurchase.mockImplementation(async () => ({ ...shop.purchase, status: 'paid' }));
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_ALREADY_PAID');
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP' });
+    expect(await app.prisma.itemCode.count({ where: { itemId: shop.tart, orderLineId: { not: null } } })).toBe(2);
+  });
+
+  it('a past-due purchase CHIP cannot be asked about is cancelled, as it can no longer be paid', async () => {
+    const shop = await aFailedOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { chipPurchaseDueAt: new Date(Date.now() - 60_000) } });
+    client.getPurchase.mockRejectedValue(new ChipUnavailableError('down'));
+
+    expect((await anotherWay(app, shop.token)).statusCode).toBe(200);
+    expect((await orderOf(app, shop.orderId)).status).toBe('CANCELLED');
+  });
+
+  it('a cancelled order whose purchase CHIP says was paid answers 409 ORDER_ALREADY_PAID and no lines, and records the late payment', async () => {
+    const shop = await aFailedOrder(app);
+    expect((await anotherWay(app, shop.token)).statusCode).toBe(200);
+    client.getPurchase.mockImplementation(async () => ({ ...shop.purchase, status: 'paid' }));
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_ALREADY_PAID');
+    expect(res.json().lines).toBeUndefined();
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidVia: 'CHIP' });
+    expect((await orderOf(app, shop.orderId)).paidAt).toBeInstanceOf(Date);
   });
 
   it('refuses an order whose receipt is with the shop, and an unknown link', async () => {
