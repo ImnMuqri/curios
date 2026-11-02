@@ -31,8 +31,8 @@ function sameWay(choice: OnlineChoice | null, chipMethods: string[] | null): Onl
  * through (Public board, `payfail`): nothing was taken, the order is held, and the two
  * ways on. "Pay again" starts a new purchase on this order with the way it was tried, in
  * one click, or, when that way is unknown or no longer offered, opens RetryPay's picker;
- * "Pay another way"
- * gives the order's lines back to the basket, cancels the order and goes to checkout.
+ * "Pay another way" gives the order's lines back to the basket, cancels the order and goes
+ * to checkout.
  */
 export function PayFailed(props: {
   token: string;

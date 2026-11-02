@@ -4,7 +4,7 @@
  * order shows for its pickup. Times are minutes after midnight, Malaysia time.
  */
 
-export { PICKUP_NOTE_MAX } from './store';
+export { PICKUP_NOTE_MAX } from './store.js';
 
 export const PICKUP_LIMIT_MAX = 999;
 export const PICKUP_PLACE_NAME_MAX = 60;
