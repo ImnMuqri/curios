@@ -12,6 +12,8 @@ const sql = readFileSync(join(migrations, dir, 'migration.sql'), 'utf8');
 
 /** Run the migration's statements, rewritten onto a scratch schema holding old-shaped tables. */
 const SCHEMA = 'pickup_mig_test';
+/** An old note longer than a place's name may be: it names the place cut short, and is its whole address. */
+const LONG = 'Lobby Menara Seri, Jalan Ampang, beside the guardhouse, call when here please';
 const statements = sql
   .split(';')
   .map((s) => s.replace(/--.*$/gm, '').trim())
@@ -29,10 +31,12 @@ beforeAll(async () => {
     "id" TEXT PRIMARY KEY, "pickupEnabled" BOOLEAN NOT NULL DEFAULT false, "pickupNote" TEXT)`);
   await prisma.$executeRawUnsafe(`CREATE TABLE "${SCHEMA}"."Order" ("id" TEXT PRIMARY KEY, "day" DATE)`);
   await prisma.$executeRawUnsafe(`INSERT INTO "${SCHEMA}"."Page" ("id","pickupEnabled","pickupNote") VALUES
-    ('p1', true, 'Seksyen 7'),
+    ('p1', true, '  Seksyen 7  '),
     ('p2', false, null),
     ('p3', true, null),
-    ('p4', false, 'Old note, pickup off')`);
+    ('p4', false, 'Old note, pickup off'),
+    ('p5', true, '   '),
+    ('p6', true, '${LONG}')`);
   for (const statement of statements) await prisma.$executeRawUnsafe(statement);
 });
 
@@ -45,14 +49,18 @@ type Row = Record<string, unknown>;
 const places = () => prisma.$queryRawUnsafe<Row[]>(`SELECT * FROM "${SCHEMA}"."PickupPlace" ORDER BY "pageId"`);
 
 describe('the pickup_places migration', () => {
-  it('gives a pickup page its note as the address of one any-time place', async () => {
+  it('makes the note of a page one any-time place, named by the note and with it as the address, trimmed', async () => {
     const rows = (await places()).filter((r) => r.pageId === 'p1');
-    expect(rows.map((r) => [r.name, r.address, r.anyTime, r.position])).toEqual([['Pickup', 'Seksyen 7', true, 0]]);
+    expect(rows.map((r) => [r.name, r.address, r.anyTime, r.position])).toEqual([['Seksyen 7', 'Seksyen 7', true, 0]]);
   });
 
-  it('gives a pickup page with no note an empty address', async () => {
-    const rows = (await places()).filter((r) => r.pageId === 'p3');
-    expect(rows.map((r) => [r.name, r.address])).toEqual([['Pickup', '']]);
+  it('names a place from a long note by its first 60 characters, and keeps the whole note as the address', async () => {
+    const rows = (await places()).filter((r) => r.pageId === 'p6');
+    expect(rows.map((r) => [r.name, r.address])).toEqual([[LONG.slice(0, 60), LONG]]);
+  });
+
+  it('gives no place to a pickup page with no note, or only spaces: it stays on any-time pickup', async () => {
+    expect((await places()).filter((r) => r.pageId === 'p3' || r.pageId === 'p5')).toEqual([]);
   });
 
   it('gives no place to a page with pickup off and no note', async () => {
@@ -61,7 +69,7 @@ describe('the pickup_places migration', () => {
 
   it('keeps a note written while pickup was off, as one place', async () => {
     const rows = (await places()).filter((r) => r.pageId === 'p4');
-    expect(rows.map((r) => r.address)).toEqual(['Old note, pickup off']);
+    expect(rows.map((r) => [r.name, r.address])).toEqual([['Old note, pickup off', 'Old note, pickup off']]);
   });
 
   it('adds the order snapshot columns, all null on an old order', async () => {

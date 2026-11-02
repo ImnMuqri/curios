@@ -55,8 +55,9 @@ ALTER TABLE "Order" ADD CONSTRAINT "Order_pickupPlaceId_fkey" FOREIGN KEY ("pick
 -- AddForeignKey
 ALTER TABLE "Order" ADD CONSTRAINT "Order_pickupWindowId_fkey" FOREIGN KEY ("pickupWindowId") REFERENCES "PickupWindow"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
--- A shop that had pickup on, or a note about it, gets one place from them: the note becomes
--- its address, and it is open any time that day, as pickup was before places existed.
+-- A shop with a note about pickup gets one place from it: named by the note (its first 60
+-- characters, a place's longest name) with the whole note as its address, open any time that day,
+-- as pickup was before places existed. A page with no note gets none and keeps any-time pickup.
 INSERT INTO "PickupPlace" ("id", "pageId", "name", "address", "anyTime", "position", "createdAt")
-SELECT gen_random_uuid()::text, "id", 'Pickup', COALESCE("pickupNote", ''), true, 0, now()
-FROM "Page" WHERE "pickupEnabled" OR "pickupNote" IS NOT NULL;
+SELECT gen_random_uuid()::text, "id", LEFT(TRIM("pickupNote"), 60), TRIM("pickupNote"), true, 0, now()
+FROM "Page" WHERE TRIM(COALESCE("pickupNote", '')) <> '';
