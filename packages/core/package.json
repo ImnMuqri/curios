@@ -26,6 +26,8 @@
     "./digital": "./src/digital.ts",
     "./secret-box": "./src/secret-box.ts",
     "./shop-pay": "./src/shop-pay.ts",
+    "./chip-status": "./src/chip-status.ts",
+    "./pickup": "./src/pickup.ts",
     "./shutdown": "./src/shutdown.ts",
     "./error-report": "./src/error-report.ts"
   },
