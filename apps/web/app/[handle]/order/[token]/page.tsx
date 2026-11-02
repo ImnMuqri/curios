@@ -81,6 +81,7 @@ export default async function OrderPage({ params }: Params) {
           method: order.method,
           day: order.day,
           pickupPlaceName: order.pickupPlaceName,
+          pickupPlaceAddress: order.pickupPlaceAddress,
           pickupFrom: order.pickupFrom,
           pickupTo: order.pickupTo,
           itemsCents: order.itemsCents,

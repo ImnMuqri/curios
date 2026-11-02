@@ -36,6 +36,8 @@ export interface OrderViewProps {
     day: string | null;
     /** The pickup place and time the order kept (minutes after midnight); absent or null on an order without them. */
     pickupPlaceName?: string | null;
+    /** The place's address as the order kept it, said under the pickup line. */
+    pickupPlaceAddress?: string | null;
     pickupFrom?: number | null;
     pickupTo?: number | null;
     itemsCents: number;
@@ -556,6 +558,7 @@ export function OrderView(props: OrderViewProps) {
             )}
           </span>
         </div>
+        {order.method === 'PICKUP' && order.pickupPlaceAddress ? <p className={styles.pickupAddress}>{order.pickupPlaceAddress}</p> : null}
         <ul className={styles.lines}>
           {order.lines.map((line, i) => (
             <li key={i} className={styles.line}>

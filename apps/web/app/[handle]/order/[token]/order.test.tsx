@@ -105,6 +105,17 @@ describe('OrderView', () => {
     expect(screen.getByText(`${ms.pickupLabel} · ${ms.dayLong('2026-10-17')}, 10am–12pm · Home`)).toBeInTheDocument();
   });
 
+  it('puts the pickup place’s address under the pickup line, when the order kept one', () => {
+    const { unmount } = render(<OrderView {...withOrder({ pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home', pickupPlaceAddress: 'No 12, Jalan Mawar, Seksyen 7' })} />);
+    const order = screen.getByRole('region', { name: copy.yourOrder });
+    const line = within(order).getByText('Pickup · Sat 17 Oct, 10am–12pm · Home');
+    const address = within(order).getByText('No 12, Jalan Mawar, Seksyen 7');
+    expect(line.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    unmount();
+    render(<OrderView {...withOrder({ pickupPlaceName: 'Home', pickupPlaceAddress: null })} />);
+    expect(screen.queryByText('No 12, Jalan Mawar, Seksyen 7')).toBeNull();
+  });
+
   it('shows the order, its code and its total', () => {
     render(<OrderView {...base} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();

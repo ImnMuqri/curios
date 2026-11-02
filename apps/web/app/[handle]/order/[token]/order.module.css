@@ -764,6 +764,14 @@
   cursor: pointer;
 }
 
+/* The pickup place's address, under the "Pickup · day, time · place" line. */
+.pickupAddress {
+  margin: -6px 0 12px;
+  color: var(--hint);
+  font-size: 12.5px;
+  text-align: right;
+}
+
 .dgWhen {
   margin: 0 0 10px;
 }
