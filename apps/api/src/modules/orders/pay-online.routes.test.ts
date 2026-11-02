@@ -251,11 +251,19 @@ describe('POST /store/orders/:token/pay', () => {
     });
     // Never CHIP's own DuitNow QR: the owner's QR is the only QR option.
     expect(input.methods).toEqual(['fpx', 'razer_tng', 'razer_grabpay', 'shopee_pay', 'visa', 'mastercard', 'maestro']);
-    expect(input.dueAt.getTime()).toBeGreaterThanOrEqual(before + 60 * 60 * 1000 - 1000);
-    expect(input.dueAt.getTime()).toBeLessThanOrEqual(Date.now() + 60 * 60 * 1000);
+    // Thirty minutes to pay, as long as an unpaid order's hold.
+    expect(input.dueAt.getTime()).toBeGreaterThanOrEqual(before + 30 * 60 * 1000 - 1000);
+    expect(input.dueAt.getTime()).toBeLessThanOrEqual(Date.now() + 30 * 60 * 1000);
 
-    // Placed as it was; only the purchase and the email are added.
-    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PLACED', chipPurchaseId: purchase.id, payerEmail: 'aisyah@example.com', paidAt: null });
+    // Placed as it was; only the purchase, the email and the way it is being paid are added.
+    expect(await orderOf(app, shop.orderId)).toMatchObject({
+      status: 'PLACED',
+      chipPurchaseId: purchase.id,
+      chipPurchaseDueAt: input.dueAt,
+      payerEmail: 'aisyah@example.com',
+      chipTriedMethod: 'FPX · Maybank2u',
+      paidAt: null,
+    });
   });
 
   it('sends e-wallets to the wallet and card to CHIP’s card page', async () => {
@@ -265,6 +273,9 @@ describe('POST /store/orders/:token/pay', () => {
     );
     const card = await aShopWithOrder(app);
     expect((await pay(app, card.token, { method: 'card', email: 'a@example.com' })).json().url).toBe('https://gate.chip-in.asia/p/order-purchase/?preferred=visa');
+    // The way each was tried, as the failed page says it.
+    expect((await orderOf(app, tng.orderId)).chipTriedMethod).toBe('Touch ’n Go eWallet');
+    expect((await orderOf(app, card.orderId)).chipTriedMethod).toBe('Card');
   });
 
   it('uses the order’s own email when none is sent, and asks when it has none', async () => {
@@ -551,7 +562,7 @@ describe('GET /store/orders/:token/pay-status', () => {
     client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
     expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'unknown' });
     client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'cancelled' });
-    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed' });
+    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed', reason: 'cancelled', method: 'FPX · Maybank2u' });
 
     const plain = await aShopWithOrder(app);
     expect((await payStatus(app, plain.token)).json()).toEqual({ state: 'none' });
@@ -619,8 +630,8 @@ describe('fix round 1: a second try never orphans a paid purchase', () => {
     const before = Date.now();
     await startPayment(app, shop);
     const due = (await orderOf(app, shop.orderId)).chipPurchaseDueAt!.getTime();
-    expect(due).toBeGreaterThanOrEqual(before + 60 * 60 * 1000 - 1000);
-    expect(due).toBeLessThanOrEqual(Date.now() + 60 * 60 * 1000);
+    expect(due).toBeGreaterThanOrEqual(before + 30 * 60 * 1000 - 1000);
+    expect(due).toBeLessThanOrEqual(Date.now() + 30 * 60 * 1000);
   });
 });
 
@@ -651,7 +662,7 @@ describe('fix round 1: the order page never strands a customer', () => {
     const purchase = await startPayment(app, shop);
     await app.prisma.order.update({ where: { id: shop.orderId }, data: { chipPurchaseDueAt: new Date(Date.now() - 60_000) } });
     client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'viewed' });
-    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed' });
+    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed', reason: 'expired', method: 'FPX · Maybank2u' });
   });
 });
 
@@ -909,7 +920,7 @@ describe('final review: paid-family statuses', () => {
     const shop = await aShopWithOrder(app);
     const first = await startPayment(app, shop);
     client.getPurchase.mockResolvedValueOnce({ ...first, status: 'overdue' });
-    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed' });
+    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed', reason: 'unfinished', method: 'FPX · Maybank2u' });
 
     client.getPurchase.mockResolvedValueOnce({ ...first, status: 'overdue' });
     const res = await pay(app, shop.token, { method: 'card', email: 'b@example.com' });
@@ -1087,5 +1098,173 @@ describe('an order with a voucher, paid online', () => {
     const mail = mailQueue.add.mock.calls[0]![1];
     expect(mail.text).toContain('RAYA10: −RM21');
     expect(mail.text).toContain('Paid: RM199');
+  });
+});
+
+describe('POST /store/orders/:token/pay-another-way', () => {
+  const anotherWay = (on: FastifyInstance, token: string) => on.inject({ method: 'POST', url: `/store/orders/${token}/pay-another-way`, remoteAddress: from() });
+
+  /**
+   * The RM220 order's lines tied to the shop's own items: the cake with its 2kg option, and the
+   * tarts as a voucher item whose two codes the order holds. Its CHIP purchase is still within its
+   * thirty minutes, and CHIP says (unless told otherwise) the bank cancelled it.
+   */
+  async function aFailedOrder(on: FastifyInstance) {
+    const shop = await aShopWithOrder(on);
+    const cake = await on.prisma.item.create({
+      data: {
+        pageId: shop.pageId,
+        name: 'Kek coklat moist',
+        slug: 'kek',
+        position: 0,
+        options: { create: [{ label: '1kg', priceCents: 9_000, position: 0 }, { label: '2kg', priceCents: 17_000, position: 1 }] },
+      },
+      select: { id: true, options: { orderBy: { position: 'asc' }, select: { id: true } } },
+    });
+    const tart = await on.prisma.item.create({
+      data: { pageId: shop.pageId, name: 'Tart nenas', slug: 'tart', position: 1, priceCents: 2_000, kind: 'DIGITAL', delivery: 'CODES' },
+      select: { id: true },
+    });
+    const lines = await on.prisma.orderLine.findMany({ where: { orderId: shop.orderId }, orderBy: { position: 'asc' }, select: { id: true } });
+    await on.prisma.orderLine.update({ where: { id: lines[0]!.id }, data: { itemId: cake.id } });
+    await on.prisma.orderLine.update({ where: { id: lines[1]!.id }, data: { itemId: tart.id } });
+    await on.prisma.itemCode.createMany({ data: [0, 1].map((i) => ({ itemId: tart.id, code: `T-${i}-${randomUUID()}`, orderLineId: lines[1]!.id })) });
+    const purchase = aPurchase({ status: 'cancelled' });
+    await on.prisma.order.update({
+      where: { id: shop.orderId },
+      data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: new Date(Date.now() + 20 * 60_000), chipTriedMethod: 'FPX · Maybank2u' },
+    });
+    client.getPurchase.mockImplementation(async () => purchase);
+    return { ...shop, purchase, cake: cake.id, twoKg: cake.options[1]!.id, tart: tart.id };
+  }
+
+  it('hands back the lines and cancels the order at once, though its purchase had time left', async () => {
+    const shop = await aFailedOrder(app);
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({
+      lines: [
+        { itemId: shop.cake, optionId: shop.twoKg, quantity: 1, sessionId: null },
+        { itemId: shop.tart, optionId: null, quantity: 2, sessionId: null },
+      ],
+    });
+    const order = await orderOf(app, shop.orderId);
+    expect(order.status).toBe('CANCELLED');
+    expect(order.cancelledAt).toBeInstanceOf(Date);
+    // Already dead at CHIP, so there is nothing to cancel there.
+    expect(client.cancelPurchase).not.toHaveBeenCalled();
+  });
+
+  it('a code the order held is free again afterwards', async () => {
+    const shop = await aFailedOrder(app);
+    expect(await app.prisma.itemCode.count({ where: { itemId: shop.tart, orderLineId: null } })).toBe(0);
+
+    await anotherWay(app, shop.token);
+
+    expect(await app.prisma.itemCode.count({ where: { itemId: shop.tart, orderLineId: null } })).toBe(2);
+  });
+
+  it('a second tap answers the same lines and does not fail', async () => {
+    const shop = await aFailedOrder(app);
+    const first = await anotherWay(app, shop.token);
+    const second = await anotherWay(app, shop.token);
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toEqual(first.json());
+  });
+
+  it('a class line comes back with its time, read before the seat is given back', async () => {
+    const shop = await aFailedOrder(app);
+    const item = await app.prisma.item.create({
+      data: {
+        pageId: shop.pageId,
+        name: 'Kelas',
+        slug: 'kelas',
+        position: 2,
+        priceCents: 0,
+        kind: 'DIGITAL',
+        delivery: 'SESSION',
+        sessions: { create: { startsAt: new Date('2026-12-01T12:00:00Z'), seats: 5 } },
+      },
+      select: { id: true, sessions: { select: { id: true } } },
+    });
+    const sessionId = item.sessions[0]!.id;
+    const line = await app.prisma.orderLine.create({
+      data: { orderId: shop.orderId, itemId: item.id, itemName: 'Kelas', unitPriceCents: 0, quantity: 1, position: 2, kind: 'DIGITAL', delivery: 'SESSION' },
+    });
+    await app.prisma.sessionBooking.create({ data: { sessionId, orderLineId: line.id, seats: 1 } });
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.json().lines[2]).toEqual({ itemId: item.id, optionId: null, quantity: 1, sessionId });
+    expect(await app.prisma.sessionBooking.count({ where: { sessionId } })).toBe(0);
+  });
+
+  it('a paid order answers 409 ORDER_ALREADY_PAID and is left as it is', async () => {
+    const shop = await aFailedOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { status: 'PAID', paidAt: new Date(), paidVia: 'MANUAL' } });
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_ALREADY_PAID');
+    expect((await orderOf(app, shop.orderId)).status).toBe('PAID');
+    expect(await app.prisma.itemCode.count({ where: { itemId: shop.tart, orderLineId: { not: null } } })).toBe(2);
+  });
+
+  it('a purchase CHIP says was paid after all is settled, and the order is not cancelled', async () => {
+    const shop = await aFailedOrder(app);
+    client.getPurchase.mockImplementation(async () => ({ ...shop.purchase, status: 'paid' }));
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_ALREADY_PAID');
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP' });
+  });
+
+  it('a purchase the customer could still pay is cancelled at CHIP first', async () => {
+    const shop = await aFailedOrder(app);
+    client.getPurchase.mockImplementation(async () => ({ ...shop.purchase, status: 'viewed' }));
+
+    expect((await anotherWay(app, shop.token)).statusCode).toBe(200);
+    expect(client.cancelPurchase).toHaveBeenCalledWith(shop.purchase.id);
+    expect((await orderOf(app, shop.orderId)).status).toBe('CANCELLED');
+  });
+
+  it('when CHIP cannot say the purchase is closed, the order is kept: 409 ORDER_PAYMENT_OPEN', async () => {
+    const shop = await aFailedOrder(app);
+    client.getPurchase.mockRejectedValue(new ChipUnavailableError('down'));
+    const down = await anotherWay(app, shop.token);
+    expect(down.statusCode).toBe(409);
+    expect(down.json().error.code).toBe('ORDER_PAYMENT_OPEN');
+
+    client.getPurchase.mockImplementation(async () => ({ ...shop.purchase, status: 'viewed' }));
+    client.cancelPurchase.mockRejectedValue(new ChipUnavailableError('down'));
+    expect((await anotherWay(app, shop.token)).json().error.code).toBe('ORDER_PAYMENT_OPEN');
+    expect((await orderOf(app, shop.orderId)).status).toBe('PLACED');
+  });
+
+  it('an order whose purchase is past due, or that has none, is cancelled without asking CHIP', async () => {
+    const pastDue = await aFailedOrder(app);
+    await app.prisma.order.update({ where: { id: pastDue.orderId }, data: { chipPurchaseDueAt: new Date(Date.now() - 60_000) } });
+    const qr = await aShopWithOrder(app);
+
+    expect((await anotherWay(app, pastDue.token)).statusCode).toBe(200);
+    expect((await anotherWay(app, qr.token)).statusCode).toBe(200);
+    expect(client.getPurchase).not.toHaveBeenCalled();
+    expect((await orderOf(app, qr.orderId)).status).toBe('CANCELLED');
+  });
+
+  it('refuses an order whose receipt is with the shop, and an unknown link', async () => {
+    const shop = await aFailedOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { receiptKey: 'r/x.jpg', receiptType: 'image/jpeg', receiptUploadedAt: new Date() } });
+    const res = await anotherWay(app, shop.token);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_RECEIPT_SENT');
+    expect((await orderOf(app, shop.orderId)).status).toBe('PLACED');
+
+    expect((await anotherWay(app, 'no-such-token')).statusCode).toBe(404);
   });
 });

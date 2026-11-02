@@ -6,13 +6,15 @@ import { scheduleHousekeepingJobs } from './retention.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 const now = new Date('2026-10-25T12:00:00Z');
-const hoursAgo = (h: number) => new Date(now.getTime() - h * 3_600_000);
+const minutesAgo = (m: number) => new Date(now.getTime() - m * 60_000);
 
 let accountId = '';
 let pageId = '';
 let codeItem = '';
 let classItem = '';
 let time = '';
+let cappedWindow = '';
+let openWindow = '';
 let n = 0;
 
 beforeAll(async () => {
@@ -41,13 +43,31 @@ beforeAll(async () => {
   codeItem = account.pages[0]!.items[0]!.id;
   classItem = account.pages[0]!.items[1]!.id;
   time = account.pages[0]!.items[1]!.sessions[0]!.id;
+  const place = await prisma.pickupPlace.create({
+    data: {
+      pageId,
+      name: 'Kedai',
+      address: '1 Jalan Holds',
+      anyTime: false,
+      position: 0,
+      windows: {
+        create: [
+          { fromMinute: 600, toMinute: 720, limit: 3, position: 0 },
+          { fromMinute: 720, toMinute: 840, limit: null, position: 1 },
+        ],
+      },
+    },
+    select: { windows: { orderBy: { position: 'asc' }, select: { id: true } } },
+  });
+  cappedWindow = place.windows[0]!.id;
+  openWindow = place.windows[1]!.id;
 });
 afterAll(async () => {
   await prisma.account.delete({ where: { id: accountId } });
   await prisma.$disconnect();
 });
 
-/** An order made `age` hours ago, holding a code and a seat unless told not to. */
+/** An order made `age` minutes ago, holding a code and a seat unless told not to. */
 async function anOrder(age: number, data: Record<string, unknown> = {}, holds = true) {
   n += 1;
   const order = await prisma.order.create({
@@ -62,7 +82,7 @@ async function anOrder(age: number, data: Record<string, unknown> = {}, holds = 
       itemsCents: 500,
       deliveryCents: 0,
       totalCents: 500,
-      createdAt: hoursAgo(age),
+      createdAt: minutesAgo(age),
       lines: {
         create: [
           { itemId: codeItem, itemName: 'Voucher', unitPriceCents: 500, quantity: 1, position: 0, kind: 'DIGITAL', delivery: 'CODES' },
@@ -84,8 +104,8 @@ const held = (id: string) => prisma.itemCode.count({ where: { orderLine: { order
 const booked = (id: string) => prisma.sessionBooking.count({ where: { orderLine: { orderId: id } } });
 
 describe('expireUnpaidHolds', () => {
-  it('cancels a 25-hour-old unpaid order holding a code and a seat, and gives both back', async () => {
-    const id = await anOrder(25);
+  it('cancels a 31-minute-old unpaid order holding a code and a seat, and gives both back', async () => {
+    const id = await anOrder(31);
     expect(await expireUnpaidHolds({ prisma, now })).toBeGreaterThanOrEqual(1);
     const order = await prisma.order.findUniqueOrThrow({ where: { id } });
     expect(order.status).toBe('CANCELLED');
@@ -95,12 +115,12 @@ describe('expireUnpaidHolds', () => {
     expect(await prisma.itemCode.count({ where: { itemId: codeItem, orderLineId: null } })).toBeGreaterThanOrEqual(1);
   });
 
-  it('leaves alone an order with a receipt, a live CHIP purchase, paid, younger than a day, or holding nothing', async () => {
-    const receipt = await anOrder(30, { receiptKey: 'r/x.jpg', receiptType: 'image/jpeg', receiptUploadedAt: hoursAgo(2) });
-    const live = await anOrder(30, { chipPurchaseId: 'p1', chipPurchaseDueAt: new Date(now.getTime() + 600_000) });
-    const paid = await anOrder(30, { status: 'PAID', paidAt: hoursAgo(1) });
-    const young = await anOrder(23);
-    const empty = await anOrder(30, {}, false);
+  it('leaves alone an order with a receipt, a live CHIP purchase, paid, younger than 30 minutes, or holding nothing', async () => {
+    const receipt = await anOrder(31, { receiptKey: 'r/x.jpg', receiptType: 'image/jpeg', receiptUploadedAt: minutesAgo(2) });
+    const live = await anOrder(31, { chipPurchaseId: 'p1', chipPurchaseDueAt: new Date(now.getTime() + 600_000) });
+    const paid = await anOrder(31, { status: 'PAID', paidAt: minutesAgo(1) });
+    const young = await anOrder(29);
+    const empty = await anOrder(31, {}, false);
     await expireUnpaidHolds({ prisma, now });
     expect(await status(receipt)).toBe('PLACED');
     expect(await status(live)).toBe('PLACED');
@@ -114,10 +134,20 @@ describe('expireUnpaidHolds', () => {
   });
 
   it('takes one whose CHIP purchase is past due, keeping its purchase id so a late payment is recorded on it', async () => {
-    const id = await anOrder(30, { chipPurchaseId: 'p-late', chipPurchaseDueAt: hoursAgo(20) });
+    const id = await anOrder(31, { chipPurchaseId: 'p-late', chipPurchaseDueAt: minutesAgo(1) });
     await expireUnpaidHolds({ prisma, now });
     // Exactly what settleChipPurchase's paid-after-cancel update looks for.
     expect(await prisma.order.count({ where: { id, status: 'CANCELLED', paidAt: null, chipPurchaseId: 'p-late' } })).toBe(1);
+  });
+
+  it('takes one holding a place in a pickup window with a limit, and leaves one whose window has none', async () => {
+    const capped = await anOrder(31, { method: 'PICKUP', pickupWindowId: cappedWindow }, false);
+    const open = await anOrder(31, { method: 'PICKUP', pickupWindowId: openWindow }, false);
+    const sent = await anOrder(31, { method: 'PICKUP', pickupWindowId: cappedWindow, receiptKey: 'r/y.jpg', receiptType: 'image/jpeg', receiptUploadedAt: minutesAgo(2) }, false);
+    await expireUnpaidHolds({ prisma, now });
+    expect(await status(capped)).toBe('CANCELLED');
+    expect(await status(open)).toBe('PLACED');
+    expect(await status(sent)).toBe('PLACED');
   });
 
   it('runs twice safely', async () => {
@@ -127,9 +157,9 @@ describe('expireUnpaidHolds', () => {
     expect(await status(id)).toBe('CANCELLED');
   });
 
-  it('is scheduled hourly', async () => {
+  it('is scheduled every 5 minutes', async () => {
     const queue = { upsertJobScheduler: vi.fn(async () => ({})) };
     await scheduleHousekeepingJobs(queue);
-    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(EXPIRE_HOLDS_JOB, { pattern: '20 * * * *' }, { name: EXPIRE_HOLDS_JOB });
+    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(EXPIRE_HOLDS_JOB, { pattern: '*/5 * * * *' }, { name: EXPIRE_HOLDS_JOB });
   });
 });

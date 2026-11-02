@@ -1,17 +1,27 @@
 import { ChipRefusedError, DEAD_PURCHASE_STATUSES, wasPaid, type ChipClient, type ChipPurchase, type PurchaseProduct } from '@curios/billing';
 import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidAndSentOwnerMail, paidOrderMail, paidTwiceMail } from '@curios/core';
+import { failReason, type FailReason } from '@curios/core/chip-status';
 import { openSecret } from '@curios/core/secret-box';
 import { formatRinggit } from '@curios/core/store';
 import { chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, type OnlineChoice, type OnlineOffer } from '@curios/core/shop-pay';
 import type { Settings } from '@curios/core/settings';
-import type { PrismaClient } from '@curios/db';
+import { releaseOrderStock, type PrismaClient } from '@curios/db';
 import { errName } from '../billing/billing.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { PaymentsOffError } from '../../lib/switches.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
 import { deliverOrder, queueDeliveryMail } from './deliver.service.js';
-import { EmailRequiredError, OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
+import {
+  EmailRequiredError,
+  OrderAlreadyPaidError,
+  OrderCancelledError,
+  OrderJustPaidError,
+  OrderNotFoundError,
+  OrderPaymentOpenError,
+  OrderReceiptSentError,
+  OrderStateError,
+} from './order.errors.js';
 import type { OrderMailQueue } from './place.service.js';
 
 type Log = {
@@ -102,8 +112,8 @@ interface ShopAccount {
 
 const ACCOUNT_SELECT = { pageId: true, brandId: true, secretKeyCiphertext: true, isTest: true, lastErrorAt: true, brandName: true } as const;
 
-/** One hour to pay, then the purchase stops being payable (due_strict). */
-const PAY_WINDOW_MS = 60 * 60 * 1000;
+/** Thirty minutes to pay, then the purchase stops being payable (due_strict): as long as an unpaid order's hold. */
+const PAY_WINDOW_MS = 30 * 60 * 1000;
 
 const markRefused = (deps: PayOnlineDeps, pageId: string, now: Date) =>
   deps.prisma.shopPaymentAccount.updateMany({ where: { pageId }, data: { lastErrorAt: now } });
@@ -353,7 +363,8 @@ export async function startOnlinePayment(
   // make one, and only one of them may stay on the order.
   const { count } = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'PLACED', chipPurchaseId: previousId },
-    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail },
+    // The way it is being tried, for the failed page's "Tried with FPX · Maybank2u".
+    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail, chipTriedMethod: choiceLabel(input) },
   });
   if (count === 0) {
     // Another attempt won, or the order moved on (the owner cancelled, or it was paid).
@@ -589,7 +600,9 @@ const ORDER_FOR_SETTLE = {
  */
 export type PayStatus =
   | { state: 'paid'; paidAt: string | null; paidMethodLabel: string | null; paidRef: string | null }
-  | { state: 'pending' | 'failed' | 'none' | 'unknown' };
+  /** Why, in CHIP's terms (past its due time is `expired`), and the way it was tried, if known. */
+  | { state: 'failed'; reason: FailReason; method: string | null }
+  | { state: 'pending' | 'none' | 'unknown' };
 
 /**
  * Where an order's online payment stands, for its order page. A placed order
@@ -598,7 +611,7 @@ export type PayStatus =
  * is late, lost, or (in development) never sent.
  */
 export async function payStatus(deps: PayOnlineDeps, token: string, now: Date): Promise<PayStatus> {
-  const order = await deps.prisma.order.findUnique({ where: { tokenHash: hashSessionValue(token) }, select: ORDER_FOR_SETTLE });
+  const order = await deps.prisma.order.findUnique({ where: { tokenHash: hashSessionValue(token) }, select: { ...ORDER_FOR_SETTLE, chipTriedMethod: true } });
   if (!order) throw new OrderNotFoundError();
   const paid = (row: { paidAt: Date | null; paidMethodLabel: string | null; paidRef: string | null }): PayStatus => ({
     state: 'paid',
@@ -621,7 +634,16 @@ export async function payStatus(deps: PayOnlineDeps, token: string, now: Date): 
 
 async function checkWithChip(
   deps: PayOnlineDeps,
-  order: { id: string; number: number; totalCents: number; chipPurchaseId: string; chipPurchaseDueAt: Date | null; pageId: string; page: { paymentAccount: ShopAccount | null } },
+  order: {
+    id: string;
+    number: number;
+    totalCents: number;
+    chipPurchaseId: string;
+    chipPurchaseDueAt: Date | null;
+    chipTriedMethod: string | null;
+    pageId: string;
+    page: { paymentAccount: ShopAccount | null };
+  },
   now: Date,
 ): Promise<PayStatus> {
   const account = order.page.paymentAccount;
@@ -644,10 +666,13 @@ async function checkWithChip(
     const row = await deps.prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { paidAt: true, paidMethodLabel: true, paidRef: true } });
     return { state: 'paid', paidAt: row.paidAt?.toISOString() ?? null, paidMethodLabel: row.paidMethodLabel, paidRef: row.paidRef };
   }
-  if (outcome === 'failed' || outcome === 'test-refused') return { state: 'failed' };
+  const method = order.chipTriedMethod;
+  if (outcome === 'failed' || outcome === 'test-refused') return { state: 'failed', reason: failReason(purchase.status), method };
   // Past its due time (due_strict) a purchase can no longer be paid, whatever CHIP's status says yet;
   // never said of one CHIP says was paid, whatever became of it after.
-  if (outcome === 'pending' && !wasPaid(purchase.status) && order.chipPurchaseDueAt && order.chipPurchaseDueAt.getTime() <= now.getTime()) return { state: 'failed' };
+  if (outcome === 'pending' && !wasPaid(purchase.status) && order.chipPurchaseDueAt && order.chipPurchaseDueAt.getTime() <= now.getTime()) {
+    return { state: 'failed', reason: 'expired', method };
+  }
   return { state: 'pending' };
 }
 
@@ -677,6 +702,123 @@ export async function cancelChipBeforeOwnerMove(deps: PayOnlineDeps, accountId: 
   if (!purchase || !wasPaid(purchase.status)) return;
   const outcome = await settleChipPurchase(deps, order, purchase, now);
   if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderJustPaidError();
+}
+
+/** A line of a basket, as checkout places it again. */
+export interface BasketLine {
+  itemId: string;
+  optionId: string | null;
+  quantity: number;
+  sessionId: string | null;
+}
+
+/**
+ * The order's lines as a basket. An order keeps its option's label, not its id, so the option is
+ * the item's one with that label today; a line whose item, or option, is gone is left out, as it
+ * could not be ordered again. A class line's time is its booking's, so this is read before the
+ * booking is given back (once it is, the line comes back with no time, to be picked again).
+ */
+async function basketLines(prisma: PrismaClient, orderId: string): Promise<BasketLine[]> {
+  const lines = await prisma.orderLine.findMany({
+    where: { orderId },
+    orderBy: { position: 'asc' },
+    select: {
+      itemId: true,
+      optionLabel: true,
+      quantity: true,
+      booking: { select: { sessionId: true } },
+      item: { select: { options: { select: { id: true, label: true } } } },
+    },
+  });
+  return lines.flatMap((line) => {
+    if (!line.itemId || !line.item) return [];
+    const option = line.optionLabel === null ? null : line.item.options.find((o) => o.label === line.optionLabel);
+    if (option === undefined) return [];
+    return [{ itemId: line.itemId, optionId: option?.id ?? null, quantity: line.quantity, sessionId: line.booking?.sessionId ?? null }];
+  });
+}
+
+/**
+ * Closes the order's CHIP purchase while it is still within its due time, so the order can be let
+ * go of: one CHIP calls dead already is closed, and any other is cancelled with the owner's key. A
+ * purchase CHIP says was paid is settled and the move refused (ORDER_ALREADY_PAID); anything that
+ * cannot be shown closed (CHIP down, the key gone, a cancel refused) keeps the order (ORDER_PAYMENT_OPEN).
+ */
+async function closeOpenPurchase(
+  deps: PayOnlineDeps,
+  order: { id: string; number: number; totalCents: number; chipPurchaseId: string; pageId: string; page: { paymentAccount: ShopAccount | null } },
+  now: Date,
+): Promise<void> {
+  const account = order.page.paymentAccount;
+  const client = account ? await openOwnerClient(deps, account, now) : null;
+  if (!account || !client) throw new OrderPaymentOpenError();
+  const refuseIfPaid = async (purchase: ChipPurchase) => {
+    if (!wasPaid(purchase.status)) return;
+    const outcome = await settleChipPurchase(deps, order, purchase, now);
+    if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderAlreadyPaidError();
+    throw new OrderPaymentOpenError();
+  };
+  let purchase: ChipPurchase;
+  try {
+    purchase = await client.getPurchase(order.chipPurchaseId);
+  } catch (error) {
+    deps.log.warn({ orderId: order.id, err: errName(error) }, 'order purchase could not be checked before paying another way');
+    await noteRefusal(deps, account, error, now);
+    throw new OrderPaymentOpenError();
+  }
+  await refuseIfPaid(purchase);
+  // Overdue counts as dead for the order page, but CHIP may still take it: it is cancelled too.
+  if (DEAD_PURCHASE_STATUSES.has(purchase.status) && purchase.status !== 'overdue') return;
+  try {
+    await client.cancelPurchase(order.chipPurchaseId);
+  } catch (error) {
+    deps.log.warn({ orderId: order.id, purchaseId: order.chipPurchaseId, err: errName(error) }, 'order purchase could not be cancelled before paying another way');
+    // Most likely paid in between: look again, and settle it if so.
+    const again = await client.getPurchase(order.chipPurchaseId).catch(() => null);
+    if (again) await refuseIfPaid(again);
+    throw new OrderPaymentOpenError();
+  }
+}
+
+/**
+ * "Pay another way" on the failed-payment page: the order is cancelled at once and gives back what
+ * it held (codes, class seats, its place in a capped pickup window), and its lines come back for the
+ * basket, so a new order can be placed without this one holding anything meanwhile. Only an unpaid
+ * placed order with no receipt, whose CHIP purchase (if any) is past due or is closed here first.
+ * Asked again, a cancelled order answers its lines again, so a second tap never fails.
+ */
+export async function payAnotherWay(deps: PayOnlineDeps, token: string, now: Date): Promise<{ lines: BasketLine[] }> {
+  const order = await deps.prisma.order.findUnique({
+    where: { tokenHash: hashSessionValue(token) },
+    select: { ...ORDER_FOR_SETTLE, receiptKey: true, page: { select: { displayName: true, paymentAccount: { select: ACCOUNT_SELECT } } } },
+  });
+  if (!order) throw new OrderNotFoundError();
+  const lines = await basketLines(deps.prisma, order.id);
+  // Paid after it was cancelled too: that money is the owner's to refund, never a basket to pay again.
+  if (order.paidAt !== null || order.status === 'PAID' || order.status === 'COMPLETED') throw new OrderAlreadyPaidError();
+  if (order.status === 'CANCELLED') return { lines };
+  if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
+  const purchaseId = order.chipPurchaseId;
+  if (purchaseId && order.chipPurchaseDueAt && order.chipPurchaseDueAt.getTime() > now.getTime()) {
+    await closeOpenPurchase(deps, { ...order, chipPurchaseId: purchaseId }, now);
+  }
+  // Over the purchase looked at: a new one started meanwhile, a receipt or a payment leaves the order be.
+  const cancelled = await deps.prisma.$transaction(async (tx) => {
+    const { count } = await tx.order.updateMany({
+      where: { id: order.id, status: 'PLACED', paidAt: null, receiptKey: null, chipPurchaseId: purchaseId },
+      data: { status: 'CANCELLED', cancelledAt: now },
+    });
+    if (count === 1) await releaseOrderStock(tx, order.id);
+    return count === 1;
+  });
+  if (!cancelled) {
+    const current = await deps.prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { status: true, paidAt: true } });
+    if (current.paidAt !== null || current.status === 'PAID' || current.status === 'COMPLETED') throw new OrderAlreadyPaidError();
+    if (current.status === 'CANCELLED') return { lines };
+    throw new OrderStateError();
+  }
+  deps.log.info({ orderId: order.id }, 'order cancelled to pay another way');
+  return { lines };
 }
 
 /** The callback's order: what verifying and settling it needs. */

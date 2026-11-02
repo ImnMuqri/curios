@@ -168,6 +168,19 @@ export class OrderJustPaidError extends Error {
   }
 }
 
+/**
+ * "Pay another way" on an order whose CHIP purchase could not be shown to be closed (CHIP did not
+ * answer, or would not cancel it): the order is kept, so a payment still landing finds it placed.
+ */
+export class OrderPaymentOpenError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ORDER_PAYMENT_OPEN';
+  constructor() {
+    super("We couldn't close your payment with the bank just now. Try again in a minute.");
+    this.name = 'OrderPaymentOpenError';
+  }
+}
+
 /** A digital item with nothing left to give: no file, no link, or the last code or seat is gone. */
 export class SoldOutError extends Error {
   readonly statusCode = 409;

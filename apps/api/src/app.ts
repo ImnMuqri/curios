@@ -67,6 +67,7 @@ import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } 
 import {
   createPayOnline,
   shopChipCallbackRoutes,
+  shopPayAnotherWayRoutes,
   shopPayMethodsRoutes,
   shopPayStartRoutes,
   shopPayStatusRoutes,
@@ -284,6 +285,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, shopPayPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, shopPayPerOrderLimit(app.rateLimitRedis));
     await scope.register(shopPayStartRoutes, { payOnline });
+    await scope.register(shopPayAnotherWayRoutes, { payOnline });
   });
   await app.register(async (scope) => {
     await scope.register(rateLimit, shopPayStatusPerOrderLimit(app.rateLimitRedis));

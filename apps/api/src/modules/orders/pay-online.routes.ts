@@ -14,6 +14,7 @@ import {
   MethodsCache,
   openOwnerClient,
   orderForCallback,
+  payAnotherWay,
   payMethodsFor,
   payStatus,
   settleChipPurchase,
@@ -135,13 +136,40 @@ export const shopPayStatusRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> =
         response: {
           200: z.union([
             z.object({ state: z.literal('paid'), paidAt: z.string().nullable(), paidMethodLabel: z.string().nullable(), paidRef: z.string().nullable() }),
-            z.object({ state: z.enum(['pending', 'failed', 'none', 'unknown']) }),
+            z.object({ state: z.literal('failed'), reason: z.enum(['cancelled', 'expired', 'declined', 'unfinished']), method: z.string().nullable() }),
+            z.object({ state: z.enum(['pending', 'none', 'unknown']) }),
           ]),
           404: errorSchema,
         },
       },
     },
     async (request) => payStatus(deps(request.log), request.params.token, new Date()),
+  );
+};
+
+/**
+ * "Pay another way" on the failed-payment page: cancels the order and answers its lines for the
+ * basket. It may ask CHIP (and cancel a purchase), as paying does, so it shares paying's per-IP
+ * and per-order budgets (app.ts).
+ */
+export const shopPayAnotherWayRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async (app, options) => {
+  const deps = (log: PayOnlineDeps['log']): PayOnlineDeps => ({ ...options.payOnline, log });
+
+  app.post(
+    '/store/orders/:token/pay-another-way',
+    {
+      schema: {
+        params: z.object({ token: z.string().min(1).max(128) }),
+        response: {
+          200: z.object({
+            lines: z.array(z.object({ itemId: z.string(), optionId: z.string().nullable(), quantity: z.number().int(), sessionId: z.string().nullable() })),
+          }),
+          404: errorSchema,
+          409: errorSchema,
+        },
+      },
+    },
+    async (request) => payAnotherWay(deps(request.log), request.params.token, new Date()),
   );
 };
 

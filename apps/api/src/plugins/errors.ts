@@ -216,6 +216,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   'CHIP_NO_CHECK_METHOD',
   'CHIP_PAYMENT_IN_FLIGHT',
   'ORDER_JUST_PAID',
+  // "Pay another way" while CHIP cannot say the order's purchase is closed.
+  'ORDER_PAYMENT_OPEN',
   'CHIP_TEST_REFUSED',
   'CHIP_NOT_CONNECTED',
   // The kept key will not open (PAYMENT_SECRETS_KEY rotated): connect again.

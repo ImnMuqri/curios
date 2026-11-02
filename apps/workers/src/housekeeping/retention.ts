@@ -193,8 +193,8 @@ export function createHousekeepingWorker(deps: {
 /** 03:00 in Malaysia, when the fewest visitors are mid-conversation. Upserted under a fixed id. */
 export async function scheduleHousekeepingJobs(queue: SchedulerQueue): Promise<void> {
   await queue.upsertJobScheduler(RETENTION_JOB, { pattern: '0 3 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: RETENTION_JOB });
-  // Hourly: unpaid orders holding codes or class seats are let go of after a day.
-  await queue.upsertJobScheduler(EXPIRE_HOLDS_JOB, { pattern: '20 * * * *' }, { name: EXPIRE_HOLDS_JOB });
+  // Every 5 minutes: unpaid orders holding codes, class seats or capped pickup times are let go of after 30 minutes.
+  await queue.upsertJobScheduler(EXPIRE_HOLDS_JOB, { pattern: '*/5 * * * *' }, { name: EXPIRE_HOLDS_JOB });
   // Class reminders for the next Malaysian day, at a civil hour; the claim on each booking makes a re-run harmless.
   await queue.upsertJobScheduler(SESSION_REMINDERS_JOB, { pattern: '0 9 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: SESSION_REMINDERS_JOB });
   // Daily is plenty: a fact short a vector costs tokens, never a wrong answer.
