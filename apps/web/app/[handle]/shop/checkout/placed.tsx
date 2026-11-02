@@ -49,7 +49,7 @@ export function Placed(props: {
   digitalNote?: string | null;
   /** Paid online, and everything in the order is digital: "Paid. It's on its way to your email" and "Get your files". */
   paidDigital?: { what: string } | null;
-  /** The order holds a code or a class seat until it is paid: says they are released after a day. */
+  /** The order holds a code or a class seat until it is paid: says they are released after 30 minutes. */
   holds?: boolean;
   /** The order came to RM0, so it was placed paid: nothing to pay, only the order to see. */
   free?: boolean;

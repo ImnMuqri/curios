@@ -181,6 +181,14 @@ export interface ShopCopy {
   checkingPayment: string;
   stillWaiting: string;
   onlineFailed: string;
+  /** The full page after a failed online payment (Public board, `payfail`). `payFailedHeld` marks its bold words with **. */
+  payFailedTitle: string;
+  payFailedHeld: (name: string) => string;
+  payAgain: (total: string) => string;
+  payAnotherWay: string;
+  triedWith: (method: string | null, said: string) => string;
+  /** Paying another way found CHIP could not yet confirm the earlier payment closed. */
+  payStillOpen: string;
   // The placed screen after paying online.
   paidPlaced: string;
   paidPlacedSub: (total: string, name: string) => string;
@@ -507,6 +515,12 @@ const EN: ShopCopy = {
   checkingPayment: 'Checking your payment…',
   stillWaiting: 'We’re still waiting for the bank. This page updates once it’s confirmed.',
   onlineFailed: 'Your online payment didn’t go through.',
+  payFailedTitle: 'Payment didn’t go through',
+  payFailedHeld: (name) => `Nothing was taken. ${name} has saved your order for **30 minutes**.`,
+  payAgain: (total) => `Pay ${total} again`,
+  payAnotherWay: 'Pay another way',
+  triedWith: (method, said) => (method ? `Tried with ${method}. The bank said: ${said}.` : `The bank said: ${said}.`),
+  payStillOpen: 'We can’t confirm your earlier payment has closed yet. Try again in a few minutes.',
   paidPlaced: 'Paid. Order placed',
   paidPlacedSub: (total, name) => `${total} paid. ${name} has your order and will get it ready.`,
   seeOrder: 'See your order',
@@ -612,7 +626,7 @@ const EN: ShopCopy = {
   byEmail: 'By email',
   pickTimeFirst: 'Pick a time for this class.',
   digitalPlacedNote: (paid, email) => (paid ? `Sent to ${email}. It’s on your order page too.` : 'Your items unlock as soon as your payment is confirmed.'),
-  holdNote: 'Unpaid orders are released after 24 hours.',
+  holdNote: 'Unpaid orders are released after 30 minutes.',
   statusSent: 'Paid · Sent to your email',
   statusPaidDigital: 'Paid',
   digWhat: (kinds) => (kinds.length === 1 ? ({ FILES: 'files', LINK: 'link', CODES: 'code', SESSION: 'class details' } as Record<string, string>)[kinds[0]!] ?? 'downloads and access' : 'downloads and access'),
@@ -802,6 +816,12 @@ const MS: ShopCopy = {
   checkingPayment: 'Menyemak bayaran anda…',
   stillWaiting: 'Kami masih menunggu bank. Halaman ini dikemas kini sebaik sahaja ia disahkan.',
   onlineFailed: 'Bayaran dalam talian anda tidak berjaya.',
+  payFailedTitle: 'Bayaran tidak berjaya',
+  payFailedHeld: (name) => `Tiada wang diambil. ${name} menyimpan pesanan anda selama **30 minit**.`,
+  payAgain: (total) => `Bayar ${total} sekali lagi`,
+  payAnotherWay: 'Bayar cara lain',
+  triedWith: (method, said) => (method ? `Dicuba dengan ${method}. Bank berkata: ${said}.` : `Bank berkata: ${said}.`),
+  payStillOpen: 'Kami belum dapat mengesahkan bayaran tadi telah ditutup. Cuba lagi dalam beberapa minit.',
   paidPlaced: 'Dibayar. Tempahan dibuat',
   paidPlacedSub: (total, name) => `${total} dibayar. ${name} sudah menerima tempahan anda dan akan menyediakannya.`,
   seeOrder: 'Lihat tempahan anda',
@@ -906,7 +926,7 @@ const MS: ShopCopy = {
   byEmail: 'Melalui e-mel',
   pickTimeFirst: 'Pilih masa untuk kelas ini.',
   digitalPlacedNote: (paid, email) => (paid ? `Dihantar ke ${email}. Ia juga ada di halaman tempahan anda.` : 'Barang anda dibuka sebaik bayaran anda disahkan.'),
-  holdNote: 'Tempahan yang belum dibayar dilepaskan selepas 24 jam.',
+  holdNote: 'Tempahan yang belum dibayar dilepaskan selepas 30 minit.',
   statusSent: 'Dibayar · Dihantar ke e-mel anda',
   statusPaidDigital: 'Dibayar',
   digWhat: (kinds) => (kinds.length === 1 ? ({ FILES: 'fail', LINK: 'pautan', CODES: 'kod', SESSION: 'butiran kelas' } as Record<string, string>)[kinds[0]!] ?? 'muat turun dan akses' : 'muat turun dan akses'),

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { isFailReason, type FailReason } from '@curios/core/chip-status';
 import { customerSteps, isRiderDelivery, orderView, type OrderStatus } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
@@ -11,6 +12,7 @@ import { unavailableCopy } from '../../../_system/unavailable-copy.js';
 import { apiFetch } from '../../../../lib/api.js';
 import { DigitalSection, type DigitalLineView } from './digital-section.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
+import { PayFailed } from './pay-failed.js';
 import { ReceiptUpload } from './receipt-upload.js';
 import { RetryPay } from './retry-pay.js';
 import { ShopCover } from '../../shop/shop-cover.js';
@@ -83,7 +85,8 @@ type Tone = 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
 /** What GET /store/orders/:token/pay-status answers. */
 type PayStatus =
   | { state: 'paid'; paidAt: string | null; paidMethodLabel: string | null; paidRef: string | null }
-  | { state: 'pending' | 'failed' | 'none' | 'unknown' };
+  | { state: 'failed'; reason: string; method: string | null }
+  | { state: 'pending' | 'none' | 'unknown' };
 
 /**
  * Quick checks while the customer has just come back, then slower ones for about ten
@@ -103,6 +106,8 @@ const SLOW_MS = 20_000;
 function usePaymentCheck(token: string, pending: boolean) {
   const [check, setCheck] = useState<'checking' | 'waiting' | 'failed' | null>(pending ? 'checking' : null);
   const [paid, setPaid] = useState<Extract<PayStatus, { state: 'paid' }> | null>(null);
+  // Why it failed and how it was tried, for the failed page.
+  const [failed, setFailed] = useState<{ reason: FailReason; method: string | null }>({ reason: 'unfinished', method: null });
   useEffect(() => {
     if (!pending) return;
     let stopped = false;
@@ -119,6 +124,7 @@ function usePaymentCheck(token: string, pending: boolean) {
           return;
         }
         if (status.state === 'failed' || status.state === 'none') {
+          if (status.state === 'failed') setFailed({ reason: isFailReason(status.reason) ? status.reason : 'unfinished', method: status.method ?? null });
           setCheck(status.state === 'failed' ? 'failed' : null);
           return;
         }
@@ -137,7 +143,7 @@ function usePaymentCheck(token: string, pending: boolean) {
       clearTimeout(timer);
     };
   }, [token, pending]);
-  return { check, paid };
+  return { check, paid, failed };
 }
 
 /** The kinds and count of a FILES line's files, for the line's small print. */
@@ -184,7 +190,7 @@ export function OrderView(props: OrderViewProps) {
   const Title = preview ? 'h2' : 'h1';
   const copy = shopCopy(props.language);
   const [codeCopied, copyCode] = useCopied();
-  const { check, paid: confirmed } = usePaymentCheck(props.token, props.order.status === 'PLACED' && props.order.chipPending === true);
+  const { check, paid: confirmed, failed } = usePaymentCheck(props.token, props.order.status === 'PLACED' && props.order.chipPending === true);
   // Paid while the customer was at CHIP (or, by the callback, before this page rendered).
   const order: OrderViewProps['order'] = confirmed
     ? { ...props.order, status: 'PAID', paidVia: 'CHIP', paidAt: confirmed.paidAt, paidMethodLabel: confirmed.paidMethodLabel, paidRef: confirmed.paidRef, chipPending: false }
@@ -279,6 +285,28 @@ export function OrderView(props: OrderViewProps) {
 
   const kinds = [...new Set(digitalLines.map((line) => line.delivery))];
   const receiptName = `receipt-${order.number}.${EXTENSION[order.receiptType ?? ''] ?? 'jpg'}`;
+
+  // A payment that did not go through, with nothing else in the way: its own page. With a receipt
+  // sent or the page suspended, the order page stays and says it in a line.
+  if (check === 'failed' && view === 'awaitingPayment' && !suspended && !preview) {
+    return (
+      <main className={`${checkout.column} ${checkout.placedColumn}`}>
+        <PayFailed
+          token={props.token}
+          handle={props.handle}
+          displayName={name}
+          copy={copy}
+          code={order.code}
+          lines={order.lines}
+          totalCents={order.totalCents}
+          reason={failed.reason}
+          method={failed.method}
+          chipMethods={chipMethods}
+          navigate={props.navigate}
+        />
+      </main>
+    );
+  }
 
   if (celebrate) {
     return (

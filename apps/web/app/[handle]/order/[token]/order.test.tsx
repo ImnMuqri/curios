@@ -508,13 +508,21 @@ describe('OrderView: paid online', () => {
     expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
   });
 
-  it('a payment that did not go through: the QR and the upload, with a word about it', async () => {
-    vi.stubGlobal('fetch', status({ state: 'failed' }));
+  it('a payment that did not go through: its own page, with why and how it was tried', async () => {
+    vi.stubGlobal('fetch', status({ state: 'failed', reason: 'declined', method: 'FPX · Maybank2u' }));
     render(<OrderView {...withOrder({ chipPending: true })} />);
 
-    expect(await screen.findByText(copy.onlineFailed)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
-    expect(screen.getByText(copy.uploadReceipt)).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { level: 1, name: copy.payFailedTitle })).toBeInTheDocument();
+    expect(screen.getByText('Tried with FPX · Maybank2u. The bank said: declined.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy.payAnotherWay })).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeNull();
+    expect(screen.queryByText(copy.uploadReceipt)).toBeNull();
+  });
+
+  it('a failure the API did not give a known reason for reads as unfinished', async () => {
+    vi.stubGlobal('fetch', status({ state: 'failed', reason: '<script>', method: null }));
+    render(<OrderView {...withOrder({ chipPending: true })} />);
+    expect(await screen.findByText("The bank said: it didn't finish.")).toBeInTheDocument();
   });
 
   it('speaks Malay on a Malay page', () => {
@@ -539,6 +547,10 @@ describe('OrderView: trying to pay again', () => {
     vi.stubGlobal('fetch', spy);
     return spy;
   }
+  const payAgain = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.click(await screen.findByRole('button', { name: copy.payAgain('RM215') }));
+    await screen.findByRole('region', { name: copy.tryPayAgain });
+  };
   const retry = () => screen.getByRole('region', { name: copy.tryPayAgain });
   const choices = () =>
     within(within(retry()).getByRole('radiogroup', { name: copy.howYoullPay }))
@@ -548,17 +560,17 @@ describe('OrderView: trying to pay again', () => {
 
   afterEach(() => window.sessionStorage.clear());
 
-  it('after a failed payment, offers the online choices again, beside the QR', async () => {
+  it('after a failed payment, Pay again offers the online choices', async () => {
     const user = userEvent.setup();
     const fetch = api();
     const navigate = vi.fn();
     render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate })} />);
 
-    expect(await screen.findByText(copy.onlineFailed)).toBeInTheDocument();
-    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
-    // Online choices only: the QR is already on the page.
+    expect(await screen.findByRole('heading', { name: copy.payFailedTitle })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
+    await payAgain(user);
+    // Online choices only: the QR is on checkout, not here.
     expect(choices()).toEqual([copy.onlineBanking, copy.eWallet, copy.card]);
-    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
 
     await user.click(within(retry()).getByRole('radio', { name: new RegExp(copy.card) }));
     const go = within(retry()).getByRole('button', { name: copy.payByCard('RM215') });
@@ -574,6 +586,7 @@ describe('OrderView: trying to pay again', () => {
   });
 
   it('offers no retry once a receipt is sent, even after a failed payment; with no receipt it does', async () => {
+    const user = userEvent.setup();
     api();
     const sent = { chipPending: true, receiptUploadedAt: '2026-10-15T03:00:00.000Z', receiptType: 'image/jpeg' };
     const { unmount } = render(<OrderView {...withOrder(sent, { chipMethods: ALL })} />);
@@ -581,14 +594,15 @@ describe('OrderView: trying to pay again', () => {
     expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
     unmount();
     render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL })} />);
-    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+    await payAgain(user);
+    expect(screen.getByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
   });
 
   it('sends the bank chosen for FPX', async () => {
     const user = userEvent.setup();
     const fetch = api();
     render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate: vi.fn() })} />);
-    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await payAgain(user);
     await user.click(within(retry()).getByRole('radio', { name: 'CIMB Clicks' }));
     await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
     await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'CIMB Clicks') }));
@@ -602,7 +616,7 @@ describe('OrderView: trying to pay again', () => {
     const user = userEvent.setup();
     api({ pay: { error: { code: 'RATE_LIMITED', message: 'Too many tries just now.' } }, payCode: 429 });
     render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate: vi.fn() })} />);
-    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await payAgain(user);
     await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
     await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
 
@@ -610,16 +624,15 @@ describe('OrderView: trying to pay again', () => {
     expect(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') })).toBeEnabled();
   });
 
-  it('when online payment is not available after all, says so and keeps the QR', async () => {
+  it('when online payment is not available after all, says so', async () => {
     const user = userEvent.setup();
     api({ pay: { url: null } });
     render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate: vi.fn() })} />);
-    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await payAgain(user);
     await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
     await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
 
-    expect(await screen.findByText(copy.onlineUnavailable)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
+    expect(await screen.findByText(copy.cantPayOnline('Kek Lina'))).toBeInTheDocument();
   });
 
   it('a payment already made after all reloads the order', async () => {
@@ -627,7 +640,7 @@ describe('OrderView: trying to pay again', () => {
     api({ pay: { error: { code: 'ORDER_ALREADY_PAID', message: 'This order is already paid.' } }, payCode: 409 });
     const navigate = vi.fn();
     render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate })} />);
-    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await payAgain(user);
     await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
     await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
 
