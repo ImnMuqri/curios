@@ -783,7 +783,7 @@
 
 /* ---- Payment failed (Public board, `payfail`, 2 Nov): checkout's placed layout, in red and grey ---- */
 .pf {
-  --pf-red: #c4372d;
+  --pf-red: var(--merah-deep);
 }
 
 .pfIcon {
@@ -793,7 +793,7 @@
   height: 76px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: #fdecea;
+  background: var(--merah-muda);
   color: var(--pf-red);
   animation: pfPop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
@@ -833,7 +833,7 @@
   width: 54px;
   height: 64px;
   border-radius: 14px;
-  background: #6b5a60;
+  background: var(--muted);
   color: var(--paper);
   font-family: var(--font-mono);
   font-size: 30px;

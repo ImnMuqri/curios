@@ -97,6 +97,12 @@
   --foot-mark-b: #4a5677;
   --peek-ground-shadow: rgba(0, 0, 0, 0.28);
   --phone-edge: #e1e4e9;
+  /* The paid page's confetti (Billing board, `.pr`), with --biru, and Peek's sweat drop on the failed page. */
+  --confetti-gold: #f2b63c;
+  --confetti-red: #e2483d;
+  --confetti-green: #1f9d55;
+  --confetti-lilac: #7a8cff;
+  --peek-sweat: #9fd3ff;
   /* The tick in the dashboard toast. */
   --toast-tick: #86e0b8;
   /* Checkout's quieter grey (Public board): sub-lines, hints and the small print. */
