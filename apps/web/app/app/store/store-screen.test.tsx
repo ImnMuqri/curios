@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ShopLook, type StoreSettings } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type PickupPlaceView, type ShopLook, type StoreSettings } from './store-types.js';
 
 const apiFetch = vi.fn();
 vi.mock('../../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
@@ -34,11 +34,12 @@ const look: ShopLook = {
   style: 'SOFT', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null, socials: [], whatsapp: '60123456789',
 };
 
-const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items) =>
+const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items, pickupPlaces: PickupPlaceView[] = []) =>
   render(
     <StoreScreen
       initial={{ ...settings, ...over }}
       items={list}
+      pickupPlaces={pickupPlaces}
       look={look}
       uploadsEnabled
       publicBase="https://files.example/"
@@ -58,7 +59,8 @@ describe('StoreScreen, against the API', () => {
 
   it('saves a setting with PATCH /store/settings and unwraps the settings', async () => {
     apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true } });
-    screenWith();
+    // Pickup turns on only with a place to collect from; with none, the add-place form opens instead.
+    screenWith({}, items, [{ id: 'p1', name: 'Kedai', address: '1 Jalan Mawar', mapUrl: null, note: null, anyTime: true, windows: [] }]);
     await userEvent.click(tab('Pickup & delivery'));
     await userEvent.click(screen.getByRole('switch', { name: 'Allow pickup' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/settings', { method: 'PATCH', body: JSON.stringify({ pickupEnabled: true }) });
