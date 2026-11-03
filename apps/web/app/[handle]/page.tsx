@@ -27,13 +27,25 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 /**
- * Edge to edge: a phone draws the page under its status bar too, rather than
- * insetting it below a strip of the document's colour. The cover grows up into
- * that strip by the inset (Bento.module.css), so the photo runs to the top of
- * the glass and everything under it stays where it was. Only here: the pages
- * that leave it off keep their strip.
+ * Edge to edge, so the page runs on behind a phone's toolbar, and behind the
+ * status bar of a page saved to the home screen (the cover grows by that
+ * inset, Bento.module.css). Not behind Safari's status bar: iOS 26 Safari fills
+ * that strip with one flat colour while the page sits at the very top, whatever
+ * this says -- which is what OPEN_SCROLLED is for.
  */
 export const viewport: Viewport = { viewportFit: 'cover' };
+
+/**
+ * iOS 26 Safari draws the page behind its status bar only once the page is
+ * scrolled. So a phone's page with a cover opens scrolled by its runway, the
+ * room the cover adds at its top (Bento.module.css), and the photo is what
+ * sits behind the status bar from the first frame. Inline, at the foot of the
+ * page, so it runs before the first paint rather than jumping after
+ * hydration; every way here is a full page load. Never when the visitor is
+ * already further down: a reload or Back keeps their place. Dragged back to
+ * the very top, the strip is Safari's flat colour again.
+ */
+const OPEN_SCROLLED = `(function(){var p=document.currentScript&&document.currentScript.closest('[data-bento-page]');if(!p||!matchMedia('(max-width: 600px)').matches)return;var r=parseFloat(getComputedStyle(p).getPropertyValue('--runway'))||0;if(r>0&&scrollY<r)scrollTo(0,r)})()`;
 
 /**
  * The first metadata in this app, and it exists to honour a promise
@@ -161,6 +173,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
           faqTotal={faq?.total ?? 0}
           language={page.language}
         />
+        <script dangerouslySetInnerHTML={{ __html: OPEN_SCROLLED }} />
       </BentoPage>
     </main>
   );

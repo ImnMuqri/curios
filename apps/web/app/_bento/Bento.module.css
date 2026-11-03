@@ -123,6 +123,19 @@
   .backdrop {
     display: none;
   }
+
+  /*
+   * iOS 26 Safari fills the strip behind its status bar with a flat colour
+   * while the page sits at the very top, and draws the page there once it is
+   * scrolled. So a phone's page with a cover opens scrolled by the runway
+   * (page.tsx's OPEN_SCROLLED), which the cover adds at its top, and is tall
+   * enough to scroll that far however short its links are. A little over the
+   * status bar's height, so no edge of the strip is left flat.
+   */
+  .stage > .page[data-cover='yes'] {
+    --runway: 64px;
+    min-height: calc(100vh + var(--runway));
+  }
 }
 
 .backdrop img {
@@ -153,12 +166,13 @@
  * face, 73% of the width down (37% of the card). Measured in the page's own
  * width (cqi), so the public page, the editor's phone and the landing agree.
  *
- * Plus the status bar's inset, which is zero unless the route draws edge to
- * edge (viewport-fit=cover, the public page): the photo reaches up behind the
- * status bar and the face stays where it was, under it.
+ * Plus the status bar's inset, which is zero unless the page draws edge to
+ * edge under it (the public page saved to the home screen), and the runway, the
+ * room a phone's public page opens scrolled past (below): either way the photo
+ * reaches up behind the status bar and the face stays where it was, under it.
  */
 .cover {
-  height: calc(102cqi + env(safe-area-inset-top, 0px));
+  height: calc(102cqi + env(safe-area-inset-top, 0px) + var(--runway, 0px));
   overflow: hidden;
 }
 
