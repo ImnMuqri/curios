@@ -152,9 +152,13 @@
  * page is wide (52% of a 300 by 590 card), and the name starts under the
  * face, 73% of the width down (37% of the card). Measured in the page's own
  * width (cqi), so the public page, the editor's phone and the landing agree.
+ *
+ * Plus the status bar's inset, which is zero unless the route draws edge to
+ * edge (viewport-fit=cover, the public page): the photo reaches up behind the
+ * status bar and the face stays where it was, under it.
  */
 .cover {
-  height: 102cqi;
+  height: calc(102cqi + env(safe-area-inset-top, 0px));
   overflow: hidden;
 }
 
@@ -174,7 +178,8 @@
   flex-direction: column;
   align-items: center;
   gap: var(--head-gap);
-  padding: 56px 22px 0;
+  /* Clear of the status bar on a page drawn edge to edge, as the cover is. */
+  padding: calc(56px + env(safe-area-inset-top, 0px)) 22px 0;
   text-align: center;
 }
 

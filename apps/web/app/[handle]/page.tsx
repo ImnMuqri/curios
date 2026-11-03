@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { notFound } from 'next/navigation';
 import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage, getSettings } from '@curios/db-read';
@@ -25,6 +25,15 @@ export const runtime = 'nodejs';
 // submit. Unlike the FAQ routes, which opt into ISR deliberately, this one
 // says so out loud.
 export const dynamic = 'force-dynamic';
+
+/**
+ * Edge to edge: a phone draws the page under its status bar too, rather than
+ * insetting it below a strip of the document's colour. The cover grows up into
+ * that strip by the inset (Bento.module.css), so the photo runs to the top of
+ * the glass and everything under it stays where it was. Only here: the pages
+ * that leave it off keep their strip.
+ */
+export const viewport: Viewport = { viewportFit: 'cover' };
 
 /**
  * The first metadata in this app, and it exists to honour a promise
