@@ -22,8 +22,8 @@ interface Turn {
   answer: string;
   /** "Thanks. Here’s order 7Q4M:" is followed by the order itself. */
   order?: OrderCardData;
-  /** The shop item the answer named first, as one card. */
-  productCard?: ProductCardData;
+  /** The shop items the answer named, in its order, a card each. */
+  productCards?: ProductCardData[];
 }
 
 /**
@@ -318,7 +318,7 @@ export function ChatMode({
             index === previous.length - 1 ? { ...turn, answer: text } : turn,
           ),
         );
-      const attach = (extra: Pick<Turn, 'order' | 'productCard'>) =>
+      const attach = (extra: Pick<Turn, 'order' | 'productCards'>) =>
         setTurns((previous) =>
           previous.map((turn, index) => (index === previous.length - 1 ? { ...turn, ...extra } : turn)),
         );
@@ -359,7 +359,7 @@ export function ChatMode({
                 intent?: { qualified?: boolean };
                 // Checked before drawing, like everything else in the stream.
                 card?: unknown;
-                productCard?: unknown;
+                productCards?: unknown;
               };
               if (parsed.type === 'text' && parsed.text) append(parsed.text);
               if (parsed.type === 'order' && isOrderCardData(parsed.card)) attach({ order: parsed.card });
@@ -376,8 +376,11 @@ export function ChatMode({
               if (parsed.type === 'done') {
                 if (parsed.conversationId) conversationId.current = parsed.conversationId;
                 setQualified(parsed.intent?.qualified === true);
-                const productCard = validProductCard(parsed.productCard);
-                if (productCard) attach({ productCard });
+                // Each card checked on its own: one half-sent card does not take the others with it.
+                const productCards = (Array.isArray(parsed.productCards) ? parsed.productCards : [])
+                  .map(validProductCard)
+                  .filter((card) => card !== null);
+                if (productCards.length > 0) attach({ productCards });
                 return;
               }
             } catch {
@@ -462,56 +465,57 @@ export function ChatMode({
               />
             </div>
             {turn.order ? <OrderCard card={turn.order} /> : null}
-            {turn.productCard && shopPath ? (
-              <div className={styles.productCard} role="group" aria-label={turn.productCard.name}>
-                <a
-                  className={styles.productPhoto}
-                  href={`${shopPath}/${encodeURIComponent(turn.productCard.slug)}`}
-                  aria-label={cardCopy.open(turn.productCard.name)}
-                >
-                  {turn.productCard.photoUrl ? (
-                    <img src={turn.productCard.photoUrl} alt="" />
-                  ) : (
-                    <span aria-hidden="true">{[...turn.productCard.name][0]?.toUpperCase()}</span>
-                  )}
-                </a>
-                <span className={styles.productText}>
-                  <b>{turn.productCard.name}</b>
-                  {turn.productCard.fromPriceCents === null ? null : (
-                    <span>
-                      {turn.productCard.firstOptionId === null
-                        ? ringgit(turn.productCard.fromPriceCents)
-                        : cardCopy.from(ringgit(turn.productCard.fromPriceCents))}
+            {shopPath
+              ? turn.productCards?.map((card) => (
+                  <div key={card.itemId} className={styles.productCard} role="group" aria-label={card.name}>
+                    <a
+                      className={styles.productPhoto}
+                      href={`${shopPath}/${encodeURIComponent(card.slug)}`}
+                      aria-label={cardCopy.open(card.name)}
+                    >
+                      {card.photoUrl ? (
+                        <img src={card.photoUrl} alt="" />
+                      ) : (
+                        <span aria-hidden="true">{[...card.name][0]?.toUpperCase()}</span>
+                      )}
+                    </a>
+                    <span className={styles.productText}>
+                      <b>{card.name}</b>
+                      {card.fromPriceCents === null ? null : (
+                        <span>
+                          {card.firstOptionId === null
+                            ? ringgit(card.fromPriceCents)
+                            : cardCopy.from(ringgit(card.fromPriceCents))}
+                        </span>
+                      )}
                     </span>
-                  )}
-                </span>
-                {turn.productCard.buy === 'soldOut' ? (
-                  <span className={styles.productAdd} aria-disabled="true" data-done="">
-                    {cardCopy.soldOut ?? 'Sold out'}
-                  </span>
-                ) : turn.productCard.buy === 'pick' && turn.productCard.fromPriceCents !== null ? (
-                  <a className={styles.productAdd} href={`${shopPath}/${encodeURIComponent(turn.productCard.slug)}`}>
-                    {cardCopy.pick ?? 'Pick a time'}
-                  </a>
-                ) : onAddToBasket && turn.productCard.fromPriceCents !== null ? (
-                  <button
-                    type="button"
-                    className={styles.productAdd}
-                    data-done={basketItemIds?.includes(turn.productCard.itemId) || undefined}
-                    // aria-disabled, not disabled: the button keeps keyboard focus when it turns into "In your basket".
-                    aria-disabled={basketItemIds?.includes(turn.productCard.itemId) || undefined}
-                    onClick={() => {
-                      const card = turn.productCard;
-                      if (!card || basketItemIds?.includes(card.itemId)) return;
-                      const inBasket = onAddToBasket(card);
-                      setAnnouncement(cardCopy.added(card.name, typeof inBasket === 'number' ? inBasket : 1));
-                    }}
-                  >
-                    {basketItemIds?.includes(turn.productCard.itemId) ? cardCopy.inBasket : cardCopy.add}
-                  </button>
-                ) : null}
-              </div>
-            ) : null}
+                    {card.buy === 'soldOut' ? (
+                      <span className={styles.productAdd} aria-disabled="true" data-done="">
+                        {cardCopy.soldOut ?? 'Sold out'}
+                      </span>
+                    ) : card.buy === 'pick' && card.fromPriceCents !== null ? (
+                      <a className={styles.productAdd} href={`${shopPath}/${encodeURIComponent(card.slug)}`}>
+                        {cardCopy.pick ?? 'Pick a time'}
+                      </a>
+                    ) : onAddToBasket && card.fromPriceCents !== null ? (
+                      <button
+                        type="button"
+                        className={styles.productAdd}
+                        data-done={basketItemIds?.includes(card.itemId) || undefined}
+                        // aria-disabled, not disabled: the button keeps keyboard focus when it turns into "In your basket".
+                        aria-disabled={basketItemIds?.includes(card.itemId) || undefined}
+                        onClick={() => {
+                          if (basketItemIds?.includes(card.itemId)) return;
+                          const inBasket = onAddToBasket(card);
+                          setAnnouncement(cardCopy.added(card.name, typeof inBasket === 'number' ? inBasket : 1));
+                        }}
+                      >
+                        {basketItemIds?.includes(card.itemId) ? cardCopy.inBasket : cardCopy.add}
+                      </button>
+                    ) : null}
+                  </div>
+                ))
+              : null}
           </div>
         ))
       )}

@@ -314,7 +314,7 @@ describe('Ask, the product card', () => {
             start(controller) {
               const enc = new TextEncoder();
               controller.enqueue(enc.encode('data: {"type":"text","text":"Kek batik is RM95."}\n\n'));
-              controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, productCard: card })}\n\n`));
+              controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, productCards: [card] })}\n\n`));
               controller.close();
             },
           }),

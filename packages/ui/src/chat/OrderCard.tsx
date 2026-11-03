@@ -58,7 +58,7 @@ export interface ProductCardData {
   buy: 'add' | 'pick' | 'soldOut';
 }
 
-/** The streamed `done`'s `productCard` when it is whole, else null: half a card is not drawn. */
+/** One of the streamed `done`'s `productCards` when it is whole, else null: half a card is not drawn. */
 export function validProductCard(value: unknown): ProductCardData | null {
   if (typeof value !== 'object' || value === null) return null;
   const card = value as Record<string, unknown>;

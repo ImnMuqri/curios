@@ -3,7 +3,7 @@ import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type Prism
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import type { Settings } from '@curios/core/settings';
-import { lookUpOrder, productCard, type OrderCard, type ProductCard } from './order-lookup.js';
+import { lookUpOrder, productCards, type OrderCard, type ProductCard } from './order-lookup.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
@@ -19,8 +19,8 @@ export type AnswerEvent =
       type: 'done';
       conversationId: string;
       intent: { qualified: boolean };
-      /** The open shop's item the answer named first, as one card; never with the capture card. */
-      productCard?: ProductCard;
+      /** The open shop's items the answer named, in its order, a card each; never with the capture card. */
+      productCards?: ProductCard[];
     };
 
 export interface ChatDeps {
@@ -803,16 +803,16 @@ export async function* answer(
       },
     });
 
-    // One product card for the open shop's item this answer named first, and
+    // A product card for each of the open shop's items this answer named, and
     // on that turn the capture card is not also offered -- the shop is the
     // better next step than leaving a number. Only after a model answer:
     // never on a pinned answer or the cap's reply.
-    const card =
+    const cards =
       page.mode === 'BUSINESS' && page.storeEnabled && answered
-        ? productCard(text, page.items, process.env.STORAGE_PUBLIC_URL ?? null)
-        : null;
-    if (card) {
-      yield { type: 'done', conversationId, intent: { qualified: false }, productCard: card };
+        ? productCards(text, page.items, process.env.STORAGE_PUBLIC_URL ?? null)
+        : [];
+    if (cards.length > 0) {
+      yield { type: 'done', conversationId, intent: { qualified: false }, productCards: cards };
     } else {
       yield { type: 'done', conversationId, intent };
     }

@@ -721,7 +721,7 @@ describe('ChatMode, orders', () => {
           type: 'done',
           conversationId: 'c1',
           intent: { qualified: false },
-          productCard: { itemId: 'i1', slug: 'kek-batik' },
+          productCards: [{ itemId: 'i1', slug: 'kek-batik' }],
         })}\n\n`,
       ],
       { shopPath: '/keklina/shop' },
@@ -736,7 +736,7 @@ describe('ChatMode, orders', () => {
 
 describe('ChatMode, the product card', () => {
   const productCard = { itemId: 'i1', slug: 'kek-batik', name: 'Kek Batik', fromPriceCents: 9500, photoUrl: 'https://files.example/items/batik.webp', firstOptionId: 'o1' };
-  const named = (extra: Record<string, unknown> = { productCard }) => [
+  const named = (extra: Record<string, unknown> = { productCards: [productCard] }) => [
     'data: {"type":"text","text":"Kek batik is RM95."}\n\n',
     `data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, ...extra })}\n\n`,
   ];
@@ -760,6 +760,15 @@ describe('ChatMode, the product card', () => {
     expect(screen.getAllByRole('group')).toHaveLength(1);
   });
 
+  it('an answer naming several items is followed by a card each, in its order, dropping only a half-sent one', async () => {
+    const tart = { ...productCard, itemId: 'i2', slug: 'tart-nenas', name: 'Tart Nenas', photoUrl: null };
+    await askOnce(named({ productCards: [productCard, { itemId: 'i3', slug: 'half' }, tart] }), { onAddToBasket: vi.fn() });
+
+    await screen.findByRole('group', { name: 'Tart Nenas' });
+    expect(screen.getAllByRole('group').map((g) => g.getAttribute('aria-label'))).toEqual(['Kek Batik', 'Tart Nenas']);
+    expect(screen.getAllByRole('button', { name: 'Add to basket' })).toHaveLength(2);
+  });
+
   it('the card’s photo opens the product page', async () => {
     await askOnce(named());
     const open = await screen.findByRole('link', { name: 'Open Kek Batik' });
@@ -779,14 +788,14 @@ describe('ChatMode, the product card', () => {
   });
 
   it('has no Add button for an item with no price, but the photo still opens its page', async () => {
-    await askOnce(named({ productCard: { ...productCard, fromPriceCents: null, firstOptionId: null } }), { onAddToBasket: vi.fn() });
+    await askOnce(named({ productCards: [{ ...productCard, fromPriceCents: null, firstOptionId: null }] }), { onAddToBasket: vi.fn() });
     expect(await screen.findByRole('link', { name: 'Open Kek Batik' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
   });
 
   it('a class card opens the item page to pick a time, and never adds', async () => {
     const onAddToBasket = vi.fn();
-    await askOnce(named({ productCard: { ...productCard, buy: 'pick' } }), { onAddToBasket });
+    await askOnce(named({ productCards: [{ ...productCard, buy: 'pick' }] }), { onAddToBasket });
     const pick = await screen.findByRole('link', { name: 'Pick a time' });
     expect(pick).toHaveAttribute('href', '/keklina/shop/kek-batik');
     expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
@@ -795,7 +804,7 @@ describe('ChatMode, the product card', () => {
   });
 
   it('a sold-out card says so and offers no add', async () => {
-    await askOnce(named({ productCard: { ...productCard, buy: 'soldOut' } }), { onAddToBasket: vi.fn(), cardCopy: { add: 'Add', inBasket: 'In', from: (p) => p, open: (n) => `Open ${n}`, added: () => '', soldOut: 'Habis dijual' } });
+    await askOnce(named({ productCards: [{ ...productCard, buy: 'soldOut' }] }), { onAddToBasket: vi.fn(), cardCopy: { add: 'Add', inBasket: 'In', from: (p) => p, open: (n) => `Open ${n}`, added: () => '', soldOut: 'Habis dijual' } });
     expect(await screen.findByText('Habis dijual')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
   });

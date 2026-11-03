@@ -1822,7 +1822,7 @@ describe('"where is my order", by its code', () => {
 
 describe('product card', () => {
   type Card = { itemId: string; slug: string; name: string; fromPriceCents: number | null; photoUrl: string | null; firstOptionId: string | null };
-  type Event = { type: string; productCard?: Card | null; orderChips?: unknown; intent?: { qualified: boolean }; conversationId?: string };
+  type Event = { type: string; productCards?: Card[]; orderChips?: unknown; intent?: { qualified: boolean }; conversationId?: string };
 
   async function seedItems(storeEnabled: boolean) {
     const pageId = await pageIdFor('nadia');
@@ -1841,10 +1841,10 @@ describe('product card', () => {
     return collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question, conversationId }));
   }
 
-  it('sends one card, for the first item the answer names, and withholds the capture card on that turn', async () => {
+  it('sends a card for each item the answer names, in its order, and withholds the capture card on that turn', async () => {
     vi.stubEnv('STORAGE_PUBLIC_URL', 'https://files.example');
     try {
-      const { batik } = await seedItems(true);
+      const { batik, coklat } = await seedItems(true);
       const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
 
       // Three specific turns: the turn that would otherwise offer the capture card.
@@ -1854,7 +1854,10 @@ describe('product card', () => {
       const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
 
       const done = third.find((e) => e.type === 'done');
-      expect(done?.productCard).toEqual({
+      // Hidden Tart is named too, but is not for sale.
+      expect(done?.productCards?.map((c) => c.name)).toEqual(['Kek Batik', 'Kek Coklat Moist', 'Tart Nenas']);
+      expect(done?.productCards?.[1]?.itemId).toBe(coklat.id);
+      expect(done?.productCards?.[0]).toEqual({
         itemId: batik.id,
         slug: 'kek-batik',
         name: 'Kek Batik',
@@ -1873,7 +1876,7 @@ describe('product card', () => {
   it('gives an item with options its cheapest price and its first option', async () => {
     const { coklat } = await seedItems(true);
     const events = await ask(gatewaySaying('Kek coklat moist, ya.'), 'ada kek coklat?');
-    expect(events.find((e) => e.type === 'done')?.productCard).toMatchObject({
+    expect(events.find((e) => e.type === 'done')?.productCards?.[0]).toMatchObject({
       itemId: coklat.id,
       fromPriceCents: 9500,
       firstOptionId: coklat.options[0]?.id,
@@ -1890,26 +1893,26 @@ describe('product card', () => {
     const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
 
     const done = third.find((e) => e.type === 'done');
-    expect(done?.productCard).toBeUndefined();
+    expect(done?.productCards).toBeUndefined();
     expect(done?.intent).toEqual({ qualified: true });
   });
 
   it('sends no card while the shop is off', async () => {
     await seedItems(false);
     const events = await ask(gatewaySaying('Kek batik RM25.'), 'berapa kek batik?');
-    expect(events.find((e) => e.type === 'done')?.productCard).toBeUndefined();
+    expect(events.find((e) => e.type === 'done')?.productCards).toBeUndefined();
   });
 
   it('sends no card when the answer names no item', async () => {
     await seedItems(true);
     const events = await ask(gatewaySaying('Boleh, hubungi kami.'), 'boleh hantar?');
-    expect(events.find((e) => e.type === 'done')?.productCard).toBeUndefined();
+    expect(events.find((e) => e.type === 'done')?.productCards).toBeUndefined();
   });
 
   it('sends no card on an owner’s pinned answer', async () => {
     await seedItems(true);
     await seedTopic(await pageIdFor('nadia'), { answer: 'Kek batik RM25.', wordings: [{ text: 'berapa kek batik?' }] });
     const events = await ask(gatewaySaying('unused'), 'berapa kek batik?');
-    expect(events.find((e) => e.type === 'done')?.productCard).toBeUndefined();
+    expect(events.find((e) => e.type === 'done')?.productCards).toBeUndefined();
   });
 });

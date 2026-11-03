@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findOrderCode, lastFourDigits, mentionsOrder, orderCard, orderCodeCandidates, productCard } from './order-lookup.js';
+import { findOrderCode, lastFourDigits, mentionsOrder, orderCard, orderCodeCandidates, productCards, MAX_PRODUCT_CARDS } from './order-lookup.js';
 
 describe('findOrderCode', () => {
   it('finds a code with a digit in it, in any case', () => {
@@ -147,7 +147,7 @@ describe('orderCard', () => {
   });
 });
 
-describe('productCard', () => {
+describe('productCards', () => {
   const item = (id: string, name: string, over: Record<string, unknown> = {}) => ({
     id,
     name,
@@ -163,20 +163,26 @@ describe('productCard', () => {
     item('c', 'Tart Nenas'),
   ];
 
-  it('is the first item the answer names, ignoring case and punctuation: one card, never two', () => {
-    expect(productCard('We have tart nenas, KEK BATIK and kek coklat-moist!', items, 'https://files.example')).toEqual({
-      itemId: 'c',
-      slug: 'tart-nenas',
-      name: 'Tart Nenas',
-      fromPriceCents: 900,
-      photoUrl: null,
-      firstOptionId: null,
-      buy: 'add',
-    });
+  it('is every item the answer names, in its order, ignoring case and punctuation', () => {
+    expect(productCards('We have tart nenas, KEK BATIK and kek coklat-moist!', items, 'https://files.example').map((c) => c.itemId)).toEqual(['c', 'a', 'b']);
+    expect(productCards('We have tart nenas!', items, null)).toEqual([
+      { itemId: 'c', slug: 'tart-nenas', name: 'Tart Nenas', fromPriceCents: 900, photoUrl: null, firstOptionId: null, buy: 'add' },
+    ]);
+  });
+
+  it(`stops at ${MAX_PRODUCT_CARDS} cards, and names an item once however often it is said`, () => {
+    const many = [...items, item('d', 'Kuih Bangkit'), item('e', 'Dodol')];
+    expect(productCards('Tart nenas, kek batik, tart nenas again, kuih bangkit, dodol and kek coklat moist', many, null).map((c) => c.itemId)).toEqual(['c', 'a', 'd']);
+  });
+
+  it('reads a name inside a longer item’s name as that item, not a second card', () => {
+    const nested = [item('k', 'Kek'), item('a', 'Kek Batik'), item('b', 'Batik')];
+    expect(productCards('Kek batik is lovely', nested, null).map((c) => c.itemId)).toEqual(['a']);
+    expect(productCards('Kek batik, or a plain kek', nested, null).map((c) => c.itemId)).toEqual(['a', 'k']);
   });
 
   it('carries the cheapest price, the photo URL and the first option of an item with options', () => {
-    expect(productCard('Kek batik is lovely', items, 'https://files.example/')).toEqual({
+    expect(productCards('Kek batik is lovely', items, 'https://files.example/')[0]).toEqual({
       itemId: 'a',
       slug: 'kek-batik',
       name: 'Kek Batik',
@@ -190,20 +196,20 @@ describe('productCard', () => {
   it('sends a class to its page for a time, and sells a sold-out item to no one', () => {
     const now = new Date('2026-10-24T00:00:00Z');
     const cls = { id: 'c1', name: 'Online Class', slug: 'online-class', priceCents: 6000, photoKey: null, options: [], kind: 'DIGITAL' as const, delivery: 'SESSION' as const, sessions: [{ id: 's', startsAt: new Date('2026-11-01T00:00:00Z'), seats: 5, bookings: [] }] };
-    expect(productCard('Join the online class', [cls], null, now)?.buy).toBe('pick');
+    expect(productCards('Join the online class', [cls], null, now)[0]?.buy).toBe('pick');
     const full = { ...cls, sessions: [{ ...cls.sessions[0]!, bookings: [{ seats: 5 }] }] };
-    expect(productCard('Join the online class', [full], null, now)?.buy).toBe('soldOut');
+    expect(productCards('Join the online class', [full], null, now)[0]?.buy).toBe('soldOut');
     const voucher = { id: 'v', name: 'Gift Voucher', slug: 'gift', priceCents: 5000, photoKey: null, options: [], kind: 'DIGITAL' as const, delivery: 'CODES' as const, _count: { codes: 0 } };
-    expect(productCard('A gift voucher', [voucher], null, now)?.buy).toBe('soldOut');
-    expect(productCard('A gift voucher', [{ ...voucher, _count: { codes: 2 } }], null, now)?.buy).toBe('add');
+    expect(productCards('A gift voucher', [voucher], null, now)[0]?.buy).toBe('soldOut');
+    expect(productCards('A gift voucher', [{ ...voucher, _count: { codes: 2 } }], null, now)[0]?.buy).toBe('add');
   });
 
   it('has no photo URL when storage is not configured', () => {
-    expect(productCard('Kek batik', items, null)?.photoUrl).toBeNull();
+    expect(productCards('Kek batik', items, null)[0]?.photoUrl).toBeNull();
   });
 
-  it('matches whole words only, and is null when nothing is named', () => {
-    expect(productCard('Kek Batiks are lovely', items, null)).toBeNull();
-    expect(productCard('Hello', items, null)).toBeNull();
+  it('matches whole words only, and is empty when nothing is named', () => {
+    expect(productCards('Kek Batiks are lovely', items, null)).toEqual([]);
+    expect(productCards('Hello', items, null)).toEqual([]);
   });
 });

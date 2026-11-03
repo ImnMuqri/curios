@@ -262,7 +262,10 @@ export async function lookUpOrder(
   return null;
 }
 
-/** What the chat shows under an answer that names a product: one card, for the first item named. */
+/** At most this many cards under one answer: a shop of fifty asked "what do you sell?" is not fifty cards. */
+export const MAX_PRODUCT_CARDS = 3;
+
+/** What the chat shows under an answer that names a product: a card for each item named, up to MAX_PRODUCT_CARDS. */
 export interface ProductCard {
   itemId: string;
   slug: string;
@@ -291,21 +294,37 @@ interface CardItem {
 }
 
 /**
- * The item of an open shop an answer names first: whole names, matched on
- * normalised text (capitals and punctuation folded, as a wording is). At most
- * one card. `storageBase` is STORAGE_PUBLIC_URL, joined to the photo key as
- * every other public item photo is.
+ * The items of an open shop an answer names, in the order it names them:
+ * whole names, matched on normalised text (capitals and punctuation folded, as
+ * a wording is). The answer is what picks them, so a question about one item
+ * gets one card and "what do you sell?" gets a few, never more than
+ * MAX_PRODUCT_CARDS. A name said only inside a longer item's name ("Kek" in
+ * "Kek Batik") is that longer item, not a second card. `storageBase` is
+ * STORAGE_PUBLIC_URL, joined to the photo key as every other public item photo is.
  */
-export function productCard(answer: string, items: CardItem[], storageBase: string | null, now = new Date()): ProductCard | null {
+export function productCards(answer: string, items: CardItem[], storageBase: string | null, now = new Date()): ProductCard[] {
   const said = ` ${normalizeClaim(answer)} `;
-  let best: { item: CardItem; at: number } | null = null;
+  const named: { item: CardItem; at: number; end: number }[] = [];
   for (const item of items) {
     const name = normalizeClaim(item.name);
-    const at = name ? said.indexOf(` ${name} `) : -1;
-    if (at >= 0 && (best === null || at < best.at)) best = { item, at };
+    if (!name) continue;
+    // Every place the name is said, so a short name inside a longer one earlier on is still found later on its own.
+    for (let at = said.indexOf(` ${name} `); at >= 0; at = said.indexOf(` ${name} `, at + 1)) {
+      named.push({ item, at, end: at + name.length + 1 });
+    }
   }
-  if (!best) return null;
-  const { item } = best;
+  // Earliest first; at one place, the longer name first, so it claims the words before the shorter one inside it.
+  named.sort((a, b) => a.at - b.at || b.end - a.end);
+  const kept: typeof named = [];
+  for (const match of named) {
+    if (kept.some((k) => k.item === match.item || (match.at >= k.at && match.end <= k.end))) continue;
+    kept.push(match);
+    if (kept.length === MAX_PRODUCT_CARDS) break;
+  }
+  return kept.map(({ item }) => cardOf(item, storageBase, now));
+}
+
+function cardOf(item: CardItem, storageBase: string | null, now: Date): ProductCard {
   const prices = item.options.map((option) => option.priceCents);
   const facts = digitalFacts(
     {
