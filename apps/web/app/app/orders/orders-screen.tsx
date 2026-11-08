@@ -222,27 +222,31 @@ export function OrdersScreen({
                     <li key={order.id}>
                       <button
                         type="button"
-                        className={`${inbox.row} ${styles.row}`}
+                        className={inbox.row}
                         aria-current={chosen?.id === order.id}
                         style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
                         onClick={() => setChosenId(order.id)}
                       >
-                        <Initial order={order} />
-                        <span className={styles.rowMid}>
-                          <b>
-                            {order.customerName}
-                            {matches(order, 'check') ? <span className={styles.dot} aria-label="Receipt to check" title="Receipt to check" /> : null}
-                          </b>
-                          <span>
-                            #{order.number} · {plural(n, 'item')}
-                            {order.method === null ? ' · Digital' : ` · ${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} ${dayLabel(order.day).split(' ')[0]}`}
-                            {order.method === 'PICKUP' && order.pickupFrom !== null && order.pickupTo !== null ? `, ${windowLabel(order.pickupFrom, order.pickupTo)}` : null}
+                        {/* Laid out on its own element, never beside inbox's `.row` on the button: the two are one
+                            specificity, so whichever stylesheet loaded last won, and in production the row came out stacked. */}
+                        <span className={styles.row}>
+                          <Initial order={order} />
+                          <span className={styles.rowMid}>
+                            <b>
+                              {order.customerName}
+                              {matches(order, 'check') ? <span className={styles.dot} aria-label="Receipt to check" title="Receipt to check" /> : null}
+                            </b>
+                            <span>
+                              #{order.number} · {plural(n, 'item')}
+                              {order.method === null ? ' · Digital' : ` · ${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} ${dayLabel(order.day).split(' ')[0]}`}
+                              {order.method === 'PICKUP' && order.pickupFrom !== null && order.pickupTo !== null ? `, ${windowLabel(order.pickupFrom, order.pickupTo)}` : null}
+                            </span>
                           </span>
-                        </span>
-                        <span className={styles.rowEnd}>
-                          <b>{formatRinggit(order.totalCents)}</b>
-                          <span className={styles.badge} data-tone={badge.tone}>
-                            {badge.label}
+                          <span className={styles.rowEnd}>
+                            <b>{formatRinggit(order.totalCents)}</b>
+                            <span className={styles.badge} data-tone={badge.tone}>
+                              {badge.label}
+                            </span>
                           </span>
                         </span>
                       </button>
