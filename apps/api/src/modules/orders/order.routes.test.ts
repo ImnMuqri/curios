@@ -259,6 +259,19 @@ describe('POST /store/:handle/orders', () => {
     expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
   });
 
+  it('refuses an Ask item in the basket, naming it: it is enquired about, never ordered', async () => {
+    const shop = await aShop();
+    // Its starting price stays, so only askForPrice can be what refuses it.
+    await app.prisma.item.update({ where: { id: shop.tartId }, data: { askForPrice: true } });
+
+    const res = await place(shop.handle, aBasket(shop));
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'ITEM_UNAVAILABLE', message: 'Tart nenas isn\'t available any more.' });
+    expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
+    expect(await ordersPlaced(shop.pageId)).toBe(0);
+  });
+
   it('refuses an item from another shop without naming it', async () => {
     const shop = await aShop();
     const other = await aShop();

@@ -204,6 +204,16 @@ describe('productCards', () => {
     expect(productCards('A gift voucher', [{ ...voucher, _count: { codes: 2 } }], null, now)[0]?.buy).toBe('add');
   });
 
+  it('an Ask item’s card asks rather than adds, with its starting price or none', () => {
+    const wedding = item('w', 'Kek Kahwin', { priceCents: 18000, askForPrice: true });
+    expect(productCards('Kek kahwin is made to order', [wedding], null)).toEqual([
+      { itemId: 'w', slug: 'kek-kahwin', name: 'Kek Kahwin', fromPriceCents: 18000, photoUrl: null, firstOptionId: null, buy: 'ask' },
+    ]);
+    expect(productCards('Kek kahwin', [{ ...wedding, priceCents: null }], null)[0]).toMatchObject({ buy: 'ask', fromPriceCents: null });
+    // askForPrice false, or absent, is a basket item as before.
+    expect(productCards('Kek kahwin', [{ ...wedding, askForPrice: false }], null)[0]?.buy).toBe('add');
+  });
+
   it('has no photo URL when storage is not configured', () => {
     expect(productCards('Kek batik', items, null)[0]?.photoUrl).toBeNull();
   });

@@ -110,6 +110,94 @@ describe('PATCH /store/items/:id', () => {
   });
 });
 
+describe('Ask items (ask for a price)', () => {
+  const linkItem = { kind: 'DIGITAL', delivery: 'LINK', accessUrl: 'https://notion.so/private' };
+
+  it('creates an Ask item with a starting price, or none, and no options', async () => {
+    const owner = await anOwner(app);
+    const started = await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek kahwin', pricing: { kind: 'ask', fromCents: 18000 } });
+    expect(started.statusCode).toBe(201);
+    expect(started.json().item).toMatchObject({ askForPrice: true, priceCents: 18000, options: [], kind: 'PHYSICAL' });
+    const none = await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek custom', pricing: { kind: 'ask', fromCents: null } });
+    expect(none.statusCode).toBe(201);
+    expect(none.json().item).toMatchObject({ askForPrice: true, priceCents: null, options: [] });
+    const stored = await app.prisma.item.findUniqueOrThrow({ where: { id: none.json().item.id as string }, select: { askForPrice: true, priceCents: true } });
+    expect(stored).toEqual({ askForPrice: true, priceCents: null });
+  });
+
+  it('refuses a starting price of zero or above the most with INVALID_ITEM', async () => {
+    const owner = await anOwner(app);
+    for (const fromCents of [0, -5, 1_000_001]) {
+      const res = await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek kahwin', pricing: { kind: 'ask', fromCents } });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('INVALID_ITEM');
+    }
+  });
+
+  it('switching an options item to ask drops the options; switching back to single or options clears askForPrice', async () => {
+    const owner = await anOwner(app);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, cake)).json().item.id as string;
+
+    const asked = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: { kind: 'ask', fromCents: 15000 } });
+    expect(asked.statusCode).toBe(200);
+    expect(asked.json().item).toMatchObject({ askForPrice: true, priceCents: 15000, options: [] });
+    expect(await app.prisma.itemOption.count({ where: { itemId: id } })).toBe(0);
+
+    const none = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: { kind: 'ask', fromCents: null } });
+    expect(none.json().item).toMatchObject({ askForPrice: true, priceCents: null });
+
+    const single = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: { kind: 'single', priceCents: 9000 } });
+    expect(single.json().item).toMatchObject({ askForPrice: false, priceCents: 9000, options: [] });
+
+    await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: { kind: 'ask', fromCents: null } });
+    const options = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: cake.pricing });
+    expect(options.json().item).toMatchObject({ askForPrice: false, priceCents: null, options: [{ label: '1kg' }, { label: '2kg' }] });
+  });
+
+  it('a PATCH without pricing leaves askForPrice as it was', async () => {
+    const owner = await anOwner(app);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek kahwin', pricing: { kind: 'ask', fromCents: 18000 } })).json().item.id as string;
+    expect((await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { name: 'Kek kahwin 3 tingkat' })).json().item).toMatchObject({ askForPrice: true, priceCents: 18000 });
+  });
+
+  it('refuses ask pricing on a digital item, on create', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'POST', '/store/items', owner.cookie, { name: 'Recipe e-book', pricing: { kind: 'ask', fromCents: null }, ...linkItem });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_ITEM');
+    expect(res.json().error.message).toMatch(/physical/i);
+    expect(await app.prisma.item.count({ where: { pageId: owner.pageId } })).toBe(0);
+  });
+
+  it('refuses ask pricing on an existing digital item, and leaves it as it was', async () => {
+    const owner = await anOwner(app);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, { name: 'Recipe e-book', pricing: { kind: 'single', priceCents: 2500 }, ...linkItem })).json().item.id as string;
+    const res = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: { kind: 'ask', fromCents: 1000 } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_ITEM');
+    const stored = await app.prisma.item.findUniqueOrThrow({ where: { id }, select: { askForPrice: true, priceCents: true, kind: true } });
+    expect(stored).toEqual({ askForPrice: false, priceCents: 2500, kind: 'DIGITAL' });
+  });
+
+  it('refuses making an Ask item digital, and rolls the whole change back', async () => {
+    const owner = await anOwner(app);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek kahwin', pricing: { kind: 'ask', fromCents: 18000 } })).json().item.id as string;
+    const res = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { name: 'Renamed', ...linkItem });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_ITEM');
+    const stored = await app.prisma.item.findUniqueOrThrow({ where: { id }, select: { name: true, askForPrice: true, priceCents: true, kind: true, delivery: true, accessUrl: true } });
+    expect(stored).toEqual({ name: 'Kek kahwin', askForPrice: true, priceCents: 18000, kind: 'PHYSICAL', delivery: null, accessUrl: null });
+  });
+
+  it('a digital item switched to single pricing stays fine (only ask is physical-only)', async () => {
+    const owner = await anOwner(app);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek kahwin', pricing: { kind: 'ask', fromCents: null } })).json().item.id as string;
+    const res = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { pricing: { kind: 'single', priceCents: 2500 }, ...linkItem });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().item).toMatchObject({ askForPrice: false, kind: 'DIGITAL', priceCents: 2500 });
+  });
+});
+
 describe('item link, category and tag', () => {
   it('a new item gets a slug from its name', async () => {
     const owner = await anOwner(app);

@@ -126,6 +126,55 @@ describe('buildNotification', () => {
   });
 });
 
+describe('buildNotification: an enquiry from an Ask item', () => {
+  const enquiryTranscript = [{ role: 'USER' as const, content: 'Enquiry from the shop: Kek kahwin. Kek 3 tingkat untuk 150 orang.' }];
+  const CHAT_INTRO = 'Your page couldn’t answer this one, so it asked for their number.';
+
+  it('opens with who sent it and about which item, and lists For and Budget', () => {
+    const mail = buildNotification({
+      displayName: 'Kek Lina',
+      phone: '+60123456789',
+      transcript: enquiryTranscript,
+      slots: { product: 'Kek kahwin 3 tingkat', date: '20 Disember', location: null, people: '150 orang', budget: 'RM800' },
+      enquiry: { name: 'Aisyah', item: 'Kek kahwin' },
+    });
+
+    expect(mail.text.split('\n')[0]).toBe('Aisyah sent an enquiry about Kek kahwin from your shop.');
+    expect(mail.text).not.toContain(CHAT_INTRO);
+    expect(mail.text).toContain('For: 150 orang');
+    expect(mail.text).toContain('Budget: RM800');
+    expect(mail.text.indexOf('Where:')).toBe(-1);
+    expect(mail.html).toContain('Aisyah sent an enquiry about Kek kahwin from your shop.');
+    expect(mail.html).toContain('150 orang');
+    expect(mail.html).toContain('RM800');
+  });
+
+  it('says Someone without a name, and leaves out an item that was removed', () => {
+    const mail = buildNotification({
+      displayName: 'Kek Lina',
+      phone: '+60123456789',
+      transcript: enquiryTranscript,
+      slots: { product: null, date: null, location: null },
+      enquiry: { name: null, item: null },
+    });
+    expect(mail.text.split('\n')[0]).toBe('Someone sent an enquiry from your shop.');
+  });
+
+  it('a chat lead opens as it always did, and lists no For or Budget without them', () => {
+    const mail = buildNotification({
+      displayName: 'Nadia Bakes',
+      phone: '+60123456789',
+      transcript,
+      slots: { product: 'kek butter 2kg', date: '20 Mac', location: 'Klang' },
+    });
+    expect(mail.text.split('\n')[0]).toBe(CHAT_INTRO);
+    expect(mail.text).not.toMatch(/^(For|Budget):/m);
+    expect(mail.html).toContain(CHAT_INTRO);
+    expect(mail.html).not.toContain('sent an enquiry');
+    expect(buildNotification({ displayName: 'Nadia Bakes', phone: '+60123456789', transcript, slots: { product: null, date: null, location: null }, enquiry: null }).text.split('\n')[0]).toBe(CHAT_INTRO);
+  });
+});
+
 describe('replyLanguage', () => {
   it('defaults to Malay, which is where a Malaysian shop starts', () => {
     expect(replyLanguage([])).toBe('ms');
