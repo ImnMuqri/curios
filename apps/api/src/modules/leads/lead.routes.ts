@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { captureLead, deleteLead, setLeadStatus } from './lead.service.js';
+import { sendEnquiry } from './enquiry.service.js';
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
@@ -36,6 +37,40 @@ export const leadRoutes: FastifyPluginAsyncZod = async (app) => {
       // exactly how that gets violated without anyone deciding to.
       request.log.info({ leadId: result.leadId }, 'lead captured');
       return reply.status(201).send(result);
+    },
+  );
+
+  /** An Ask item's enquiry from the shop (sendEnquiry). Anonymous and rate-limited, as the capture above. */
+  app.post(
+    '/enquiries/:handle',
+    {
+      schema: {
+        params: z.object({ handle: z.string().min(1).max(64) }),
+        body: z.object({
+          itemId: z.string().min(1).max(64),
+          message: z.string().min(1).max(4000),
+          name: z.string().min(1).max(400),
+          phone: z.string().min(1).max(24),
+          // As the capture card's: the customer chose to send their number to the shop.
+          consent: z.literal(true),
+        }),
+        response: {
+          201: z.object({ conversationId: z.string() }),
+          400: errorSchema,
+          404: errorSchema,
+          409: errorSchema,
+          410: errorSchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      const result = await sendEnquiry(
+        { prisma: app.prisma, queue: app.leadQueue, settings: await app.settings.get() },
+        { handle: request.params.handle, itemId: request.body.itemId, message: request.body.message, name: request.body.name, phone: request.body.phone },
+      );
+      // The ids only: the number and the message stay out of the logs.
+      request.log.info({ leadId: result.leadId }, 'enquiry sent');
+      return reply.status(201).send({ conversationId: result.conversationId });
     },
   );
 };

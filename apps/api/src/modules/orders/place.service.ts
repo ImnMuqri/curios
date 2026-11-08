@@ -89,6 +89,7 @@ const SHELF_SELECT = {
   description: true,
   photoKey: true,
   priceCents: true,
+  askForPrice: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
   kind: true,
   delivery: true,
@@ -438,6 +439,7 @@ async function priceLines(tx: Prisma.TransactionClient, pageId: string, lines: P
       name: true,
       available: true,
       priceCents: true,
+      askForPrice: true,
       options: { select: { id: true, label: true, priceCents: true } },
       kind: true,
       delivery: true,
@@ -455,6 +457,8 @@ async function priceLines(tx: Prisma.TransactionClient, pageId: string, lines: P
     const item = byId.get(line.itemId);
     if (!item) throw new ItemUnavailableError(null);
     if (!item.available) throw new ItemUnavailableError(item.name);
+    // An Ask item's price is a starting price, not one to pay: it is enquired about, never ordered.
+    if (item.askForPrice) throw new ItemUnavailableError(item.name);
 
     let optionLabel: string | null = null;
     let unitCents: number;

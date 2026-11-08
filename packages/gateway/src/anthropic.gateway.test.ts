@@ -170,14 +170,19 @@ describe('chat, the system field it actually sends the SDK', () => {
 });
 
 describe('parseSlots', () => {
-  it('reads the three lines the prompt asks for', () => {
+  it('reads the five lines the prompt asks for', () => {
+    const parsed = parseSlots('product: kek butter 2kg\ndate: 20 Mac\nlocation: Klang\npeople: 20 people\nbudget: around RM250');
+    expect(parsed).toEqual({ product: 'kek butter 2kg', date: '20 Mac', location: 'Klang', people: '20 people', budget: 'around RM250' });
+  });
+
+  it('reads a reply with only the first three lines as no people and no budget', () => {
     const parsed = parseSlots('product: kek butter 2kg\ndate: 20 Mac\nlocation: Klang');
-    expect(parsed).toEqual({ product: 'kek butter 2kg', date: '20 Mac', location: 'Klang' });
+    expect(parsed).toEqual({ product: 'kek butter 2kg', date: '20 Mac', location: 'Klang', people: null, budget: null });
   });
 
   it('reads a dash as "the conversation did not say"', () => {
-    const parsed = parseSlots('product: kek\ndate: -\nlocation: -');
-    expect(parsed).toEqual({ product: 'kek', date: null, location: null });
+    const parsed = parseSlots('product: kek\ndate: -\nlocation: -\npeople: -\nbudget: -');
+    expect(parsed).toEqual({ product: 'kek', date: null, location: null, people: null, budget: null });
   });
 
   it('returns nulls rather than throwing when the model wanders off', () => {
@@ -188,6 +193,8 @@ describe('parseSlots', () => {
       product: null,
       date: null,
       location: null,
+      people: null,
+      budget: null,
     });
   });
 

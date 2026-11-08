@@ -8,6 +8,8 @@ interface ShelfBase {
   description: string | null;
   photoKey: string | null;
   priceCents: number | null;
+  /** An Ask item, which a basket can never hold. */
+  askForPrice: boolean;
   options: { id: string; label: string; priceCents: number }[];
 }
 

@@ -19,7 +19,10 @@ export interface ItemRow extends DigitalFields, DigitalDetail {
   /** In position order. Never the originals' keys. */
   photos: OwnerPhoto[];
   available: boolean;
+  /** On an Ask item, its starting price, or null for "Price on request". */
   priceCents: number | null;
+  /** An Ask item: an enquiry instead of a basket (HANDOFF "Shop: Ask items", 8 Nov 2026). */
+  askForPrice: boolean;
   options: { id: string; label: string; priceCents: number }[];
 }
 
@@ -36,6 +39,7 @@ const SELECT = {
   photoKey: true,
   available: true,
   priceCents: true,
+  askForPrice: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
   photos: { orderBy: { position: 'asc' }, select: OWNER_PHOTO_SELECT },
   ...DIGITAL_COLUMNS,
@@ -100,12 +104,15 @@ function checkPricing(pricing: Pricing): Pricing {
     : pricing;
 }
 
-/** The columns and nested options a pricing writes. Options are replaced whole, never patched. */
+/** The columns and nested options a pricing writes. Options are replaced whole, never patched. An Ask item has none. */
 function pricingData(pricing: Pricing) {
-  return pricing.kind === 'single'
-    ? { priceCents: pricing.priceCents, options: [] as { label: string; priceCents: number; position: number }[] }
-    : { priceCents: null, options: pricing.options.map((o, position) => ({ ...o, position })) };
+  const none = [] as { label: string; priceCents: number; position: number }[];
+  if (pricing.kind === 'single') return { priceCents: pricing.priceCents, askForPrice: false, options: none };
+  if (pricing.kind === 'ask') return { priceCents: pricing.fromCents, askForPrice: true, options: none };
+  return { priceCents: null, askForPrice: false, options: pricing.options.map((o, position) => ({ ...o, position })) };
 }
+
+const ASK_PHYSICAL_ONLY = 'Only a physical item can ask for a price. A digital one is bought straight away.';
 
 export async function listItems(prisma: PrismaClient, accountId: string): Promise<ItemRow[]> {
   const page = await storePageFor(prisma, accountId);
@@ -135,8 +142,9 @@ export async function addItem(
   const category = checkCategory(input.category ?? null);
   const tag = checkTag(input.tag ?? null);
   const sku = checkSku(input.sku ?? null);
-  const { priceCents, options } = pricingData(checkPricing(input.pricing));
+  const { priceCents, askForPrice, options } = pricingData(checkPricing(input.pricing));
   const digital = resolveDigital(NO_DIGITAL, input);
+  if (askForPrice && digital.kind !== 'PHYSICAL') throw new InvalidItemError(ASK_PHYSICAL_ONLY);
   const page = await storePageFor(prisma, accountId);
 
   const count = await prisma.item.count({ where: { pageId: page.id } });
@@ -151,7 +159,7 @@ export async function addItem(
     try {
       return toRow(
         await prisma.item.create({
-          data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, sku, priceCents, position: count, options: { create: options }, ...digital },
+          data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, sku, priceCents, askForPrice, position: count, options: { create: options }, ...digital },
           select: SELECT,
         }),
       );
@@ -176,7 +184,10 @@ export async function updateItem(
   if (input.sku !== undefined) data.sku = checkSku(input.sku);
   if (input.available !== undefined) data.available = input.available;
   const pricing = input.pricing ? pricingData(checkPricing(input.pricing)) : null;
-  if (pricing) data.priceCents = pricing.priceCents;
+  if (pricing) {
+    data.priceCents = pricing.priceCents;
+    data.askForPrice = pricing.askForPrice;
+  }
   const touchesDigital = (['kind', 'delivery', 'accessUrl', 'accessNote', 'sessionMinutes', 'sessionPlace', 'sessionWhere'] as const).some((key) => input[key] !== undefined);
 
   const page = await storePageFor(prisma, accountId);
@@ -194,6 +205,8 @@ export async function updateItem(
       if (pricing.options.length > 0) await tx.itemOption.createMany({ data: pricing.options.map((o) => ({ ...o, itemId: id })) });
     }
     const row = toRow(await tx.item.findUniqueOrThrow({ where: { id }, select: SELECT }));
+    // Judged on the item as it now stands, so made digital while asking, or asking while digital, rolls back alike.
+    if (row.askForPrice && row.kind !== 'PHYSICAL') throw new InvalidItemError(ASK_PHYSICAL_ONLY);
     // Made physical: the shop must be able to hand it over (a rollback, if not).
     if (row.kind === 'PHYSICAL' && input.kind === 'PHYSICAL') await checkCanHandOver(tx, page.id);
     return row;

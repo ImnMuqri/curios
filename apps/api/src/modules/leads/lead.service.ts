@@ -159,9 +159,7 @@ export async function captureLead(
   //
   // An allowance lowered to or below a page's count already turns its card off, so
   // no capture follows to tell the owner; Billing and the dashboard say it instead.
-  const stateAt = (leadsCaptured: number) =>
-    planState({ mode: conversation.page.mode, paidUntil: conversation.page.paidUntil, leadsCaptured, now: new Date() }, deps.settings.freeLeads).kind;
-  const lastFreeLead = stateAt(counted.leadsCaptured - 1) === 'trial' && stateAt(counted.leadsCaptured) === 'trialSpent';
+  const lastFreeLead = spentLastFreeLead(conversation.page, counted.leadsCaptured, deps.settings.freeLeads);
 
   // Slots and the notification are the job's business. Extraction is a model
   // call and nothing generative runs inside a request -- and doing it in that
@@ -173,6 +171,19 @@ export async function captureLead(
   );
 
   return { leadId: lead.id };
+}
+
+/**
+ * Whether the lead whose increment brought the page to `leadsCaptured` used its last free one: the page went from
+ * trial to trialSpent on that increment. Shared by a chat capture and an enquiry, which both spend the allowance.
+ */
+export function spentLastFreeLead(
+  page: { mode: 'PERSONAL' | 'BUSINESS'; paidUntil: Date | null },
+  leadsCaptured: number,
+  freeLeads: number,
+): boolean {
+  const stateAt = (count: number) => planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: count, now: new Date() }, freeLeads).kind;
+  return stateAt(leadsCaptured - 1) === 'trial' && stateAt(leadsCaptured) === 'trialSpent';
 }
 
 /**

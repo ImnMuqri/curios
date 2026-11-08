@@ -22,7 +22,7 @@ export interface LeadJobDeps {
   settings: { get(): Promise<Settings> };
 }
 
-const NO_SLOTS: LeadSlots = { product: null, date: null, location: null };
+const NO_SLOTS: LeadSlots = { product: null, date: null, location: null, people: null, budget: null };
 
 /**
  * Fill in what the customer asked for, then tell the owner.
@@ -39,6 +39,9 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
       id: true,
       phone: true,
       createdAt: true,
+      kind: true,
+      name: true,
+      item: { select: { name: true } },
       page: {
         select: {
           displayName: true,
@@ -108,6 +111,7 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
       appUrl: deps.appUrl,
       leftAt: lead.createdAt,
       freeLead: onTrial ? { nth: Math.min(lead.page.leadsCaptured, freeLeads), of: freeLeads } : null,
+      enquiry: lead.kind === 'ENQUIRY' ? { name: lead.name, item: lead.item?.name ?? null } : null,
     });
     await deps.mailQueue.add(MAIL_QUEUE, {
       to: lead.page.account.email,

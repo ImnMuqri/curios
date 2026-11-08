@@ -18,6 +18,7 @@ const lead: OwnerLead = {
   messageCount: 3,
   // The number was left after the second message, before the thanks.
   capturedAfter: 2,
+  enquiry: null,
 };
 
 function show(calls: Partial<LeadActions> = {}, shown: OwnerLead = lead) {

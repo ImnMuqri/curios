@@ -1,4 +1,4 @@
-import { canTakeOrders, hashSessionValue } from '@curios/core';
+import { canCapture, canTakeOrders, hashSessionValue } from '@curios/core';
 import { DOWNLOAD_USES, seatsLeft } from '@curios/core/digital';
 import { malaysiaToday } from '@curios/core/orders';
 import type { VoucherTerms } from '@curios/core/vouchers';
@@ -587,6 +587,11 @@ export interface Checkout extends PublicShop {
   closedDays: number[];
   /** `canTakeOrders` of @curios/core, the one rule the shop, API, Alerts and Billing share. */
   canTakeOrders: boolean;
+  /**
+   * An Ask item's enquiry is a lead, so it is taken by the lead rule (`canCapture`), not the order one:
+   * false and the Ask items send the customer to the page's chat instead of the enquiry sheet.
+   */
+  canEnquire: boolean;
   /** The owner's QR or full bank details: the "DuitNow QR" choice. */
   payByQr: boolean;
   /** The owner's own DuitNow QR, which the choice is named after when CHIP sits beside it. */
@@ -613,6 +618,7 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
       paidUntil: true,
       ordersPlaced: true,
       ordersAtTrialReset: true,
+      leadsCaptured: true,
       paymentQrKey: true,
       bankName: true,
       bankAccountName: true,
@@ -622,11 +628,12 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
     },
   });
   if (!page) return null;
-  const { id: pageId, paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, ...plan } = page;
-  const { freeOrders } = await getSettings();
+  const { id: pageId, paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, leadsCaptured, ...plan } = page;
+  const { freeOrders, freeLeads } = await getSettings();
   return {
     ...shop,
     canTakeOrders: canTakeOrders({ ...plan, now }, freeOrders),
+    canEnquire: canCapture({ mode: plan.mode, paidUntil: plan.paidUntil, leadsCaptured, now }, freeLeads),
     // The same rule as storeGaps: a QR, or all three bank details.
     payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
     hasQr: Boolean(paymentQrKey),

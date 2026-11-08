@@ -48,6 +48,7 @@ const shop: Checkout = {
   closedDays: [0],
   items: [{ ...PHYSICAL_FACTS, id: 'batik', name: 'Kek batik', slug: 'batik', category: null, tag: null, description: null, photoKey: 'items/b.webp', priceCents: 4500, options: [] }],
   canTakeOrders: true,
+  canEnquire: true,
   payByQr: true,
   hasQr: true,
   chipMethods: ['fpx', 'visa'],

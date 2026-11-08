@@ -10,9 +10,9 @@ const transcript = [
   { role: 'ASSISTANT' as const, content: 'Kek coklat moist 2kg is RM170.' },
 ];
 const leads: OwnerLead[] = [
-  { id: 'l1', phone: '+60127814402', score: 3, slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, status: 'NEW', createdAt: new Date('2026-10-17T05:35:00Z'), transcript, messageCount: 2, capturedAfter: 2 },
-  { id: 'l2', phone: '+601120457788', score: 1, slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, status: 'CONTACTED', createdAt: new Date('2026-10-16T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2 },
-  { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2 },
+  { id: 'l1', phone: '+60127814402', score: 3, slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, status: 'NEW', createdAt: new Date('2026-10-17T05:35:00Z'), transcript, messageCount: 2, capturedAfter: 2, enquiry: null },
+  { id: 'l2', phone: '+601120457788', score: 1, slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, status: 'CONTACTED', createdAt: new Date('2026-10-16T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2, enquiry: null },
+  { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2, enquiry: null },
 ];
 
 function show(list = leads, calls?: Partial<LeadActions>, paging?: { older: string | null; paged: boolean }) {

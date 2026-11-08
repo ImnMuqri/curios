@@ -4,6 +4,9 @@ export interface LeadSlots {
   product: string | null;
   date: string | null;
   location: string | null;
+  /** How many people, and their budget: picked out since 8 Nov 2026, so an older lead has neither. */
+  people?: string | null;
+  budget?: string | null;
 }
 
 export interface TranscriptLine {
@@ -114,8 +117,14 @@ export function buildNotification(input: {
   leftAt?: Date;
   /** On a free trial: which free lead this is, and of how many. */
   freeLead?: { nth: number; of: number } | null;
+  /** An enquiry from an Ask item in the shop: who sent it, and about which item (null once the item is gone). */
+  enquiry?: { name: string | null; item: string | null } | null;
 }): { subject: string; text: string; html: string } {
   const { displayName, phone, transcript, slots } = input;
+  // An enquiry was sent, not asked for: the page did not fail to answer anything.
+  const intro = input.enquiry
+    ? `${input.enquiry.name ?? 'Someone'} sent an enquiry${input.enquiry.item ? ` about ${input.enquiry.item}` : ''} from your shop.`
+    : 'Your page couldn’t answer this one, so it asked for their number.';
 
   // Digits only. wa.me refuses a plus and refuses separators, and a link that
   // opens WhatsApp on a broken number fails at the exact moment this product
@@ -142,6 +151,8 @@ export function buildNotification(input: {
     slots.product ? `Product: ${slots.product}` : null,
     slots.date ? `When: ${slots.date}` : null,
     slots.location ? `Where: ${slots.location}` : null,
+    slots.people ? `For: ${slots.people}` : null,
+    slots.budget ? `Budget: ${slots.budget}` : null,
   ].filter((line): line is string => line !== null);
 
   // Attributed, because an owner reading this cannot otherwise tell their own
@@ -152,7 +163,7 @@ export function buildNotification(input: {
   );
 
   const text = [
-    `Your page couldn’t answer this one, so it asked for their number.`,
+    intro,
     ``,
     `Number: ${phone}`,
     ...(known.length > 0 ? [``, ...known] : []),
@@ -176,7 +187,7 @@ export function buildNotification(input: {
     ? `Left ${input.leftAt.toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kuala_Lumpur' }).replace(/\s/g, '').toLowerCase()}`
     : undefined;
   const blocks: MailBlock[] = [
-    { kind: 'p', text: 'Your page couldn’t answer this one, so it asked for their number.' },
+    { kind: 'p', text: intro },
     { kind: 'number', value: formatMalaysianPhone(phone), note: leftAt },
     ...(known.length > 0
       ? [
@@ -186,6 +197,8 @@ export function buildNotification(input: {
               ...(slots.product ? [['Product', slots.product] as [string, string]] : []),
               ...(slots.date ? [['When', slots.date] as [string, string]] : []),
               ...(slots.location ? [['Where', slots.location] as [string, string]] : []),
+              ...(slots.people ? [['For', slots.people] as [string, string]] : []),
+              ...(slots.budget ? [['Budget', slots.budget] as [string, string]] : []),
             ],
           },
         ]

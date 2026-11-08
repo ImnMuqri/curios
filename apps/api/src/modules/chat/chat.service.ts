@@ -288,6 +288,8 @@ export const ANSWER_PAGE_SELECT = {
       photoKey: true,
       description: true,
       priceCents: true,
+      // An Ask item: SHOP says so, and its card asks rather than adds.
+      askForPrice: true,
       options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
       // So a card never offers a class without its time, or an item that is sold out.
       kind: true,
@@ -312,7 +314,7 @@ export type AnswerPage = Prisma.PageGetPayload<{ select: typeof ANSWER_PAGE_SELE
 export async function promptFor(
   deps: Pick<ChatDeps, 'prisma' | 'embedder' | 'log' | 'settings'>,
   page: AnswerPage,
-  input: { question: string; previousUserTurn: string | null },
+  input: { question: string; previousUserTurn: string | null; enquiry?: { item: string } },
 ): Promise<{ systemPrompt: string; cachePrompt: boolean; factIds: string[] }> {
   const { prisma } = deps;
   // What this question needs, or everything, and always a correct answer
@@ -351,6 +353,7 @@ export async function promptFor(
     shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
     // The same rule the capture card is offered by, so the model never points to a box that is not there.
     capture: canCapture({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }, deps.settings.freeLeads),
+    enquiry: input.enquiry,
   });
 
   return {
@@ -364,11 +367,92 @@ export async function promptFor(
   };
 }
 
+/**
+ * One model reply, streamed through the reply's two filters: the "not sure" marker (unsure.ts) and the
+ * guard (reply-guard.ts). Shared by a visitor's question and an Ask item's enquiry, so neither can say
+ * an amount the other could not. Yields what the visitor sees; returns it whole, and whether it answered.
+ */
+async function* modelReply(
+  deps: ChatDeps,
+  page: Pick<AnswerPage, 'id' | 'neverSay'>,
+  conversationId: string,
+  prompt: { systemPrompt: string; cachePrompt: boolean },
+  messages: { role: 'user' | 'assistant'; content: string }[],
+): AsyncGenerator<AnswerEvent, { text: string; answered: boolean }> {
+  const { prisma, gateway } = deps;
+  let text = '';
+  // A "not sure" reply starts with a marker the visitor never sees (unsure.ts). A sentence with a
+  // never-say word, or an amount the model was not given, is dropped (reply-guard.ts): amounts of
+  // money in the prompt and its own earlier replies, and any number the visitor typed.
+  const filter = unsureFilter();
+  const guard = replyGuard({
+    neverSay: page.neverSay.map((n) => n.phrase),
+    given: [prompt.systemPrompt, ...messages.filter((m) => m.role === 'assistant').map((m) => m.content)].join(' '),
+    visitor: messages.filter((m) => m.role === 'user').map((m) => m.content).join(' '),
+  });
+  try {
+    for await (const event of gateway.chat({
+      systemPrompt: prompt.systemPrompt,
+      messages,
+      cachePrompt: prompt.cachePrompt,
+    })) {
+      if (event.type === 'text') {
+        const shown = guard.push(filter.push(event.text));
+        if (shown) {
+          text += shown;
+          yield { type: 'text', text: shown };
+        }
+      } else {
+        // Persisted after the stream closes, never before the first token.
+        // Same helper the worker uses -- one place computes cost, so the margin
+        // numbers cannot drift between the two processes that produce them.
+        await recordModelCall(prisma, {
+          pageId: page.id,
+          conversationId,
+          model: event.model,
+          usage: event.usage,
+          latencyMs: event.latencyMs,
+          ok: true,
+        });
+      }
+    }
+  } catch (error) {
+    // A call that fails mid-stream has already consumed tokens; recording
+    // nothing would lose both the cost and the fact that the failure
+    // happened, leaving the failure rate invisible in the one table meant to
+    // show it. The zeros are a known-unknown, not a lie: unlike a crawl
+    // failure where no model was ever called, a call genuinely happened here
+    // and we simply do not know its usage.
+    await recordModelCall(prisma, {
+      pageId: page.id,
+      conversationId,
+      model: CHAT_MODEL,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      latencyMs: 0,
+      ok: false,
+      errorCode: 'PROVIDER_UNAVAILABLE',
+    });
+    throw error;
+  }
+
+  const rest = guard.push(filter.end()) + guard.end();
+  if (rest) {
+    text += rest;
+    yield { type: 'text', text: rest };
+  }
+  if (guard.dropped['never-say'] + guard.dropped.amount + guard.dropped.phone > 0) {
+    deps.log?.info?.({ pageId: page.id, neverSay: guard.dropped['never-say'], amount: guard.dropped.amount, phone: guard.dropped.phone, replaced: guard.replaced }, 'reply sentences dropped');
+  }
+  // A reply that was all dropped is the fallback now: nothing was answered.
+  const answered = !filter.unsure && !guard.replaced;
+  return { text, answered };
+}
+
 export async function* answer(
   deps: ChatDeps,
   input: { handle: string; question: string; conversationId?: string },
 ): AsyncIterable<AnswerEvent> {
-  const { prisma, gateway } = deps;
+  const { prisma } = deps;
   const { cap } = deps.settings;
   // Switched off by the admin: the turn is kept as one over the cap is, and answered with the same
   // fixed reply, but nothing is asked of a model, not even the free answers' same-question check.
@@ -722,71 +806,7 @@ export async function* answer(
       previousUserTurn,
     });
 
-    let text = '';
-    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts). A sentence with a
-    // never-say word, or an amount the model was not given, is dropped (reply-guard.ts): amounts of
-    // money in the prompt and its own earlier replies, and any number the visitor typed.
-    const filter = unsureFilter();
-    const guard = replyGuard({
-      neverSay: page.neverSay.map((n) => n.phrase),
-      given: [prompt.systemPrompt, ...messages.filter((m) => m.role === 'assistant').map((m) => m.content)].join(' '),
-      visitor: messages.filter((m) => m.role === 'user').map((m) => m.content).join(' '),
-    });
-    try {
-      for await (const event of gateway.chat({
-        systemPrompt: prompt.systemPrompt,
-        messages,
-        cachePrompt: prompt.cachePrompt,
-      })) {
-        if (event.type === 'text') {
-          const shown = guard.push(filter.push(event.text));
-          if (shown) {
-            text += shown;
-            yield { type: 'text', text: shown };
-          }
-        } else {
-          // Persisted after the stream closes, never before the first token.
-          // Same helper the worker uses -- one place computes cost, so the margin
-          // numbers cannot drift between the two processes that produce them.
-          await recordModelCall(prisma, {
-            pageId: page.id,
-            conversationId,
-            model: event.model,
-            usage: event.usage,
-            latencyMs: event.latencyMs,
-            ok: true,
-          });
-        }
-      }
-    } catch (error) {
-      // A call that fails mid-stream has already consumed tokens; recording
-      // nothing would lose both the cost and the fact that the failure
-      // happened, leaving the failure rate invisible in the one table meant to
-      // show it. The zeros are a known-unknown, not a lie: unlike a crawl
-      // failure where no model was ever called, a call genuinely happened here
-      // and we simply do not know its usage.
-      await recordModelCall(prisma, {
-        pageId: page.id,
-        conversationId,
-        model: CHAT_MODEL,
-        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-        latencyMs: 0,
-        ok: false,
-        errorCode: 'PROVIDER_UNAVAILABLE',
-      });
-      throw error;
-    }
-
-    const rest = guard.push(filter.end()) + guard.end();
-    if (rest) {
-      text += rest;
-      yield { type: 'text', text: rest };
-    }
-    if (guard.dropped['never-say'] + guard.dropped.amount + guard.dropped.phone > 0) {
-      deps.log?.info?.({ pageId: page.id, neverSay: guard.dropped['never-say'], amount: guard.dropped.amount, phone: guard.dropped.phone, replaced: guard.replaced }, 'reply sentences dropped');
-    }
-    // A reply that was all dropped is the fallback now: nothing was answered.
-    const answered = !filter.unsure && !guard.replaced;
+    const { text, answered } = yield* modelReply(deps, page, conversationId, prompt, messages);
     await markAsk(answered, text);
 
     await prisma.message.create({
@@ -819,4 +839,121 @@ export async function* answer(
   } finally {
     await queueGrouping();
   }
+}
+
+/**
+ * The reply to an Ask item's enquiry (HANDOFF "Shop: Ask items", 8 Nov 2026), streamed like an answer.
+ * The enquiry itself was written by the enquiry route, which made this conversation and its lead; the
+ * customer then lands in the page's chat, which asks for this.
+ *
+ * Not `answer`: an enquiry is not a question about the page, so it is never a Question or a Topic on the
+ * Questions screen, never answered by an owner's pinned answer, and never offers the capture card (the
+ * owner has the number already). Answered once: asked again (a reload), it gives back the reply it wrote.
+ */
+export const ENQUIRY_FALLBACK_REPLY = (displayName: string) =>
+  `Thanks! Your enquiry is with ${displayName}, who will reply on WhatsApp. You don’t pay anything until you agree.`;
+
+export async function* answerEnquiry(
+  deps: ChatDeps,
+  input: { handle: string; conversationId: string },
+): AsyncIterable<AnswerEvent> {
+  const { prisma } = deps;
+  const { cap } = deps.settings;
+  const chatOff = chatSwitchedOff(deps);
+
+  const page = await prisma.page.findUnique({
+    where: { handle: input.handle.toLowerCase(), published: true },
+    select: { ...ANSWER_PAGE_SELECT, suspendedAt: true },
+  });
+  if (!page) throw new PageNotFoundError();
+  if (page.suspendedAt !== null) throw new PageUnavailableError();
+
+  // Scoped to this page and to an enquiry in the query, as every conversation id is.
+  const thread = await prisma.conversation.findFirst({
+    where: { id: input.conversationId, pageId: page.id, lead: { kind: 'ENQUIRY' } },
+    select: {
+      id: true,
+      lead: { select: { item: { select: { name: true } } } },
+      messages: { orderBy: { createdAt: 'asc' }, select: { role: true, content: true } },
+    },
+  });
+  const enquiry = thread?.messages[0];
+  if (!thread || !enquiry || enquiry.role !== 'USER') throw new ConversationNotFoundError();
+  const conversationId = thread.id;
+  const done: AnswerEvent = { type: 'done', conversationId, intent: { qualified: false } };
+
+  const written = thread.messages.find((message) => message.role === 'ASSISTANT');
+  if (written) {
+    yield { type: 'text', text: written.content };
+    yield done;
+    return;
+  }
+
+  // A fixed reply rather than a model's: said when the chat is off, over the cap, or when the model fails
+  // before a word. The enquiry is already with the owner either way.
+  const fixed = async function* (): AsyncGenerator<AnswerEvent> {
+    const text = ENQUIRY_FALLBACK_REPLY(page.displayName);
+    yield { type: 'text', text };
+    await prisma.message.create({ data: { conversationId, role: 'ASSISTANT', content: text } });
+    yield done;
+  };
+
+  // A conversation on the meter, as a first question is; not while the chat is switched off.
+  if (!chatOff) {
+    await prisma.usageCounter.upsert({
+      where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
+      create: { pageId: page.id, period: currentPeriod(), count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  }
+  const used = await prisma.usageCounter.findUnique({
+    where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
+    select: { count: true },
+  });
+  if (chatOff || isOverCap({ used: used?.count ?? 0, cap })) {
+    if (!chatOff) await mailCapReached(deps, page);
+    yield* fixed();
+    return;
+  }
+
+  const item = thread.lead?.item?.name ?? null;
+  const prompt = await promptFor({ prisma, embedder: deps.embedder, log: deps.log, settings: deps.settings }, page, {
+    question: enquiry.content,
+    previousUserTurn: null,
+    enquiry: item ? { item } : undefined,
+  });
+  const messages = [{ role: 'user' as const, content: enquiry.content }];
+
+  let said = false;
+  let reply: { text: string; answered: boolean };
+  try {
+    const stream = modelReply(deps, page, conversationId, prompt, messages);
+    for (;;) {
+      const next = await stream.next();
+      if (next.done) {
+        reply = next.value;
+        break;
+      }
+      said = true;
+      yield next.value;
+    }
+  } catch (error) {
+    // Part of a reply already shown cannot be taken back: that one fails as an answer does.
+    if (said) throw error;
+    deps.log?.warn?.({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'enquiry reply failed; the fixed reply');
+    yield* fixed();
+    return;
+  }
+
+  // Nothing survived the guard, or the model was not sure: the fixed reply says what is true.
+  if (reply.text.trim() === '' || !reply.answered) {
+    if (!said) {
+      yield* fixed();
+      return;
+    }
+  }
+  await prisma.message.create({
+    data: { conversationId, role: 'ASSISTANT', content: reply.text, citedFactIds: prompt.factIds },
+  });
+  yield done;
 }

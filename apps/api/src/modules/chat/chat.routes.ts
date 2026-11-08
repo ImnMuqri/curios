@@ -1,9 +1,10 @@
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { conversationCap } from '@curios/core';
 import { createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { createOpenAiEmbedder, type Embedder } from '@curios/embeddings';
-import { answer, MAX_HISTORY_MESSAGES } from './chat.service.js';
+import { answer, answerEnquiry, MAX_HISTORY_MESSAGES } from './chat.service.js';
 import { testAnswer } from './chat-test.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
@@ -61,6 +62,65 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
   // read per request, so the admin's change applies without a restart.
   conversationCap();
 
+  /**
+   * The answer as server-sent events, one `data:` line per event. Shared by a question and an enquiry's reply.
+   */
+  async function sendStream(request: FastifyRequest, reply: FastifyReply, events: () => AsyncIterable<unknown>): Promise<void> {
+    // hijack() takes the raw response out of Fastify's own reply lifecycle --
+    // required for a manual setHeader()/writeHead()/write()/end() sequence
+    // like this one. Without it, Fastify's own reply handling (which never
+    // runs, because we never call reply.send()) leaves the socket in an
+    // inconsistent state.
+    //
+    // reply.getHeaders() is copied onto the raw response deliberately:
+    // @fastify/cors sets Access-Control-Allow-Origin (and friends) via
+    // reply.header() in an onRequest hook, which writes into Fastify's
+    // internal header store (kReplyHeaders). That store is normally flushed
+    // onto the socket by reply.send(), which this handler never calls.
+    // Calling reply.raw.writeHead(200, {...}) directly -- without first
+    // copying getHeaders() onto the raw response -- silently drops every
+    // header the cors hook set, so the browser rejects the response with no
+    // CORS header. Do not "simplify" this away.
+    reply.hijack();
+    for (const [name, value] of Object.entries(reply.getHeaders())) {
+      if (value !== undefined) reply.raw.setHeader(name, value);
+    }
+    reply.raw.setHeader('content-type', 'text/event-stream');
+    reply.raw.setHeader('cache-control', 'no-cache, no-transform');
+    reply.raw.setHeader('connection', 'keep-alive');
+    reply.raw.writeHead(200);
+
+    const stream = events();
+
+    // Headers are already sent by the time a stream can fail, so a thrown
+    // error cannot become a 500 -- it is written into the stream as an event
+    // and the stream is ended cleanly either way.
+    try {
+      for await (const event of stream) {
+        reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
+      }
+    } catch (error) {
+      request.log.error({ err: error }, 'chat stream failed');
+      // The code travels with the message so the client can act on one
+      // specific failure: a dead conversation id has to be dropped, or every
+      // later turn carries it and fails too. The visitor-facing text is the
+      // same either way -- only the client's own bookkeeping differs.
+      const code =
+        error instanceof Error && 'code' in error && typeof error.code === 'string'
+          ? error.code
+          : undefined;
+      reply.raw.write(
+        `data: ${JSON.stringify({
+          type: 'error',
+          code,
+          message: 'That answer failed. Try again.',
+        })}\n\n`,
+      );
+    } finally {
+      reply.raw.end();
+    }
+  }
+
   app.post(
     '/chat/:handle',
     {
@@ -82,66 +142,41 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       // The admin's switches, read before the stream opens (never throws: a database that is down gives the defaults).
       const settings = await app.settings.get();
 
-      // hijack() takes the raw response out of Fastify's own reply lifecycle --
-      // required for a manual setHeader()/writeHead()/write()/end() sequence
-      // like this one. Without it, Fastify's own reply handling (which never
-      // runs, because we never call reply.send()) leaves the socket in an
-      // inconsistent state.
-      //
-      // reply.getHeaders() is copied onto the raw response deliberately:
-      // @fastify/cors sets Access-Control-Allow-Origin (and friends) via
-      // reply.header() in an onRequest hook, which writes into Fastify's
-      // internal header store (kReplyHeaders). That store is normally flushed
-      // onto the socket by reply.send(), which this handler never calls.
-      // Calling reply.raw.writeHead(200, {...}) directly -- without first
-      // copying getHeaders() onto the raw response -- silently drops every
-      // header the cors hook set, so the browser rejects the response with no
-      // CORS header. Do not "simplify" this away.
-      reply.hijack();
-      for (const [name, value] of Object.entries(reply.getHeaders())) {
-        if (value !== undefined) reply.raw.setHeader(name, value);
-      }
-      reply.raw.setHeader('content-type', 'text/event-stream');
-      reply.raw.setHeader('cache-control', 'no-cache, no-transform');
-      reply.raw.setHeader('connection', 'keep-alive');
-      reply.raw.writeHead(200);
-
-      const stream = answer(
-        { prisma: app.prisma, gateway, embedder, log: request.log, groupQueue: app.groupQueue, mailQueue: app.mailQueue, settings },
-        {
-          handle: request.params.handle,
-          question: request.body.question,
-          conversationId: request.body.conversationId,
-        },
+      await sendStream(request, reply, () =>
+        answer(
+          { prisma: app.prisma, gateway, embedder, log: request.log, groupQueue: app.groupQueue, mailQueue: app.mailQueue, settings },
+          {
+            handle: request.params.handle,
+            question: request.body.question,
+            conversationId: request.body.conversationId,
+          },
+        ),
       );
+    },
+  );
 
-      // Headers are already sent by the time a stream can fail, so a thrown
-      // error cannot become a 500 -- it is written into the stream as an event
-      // and the stream is ended cleanly either way.
-      try {
-        for await (const event of stream) {
-          reply.raw.write(`data: ${JSON.stringify(event)}\n\n`);
-        }
-      } catch (error) {
-        request.log.error({ err: error }, 'chat stream failed');
-        // The code travels with the message so the client can act on one
-        // specific failure: a dead conversation id has to be dropped, or every
-        // later turn carries it and fails too. The visitor-facing text is the
-        // same either way -- only the client's own bookkeeping differs.
-        const code =
-          error instanceof Error && 'code' in error && typeof error.code === 'string'
-            ? error.code
-            : undefined;
-        reply.raw.write(
-          `data: ${JSON.stringify({
-            type: 'error',
-            code,
-            message: 'That answer failed. Try again.',
-          })}\n\n`,
-        );
-      } finally {
-        reply.raw.end();
-      }
+  /**
+   * The reply to an Ask item's enquiry, which the enquiry route wrote into this conversation (answerEnquiry).
+   * In this scope, so it is rate-limited as a question is.
+   */
+  app.post(
+    '/chat/:handle/enquiry',
+    {
+      schema: {
+        params: z.object({ handle: z.string() }),
+        body: z.object({ conversationId: z.string().min(1).max(64) }),
+      },
+    },
+    async (request, reply) => {
+      const status = await app.prisma.page.findUnique({ where: { handle: request.params.handle.toLowerCase() }, select: { published: true, suspendedAt: true } });
+      if (status?.published && status.suspendedAt !== null) throw new PageUnavailableError();
+      const settings = await app.settings.get();
+      await sendStream(request, reply, () =>
+        answerEnquiry(
+          { prisma: app.prisma, gateway, embedder, log: request.log, mailQueue: app.mailQueue, settings },
+          { handle: request.params.handle, conversationId: request.body.conversationId },
+        ),
+      );
     },
   );
 };

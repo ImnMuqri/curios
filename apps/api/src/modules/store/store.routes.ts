@@ -73,6 +73,7 @@ const sessionStart = z.string().max(40).transform((value, ctx) => {
 const pricing = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('single'), priceCents: z.number() }),
   z.object({ kind: z.literal('options'), options: z.array(z.object({ label: z.string().max(400), priceCents: z.number() })).max(100) }),
+  z.object({ kind: z.literal('ask'), fromCents: z.number().nullable() }),
 ]);
 
 /** `x-photo-frame: <x>,<y>,<size>`. Anything else is a frame of NaNs, which frameProblem refuses with its sentence. */

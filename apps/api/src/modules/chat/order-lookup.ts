@@ -273,8 +273,8 @@ export interface ProductCard {
   fromPriceCents: number | null;
   photoUrl: string | null;
   firstOptionId: string | null;
-  /** What the card's button does: add it, open its page to pick a class time first, or nothing (sold out). */
-  buy: 'add' | 'pick' | 'soldOut';
+  /** What the card's button does: add it, open its page to pick a class time first or to ask for a price, or nothing (sold out). */
+  buy: 'add' | 'pick' | 'ask' | 'soldOut';
 }
 
 interface CardItem {
@@ -284,6 +284,8 @@ interface CardItem {
   priceCents: number | null;
   photoKey: string | null;
   options: { id: string; priceCents: number }[];
+  /** An Ask item: its card opens its page, where the enquiry is sent. */
+  askForPrice?: boolean;
   /** Digital stock, as the shop reads it; absent reads as a physical item. */
   kind?: ItemKind;
   delivery?: DigitalDelivery | null;
@@ -344,6 +346,6 @@ function cardOf(item: CardItem, storageBase: string | null, now: Date): ProductC
     fromPriceCents: prices.length > 0 ? Math.min(...prices) : item.priceCents,
     photoUrl: item.photoKey && storageBase ? `${storageBase.replace(/\/+$/, '')}/${item.photoKey}` : null,
     firstOptionId: item.options[0]?.id ?? null,
-    buy: facts.soldOut ? 'soldOut' : facts.delivery === 'SESSION' ? 'pick' : 'add',
+    buy: item.askForPrice ? 'ask' : facts.soldOut ? 'soldOut' : facts.delivery === 'SESSION' ? 'pick' : 'add',
   };
 }

@@ -9,6 +9,9 @@ export interface LeadSlots {
   product: string | null;
   date: string | null;
   location: string | null;
+  /** How many people, and their budget (an enquiry's For and Budget): picked out since 8 Nov 2026, so an older lead has neither. */
+  people?: string | null;
+  budget?: string | null;
 }
 
 export interface OwnerLead {
@@ -29,6 +32,19 @@ export interface OwnerLead {
    * The capture card is not a message; the lead's own time places it.
    */
   capturedAfter: number;
+  /**
+   * An enquiry from an Ask item in the shop (HANDOFF "Shop: Ask items", 8 Nov 2026), or null for a number
+   * left in the chat. `item` is null once the item was removed; its name is still in the first message.
+   */
+  enquiry: LeadEnquiry | null;
+}
+
+export interface LeadEnquiry {
+  /** The name they gave. */
+  name: string | null;
+  /** Their message, in their own words. */
+  note: string | null;
+  item: { name: string; photoKey: string | null; fromCents: number | null } | null;
 }
 
 /** Messages sent with each lead: a conversation is usually a handful, and nothing caps how many it keeps. */
@@ -75,6 +91,10 @@ export async function getLeads(
       slots: true,
       status: true,
       createdAt: true,
+      kind: true,
+      name: true,
+      note: true,
+      item: { select: { name: true, photoKey: true, priceCents: true } },
       conversation: {
         select: {
           messages: { select: { role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' }, take: TRANSCRIPT_LIMIT },
@@ -100,6 +120,10 @@ export async function getLeads(
     })),
     messageCount: row.conversation._count.messages,
     capturedAfter: row.conversation.messages.filter((message) => message.createdAt <= row.createdAt).length,
+    enquiry:
+      row.kind === 'ENQUIRY'
+        ? { name: row.name, note: row.note, item: row.item ? { name: row.item.name, photoKey: row.item.photoKey, fromCents: row.item.priceCents } : null }
+        : null,
   }));
 }
 

@@ -82,6 +82,8 @@ export function checkFields(
 }
 
 /** The price fields of an item as the API and the shop hold them. */
-export function pricedFields(pricing: Pricing): { priceCents: number | null; options: { label: string; priceCents: number }[] } {
-  return pricing.kind === 'single' ? { priceCents: pricing.priceCents, options: [] } : { priceCents: null, options: pricing.options };
+export function pricedFields(pricing: Pricing): { priceCents: number | null; askForPrice: boolean; options: { label: string; priceCents: number }[] } {
+  if (pricing.kind === 'single') return { priceCents: pricing.priceCents, askForPrice: false, options: [] };
+  if (pricing.kind === 'ask') return { priceCents: pricing.fromCents, askForPrice: true, options: [] };
+  return { priceCents: null, askForPrice: false, options: pricing.options };
 }

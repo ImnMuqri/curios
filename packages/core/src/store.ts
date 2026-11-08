@@ -35,13 +35,21 @@ export const BANK_NAME_MAX = 60;
 export const BANK_ACCOUNT_NAME_MAX = 80;
 export const DELIVERY_FEE_MAX_CENTS = 50_000;
 export const MIN_NOTICE_DAYS_MAX = 30;
+/** An Ask item's enquiry: one message in the customer's own words, and the name they give. */
+export const ENQUIRY_MESSAGE_MAX = 1000;
+export const ENQUIRY_NAME_MAX = 80;
 
 export const DELIVERY_MODES = ['NONE', 'FLAT', 'RIDER'] as const;
 export type DeliveryMode = (typeof DELIVERY_MODES)[number];
 
 export type Pricing =
   | { kind: 'single'; priceCents: number }
-  | { kind: 'options'; options: { label: string; priceCents: number }[] };
+  | { kind: 'options'; options: { label: string; priceCents: number }[] }
+  /**
+   * An Ask item (HANDOFF "Shop: Ask items", 8 Nov 2026): no basket, an enquiry instead. Physical only.
+   * `fromCents` is the optional starting price the page answers "how much?" with; null for none.
+   */
+  | { kind: 'ask'; fromCents: number | null };
 
 /** What a price line needs to know about an item, as stored. */
 export interface PricedItem {
@@ -58,6 +66,7 @@ const PRICE_SENTENCE = `Give it a price above RM0, up to ${formatRinggit(PRICE_M
 /** Why this pricing cannot be stored, or null when it can. The one statement of the price-or-options rule. */
 export function pricingProblem(pricing: Pricing): string | null {
   if (pricing.kind === 'single') return isPrice(pricing.priceCents) ? null : PRICE_SENTENCE;
+  if (pricing.kind === 'ask') return pricing.fromCents === null || isPrice(pricing.fromCents) ? null : `A starting price is above RM0, up to ${formatRinggit(PRICE_MAX_CENTS)}. Or leave it empty.`;
 
   const { options } = pricing;
   if (options.length === 0) return 'Add at least one option, or give the item one price.';

@@ -13,7 +13,7 @@ export { countQuestionsThisWeek, countTopicsNeedingOwner, getAnswerRate, getTopi
 export type { AnswerRate, ChatReply, TopicChoice, TopicShow, TopicTotals } from './topics.query.js';
 export type { OwnerTopic, OwnerWording } from './topics.query.js';
 export { getLeadStats, getLeads, TRANSCRIPT_LIMIT } from './leads.query.js';
-export type { LeadStats, OwnerLead, LeadSlots, LeadTranscriptLine } from './leads.query.js';
+export type { LeadEnquiry, LeadStats, OwnerLead, LeadSlots, LeadTranscriptLine } from './leads.query.js';
 export { getFaqIndex, getFaqEntry, getFaqRedirect } from './faq.query.js';
 export type { FaqIndex, FaqListEntry, FaqAnswer, FaqTheme } from './faq.query.js';
 export { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage } from './usage.query.js';

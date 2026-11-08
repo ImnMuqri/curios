@@ -48,6 +48,13 @@ enum MessageRole {
   ASSISTANT
 }
 
+/// How a lead came in: a number left in the page's chat, or an enquiry sent
+/// from an Ask item's sheet in the shop (HANDOFF "Shop: Ask items", 8 Nov 2026).
+enum LeadKind {
+  CHAT
+  ENQUIRY
+}
+
 enum LeadStatus {
   NEW
   CONTACTED
@@ -371,7 +378,11 @@ model Item {
   sku            String?
   /// An object key in storage, like Page.avatarKey.
   photoKey       String?
+  /// The price; on an Ask item, its optional starting price ("From RM180"), null for "Price on request".
   priceCents     Int?
+  /// An Ask item (PHYSICAL only): it never goes in a basket, and the shop asks
+  /// for an enquiry instead, which becomes a lead. Never has options.
+  askForPrice    Boolean          @default(false)
   /// Off hides it from the shop and from the chat.
   available      Boolean          @default(true)
   position       Int
@@ -379,6 +390,7 @@ model Item {
   options        ItemOption[]
   orderLines     OrderLine[]
   vouchers       ShopVoucher[]
+  enquiries      Lead[]
   /// PHYSICAL items are posted or collected; DIGITAL ones are delivered by `delivery`.
   kind           ItemKind         @default(PHYSICAL)
   delivery       DigitalDelivery?
@@ -748,7 +760,15 @@ model Lead {
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   /// E.164, one stored form. normalizeMalaysianPhone in packages/core owns that form.
   phone          String
-  /// { product, date, location }, filled by the extraction job. Null until it runs.
+  kind           LeadKind     @default(CHAT)
+  /// ENQUIRY: the Ask item it was about. SetNull: an item removed later leaves the lead,
+  /// which still holds its name in the first message.
+  itemId         String?
+  item           Item?        @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  /// ENQUIRY: the name the customer gave, and their message in their own words.
+  name           String?
+  note           String?
+  /// { product, date, location, people, budget }, filled by the extraction job. Null until it runs.
   slots          Json?
   /// How many slots are filled. A number an owner can verify by looking, not a model opinion.
   score          Int          @default(0)
@@ -759,6 +779,8 @@ model Lead {
   // The 24-hour dedupe reads this. It cannot be a unique index, because the
   // rule has a time window and an index does not.
   @@index([pageId, phone, createdAt])
+  // Removing an item sets this null (SetNull): without it, every item delete scans Lead.
+  @@index([itemId])
 }
 
 model Question {

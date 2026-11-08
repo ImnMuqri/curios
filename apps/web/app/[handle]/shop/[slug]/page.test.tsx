@@ -51,6 +51,7 @@ const shop = {
   deliveryNote: null,
   items: [item],
   canTakeOrders: true,
+  canEnquire: true,
   payByQr: true,
   hasQr: true,
   chipMethods: null,

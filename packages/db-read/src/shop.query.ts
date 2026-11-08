@@ -23,7 +23,13 @@ export interface ShopItem {
   category: string | null;
   tag: string | null;
   photoKey: string | null;
+  /** On an Ask item, its starting price, or null for "Price on request". */
   priceCents: number | null;
+  /**
+   * An Ask item: an enquiry, never the basket (HANDOFF "Shop: Ask items", 8 Nov 2026). Always read here;
+   * optional so a shelf built elsewhere (a test, the Store preview) reads as basket items when it leaves it out.
+   */
+  askForPrice?: boolean;
   options: { id: string; label: string; priceCents: number }[];
 }
 
@@ -42,6 +48,7 @@ const ITEM_SELECT = {
   tag: true,
   photoKey: true,
   priceCents: true,
+  askForPrice: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
 } as const;
 

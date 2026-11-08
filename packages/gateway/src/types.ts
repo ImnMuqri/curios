@@ -75,6 +75,9 @@ export interface SlotsOutput {
   product: string | null;
   date: string | null;
   location: string | null;
+  /** How many people it is for, and what they can spend: an enquiry's "For" and "Budget". Not scored. */
+  people: string | null;
+  budget: string | null;
 }
 
 export interface SameQuestionCandidate {

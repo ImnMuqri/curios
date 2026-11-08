@@ -49,6 +49,7 @@ const shop: Checkout = {
     { ...PHYSICAL_FACTS, id: 'cookie', name: 'Cookies', slug: 'cookie', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [] },
   ],
   canTakeOrders: true,
+  canEnquire: true,
   payByQr: true,
   hasQr: true,
   chipMethods: null,
