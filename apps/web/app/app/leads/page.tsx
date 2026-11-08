@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { LEAD_RETENTION_MONTHS, SESSION_COOKIE } from '@curios/core';
 import { getLeadStats, getLeads, getMyCurios, getOwnerPage } from '@curios/db-read';
 import { Callout } from '@curios/ui';
+import { avatarUrl } from '../../../lib/avatar-url.js';
 import { resolveOwner } from '../session.js';
 import { Leads } from './leads-screen.js';
 import { PageHead } from '../_ui/page-head.js';
@@ -43,7 +44,8 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   if (!page || !look) redirect('/app/onboarding');
   // A cursor that pages nothing (its lead deleted, or never this owner's) is the first page again.
   if (before && leads.length === 0) redirect('/app/leads');
-  const shown = leads.slice(0, LEADS_PER_PAGE);
+  // An enquiry's item photo goes to the browser as a URL; storage's base is read here, on the server.
+  const shown = leads.slice(0, LEADS_PER_PAGE).map((lead) => ({ ...lead, itemPhotoUrl: avatarUrl(lead.enquiry?.item?.photoKey ?? null) }));
   const paging = { older: leads.length > LEADS_PER_PAGE ? (shown.at(-1)?.id ?? null) : null, paged: before !== undefined };
 
   if (page.mode === 'PERSONAL') {
