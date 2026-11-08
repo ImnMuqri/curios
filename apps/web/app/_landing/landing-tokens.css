@@ -72,6 +72,17 @@
   --tj-wl-whatsapp: #25a36a;
   --tj-wl-dot: #e2483d;
   --tj-wl-hot-ink: #0f3b2c;
+  /* No cut, ever (8 Nov): the kept and cut bars, the tiles' labels and chips, the live dot, the search result. */
+  --tj-nc-keep: #efe4e7;
+  --tj-nc-keep-ink: #5a3b45;
+  --tj-nc-cut: #e2483d;
+  --tj-nc-note: #8b909c;
+  --tj-nc-label: #8b7a80;
+  --tj-nc-chip: #f7f0f2;
+  --tj-nc-url: #6f6266;
+  --tj-nc-live: #1f9d55;
+  --tj-nc-serp-url: #5b6170;
+  --tj-nc-serp-link: #1a0dab;
 
   /* ---- Colour: biru ramp (parent --biru #2340c8, oklch 0.450 0.212 267) ---- */
   --l-biru-800: #122686; /* oklch 0.331 0.160 267 -- primary button pressed; paper on it 12.3:1 */

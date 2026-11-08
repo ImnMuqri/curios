@@ -3941,6 +3941,296 @@
   }
 }
 
+/* ---- No cut, ever (TanyaJe board, 8 Nov 2026, `.nc`) ----
+ * The board's pink band between For business and Pricing. The bars are drawn
+ * full; NoCut.tsx sets data-grow on the card ("wait" until it is in view, then
+ * "go"), and only the no-preference block below reads it, so a still page
+ * never moves.
+ */
+
+.nc {
+  padding: 112px 0;
+  background: var(--tj-rose-100);
+}
+
+.ncTop {
+  display: grid;
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  gap: 56px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.ncEyebrow {
+  color: var(--tj-rose);
+}
+
+.ncH {
+  max-width: 13ch;
+}
+
+.ncZero {
+  color: var(--tj-rose);
+}
+
+.ncSub {
+  margin: 16px 0 0;
+  max-width: 26em;
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.ncCard {
+  padding: 28px;
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.ncOl {
+  margin: 0 0 16px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.ncOl b {
+  margin-left: 4px;
+  font-family: var(--d);
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.ncBr + .ncBr {
+  margin-top: 18px;
+}
+
+.ncBl {
+  margin: 0 0 8px;
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.ncBl small {
+  margin-left: 8px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--tj-nc-note);
+}
+
+.ncBt {
+  display: flex;
+  gap: 3px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.ncBt i {
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-style: normal;
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transform-origin: left;
+}
+
+.ncKeep {
+  background: var(--tj-nc-keep);
+  color: var(--tj-nc-keep-ink);
+}
+
+.ncKeep.ncCu {
+  background: var(--tj-rose);
+  color: var(--paper);
+}
+
+.ncBt .ncCut {
+  justify-content: center;
+  padding: 0;
+  background: var(--tj-nc-cut);
+  color: var(--paper);
+}
+
+/* Curios's sliver: the RM1 fee, never thinner than 6px. */
+.ncFee {
+  min-width: 6px;
+}
+
+.ncTiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.ncT {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.ncTk {
+  margin: 0 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tj-nc-label);
+}
+
+.ncTx {
+  margin: auto 0 0;
+  padding-top: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.ncUrl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 21px;
+  background: var(--tj-nc-chip);
+  font-size: 14.5px;
+  color: var(--tj-nc-url);
+}
+
+.ncUrl i {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--tj-nc-live);
+}
+
+.ncUrl b {
+  color: var(--ink);
+}
+
+.ncPays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.ncPays span {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--tj-nc-chip);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--tj-nc-keep-ink);
+}
+
+.ncSerp {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--tj-toggle);
+}
+
+.ncSerp small {
+  font-size: 11.5px;
+  color: var(--tj-nc-serp-url);
+}
+
+.ncSerp b {
+  overflow: hidden;
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--tj-nc-serp-link);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncFine {
+  margin: 18px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--tj-nc-label);
+}
+
+@media (max-width: 960px) {
+  .ncTop {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .ncTiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phones: everything stacked, the notes under their labels, and the ~RM11 label gone so only the red bar shows. */
+@media (max-width: 560px) {
+  .nc {
+    padding: 80px 0;
+  }
+
+  .ncCard {
+    padding: 18px;
+  }
+
+  .ncBl small {
+    display: block;
+    margin: 2px 0 0;
+  }
+
+  .ncBt i {
+    padding: 0 10px;
+    font-size: 12.5px;
+  }
+
+  .ncSub {
+    font-size: 16px;
+  }
+
+  .ncCutLabel {
+    display: none;
+  }
+}
+
+/* The bars grow in once, over 900ms, when NoCut.tsx says the card is in view; Curios's a beat after. */
+@media (prefers-reduced-motion: no-preference) {
+  .ncCard[data-grow='wait'] .ncBt i {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+
+  .ncCard[data-grow='go'] .ncBt i {
+    animation: ncGrow 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  /* Specific enough to outrank the shorthand above, which would reset the delay. */
+  .ncCard[data-grow='go'] .ncBt .ncCu {
+    animation-delay: 150ms;
+  }
+}
+
+@keyframes ncGrow {
+  from {
+    opacity: 0;
+    transform: scaleX(0.2);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ---- Pricing ---- */
 
 .pricing {

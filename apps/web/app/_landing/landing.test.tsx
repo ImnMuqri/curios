@@ -629,6 +629,127 @@ describe('what lands in your hands', () => {
   });
 });
 
+describe('no cut, ever', () => {
+  const section = (c: HTMLElement) => c.querySelector('#no-cut') as HTMLElement;
+  const card = (c: HTMLElement) => section(c).querySelector('[role="img"]') as HTMLElement;
+  const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
+
+  /** Motion allowed, and an observer the test moves in and out of view. */
+  function watchable() {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+    );
+    const watchers: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          watchers.push(cb);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    return (ratio: number) =>
+      act(() => watchers.forEach((w) => w([{ intersectionRatio: ratio, isIntersecting: ratio > 0 } as IntersectionObserverEntry], {} as IntersectionObserver)));
+  }
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(LOCALES)('%s: sits between For business and Pricing, with the board’s words', (locale) => {
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
+    const ids = [...container.querySelectorAll('main > section[id]')].map((s) => s.id);
+    expect(ids.slice(ids.indexOf('business'), ids.indexOf('business') + 3)).toEqual(['business', 'no-cut', 'pricing']);
+    const copy = COPY[locale].noCut;
+    const nc = section(container);
+    expect(nc.querySelector('[class*="eyebrow"]')).toHaveTextContent(copy.eyebrow);
+    expect(within(nc).getByRole('heading', { level: 2 })).toHaveTextContent(copy.title.join(''));
+    // Named by its heading (jsdom's name adds a space around the inline 0%, which a browser does not).
+    expect(document.getElementById(nc.getAttribute('aria-labelledby')!)).toBe(within(nc).getByRole('heading', { level: 2 }));
+    expect(nc).toHaveTextContent(copy.sub('RM49'));
+    expect(within(nc).getByRole('img', { name: copy.chartLabel })).toBeInTheDocument();
+    for (const text of [copy.market.keep, copy.market.cut, copy.curios.keep, copy.site.title, copy.payments.title, copy.google.title, copy.google.result, copy.fine]) {
+      expect(nc).toHaveTextContent(text);
+    }
+    expect(nc).toHaveTextContent(`curios.my/${copy.site.handle}`);
+    expect([...nc.querySelectorAll('[class*="ncPays"] span')].map((s) => s.textContent)).toEqual(['FPX', 'TNG', 'GrabPay', 'Visa']);
+  });
+
+  it('carries the board’s numbers: RM100, about RM89 against RM99, and the 0%', () => {
+    expect(en.noCut.title).toEqual(['Every sale is yours. We take ', '0%', '.']);
+    expect(en.noCut.sub('RM49')).toBe('RM49 a month is all you pay us. However big the order.');
+    expect(en.noCut.market).toEqual({ label: 'On a marketplace', note: 'platform fee, commission, transaction fee', keep: 'You keep about RM89', cut: '~RM11' });
+    expect(en.noCut.curios).toEqual({ label: 'On Curios', note: 'only the bank’s RM1 FPX fee', keep: 'You keep RM99' });
+    expect(en.noCut.fine).toBe('Marketplace example uses typical 2026 Malaysian fees: 5% platform fee, 2–6% commission and a 2.16% transaction fee. Card and e-wallet payments cost 1–2% through CHIP.');
+    // The figures are the same in Malay.
+    expect(ms.noCut.title[1]).toBe('0%');
+    expect(ms.noCut.amount).toBe(en.noCut.amount);
+    expect(ms.noCut.market.cut).toBe(en.noCut.market.cut);
+    expect(ms.noCut.market.keep).toMatch(/RM89/);
+    expect(ms.noCut.curios.keep).toMatch(/RM99/);
+    expect(ms.noCut.payments.ways).toEqual(en.noCut.payments.ways);
+  });
+
+  it('quotes the price in force, in both languages', () => {
+    const raised = raisedSettings({ freeLeads: 5 });
+    render(<LandingPage locale="en" terms={raised} />);
+    expect(section(document.body)).toHaveTextContent('RM59 a month is all you pay us.');
+    expect(section(document.body)).not.toHaveTextContent('RM49');
+    render(<LandingPage locale="ms" terms={raised} />);
+    expect(document.querySelectorAll('#no-cut')[1]).toHaveTextContent('RM59 sebulan saja');
+  });
+
+  it('puts the 0% in the rose and the band on the board’s pink', () => {
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
+    expect(within(section(container)).getByText('0%').className).toMatch(/ncZero/);
+    expect(css.match(/\n\.nc \{([^}]*)\}/)?.[1]).toMatch(/background:\s*var\(--tj-rose-100\)/);
+    expect(css.match(/\n\.ncZero \{([^}]*)\}/)?.[1]).toMatch(/color:\s*var\(--tj-rose\)/);
+  });
+
+  it('hides the ~RM11 label on phones, so only the red bar shows', () => {
+    const phone = [...css.matchAll(/@media \(max-width: 560px\) \{([\s\S]*?)\n\}/g)].map((m) => m[1]).join('\n');
+    expect(phone).toMatch(/\.ncCutLabel \{\s*display: none;/);
+    render(<LandingPage locale="en" terms={TERMS} />);
+    expect(section(document.body).querySelector('[class*="ncCutLabel"]')).toHaveTextContent('~RM11');
+  });
+
+  it('grows the bars only for visitors who have not asked for less motion', () => {
+    const still = css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}/g, '');
+    expect(still).not.toMatch(/animation:\s*ncGrow/);
+    expect(css).toMatch(/animation: ncGrow 900ms/);
+  });
+
+  it.each(LOCALES)('%s: with reduced motion the bars are drawn full and never wait', (locale) => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
+    expect(card(container)).not.toHaveAttribute('data-grow');
+  });
+
+  it('draws the bars full where nothing can tell it is in view', () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+    );
+    vi.stubGlobal('IntersectionObserver', undefined);
+    // `'IntersectionObserver' in window` is still true with the stub, so take it away entirely.
+    delete (window as { IntersectionObserver?: unknown }).IntersectionObserver;
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
+    expect(card(container)).not.toHaveAttribute('data-grow');
+  });
+
+  it('holds the bars short until the card is in view, grows them once, and leaves them grown', () => {
+    const view = watchable();
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
+    expect(card(container)).toHaveAttribute('data-grow', 'wait');
+    view(0.1);
+    expect(card(container)).toHaveAttribute('data-grow', 'wait');
+    view(0.5);
+    expect(card(container)).toHaveAttribute('data-grow', 'go');
+    view(0);
+    view(0.5);
+    expect(card(container)).toHaveAttribute('data-grow', 'go');
+  });
+});
+
 describe('how it works, pinned', () => {
   it('holds each room, slides to the next, and marks the dot of the room in view', () => {
     expect(howAt(0)).toEqual({ at: 0, step: 0 });

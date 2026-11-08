@@ -8,6 +8,7 @@ import { AskStrip } from './AskStrip.js';
 import { Who } from './Who.js';
 import { How } from './How.js';
 import { Business } from './Business.js';
+import { NoCut } from './NoCut.js';
 import { Pricing } from './Pricing.js';
 import { Faq } from './Faq.js';
 import { Closing } from './Closing.js';
@@ -49,7 +50,8 @@ export function landingMetadata(locale: Locale): Metadata {
  * The landing page, in either language, from the design handoff's TanyaJe
  * board: who can ask what (the hero and the strip under it), who it is for,
  * how it works, what a business gets (what lands in an owner's hands,
- * then the order played out), what it costs, the questions, then the close.
+ * then the order played out), that we take no cut of a sale, what it costs,
+ * the questions, then the close.
  *
  * The root layout fixes <html lang="en">, so the Malay page declares its
  * language on its own outermost element; screen readers and browsers honour
@@ -75,6 +77,7 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
         <Who locale={locale} />
         <How locale={locale} />
         <Business locale={locale} />
+        <NoCut locale={locale} monthly={copy.pricing.monthlyText} />
         <Pricing locale={locale} terms={{ prices: terms.prices, freeLeads: terms.freeLeads, freeOrders: terms.freeOrders }} />
         <Faq copy={copy.faq} />
       </main>

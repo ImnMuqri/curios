@@ -226,6 +226,24 @@ export interface LandingCopy {
     newOrder: string;
     now: string;
   };
+  /** No cut, ever: what a RM100 order leaves you, and what the plan already covers. */
+  noCut: {
+    eyebrow: string;
+    /** The heading around its highlighted figure: before, the figure, after. */
+    title: [string, string, string];
+    /** `monthly` is the plan's price in force, written: RM49. */
+    sub: (monthly: string) => string;
+    /** What a screen reader hears for the two bars. */
+    chartLabel: string;
+    pays: string;
+    amount: string;
+    market: { label: string; note: string; keep: string; cut: string };
+    curios: { label: string; note: string; keep: string };
+    site: { title: string; handle: string; body: string };
+    payments: { title: string; ways: string[]; body: string };
+    google: { title: string; url: string; result: string; body: string };
+    fine: string;
+  };
   pricing: {
     eyebrow: string;
     title: string;
@@ -587,6 +605,20 @@ const EN: LandingBase = {
     newOrder: 'New order · RM235',
     now: 'now',
   },
+  noCut: {
+    eyebrow: 'No cut, ever',
+    title: ['Every sale is yours. We take ', '0%', '.'],
+    sub: (monthly) => `${monthly} a month is all you pay us. However big the order.`,
+    chartLabel: 'On a RM100 order, you keep about RM89 on a marketplace and RM99 on Curios',
+    pays: 'A customer pays',
+    amount: 'RM100',
+    market: { label: 'On a marketplace', note: 'platform fee, commission, transaction fee', keep: 'You keep about RM89', cut: '~RM11' },
+    curios: { label: 'On Curios', note: 'only the bank’s RM1 FPX fee', keep: 'You keep RM99' },
+    site: { title: 'Website and hosting', handle: 'keklina', body: 'No designer, no domain to renew. Usually RM2,000+ to build and about RM420 a year to host.' },
+    payments: { title: 'Payments', ways: ['FPX', 'TNG', 'GrabPay', 'Visa'], body: 'Ready on day one through CHIP. No gateway forms, no setup fee.' },
+    google: { title: 'Found on Google', url: 'curios.my › keklina', result: 'Kek Lina · Homemade cakes in Shah Alam', body: 'Titles, previews and a sitemap, set up for you.' },
+    fine: 'Marketplace example uses typical 2026 Malaysian fees: 5% platform fee, 2–6% commission and a 2.16% transaction fee. Card and e-wallet payments cost 1–2% through CHIP.',
+  },
   faq: {
     title: 'Asked before. Answered here.',
     items: [
@@ -922,6 +954,20 @@ const MS: LandingBase = {
     paid: 'Dibayar',
     newOrder: 'Tempahan baru · RM235',
     now: 'baru',
+  },
+  noCut: {
+    eyebrow: 'Tiada potongan, selamanya',
+    title: ['Setiap jualan milik anda. Kami ambil ', '0%', '.'],
+    sub: (monthly) => `${monthly} sebulan saja yang anda bayar kepada kami. Tak kira berapa besar tempahan.`,
+    chartLabel: 'Untuk tempahan RM100, anda dapat kira-kira RM89 di marketplace dan RM99 di Curios',
+    pays: 'Pelanggan bayar',
+    amount: 'RM100',
+    market: { label: 'Di marketplace', note: 'yuran platform, komisen, yuran transaksi', keep: 'Anda dapat kira-kira RM89', cut: '~RM11' },
+    curios: { label: 'Di Curios', note: 'hanya yuran FPX RM1 dari bank', keep: 'Anda dapat RM99' },
+    site: { title: 'Laman web dan hosting', handle: 'keklina', body: 'Tak perlu pereka, tiada domain untuk diperbaharui. Biasanya RM2,000+ untuk bina dan kira-kira RM420 setahun untuk hosting.' },
+    payments: { title: 'Bayaran', ways: ['FPX', 'TNG', 'GrabPay', 'Visa'], body: 'Sedia dari hari pertama melalui CHIP. Tiada borang gateway, tiada yuran pemasangan.' },
+    google: { title: 'Dijumpai di Google', url: 'curios.my › keklina', result: 'Kek Lina · Kek buatan sendiri di Shah Alam', body: 'Tajuk, pratonton dan peta laman, disediakan untuk anda.' },
+    fine: 'Contoh marketplace guna yuran biasa di Malaysia pada 2026: yuran platform 5%, komisen 2–6% dan yuran transaksi 2.16%. Bayaran kad dan e-dompet dikenakan 1–2% melalui CHIP.',
   },
   faq: {
     title: 'Pernah ditanya. Dijawab di sini.',
