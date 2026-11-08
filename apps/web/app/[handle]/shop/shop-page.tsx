@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from './copy.js';
 import { itemPromo, minText, offText, shopPromo } from './promo.js';
 import type { ViewItem } from './shop-view.js';
-import { ShopCover } from './shop-cover.js';
 import styles from './shop-page.module.css';
 
 const ICON = {
@@ -49,11 +48,6 @@ export function ShopPageView(props: {
   nextDay: string | null;
   description: string | null;
   halal: boolean;
-  /**
-   * The page's cover photo (stock or uploaded), worn blurred behind the shop's sign (HANDOFF "Shop
-   * cover", 27 Oct 2026); null for none, and the sign sits on the page's own colour.
-   */
-  coverUrl?: string | null;
   /** The owner's picture beside their note; null for none, and the note keeps the initial. */
   avatarUrl?: string | null;
   /** The shop's live automatic vouchers; none when absent, and none shown while the shop cannot take orders. */
@@ -100,39 +94,6 @@ export function ShopPageView(props: {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  // Over a cover the two sticky bars are clear, so they draw no band on it; once the shelf scrolls
-  // under one, it takes a tint of the page's colour so its words stay readable. Read from any
-  // scroll (the page's, or the Store preview's phone), captured, since scroll events do not bubble.
-  const shopRef = useRef<HTMLDivElement>(null);
-  const topRef = useRef<HTMLDivElement>(null);
-  const catsRef = useRef<HTMLDivElement>(null);
-  const [stuck, setStuck] = useState({ top: false, cats: false });
-  useEffect(() => {
-    if (!props.coverUrl) return;
-    let frame = 0;
-    const read = () => {
-      frame = 0;
-      const shop = shopRef.current?.getBoundingClientRect();
-      const top = topRef.current?.getBoundingClientRect();
-      const cats = catsRef.current?.getBoundingClientRect();
-      if (!shop || !top) return;
-      const scrolled = top.top - shop.top > 1;
-      const catsStuck = Boolean(cats) && scrolled && cats!.top - top.bottom < 1;
-      setStuck((was) => (was.top === scrolled && was.cats === catsStuck ? was : { top: scrolled, cats: catsStuck }));
-    };
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(read);
-    };
-    read();
-    document.addEventListener('scroll', onScroll, { capture: true, passive: true });
-    window.addEventListener('resize', onScroll);
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener('scroll', onScroll, { capture: true });
-      window.removeEventListener('resize', onScroll);
-    };
-  }, [props.coverUrl]);
-
   // Digital items are their own category, whatever the owner typed for them.
   const categoryOf = (item: ViewItem) => (item.kind === 'DIGITAL' ? copy.digital : item.category?.trim());
   const categories = (() => {
@@ -175,9 +136,8 @@ export function ShopPageView(props: {
   const initial = props.displayName.trim().charAt(0).toUpperCase();
 
   return (
-    <div ref={shopRef} className={styles.shop} data-cover={props.coverUrl ? '' : undefined}>
-      <ShopCover url={props.coverUrl} under />
-      <div ref={topRef} className={styles.top} data-stuck={stuck.top || undefined}>
+    <div className={styles.shop}>
+      <div className={styles.top}>
         <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)} onClick={stay()}>
           <Icon d={ICON.back} />
         </a>
@@ -251,7 +211,7 @@ export function ShopPageView(props: {
       {props.items.length > 0 ? (
         <>
           {categories.length > 0 ? (
-            <div ref={catsRef} className={styles.cats} role="group" aria-label={copy.categories} data-stuck={stuck.cats || undefined}>
+            <div className={styles.cats} role="group" aria-label={copy.categories}>
               <button type="button" aria-pressed={category === null} onClick={() => setCategory(null)}>
                 {copy.allItems}
                 <em>{props.items.length}</em>

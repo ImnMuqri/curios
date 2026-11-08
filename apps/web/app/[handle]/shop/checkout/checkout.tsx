@@ -23,7 +23,6 @@ import { payingKey, retryKey } from './paying.js';
 import { payButtonText, PayWays, useOnlineOffer, usePayChoice } from './pay-ways.js';
 import { PickupTime, PickupWhere } from './pickup-picker.js';
 import { Placed } from './placed.js';
-import { ShopCover } from '../shop-cover.js';
 import styles from './checkout.module.css';
 
 type ViewItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null };
@@ -37,8 +36,6 @@ const PHONE_MIN_DIGITS = 9;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface CheckoutProps {
-  /** The page's cover photo, behind checkout's title as behind the shop (ShopCover); null for none. */
-  coverUrl?: string | null;
   handle: string;
   displayName: string;
   language: string;
@@ -477,8 +474,7 @@ export function Checkout(props: CheckoutProps) {
     : `${copy.payNote(props.displayName)} ${copy.consent(props.displayName)}`;
 
   return (
-    <main className={styles.column} data-cover={props.coverUrl ? '' : undefined}>
-      <ShopCover url={props.coverUrl} />
+    <main className={styles.column}>
       <div ref={top} className={styles.top}>
         <a className={styles.back} href={shopHref} aria-label={copy.backToShop}>
           <svg viewBox="0 0 24 24" aria-hidden="true">

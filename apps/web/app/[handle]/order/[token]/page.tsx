@@ -3,12 +3,11 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getOrderByToken, getSettings, type PublicOrder, type PublicOrderLine } from '@curios/db-read';
 import { PageTheme } from '../../../_bento/BentoPage.js';
-import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
+import { avatarUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../../shop/basket.js';
 import type { DigitalLineView } from './digital-section.js';
 import { OrderView } from './order-view.js';
 import styles from '../../shop/checkout/checkout.module.css';
-import { coverTintOf } from '@curios/core/bento';
 
 // Read live: the owner marking it paid must show on the customer's next reload.
 export const runtime = 'nodejs';
@@ -68,9 +67,8 @@ export default async function OrderPage({ params }: Params) {
   const { switches } = await getSettings();
 
   return (
-    <PageTheme theme={page} className={styles.stage} paintDocument={{ tint: coverTintOf(page) }}>
+    <PageTheme theme={page} className={styles.stage} paintDocument>
       <OrderView
-        coverUrl={coverUrl(page.coverKey)}
         token={token}
         handle={page.handle}
         displayName={page.displayName}

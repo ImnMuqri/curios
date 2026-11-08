@@ -3,14 +3,13 @@ import { notFound, redirect } from 'next/navigation';
 import { getCheckout } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../_system/unavailable.js';
 import { PageTheme } from '../../_bento/BentoPage.js';
-import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
+import { avatarUrl } from '../../../lib/avatar-url.js';
 import { BasketBar } from './basket-bar.js';
 import { whatsappNumber } from './basket.js';
 import { shopCopy } from './copy.js';
 import { nextOrderDay } from './pill.js';
 import { ShopPageView } from './shop-page.js';
 import styles from './shop-page.module.css';
-import { coverTintOf } from '@curios/core/bento';
 
 // Read live, like /[handle]: an item turned off must leave the shelf on the next request.
 export const runtime = 'nodejs';
@@ -50,7 +49,7 @@ export default async function ShopPage({
   // The shop has its own top bar, so it does not wear the page's header and tabs: only its look.
   return (
     <main>
-      <PageTheme theme={shop} className={styles.stage} paintDocument={{ tint: coverTintOf(shop) }}>
+      <PageTheme theme={shop} className={styles.stage} paintDocument>
         <div className={styles.column}>
           <ShopPageView
             handle={shop.handle}
@@ -64,7 +63,6 @@ export default async function ShopPage({
             nextDay={nextDay}
             description={shop.shopDescription}
             halal={shop.shopHalal}
-            coverUrl={coverUrl(shop.coverKey)}
             avatarUrl={avatarUrl(shop.avatarKey)}
             vouchers={shop.canTakeOrders ? shop.vouchers : []}
           />

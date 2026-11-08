@@ -8,7 +8,6 @@ import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from '../copy.js';
 import { itemPromo, minText, offText } from '../promo.js';
-import { ShopCover } from '../shop-cover.js';
 import { ProductGallery } from './product-gallery.js';
 import styles from './product.module.css';
 
@@ -56,8 +55,6 @@ export function ProductView(props: {
   /** sessionStorage key for the basket. Default `curios-basket:${handle}`. */
   storageKey?: string;
   inline?: boolean;
-  /** The page's cover photo, the item's backdrop as it is the shop's (ShopCover); null for none. */
-  coverUrl?: string | null;
   /** The shop's live automatic vouchers; none when absent (the Store preview). */
   vouchers?: VoucherTerms[];
   /** Called once an add is saved. Default: go back to the shop. */
@@ -124,8 +121,7 @@ export function ProductView(props: {
   }
 
   return (
-    <div className={styles.view} data-inline={props.inline || undefined} data-cover={props.coverUrl ? '' : undefined}>
-      <ShopCover url={props.coverUrl} under />
+    <div className={styles.view} data-inline={props.inline || undefined}>
       <div className={styles.top}>
         <a className={styles.ib} href={shopHref} aria-label={copy.backToShop} onClick={back}>
           <Icon d={ICON.back} />

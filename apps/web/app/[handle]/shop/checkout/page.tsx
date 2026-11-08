@@ -3,11 +3,10 @@ import { notFound, redirect } from 'next/navigation';
 import { getCheckout, getSettings } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
-import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
+import { avatarUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../basket.js';
 import { Checkout } from './checkout.js';
 import styles from './checkout.module.css';
-import { coverTintOf } from '@curios/core/bento';
 
 // Read live, like the shop: a price or a pause must show on the next request.
 export const runtime = 'nodejs';
@@ -36,9 +35,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
   const { switches } = await getSettings();
 
   return (
-    <PageTheme theme={shop} className={styles.stage} paintDocument={{ tint: coverTintOf(shop) }}>
+    <PageTheme theme={shop} className={styles.stage} paintDocument>
       <Checkout
-        coverUrl={coverUrl(shop.coverKey)}
         handle={shop.handle}
         displayName={shop.displayName}
         language={shop.language}

@@ -500,7 +500,6 @@ export function StoreEditor({
                 <ProductView
                   // A new key per item, so choosing another starts from its first size.
                   key={previewFocus.id}
-                  coverUrl={look.coverUrl}
                   handle={look.handle}
                   displayName={look.displayName}
                   language={look.language}
@@ -531,7 +530,6 @@ export function StoreEditor({
                     vouchers={previewVouchers}
                     description={orNull(description.text)}
                     halal={settings.shopHalal}
-                    coverUrl={look.coverUrl}
                     avatarUrl={look.avatarUrl}
                     preview={{
                       storageKey: 'curios-store-preview',
