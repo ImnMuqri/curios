@@ -948,6 +948,18 @@ a{color:#2340c8}a:hover{color:#122686}
 .v2itab+.head{padding-top:16px}
 }
 @keyframes tpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* shop enquiries (8 Nov) */
+.etag{display:inline-block;margin-right:6px;padding:1px 7px;border-radius:6px;background:#fbeef1;color:#b5294e;font-style:normal;font-size:11px;font-weight:700;vertical-align:1px}
+.ecard{padding:14px;border-radius:10px;background:#ffffff;box-shadow:0 0 0 1px #e8eaef}
+.ec-it{display:flex;align-items:center;gap:12px}
+.ec-it i{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:8px;font-style:normal;font-size:18px;font-weight:700}
+.ec-it span{flex:1;min-width:0}.ec-it b{display:block;font-size:14.5px;font-weight:600}.ec-it small{font-size:12.5px;color:#696e7b}
+.ec-q{flex:none;height:36px;padding:0 14px;border:0;border-radius:10px;background:#2340c8;color:#ffffff;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.ec-f{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.ec-f>span{display:block;height:auto;padding:9px 12px;border-radius:8px;background:#f5f6fa;line-height:1.35}.ec-f small{display:block;margin:0 0 2px;font-size:11.5px;line-height:1.3;color:#696e7b}.ec-f b{display:block;font-size:13.5px;font-weight:600}
+.ec-n{margin:12px 0 0;font-size:13.5px;color:#3f4554;font-style:italic}
+@media (max-width:760px){.ec-f{grid-template-columns:1fr 1fr}.ec-it{flex-wrap:wrap}.ec-q{width:100%}}
 </style>
 </helmet>
 
@@ -993,7 +1005,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{f.on}}" onClick="{{ f.go }}" style="color: {{f.fg}}">{{f.label}}<sc-if value="{{ f.hasN }}" hint-placeholder-val="{{ false }}"><i style="background: #2340c8; color: #ffffff">{{f.n}}</i></sc-if></button></sc-for>
 </div>
 <div class="olist">
-<sc-for list="{{ rows }}" as="l" hint-placeholder-count="6"><button type="button" class="lrow" onClick="{{ l.pick }}" aria-current="{{l.on}}" style="background: {{l.bg}}; box-shadow: {{l.ring}}; animation-delay: {{l.delay}}ms"><span class="lav" style="background: {{l.avBg}}; color: {{l.avFg}}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg></span><span class="lmid"><span class="lph">{{l.phone}}<sc-if value="{{ l.isNew }}" hint-placeholder-val="{{ false }}"><span class="newdot"></span></sc-if></span><span class="lwant">{{l.want}}</span></span><span class="lr"><span>{{l.when}}</span><span class="heat" aria-label="{{l.score}} of 3 details"><sc-for list="{{ l.heat }}" as="h" hint-placeholder-count="3"><i style="background: {{h}}"></i></sc-for></span></span></button></sc-for>
+<sc-for list="{{ rows }}" as="l" hint-placeholder-count="6"><button type="button" class="lrow" onClick="{{ l.pick }}" aria-current="{{l.on}}" style="background: {{l.bg}}; box-shadow: {{l.ring}}; animation-delay: {{l.delay}}ms"><span class="lav" style="background: {{l.avBg}}; color: {{l.avFg}}"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg></span><span class="lmid"><span class="lph">{{l.phone}}<sc-if value="{{ l.isNew }}" hint-placeholder-val="{{ false }}"><span class="newdot"></span></sc-if></span><span class="lwant"><sc-if value="{{ l.isEnq }}" hint-placeholder-val="{{ false }}"><em class="etag">Enquiry</em></sc-if>{{l.want}}</span></span><span class="lr"><span>{{l.when}}</span><span class="heat" aria-label="{{l.score}} of 3 details"><sc-for list="{{ l.heat }}" as="h" hint-placeholder-count="3"><i style="background: {{h}}"></i></sc-for></span></span></button></sc-for>
 <sc-if value="{{ noRows }}" hint-placeholder-val="{{ false }}"><p class="empty"><b>{{emptyTitle}}</b>{{emptyText}}</p></sc-if>
 </div>
 </div>
@@ -1004,7 +1016,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="dwrap">
 <div class="lh">
 <span class="lav" style="width: 52px; height: 52px; border-radius: 10px; background: {{d.avBg}}; color: {{d.avFg}}"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg></span>
-<span><p class="big-ph">{{d.phone}}</p><p>Left their number {{d.when}} · in the chat on curios.my/keklina</p></span>
+<span><p class="big-ph">{{d.phone}}</p><p>{{d.via}}</p></span>
 <div class="sseg" role="radiogroup" aria-label="Lead status">
 <span class="thm" style="transform: translateX({{d.segX}}%); background: {{d.segC}}"></span>
 <sc-for list="{{ d.statuses }}" as="s" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{s.on}}" onClick="{{ s.go }}" style="color: {{s.fg}}">{{s.label}}</button></sc-for>
@@ -1013,13 +1025,17 @@ a{color:#2340c8}a:hover{color:#122686}
 </div>
 
 
-<div class="qsec">
+<sc-if value="{{ d.isEnq }}" hint-placeholder-val="{{ false }}"><div class="qsec"><h3>Their enquiry<span>Sent from the Ask button in your shop</span></h3>
+<div class="ecard"><div class="ec-it"><i style="background: {{d.e.tint}}; color: {{d.e.ink}}">{{d.e.ini}}</i><span><b>{{d.e.item}}</b><small>Ask for a price · from RM180</small></span><button type="button" class="ec-q" onClick="{{ d.quote }}">{{d.quoteText}}</button></div>
+<div class="ec-f"><span><small>When</small><b>{{d.e.when}}</b></span><span><small>For</small><b>{{d.e.ppl}}</b></span><span><small>Budget</small><b>{{d.e.budget}}</b></span></div>
+<p class="ec-n">“{{d.e.note}}”</p></div></div></sc-if>
+<sc-if value="{{ d.notEnq }}" hint-placeholder-val="{{ true }}"><div class="qsec">
 <h3>What they're after<span>Picked out of the conversation</span></h3>
 <div class="slots">
 <sc-for list="{{ d.slots }}" as="s" hint-placeholder-count="3"><div class="slot {{s.cls}}" style="background: {{s.bg}}; animation-delay: {{s.delay}}ms"><span class="si2" style="background: {{s.ib}}; color: {{s.ic}}"><svg viewBox="0 0 24 24"><path d="{{s.icon}}"></path></svg></span><small>{{s.label}}</small><b>{{s.value}}</b></div></sc-for>
 <div class="meter"><svg viewBox="0 0 44 44" width="48" height="48" aria-hidden="true"><circle cx="22" cy="22" r="18" fill="none" stroke="#dfe8fd" stroke-width="5"></circle><circle cx="22" cy="22" r="18" fill="none" stroke="#2340c8" stroke-width="5" stroke-linecap="round" stroke-dasharray="113.1" stroke-dashoffset="{{d.ringOff}}" transform="rotate(-90 22 22)" style="transition: stroke-dashoffset 700ms cubic-bezier(.22,1,.36,1)"></circle></svg><b>{{d.score}} of 3</b><span>{{d.scoreText}}</span></div>
 </div>
-</div>
+</div></sc-if>
 
 <div class="qsec">
 <div class="lgrid">
@@ -1027,7 +1043,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <h3 style="display: flex; justify-content: space-between; margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #4b5060">The conversation<span style="font-weight: 400; color: #696e7b">{{d.lines}} messages</span></h3>
 <div class="convo">
 <sc-for list="{{ d.transcript }}" as="m" hint-placeholder-count="4"><span class="{{m.cls}}" style="animation-delay: {{m.delay}}ms">{{m.text}}</span></sc-for>
-<span class="left"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Left their number</span>
+<sc-if value="{{ d.notEnq }}" hint-placeholder-val="{{ true }}"><span class="left"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Left their number</span></sc-if>
 </div>
 </div>
 <div>
@@ -1066,8 +1082,9 @@ class Component extends DCLogic {
     super(props);
     const U = (t) => ({ r: 'u', t: t }), A = (t) => ({ r: 'a', t: t });
     this.state = {
-      filter: 'all', sel: 1, cnt: 0, grow: 0, msgs: {}, delConfirm: false, copied: false, toast: '',
+      filter: 'all', sel: 7, cnt: 0, grow: 0, msgs: {}, delConfirm: false, copied: false, toast: '',
       leads: [
+        { id: 7, phone: '+60 12-345 6789', name: 'Farah', when: 'just now', day: 6, status: 'NEW', enq: { item: 'Custom birthday cake', ini: 'C', tint: '#e3d6f7', ink: '#4b2a86', when: 'Sun 15 Nov', ppl: '20 people', budget: 'About RM250', note: 'Frozen theme, 2 tiers, with “Aisyah” on top.' }, slots: { product: 'Custom birthday cake, 20 people', date: 'Sun 15 Nov', location: null }, transcript: [U('Enquiry from the shop: Custom birthday cake. For 20 people, Sun 15 Nov. Frozen theme, 2 tiers, with “Aisyah” on top. Budget around RM250.'), A('Thanks! Custom cakes for 20 people usually start from RM180, so your budget should work. 15 Nov still has a pickup slot. Lina will confirm the design and the final price on WhatsApp.')] },
         { id: 1, phone: '+60 12-781 4402', when: '25 min ago', day: 6, status: 'NEW', slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, transcript: [U('nak tanya kek coklat 2kg berapa?'), A('Kek coklat moist 2kg is RM170. Order at least 2 days ahead.'), U('boleh hantar ke klang 24hb?'), A("I'm not sure about delivery to Klang. Leave your number and Lina will get back to you.")] },
         { id: 2, phone: '+60 19-330 2817', when: '2h ago', day: 6, status: 'NEW', slots: { product: 'Cupcakes for about 40 people', date: 'Next Friday', location: null }, transcript: [U('Hi, do you do cupcakes? Need around 40 for an office event'), A("Cupcakes aren't on the menu, but Lina takes custom orders. Leave your number and she'll reply."), U('ok next friday')] },
         { id: 3, phone: '+60 11-2045 7788', when: 'yesterday', day: 5, status: 'CONTACTED', slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, transcript: [U('Do you make wedding cakes? 3 tier'), A("Wedding cakes are a custom order. Leave your number and Lina will talk you through it.")] },
@@ -1087,6 +1104,7 @@ class Component extends DCLogic {
   score(l) { return l.slots ? ['product', 'date', 'location'].filter((k) => l.slots[k]).length : 0; }
   draft(l) {
     const s = l.slots || {};
+    if (l.enq) return 'Hi ' + (l.name || '') + '! This is Lina from Kek Lina. Thanks for asking about a custom birthday cake for ' + l.enq.when + '. A Frozen theme in 2 tiers for 20 people is doable. It comes to RM250 with the name on top. Shall I send you the payment link to book the slot?';
     let m = 'Hi! This is Lina from Kek Lina. You asked in the chat';
     if (s.product) m += ' about ' + s.product.charAt(0).toLowerCase() + s.product.slice(1);
     if (s.date) m += ' for ' + s.date;
@@ -1117,7 +1135,7 @@ class Component extends DCLogic {
       filters: fl.map((f) => ({ label: f[1], on: st.filter === f[0], fg: st.filter === f[0] ? '#191f2c' : '#696e7b', hasN: f[2] > 0, n: f[2], go: () => self.setState({ filter: f[0], delConfirm: false }) })),
       rows: shown.map((l, i) => { const on = sel && sel.id === l.id, s = self.score(l), c = SC[l.status]; return {
         phone: l.phone, when: l.when, isNew: l.status === 'NEW', score: s, heat: heat(s),
-        want: l.slots ? [l.slots.product, l.slots.date, l.slots.location].filter(Boolean).join(' · ') : 'Nothing picked out yet',
+        want: l.enq ? l.enq.item + ' · ' + l.enq.when : l.slots ? [l.slots.product, l.slots.date, l.slots.location].filter(Boolean).join(' · ') : 'Nothing picked out yet', isEnq: !!l.enq, ename: l.name || '',
         avBg: c[0], avFg: c[1], on: on ? 'true' : 'false', bg: on ? '#ffffff' : 'transparent',
         ring: on ? '0 0 0 1.5px #2340c8, 0 8px 18px -12px rgba(35,64,200,.5)' : 'none', delay: i * 40,
         pick: () => self.setState({ sel: l.id, delConfirm: false, copied: false })
@@ -1136,6 +1154,7 @@ class Component extends DCLogic {
       ['location', 'Where', 'M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z', '#e8f3ef', '#1d6f5f']
     ];
     out.d = {
+      isEnq: !!l.enq, notEnq: !l.enq, e: l.enq || {}, via: l.enq ? 'Sent an enquiry ' + l.when + ' from your shop · ' + (l.name || '') : 'Left their number ' + l.when + ' · in the chat on curios.my/keklina', quoteText: st.quoted ? 'Quote sent' : 'Send a quote', quote: () => { self.setState({ quoted: true }); self.ping('Quote sent: RM250 with a payment link. It lands in Orders when they pay.'); },
       phone: l.phone, when: l.when, avBg: c[0], avFg: c[1],
       segX: order.indexOf(l.status) * 100, segC: c[1],
       statuses: [['NEW', 'New'], ['CONTACTED', 'Contacted'], ['CLOSED', 'Closed']].map((x) => ({ label: x[1], on: l.status === x[0], fg: l.status === x[0] ? '#ffffff' : '#4b5060', go: () => { self.setStatus(l.id, x[0]); self.ping('Marked ' + x[1].toLowerCase() + '.'); } })),

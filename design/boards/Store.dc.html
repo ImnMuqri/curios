@@ -895,6 +895,13 @@ a{color:#2340c8}a:hover{color:#122686}
 .v2itab+.head{padding-top:16px}
 }
 @keyframes tpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* Ask-for-a-price items (8 Nov) */
+.sf2-add.ask{width:auto!important;padding:0 9px;border-radius:999px;background:#b5294e!important;color:#fafbfc!important;font-size:10.5px!important;font-weight:700}
+.ask-tiles{grid-template-columns:1fr 1fr}
+.askq{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:14px;padding:12px 14px;border-radius:10px;background:#f6f8ff}
+.askq b{width:100%;margin-bottom:2px;font-size:12.5px;font-weight:600;color:#122686}
+.askq span{height:28px;padding:0 11px;border-radius:999px;background:#ffffff;box-shadow:inset 0 0 0 1px #dfe4f7;font-size:12.5px;color:#3f4554;display:grid;place-items:center}
 </style>
 </helmet>
 
@@ -1023,6 +1030,16 @@ a{color:#2340c8}a:hover{color:#122686}
 </div></sc-if>
 </sc-if>
 
+<sc-if value="{{ ed.notDig }}" hint-placeholder-val="{{ true }}">
+<div class="sub"><b>How they order</b><span>Made-to-order things, like custom cakes, work best as Ask</span></div>
+<div class="tiles dg-tiles ask-tiles"><sc-for list="{{ ed.hows }}" as="h" hint-placeholder-count="2"><button type="button" class="tile dtile {{h.cls}}" aria-pressed="{{h.on}}" onClick="{{ h.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span><b>{{h.label}}</b><span>{{h.note}}</span></span></button></sc-for></div>
+</sc-if>
+<sc-if value="{{ ed.isAsk }}" hint-placeholder-val="{{ false }}">
+<div class="sub"><b>Starting price</b><span>Optional. Helps your page answer “how much?”</span></div>
+<label class="money" style="width: 200px; margin-top: 12px"><span>From RM</span><input value="{{ ed.price }}" onChange="{{ ed.setPrice }}" inputmode="decimal" aria-label="Starting price in ringgit" placeholder="Leave empty"></label>
+<div class="askq"><b>They’ll be asked</b><span>When they need it</span><span>How many people</span><span>What they have in mind</span><span>Name and WhatsApp</span></div>
+</sc-if>
+<sc-if value="{{ ed.notAsk }}" hint-placeholder-val="{{ true }}">
 <div class="sub"><b>Price</b><span>Options suit sizes, like 1kg and 2kg</span></div>
 <div class="seg2" role="tablist" aria-label="How it is priced">
 <span class="seg2-th" style="transform: translateX({{ed.segX}}px)"></span>
@@ -1042,6 +1059,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </sc-for>
 </div>
 <button type="button" class="addrow" onClick="{{ ed.addOption }}" style="margin-top: 6px">+ Add option</button>
+</sc-if>
 </sc-if>
 <p class="pl" aria-live="polite" style="background: {{ed.plBg}}; color: {{ed.plFg}}"><sc-if value="{{ ed.ok }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg></sc-if><sc-if value="{{ ed.bad }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></sc-if>{{ed.plText}}</p>
 
@@ -1148,7 +1166,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><div class="sf2-own"><span class="sf2-av" aria-hidden="true">L</span><span class="sf2-b">{{shopDesc}}<small>Lina · 15 Oct</small></span></div></sc-if>
 <div class="sf2-cats"><sc-for list="{{ pvCats }}" as="c" hint-placeholder-count="3"><span class="{{c.cls}}">{{c.l}}<em>{{c.n}}</em></span></sc-for></div>
 <div class="sf2-g">
-<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="sf2-card" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="sf2-ph" style="background: {{s.tint}}; color: {{s.ink}}">{{s.initial}}<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if><sc-if value="{{ s.dig }}" hint-placeholder-val="{{ false }}"><span class="sf2-dig">Digital</span></sc-if><span class="sf2-add" aria-hidden="true">+</span></span><b>{{s.name}}</b><span>{{s.from}}</span></button></sc-for>
+<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="sf2-card" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="sf2-ph" style="background: {{s.tint}}; color: {{s.ink}}">{{s.initial}}<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if><sc-if value="{{ s.dig }}" hint-placeholder-val="{{ false }}"><span class="sf2-dig">Digital</span></sc-if><span class="sf2-add {{s.addCls}}" aria-hidden="true">{{s.addTxt}}</span></span><b>{{s.name}}</b><span>{{s.from}}</span></button></sc-for>
 </div>
 <sc-if value="{{ pvEmpty }}" hint-placeholder-val="{{ false }}"><p class="sf2-nt" style="width: 100%; margin-top: 8px; padding: 18px 12px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px; text-align: center">New items are coming soon.</p></sc-if>
 </div>
@@ -1234,6 +1252,7 @@ class Component extends DCLogic {
       save: 'saved',
       items: [
         { id: 1, name: 'Kek coklat moist', desc: 'Our bestseller. Rich, soft and not too sweet, with a thick ganache on top.', photo: 0, tint: 0, mode: 'options', price: '', options: [{ k: 1, label: '1kg', price: '95' }, { k: 2, label: '2kg', price: '170' }], available: true },
+        { id: 9, name: 'Custom birthday cake', desc: 'Your theme, your colours, a name on top. Tell me what you have in mind and I will send you a price.', photo: 2, tint: 2, mode: 'single', ask: true, price: '180', options: [{ k: 9, label: '', price: '' }], available: true },
         { id: 2, name: 'Kek batik', desc: 'Old school, with Marie biscuits and plenty of chocolate. Cut into 12 slices.', photo: 1, tint: 1, mode: 'single', price: '45', options: [{ k: 3, label: '', price: '' }], available: true },
         { id: 3, name: 'Cookies balang', desc: 'A jar of 40 chocolate chip cookies. Good for Raya and open houses.', photo: 4, tint: 0, mode: 'single', price: '25', options: [{ k: 4, label: '', price: '' }], available: true },
         { id: 4, name: 'Burnt cheesecake', desc: 'Creamy in the middle, caramelised outside. Back in December.', photo: 4, tint: 1, mode: 'options', price: '', options: [{ k: 5, label: '6 inch', price: '85' }, { k: 6, label: '8 inch', price: '120' }], available: false },
@@ -1260,6 +1279,12 @@ class Component extends DCLogic {
     return s === 0 ? 'RM' + w : 'RM' + w + '.' + String(s).padStart(2, '0');
   }
   pricing(it) {
+    if (it.ask) {
+      if (!String(it.price || '').trim()) return { line: 'Price on request', from: 0, opts: [], ask: true };
+      const ac = this.cents(it.price);
+      if (ac === null || ac <= 0 || ac > 1000000) return { error: 'That starting price does not look right. Use ringgit, like 180, or leave it empty.' };
+      return { line: 'From ' + this.rm(ac) + ', ask for a price', from: ac, opts: [], ask: true };
+    }
     if (it.mode === 'single') {
       if (!String(it.price || '').trim()) return { error: 'Add a price, like 95 or 95.50.' };
       const c = this.cents(it.price);
@@ -1398,7 +1423,7 @@ class Component extends DCLogic {
       }),
       earliestText: st.notice === 0 ? 'Customers can order for today.' : 'The earliest date a customer can pick is ' + earliestLabel + '.',
       shopSub: st.notice === 0 ? 'Same day orders welcome' : 'Order ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + ' ahead',
-      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.16)' : 'transparent', name: x.name, dig: !!x.digital, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
+      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.16)' : 'transparent', name: x.name, dig: !!x.digital, addTxt: x.ask && !x.digital ? 'Ask' : '+', addCls: x.ask && !x.digital ? 'ask' : '', from: x.ask && !x.digital ? (p.from ? 'From ' + self.rm(p.from) + ' · ask' : 'Price on request') : (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
       pvEmpty: live.length === 0,
       spBottom: pvKey === 'item' ? '140px' : '0px',
       scrBg: '#542339',
@@ -1439,7 +1464,8 @@ class Component extends DCLogic {
         setName: (e) => self.updItem(x.id, { name: String(e.target.value || '').slice(0, 60) }),
         setDesc: (e) => self.updItem(x.id, { desc: String(e.target.value || '').slice(0, 280) }),
         setPrice: (e) => self.updItem(x.id, { price: String(e.target.value || '') }),
-        single: x.mode === 'single', multi: x.mode === 'options',
+        notDig: !x.digital, isAsk: !!x.ask && !x.digital, notAsk: !(x.ask && !x.digital), single: !x.ask && x.mode === 'single', multi: !x.ask && x.mode === 'options',
+        hows: [[false, 'Add to basket', 'They pick, pay and it lands in Orders'], [true, 'Ask for a price', 'They send an enquiry. You reply with a price']].map((h) => ({ label: h[1], note: h[2], on: !!x.ask === h[0], cls: !!x.ask === h[0] ? 'on' : '', pick: () => self.updItem(x.id, { ask: h[0] }) })),
         segX: x.mode === 'single' ? 0 : 124,
         modes: [['single', 'One price'], ['options', 'Options']].map((m) => ({ label: m[1], on: x.mode === m[0], fg: x.mode === m[0] ? '#191f2c' : '#696e7b', go: () => self.updItem(x.id, { mode: m[0], price: x.price || (x.options[0] || {}).price || '', options: m[0] === 'options' && !x.options[0].label && x.price ? [{ k: x.options[0].k, label: 'Regular', price: x.price }] : x.options }) })),
         options: x.options.map((o, i) => ({

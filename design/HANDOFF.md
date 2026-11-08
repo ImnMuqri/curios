@@ -680,3 +680,41 @@ The new failed page is in `Public.dc.html` as route `payfail` ("Payment failed" 
 - The order code tiles turn grey (`#6b5a60`), with the order lines and total under them.
 - **Pay {total} again** is the main button and goes back to CHIP for the same order. **Pay another way** goes back to checkout with the basket kept.
 - At the bottom, a small line: "Tried with {method}. The bank said: {reason}."
+
+## Landing: "No cut, ever" block (8 Nov 2026)
+Board: `TanyaJe.dc.html`. It's a new `<section class="nc">` between the For business story and Pricing, on the same pink (`#fbeef1`). CSS is in the block marked `/* no cut, ever (8 Nov) */`. Screens: `Landing-no-cut.*`.
+- **Left:** eyebrow "No cut, ever", the title "Every sale is yours. We take 0%." with 0% in `#b5294e`, then "RM49 a month is all you pay us."
+- **Right:** a white card showing a RM100 order as two bars.
+  - Marketplace: keep about RM89, with a red ~RM11 cut.
+  - Curios: keep RM99, with only a sliver for the RM1 FPX fee.
+  - The bars grow in once (900ms). Under reduced motion they don't animate.
+- **Below:** three tiles: Website and hosting (`curios.my/keklina`), Payments (FPX, TNG, GrabPay, Visa through CHIP) and Found on Google (a search result preview).
+- **Small print:** keep it. It shows the fee assumptions and that CHIP fees still apply. Recheck the marketplace numbers before launch, because Shopee changes them often.
+- **Phones:** everything stacks, and the ~RM11 label is hidden so only the red bar shows.
+- The "usual way vs Curios" checklist (option B) is meant for the pricing page later. It isn't built yet.
+
+## Shop: Ask items and enquiries (8 Nov 2026)
+Boards: `Public.dc.html` (customer), `Store.dc.html` and `Leads.dc.html` (owner). CSS is in blocks marked `(8 Nov)`. Screens: `Shop-ask-*.phone.jpg`, `Store-ask-item.desktop.jpg`, `Leads-enquiry.desktop.jpg`.
+
+**Owner (Store item editor)**
+- New "How they order" choice on physical items: **Add to basket** (default) or **Ask for a price**.
+- Ask items take an optional **Starting price** ("From RM"), which the page uses to answer "how much?".
+- A note lists what customers get asked: when, how many people, what they have in mind, name and WhatsApp.
+- Data: `item.ask = true`, `item.price` = the starting price, which can be empty ("Price on request").
+
+**Customer (shop)**
+- Ask items show a maroon **Ask** pill instead of **+**, priced "From RM180 · ask" (or "Price on request" with no starting price). They can't go in the basket.
+- The item page's bottom bar says **Ask Kek Lina**. The separate "Ask about this" row is hidden on Ask items.
+- The enquiry sheet is a bottom sheet with the item at the top:
+  - date chips, people chips, a message box, name and WhatsApp (prefilled if known)
+  - **Send enquiry**, then "You don't pay anything yet."
+- After sending, the customer lands in the page's Ask chat:
+  - their enquiry shows as a bubble with the item attached, then a green "Sent to Lina" tag
+  - the page replies from facts only: the starting price, whether the date has a slot, and that Lina confirms on WhatsApp
+  - **Never invent a price.** With no starting price, say Lina will send one.
+
+**Owner (Leads)**
+- Enquiries come in as leads with an **Enquiry** tag in the list, and "Sent an enquiry … from your shop · {name}" in the header.
+- A "Their enquiry" card shows the item, When / For / Budget, their note, and **Send a quote**.
+- **Send a quote** creates a payment link for a set price. Once paid, it becomes a normal order in Orders.
+- The first WhatsApp draft is written for the enquiry.
