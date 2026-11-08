@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, writeBasket } from './shop/basket.js';
 import { shopCopy } from './shop/copy.js';
-import { takeEnquiryHandoff, type EnquiryHandoff } from './shop/enquiry.js';
+import type { EnquiryHandoff } from './shop/enquiry.js';
 import styles from './page.module.css';
 import { paintDocument } from '../_bento/document-color.js';
 
@@ -118,9 +118,12 @@ export function Ask({
     linksTab?.addEventListener('click', toLinks);
     if (window.location.hash === '#ask') {
       setPrefill(new URLSearchParams(window.location.search).get('q')?.slice(0, 500) ?? '');
-      // Taken once: Strict Mode's second run finds it gone, and must not clear the first's.
-      const handoff = takeEnquiryHandoff(handle);
-      if (handoff) setEnquiry(handoff);
+      // Loaded only on arrival at #ask, so the cold page does not carry it. Taken once: Strict Mode's
+      // second run finds it gone, and must not clear the first's.
+      void import('./shop/enquiry.js').then(({ takeEnquiryHandoff }) => {
+        const handoff = takeEnquiryHandoff(handle);
+        if (handoff) setEnquiry(handoff);
+      });
       onOpen();
     }
     return () => {
