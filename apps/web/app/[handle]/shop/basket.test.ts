@@ -22,6 +22,12 @@ describe('priceBasket', () => {
     expect(priced.lines).toEqual([]);
     expect(priced.totalCents).toBe(0);
   });
+  it('drops an Ask item a stored basket still holds: its price is only where an enquiry starts', () => {
+    const ask = { id: 'custom', name: 'Custom cake', slug: 'custom', category: null, tag: null, description: null, photoKey: null, priceCents: 18000, askForPrice: true, options: [] };
+    const priced = priceBasket([{ itemId: 'custom', optionId: null, quantity: 1 }, { itemId: 'cookie', optionId: null, quantity: 2 }], [...items, ask]);
+    expect(priced.lines.map((l) => l.itemId)).toEqual(['cookie']);
+    expect(priced.totalCents).toBe(5000);
+  });
 });
 
 describe('whatsappNumber', () => {

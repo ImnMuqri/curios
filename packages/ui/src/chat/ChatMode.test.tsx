@@ -847,6 +847,95 @@ describe('ChatMode, the product card', () => {
     await screen.findByText('Kek batik is RM95.');
     expect(screen.queryByRole('group')).not.toBeInTheDocument();
   });
+
+  it('an Ask item’s card opens its page to ask, priced "from", and never adds', async () => {
+    const onAddToBasket = vi.fn();
+    const custom = { ...productCard, itemId: 'i9', slug: 'custom-cake', name: 'Custom cake', fromPriceCents: 18000, firstOptionId: null, buy: 'ask' };
+    await askOnce(named({ productCards: [custom, { ...custom, itemId: 'i10', slug: 'quote', name: 'Wedding cake', fromPriceCents: null }] }), { onAddToBasket });
+    const card = await screen.findByRole('group', { name: 'Custom cake' });
+    expect(card).toHaveTextContent('from RM180');
+    const ask = within(card).getByRole('link', { name: 'Ask' });
+    expect(ask).toHaveAttribute('href', '/keklina/shop/custom-cake');
+    // No starting price: still asks, with no price shown.
+    const quote = screen.getByRole('group', { name: 'Wedding cake' });
+    expect(within(quote).getByRole('link', { name: 'Ask' })).toHaveAttribute('href', '/keklina/shop/quote');
+    expect(quote).not.toHaveTextContent('RM');
+    expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
+    await userEvent.click(ask);
+    expect(onAddToBasket).not.toHaveBeenCalled();
+  });
+
+  it('labels an Ask card’s button in the page’s language', async () => {
+    await askOnce(named({ productCards: [{ ...productCard, buy: 'ask' }] }), {
+      cardCopy: { add: 'Masuk bakul', inBasket: 'Dalam bakul anda', from: (price) => `dari ${price}`, open: (name) => `Buka ${name}`, added: () => '', ask: 'Tanya' },
+    });
+    expect(await screen.findByRole('link', { name: 'Tanya' })).toBeInTheDocument();
+  });
+});
+
+describe('ChatMode, an enquiry from the shop', () => {
+  const enquiry = {
+    conversationId: 'c-enq',
+    item: { name: 'Custom birthday cake', photoUrl: null },
+    text: 'For 20 people on Sun 15 Nov. Budget around RM250.',
+    sentLabel: 'Sent to Kek Lina',
+  };
+  const reply = () =>
+    streamOf(
+      'data: {"type":"text","text":"Thanks! Custom birthday cakes start from RM180."}\n\n',
+      'data: {"type":"done","conversationId":"c-enq","intent":{"qualified":true}}\n\n',
+    );
+
+  it('starts the thread with the enquiry, the item on top and "Sent to" under it, then streams the reply once, even under Strict Mode', async () => {
+    const onEnquiryReply = vi.fn().mockImplementation(async () => reply());
+    const onAsk = vi.fn();
+    const { container } = render(
+      <StrictMode>
+        <PageHarness>
+          <ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Kek Lina" questions={['Berapa harga?']} enquiry={enquiry} onEnquiryReply={onEnquiryReply} onCapture={vi.fn()} />
+        </PageHarness>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText('Thanks! Custom birthday cakes start from RM180.')).toBeInTheDocument();
+    expect(onEnquiryReply).toHaveBeenCalledTimes(1);
+    expect(onEnquiryReply).toHaveBeenCalledWith('c-enq');
+    expect(onAsk).not.toHaveBeenCalled();
+    const bubble = screen.getByText(enquiry.text).parentElement!;
+    expect(bubble).toHaveTextContent('Custom birthday cake');
+    expect(within(bubble).getByText('C')).toBeInTheDocument();
+    expect(screen.getByText('Sent to Kek Lina')).toBeInTheDocument();
+    // A thread exists, so the chips give way to it.
+    expect(screen.queryByRole('button', { name: 'Berapa harga?' })).not.toBeInTheDocument();
+    expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-has-turns', 'true');
+    // The shop has their number already: never the capture card, whatever the server says.
+    expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
+
+  it('draws the item’s photo when it has one', async () => {
+    render(<ChatMode open onClose={vi.fn()} onAsk={vi.fn()} displayName="Kek Lina" questions={[]} enquiry={{ ...enquiry, item: { name: 'Custom birthday cake', photoUrl: 'https://cdn.test/c.webp' } }} onEnquiryReply={vi.fn().mockImplementation(async () => reply())} />);
+    await screen.findByText('Thanks! Custom birthday cakes start from RM180.');
+    expect(screen.getByText(enquiry.text).parentElement!.querySelector('img')).toHaveAttribute('src', 'https://cdn.test/c.webp');
+  });
+
+  it('continues the enquiry’s conversation with the next question, and still offers no card', async () => {
+    const onAsk = vi.fn().mockImplementation(async () => streamOf('data: {"type":"text","text":"Yes, Sunday is open."}\n\n', 'data: {"type":"done","conversationId":"c-enq","intent":{"qualified":true}}\n\n'));
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Kek Lina" questions={[]} enquiry={enquiry} onEnquiryReply={vi.fn().mockImplementation(async () => reply())} onCapture={vi.fn()} />);
+    await screen.findByText('Thanks! Custom birthday cakes start from RM180.');
+
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'Is Sunday OK?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('Yes, Sunday is open.')).toBeInTheDocument();
+    expect(onAsk).toHaveBeenCalledWith('Is Sunday OK?', 'c-enq');
+    expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
+
+  it('says the reply failed without losing the enquiry', async () => {
+    render(<ChatMode open onClose={vi.fn()} onAsk={vi.fn()} displayName="Kek Lina" questions={[]} enquiry={enquiry} onEnquiryReply={vi.fn().mockResolvedValue(null)} />);
+    expect(await screen.findByText('That answer failed. Try again.')).toBeInTheDocument();
+    expect(screen.getByText(enquiry.text)).toBeInTheDocument();
+    expect(screen.getByText('Sent to Kek Lina')).toBeInTheDocument();
+  });
 });
 
 describe('ChatMode, replies are plain text', () => {

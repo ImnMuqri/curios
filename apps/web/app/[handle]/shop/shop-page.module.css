@@ -417,6 +417,29 @@
   font-weight: 700;
 }
 
+/* An Ask item's pill in place of + (8 Nov): the board's .sp-add.ask, in the page's accent. */
+.add.ask {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 13px 0 11px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.ask svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .cn {
   display: block;
   margin: 9px 0 0;

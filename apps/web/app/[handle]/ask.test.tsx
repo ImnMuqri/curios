@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { Ask } from './ask.js';
 
 /**
@@ -371,6 +372,92 @@ describe('Ask, the product card', () => {
     expect(screen.getByText('Hai! Saya halaman Nadia Bakes. Tanya saya tentang apa yang ditawarkan, harga atau cara menempah.')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Masuk bakul' })).toBeInTheDocument();
     expect(screen.getByText('Halaman Nadia Bakes')).toBeInTheDocument();
+  });
+});
+
+describe('Ask, arriving from an enquiry', () => {
+  const handoff = { conversationId: 'c-enq', item: { name: 'Custom birthday cake', photoUrl: null }, text: 'For 20 people on Sun 15 Nov.' };
+
+  function stubReplyFetch() {
+    const spy = vi.fn(async (url: string, _init?: RequestInit) => {
+      const text = url.endsWith('/enquiry') ? 'Thanks! Custom birthday cakes start from RM180.' : 'Yes, Sunday is open.';
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            const enc = new TextEncoder();
+            controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: 'text', text })}\n\n`));
+            controller.enqueue(enc.encode('data: {"type":"done","conversationId":"c-enq","intent":{"qualified":true}}\n\n'));
+            controller.close();
+          },
+        }),
+        { status: 200 },
+      );
+    });
+    vi.stubGlobal('fetch', spy);
+    return spy;
+  }
+
+  afterEach(() => {
+    window.history.replaceState(null, '', '/');
+    window.sessionStorage.clear();
+  });
+
+  it('opens chat mode on the enquiry, says it was sent, streams the reply once, and continues its thread', async () => {
+    const spy = stubReplyFetch();
+    window.sessionStorage.setItem('curios-enquiry:nadia', JSON.stringify(handoff));
+    window.history.replaceState(null, '', '/nadia#ask');
+    render(
+      <StrictMode>
+        <TabbedPage>
+          <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+        </TabbedPage>
+      </StrictMode>,
+    );
+
+    expect(await screen.findByText('Thanks! Custom birthday cakes start from RM180.')).toBeInTheDocument();
+    expect(screen.getByText('For 20 people on Sun 15 Nov.')).toBeInTheDocument();
+    expect(screen.getByText('Custom birthday cake')).toBeInTheDocument();
+    expect(screen.getByText('Sent to Nadia Bakes')).toBeInTheDocument();
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [url, init] = spy.mock.calls[0]!;
+    expect(url).toBe('http://localhost:3001/chat/nadia/enquiry');
+    expect(JSON.parse(init?.body as string)).toEqual({ conversationId: 'c-enq' });
+    // Read once: a reload does not send it again.
+    expect(window.sessionStorage.getItem('curios-enquiry:nadia')).toBeNull();
+    expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByRole('textbox', { name: 'Ask a question' }), 'Is Sunday OK?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    expect(await screen.findByText('Yes, Sunday is open.')).toBeInTheDocument();
+    const [nextUrl, nextInit] = spy.mock.calls[1]!;
+    expect(nextUrl).toBe('http://localhost:3001/chat/nadia');
+    expect(JSON.parse(nextInit?.body as string)).toEqual({ question: 'Is Sunday OK?', conversationId: 'c-enq' });
+    expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
+
+  it('says "Sent to" in Malay on a Malay page', async () => {
+    stubReplyFetch();
+    window.sessionStorage.setItem('curios-enquiry:nadia', JSON.stringify(handoff));
+    window.history.replaceState(null, '', '/nadia#ask');
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={[]} displayName="Nadia Bakes" canCapture={true} language="ms" />
+      </TabbedPage>,
+    );
+    expect(await screen.findByText('Dihantar kepada Nadia Bakes')).toBeInTheDocument();
+  });
+
+  it('ignores a handoff someone edited into nonsense, and opens an empty chat', async () => {
+    const spy = stubReplyFetch();
+    window.sessionStorage.setItem('curios-enquiry:nadia', JSON.stringify({ conversationId: 5, text: 'x' }));
+    window.history.replaceState(null, '', '/nadia#ask');
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+    expect(await screen.findByRole('button', { name: 'Berapa harga?' })).toBeInTheDocument();
+    expect(spy).not.toHaveBeenCalled();
   });
 });
 

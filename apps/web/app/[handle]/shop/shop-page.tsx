@@ -17,6 +17,7 @@ const ICON = {
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5',
   halal: 'M5 13l4 4L19 7',
   store: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
+  chat: 'M5 18.5V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5v8a1.5 1.5 0 0 1-1.5 1.5H9z',
 };
 
 function Icon({ d }: { d: string }) {
@@ -52,6 +53,11 @@ export function ShopPageView(props: {
   avatarUrl?: string | null;
   /** The shop's live automatic vouchers; none when absent, and none shown while the shop cannot take orders. */
   vouchers?: VoucherTerms[];
+  /**
+   * Checkout's canEnquire (the lead rule). An Ask item's pill opens its page, where the enquiry sheet is;
+   * false and it opens the page's chat with a question about it instead. Default true (the Store preview).
+   */
+  canEnquire?: boolean;
   /**
    * The Store editor's picture of this page: the same page, but no link leaves
    * the editor (a tapped item opens the editor's item screen), nothing is
@@ -229,7 +235,9 @@ export function ShopPageView(props: {
               const from = fromPrice(item);
               const inBasket = basket.filter((line) => line.itemId === item.id).reduce((sum, line) => sum + line.quantity, 0);
               const soldOut = item.soldOut === true;
-              const buyable = !soldOut && (item.options.length > 0 || item.priceCents !== null);
+              // An Ask item never goes in the basket: its pill asks instead.
+              const ask = item.askForPrice === true;
+              const buyable = !ask && !soldOut && (item.options.length > 0 || item.priceCents !== null);
               const href = `/${props.handle}/shop/${item.slug}`;
               const deal = itemPromo(vouchers, item.id);
               const tag = item.kind === 'DIGITAL' ? copy.digital : item.tag;
@@ -241,7 +249,17 @@ export function ShopPageView(props: {
                     </a>
                     {tag ? <span className={styles.tag}>{tag}</span> : null}
                     {deal ? <span className={styles.deal}>{copy.promoTag(deal.kind === 'PERCENT', offText(deal))}</span> : null}
-                    {buyable && item.delivery === 'SESSION' ? (
+                    {ask && !soldOut ? (
+                      <a
+                        className={`${styles.add} ${styles.ask}`}
+                        href={props.canEnquire === false ? `/${props.handle}?q=${encodeURIComponent(copy.askPrefill(item.name))}#ask` : href}
+                        aria-label={copy.askPillNamed(item.name)}
+                        onClick={stay(item.id)}
+                      >
+                        <Icon d={ICON.chat} />
+                        {copy.askPill}
+                      </a>
+                    ) : buyable && item.delivery === 'SESSION' ? (
                       // A class needs its time first: the product page has the picker.
                       <button type="button" className={styles.add} aria-label={`${copy.pickATime}: ${item.name}`} onClick={preview ? () => preview.onOpenItem(item.id) : () => window.location.assign(href)}>
                         +
@@ -265,7 +283,15 @@ export function ShopPageView(props: {
                     {item.name}
                   </a>
                   <span className={styles.cp}>
-                    {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}
+                    {ask
+                      ? item.priceCents === null
+                        ? copy.priceOnRequest
+                        : copy.askFrom(formatRinggit(item.priceCents))
+                      : from === null
+                        ? ''
+                        : item.options.length > 0
+                          ? copy.from(formatRinggit(from))
+                          : formatRinggit(from)}
                     {soldOut ? <span className={styles.soldOut}>{copy.soldOut}</span> : null}
                   </span>
                 </li>

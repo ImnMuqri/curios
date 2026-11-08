@@ -221,3 +221,172 @@ describe('ProductView promotions', () => {
     expect(screen.queryByText(/this item/)).toBeNull();
   });
 });
+
+describe('ProductView, an Ask item', () => {
+  const custom = { ...cake, id: 'custom', name: 'Custom birthday cake', slug: 'custom-birthday-cake', tag: 'Made to order', description: 'Your theme, your colours.', photoKey: null, photoUrl: null, priceCents: 18000, askForPrice: true, options: [] };
+  const props = { ...base, item: custom, items: [cake, cookie, custom], onEnquirySent: vi.fn() };
+  const api = 'http://localhost:3001';
+
+  function stubFetch(status: number, body: unknown) {
+    const spy = vi.fn(async () => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } }));
+    vi.stubGlobal('fetch', spy);
+    return spy;
+  }
+
+  async function fill(user: ReturnType<typeof userEvent.setup>, message = 'For 20 people on Sun 15 Nov. Budget RM250.') {
+    if (message) await user.type(screen.getByRole('textbox', { name: 'Your message to Kek Lina' }), message);
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Mira Hassan');
+    await user.type(screen.getByRole('textbox', { name: 'Your WhatsApp number' }), '012-345 6789');
+  }
+
+  beforeEach(() => props.onEnquirySent.mockClear());
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('shows its tag and "From RM180", asks instead of adding, and has no separate "Ask about this" row', () => {
+    render(<ProductView {...props} />);
+    expect(screen.getByText('Made to order')).toBeInTheDocument();
+    expect(screen.getByTestId('price')).toHaveTextContent('From RM180');
+    expect(screen.getByRole('button', { name: 'Ask Kek Lina' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Add to basket/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'One more' })).toBeNull();
+    expect(screen.queryByRole('link', { name: /Ask about this/ })).toBeNull();
+  });
+
+  it('says "Price on request" with no starting price', () => {
+    render(<ProductView {...props} item={{ ...custom, priceCents: null }} />);
+    expect(screen.getByTestId('price')).toHaveTextContent('Price on request');
+  });
+
+  it('opens the enquiry sheet: the item, one message box, name and WhatsApp, and focus moves in', async () => {
+    const user = userEvent.setup();
+    render(<ProductView {...props} />);
+    await user.click(screen.getByRole('button', { name: 'Ask Kek Lina' }));
+    const dialog = screen.getByRole('dialog', { name: 'Custom birthday cake' });
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByText('From RM180 · made to order')).toBeInTheDocument();
+    expect(screen.getByText('What do you need?')).toBeInTheDocument();
+    const message = screen.getByRole('textbox', { name: 'Your message to Kek Lina' });
+    expect(message).toHaveAttribute('placeholder', 'The date you need it, how many people, the design, your budget…');
+    expect(message).toHaveFocus();
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveAttribute('autocomplete', 'name');
+    expect(screen.getByRole('textbox', { name: 'Your WhatsApp number' })).toHaveAttribute('autocomplete', 'tel');
+    expect(screen.getByRole('button', { name: 'Send enquiry' })).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina replies on WhatsApp. You don’t pay anything yet.')).toBeInTheDocument();
+  });
+
+  it('closes on Escape and on the backdrop, and gives focus back to the bar', async () => {
+    const user = userEvent.setup();
+    render(<ProductView {...props} />);
+    const bar = screen.getByRole('button', { name: 'Ask Kek Lina' });
+    await user.click(bar);
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(bar).toHaveFocus();
+    await user.click(bar);
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(bar).toHaveFocus();
+  });
+
+  it('says what is missing by the field, and sends nothing', async () => {
+    const spy = stubFetch(201, { conversationId: 'c1' });
+    const user = userEvent.setup();
+    render(<ProductView {...props} />);
+    await user.click(screen.getByRole('button', { name: 'Ask Kek Lina' }));
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Tell them what you need.');
+    expect(screen.getByRole('textbox', { name: 'Your message to Kek Lina' })).toHaveAttribute('aria-invalid', 'true');
+    await user.type(screen.getByRole('textbox', { name: 'Your message to Kek Lina' }), 'A cake');
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Add your name.');
+    expect(screen.getByRole('textbox', { name: 'Your name' })).toHaveFocus();
+    await user.type(screen.getByRole('textbox', { name: 'Your name' }), 'Mira');
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('Add your WhatsApp number.');
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('sends the enquiry, hands it to the chat and goes there', async () => {
+    const spy = stubFetch(201, { conversationId: 'c-enq' });
+    const user = userEvent.setup();
+    render(<ProductView {...props} />);
+    await user.click(screen.getByRole('button', { name: 'Ask Kek Lina' }));
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [url, init] = spy.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe(`${api}/enquiries/keklina`);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body as string)).toEqual({ itemId: 'custom', message: 'For 20 people on Sun 15 Nov. Budget RM250.', name: 'Mira Hassan', phone: '012-345 6789', consent: true });
+    expect(props.onEnquirySent).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(window.sessionStorage.getItem('curios-enquiry:keklina') ?? 'null')).toEqual({
+      conversationId: 'c-enq',
+      item: { name: 'Custom birthday cake', photoUrl: null },
+      text: 'For 20 people on Sun 15 Nov. Budget RM250.',
+    });
+  });
+
+  it('shows the API’s own words for a 400, and the page’s for a refusal', async () => {
+    const user = userEvent.setup();
+    stubFetch(400, { error: { code: 'INVALID_PHONE', message: 'Use a Malaysian mobile number, like 012-345 6789.' } });
+    render(<ProductView {...props} />);
+    await user.click(screen.getByRole('button', { name: 'Ask Kek Lina' }));
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Use a Malaysian mobile number, like 012-345 6789.');
+    expect(screen.getByRole('textbox', { name: 'Your WhatsApp number' })).toHaveAttribute('aria-invalid', 'true');
+    expect(props.onEnquirySent).not.toHaveBeenCalled();
+
+    stubFetch(409, { error: { code: 'ALREADY_ENQUIRED', message: 'x' } });
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(await screen.findByText('You already sent an enquiry about this today. The shop will reply on WhatsApp.')).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('curios-enquiry:keklina')).toBeNull();
+  });
+
+  it('says it failed when the request never lands', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new TypeError('offline'); }));
+    const user = userEvent.setup();
+    render(<ProductView {...props} />);
+    await user.click(screen.getByRole('button', { name: 'Ask Kek Lina' }));
+    await fill(user);
+    await user.click(screen.getByRole('button', { name: 'Send enquiry' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That didn’t send. Try again.');
+  });
+
+  it('sends nothing from the Store preview', async () => {
+    const spy = stubFetch(201, { conversationId: 'c1' });
+    const user = userEvent.setup();
+    render(<ProductView {...props} inline storageKey="curios-store-preview" />);
+    await user.click(screen.getByRole('button', { name: 'Ask Kek Lina' }));
+    await fill(user);
+    expect(screen.getByRole('button', { name: 'Send enquiry' })).toBeDisabled();
+    expect(screen.getByText('This is a preview. Customers send their enquiry from here.')).toBeInTheDocument();
+    await user.type(screen.getByRole('textbox', { name: 'Your WhatsApp number' }), '{Enter}');
+    expect(spy).not.toHaveBeenCalled();
+    expect(props.onEnquirySent).not.toHaveBeenCalled();
+  });
+
+  it('opens the page’s chat with a question about it when the shop cannot take enquiries', () => {
+    render(<ProductView {...props} canEnquire={false} />);
+    const link = screen.getByRole('link', { name: 'Ask Kek Lina' });
+    expect(new URL(link.getAttribute('href') ?? '', 'https://x.test').searchParams.get('q')).toBe('I have a question about Custom birthday cake.');
+    expect(link.getAttribute('href')?.endsWith('#ask')).toBe(true);
+    expect(screen.queryByRole('button', { name: 'Ask Kek Lina' })).toBeNull();
+  });
+
+  it('never counts an Ask item a stored basket holds', () => {
+    writeBasket(key, [{ itemId: 'custom', optionId: null, quantity: 2 }, { itemId: 'cookie', optionId: null, quantity: 1 }]);
+    render(<ProductView {...props} />);
+    expect(screen.getByRole('link', { name: 'Basket' })).toHaveTextContent('1');
+  });
+
+  it('speaks Malay', async () => {
+    const user = userEvent.setup();
+    render(<ProductView {...props} language="ms" />);
+    expect(screen.getByTestId('price')).toHaveTextContent('Dari RM180');
+    await user.click(screen.getByRole('button', { name: 'Tanya Kek Lina' }));
+    expect(screen.getByText('Dari RM180 · dibuat ikut tempahan')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Hantar pertanyaan' })).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina akan balas di WhatsApp. Anda belum perlu bayar apa-apa.')).toBeInTheDocument();
+  });
+});

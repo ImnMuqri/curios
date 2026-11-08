@@ -3,7 +3,7 @@ import type { PublicItem, ShopItem } from '@curios/db-read';
 import type { ShopCopy } from './copy.js';
 
 /** What pricing a basket needs of an item: the shelf's name, price and options. */
-export type PricedItem = Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options'> & Partial<Pick<PublicItem, 'kind' | 'delivery' | 'soldOut'>>;
+export type PricedItem = Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options' | 'askForPrice'> & Partial<Pick<PublicItem, 'kind' | 'delivery' | 'soldOut'>>;
 
 /** What the browser keeps: ids and counts, never prices -- a price is always read from the shelf as it is now. */
 export interface BasketLine {
@@ -85,13 +85,15 @@ export interface PricedLine extends BasketLine {
 /**
  * The basket against the current shelf. A line whose item was taken down, or
  * whose option no longer exists, is dropped rather than priced at a number the
- * shop no longer offers.
+ * shop no longer offers. So is an Ask item's: its price is only where an
+ * enquiry starts, and the shelf never adds one (a basket saved before the
+ * owner made it an Ask item can still hold it).
  */
 export function priceBasket(lines: BasketLine[], items: PricedItem[]): { lines: PricedLine[]; totalCents: number } {
   const priced: PricedLine[] = [];
   for (const line of lines) {
     const item = items.find((candidate) => candidate.id === line.itemId);
-    if (!item || line.quantity < 1) continue;
+    if (!item || item.askForPrice === true || line.quantity < 1) continue;
     let unitCents: number | null = null;
     let optionLabel: string | null = null;
     if (item.options.length === 0) {

@@ -60,6 +60,7 @@ export default async function ShopPage({
             pickupPlaces={shop.pickupPlaces}
             deliveryMode={shop.deliveryMode}
             canTakeOrders={shop.canTakeOrders}
+            canEnquire={shop.canEnquire}
             nextDay={nextDay}
             description={shop.shopDescription}
             halal={shop.shopHalal}

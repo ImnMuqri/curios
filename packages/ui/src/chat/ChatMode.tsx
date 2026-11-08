@@ -24,6 +24,21 @@ interface Turn {
   order?: OrderCardData;
   /** The shop items the answer named, in its order, a card each. */
   productCards?: ProductCardData[];
+  /** An Ask item's enquiry, sent from the shop: the question is its message, drawn with the item on top and the "Sent to" tag under it. */
+  enquiry?: { name: string; photoUrl: string | null; sent: string };
+}
+
+/**
+ * An enquiry the shop's sheet just sent (POST /enquiries/:handle), handed to chat mode so the thread starts
+ * with it and the page's reply to it.
+ */
+export interface EnquiryStart {
+  conversationId: string;
+  item: { name: string; photoUrl: string | null };
+  /** The customer's message, as they typed it. */
+  text: string;
+  /** The tag under it: "Sent to Kek Lina", in the page's language. */
+  sentLabel: string;
 }
 
 /**
@@ -44,6 +59,8 @@ export interface ProductCardCopy {
   /** A class card's button, which opens the page to pick a time; and a sold-out card's label. */
   pick?: string;
   soldOut?: string;
+  /** An Ask item's button, which opens its page to send an enquiry. */
+  ask?: string;
   /** Said aloud after an add: "{name} added. {n} in basket." */
   added: (name: string, inBasket: number) => string;
 }
@@ -104,6 +121,14 @@ export interface ChatModeProps {
   thinkingLabel?: string;
   /** Typed into the box when chat mode mounts, for the visitor to read and send. Never sent by itself. */
   initialDraft?: string;
+  /**
+   * An enquiry just sent from the shop: the thread starts with it, then the page's reply from
+   * `onEnquiryReply`, asked for once; follow-up questions continue its conversation. Its thread never
+   * offers the capture card -- the shop already has the number.
+   */
+  enquiry?: EnquiryStart | null;
+  /** Streams the page's reply to an enquiry, as `onAsk` streams an answer. Injected for the same reason. */
+  onEnquiryReply?: (conversationId: string) => Promise<ReadableStream<Uint8Array> | null>;
 }
 
 export function ChatMode({
@@ -120,6 +145,8 @@ export function ChatMode({
   replyLabel,
   thinkingLabel,
   initialDraft,
+  enquiry,
+  onEnquiryReply,
 }: ChatModeProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState(initialDraft ?? '');
@@ -144,6 +171,10 @@ export function ChatMode({
    * silently start a third thread.
    */
   const conversationId = useRef<string | null>(null);
+  /** The thread began with an enquiry: the shop has their number already, so the card is never offered on it. */
+  const enquiryThread = useRef(false);
+  /** The enquiry whose reply was asked for. A ref, so Strict Mode's second effect run does not ask twice. */
+  const enquiryStarted = useRef<string | null>(null);
 
   /**
    * Whether this instance currently owns the one history entry chat mode
@@ -297,14 +328,14 @@ export function ChatMode({
   }, [turns, qualified]);
 
   /**
-   * One question, from a chip or the composer. The streaming loop is the one
-   * this file has always had; its two comments are load-bearing and were
-   * paid for once already.
+   * One turn: a question from a chip or the composer, or an enquiry from the
+   * shop. The streaming loop is the one this file has always had; its two
+   * comments are load-bearing and were paid for once already.
    */
-  const send = useCallback(
-    async (question: string) => {
+  const run = useCallback(
+    async (turn: Turn, request: () => Promise<ReadableStream<Uint8Array> | null>) => {
       setBusy(true);
-      setTurns((previous) => [...previous, { question, answer: '' }]);
+      setTurns((previous) => [...previous, turn]);
 
       const append = (text: string) =>
         setTurns((previous) =>
@@ -324,7 +355,7 @@ export function ChatMode({
         );
 
       try {
-        const body = await onAsk(question, conversationId.current);
+        const body = await request();
         if (!body) {
           replace(FAILED);
           return;
@@ -367,7 +398,10 @@ export function ChatMode({
                 // The one error this acts on rather than only showing. A dead
                 // id must be dropped, or every later question carries it and
                 // fails for the same reason forever.
-                if (parsed.code === 'CONVERSATION_NOT_FOUND') conversationId.current = null;
+                if (parsed.code === 'CONVERSATION_NOT_FOUND') {
+                  conversationId.current = null;
+                  enquiryThread.current = false;
+                }
                 // Replaces, not appends: a half-answer followed by an apology
                 // reads worse than the apology alone.
                 replace(parsed.message ?? FAILED);
@@ -375,7 +409,7 @@ export function ChatMode({
               }
               if (parsed.type === 'done') {
                 if (parsed.conversationId) conversationId.current = parsed.conversationId;
-                setQualified(parsed.intent?.qualified === true);
+                setQualified(!enquiryThread.current && parsed.intent?.qualified === true);
                 // Each card checked on its own: one half-sent card does not take the others with it.
                 const productCards = (Array.isArray(parsed.productCards) ? parsed.productCards : [])
                   .map(validProductCard)
@@ -397,8 +431,26 @@ export function ChatMode({
         setBusy(false);
       }
     },
-    [onAsk],
+    [],
   );
+
+  const send = useCallback(
+    (question: string) => run({ question, answer: '' }, () => onAsk(question, conversationId.current)),
+    [onAsk, run],
+  );
+
+  // The enquiry the page was opened with: its bubble, then the reply, asked for once per enquiry.
+  useEffect(() => {
+    if (!enquiry || !onEnquiryReply || enquiryStarted.current === enquiry.conversationId) return;
+    enquiryStarted.current = enquiry.conversationId;
+    conversationId.current = enquiry.conversationId;
+    enquiryThread.current = true;
+    setQualified(false);
+    void run(
+      { question: enquiry.text, answer: '', enquiry: { name: enquiry.item.name, photoUrl: enquiry.item.photoUrl, sent: enquiry.sentLabel } },
+      () => onEnquiryReply(enquiry.conversationId),
+    );
+  }, [enquiry, onEnquiryReply, run]);
 
   /**
    * Escape only, now. The old manual Tab-wrap existed because `aria-modal`
@@ -456,7 +508,27 @@ export function ChatMode({
             ref={index === turns.length - 1 ? latest : undefined}
             className={styles.turn}
           >
-            <p className={styles.question}>{turn.question}</p>
+            {turn.enquiry ? (
+              <>
+                <div className={styles.enquiry}>
+                  <span className={styles.enquiryItem}>
+                    <i aria-hidden="true">
+                      {turn.enquiry.photoUrl ? <img src={turn.enquiry.photoUrl} alt="" /> : [...turn.enquiry.name][0]?.toUpperCase()}
+                    </i>
+                    <b>{turn.enquiry.name}</b>
+                  </span>
+                  <p>{turn.question}</p>
+                </div>
+                <span className={styles.sent}>
+                  <svg viewBox="0 0 24 24" width="13" height="13" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                  {turn.enquiry.sent}
+                </span>
+              </>
+            ) : (
+              <p className={styles.question}>{turn.question}</p>
+            )}
             <div className={styles.reply}>
               <span className={styles.who}>{replyLabel ?? `${displayName}’s page`}</span>
               <AnswerBubble
@@ -483,7 +555,7 @@ export function ChatMode({
                       <b>{card.name}</b>
                       {card.fromPriceCents === null ? null : (
                         <span>
-                          {card.firstOptionId === null
+                          {card.firstOptionId === null && card.buy !== 'ask'
                             ? ringgit(card.fromPriceCents)
                             : cardCopy.from(ringgit(card.fromPriceCents))}
                         </span>
@@ -493,6 +565,11 @@ export function ChatMode({
                       <span className={styles.productAdd} aria-disabled="true" data-done="">
                         {cardCopy.soldOut ?? 'Sold out'}
                       </span>
+                    ) : card.buy === 'ask' ? (
+                      // An Ask item never goes in the basket: its page has the enquiry.
+                      <a className={styles.productAdd} href={`${shopPath}/${encodeURIComponent(card.slug)}`}>
+                        {cardCopy.ask ?? 'Ask'}
+                      </a>
                     ) : card.buy === 'pick' && card.fromPriceCents !== null ? (
                       <a className={styles.productAdd} href={`${shopPath}/${encodeURIComponent(card.slug)}`}>
                         {cardCopy.pick ?? 'Pick a time'}

@@ -53,6 +53,38 @@ export interface ShopCopy {
   askSamples: string;
   askPrefill: (name: string) => string;
   addToBasket: (total: string) => string;
+  // Ask items (HANDOFF "Shop: Ask items and enquiries", 8 Nov 2026).
+  /** The shelf card's pill in place of +, and its name for a screen reader. */
+  askPill: string;
+  askPillNamed: (name: string) => string;
+  /** The shelf's price line: "From RM180 · ask", or "Price on request" with no starting price. */
+  askFrom: (price: string) => string;
+  priceOnRequest: string;
+  /** The product page's price, "From RM180". */
+  askPrice: (price: string) => string;
+  /** The enquiry sheet. */
+  enquiryLabel: (item: string) => string;
+  /** Under the item at the top: "From RM180 · made to order". */
+  enquirySub: (price: string | null) => string;
+  enquiryWhat: string;
+  enquiryPlaceholder: string;
+  enquiryMessageLabel: (name: string) => string;
+  yourName: string;
+  yourWhatsApp: string;
+  sendEnquiry: string;
+  sendingEnquiry: string;
+  enquiryFoot: (name: string) => string;
+  closeEnquiry: string;
+  enquiryNeedMessage: string;
+  enquiryNeedName: string;
+  enquiryNeedPhone: string;
+  /** The Store preview's sheet, which sends nothing. */
+  enquiryPreview: string;
+  enquiryFailed: string;
+  /** The API's refusals of an enquiry, in this language; null leaves the API's own words. */
+  enquiryError: (code: string) => string | null;
+  /** The chat's tag under the enquiry bubble. */
+  sentTo: (name: string) => string;
   wantMore: string;
   wantMoreBody: (name: string) => string;
   askQuestion: string;
@@ -429,6 +461,35 @@ const EN: ShopCopy = {
   askSamples: 'What’s in it? Is it OK for kids?',
   askPrefill: (name) => `I have a question about ${name}.`,
   addToBasket: (total) => `Add to basket · ${total}`,
+  askPill: 'Ask',
+  askPillNamed: (name) => `Ask about ${name}`,
+  askFrom: (price) => `From ${price} · ask`,
+  priceOnRequest: 'Price on request',
+  askPrice: (price) => `From ${price}`,
+  enquiryLabel: (item) => `Ask about ${item}`,
+  enquirySub: (price) => `${price ? `From ${price}` : 'Price on request'} · made to order`,
+  enquiryWhat: 'What do you need?',
+  enquiryPlaceholder: 'The date you need it, how many people, the design, your budget…',
+  enquiryMessageLabel: (name) => `Your message to ${name}`,
+  yourName: 'Your name',
+  yourWhatsApp: 'Your WhatsApp number',
+  sendEnquiry: 'Send enquiry',
+  sendingEnquiry: 'Sending…',
+  enquiryFoot: (name) => `${name} replies on WhatsApp. You don’t pay anything yet.`,
+  closeEnquiry: 'Close',
+  enquiryNeedMessage: 'Tell them what you need.',
+  enquiryNeedName: 'Add your name.',
+  enquiryNeedPhone: 'Add your WhatsApp number.',
+  enquiryPreview: 'This is a preview. Customers send their enquiry from here.',
+  enquiryFailed: 'That didn’t send. Try again.',
+  enquiryError: (code) =>
+    ({
+      ITEM_UNAVAILABLE: 'This item isn’t taking enquiries any more.',
+      ENQUIRIES_PAUSED: 'The shop isn’t taking enquiries right now. Ask on the page instead.',
+      ALREADY_ENQUIRED: 'You already sent an enquiry about this today. The shop will reply on WhatsApp.',
+      PAGE_UNAVAILABLE: 'This page is unavailable right now.',
+    })[code] ?? null,
+  sentTo: (name) => `Sent to ${name}`,
   wantMore: 'Want something not listed?',
   wantMoreBody: (name) => `Ask ${name} about custom orders and bigger quantities.`,
   askQuestion: 'Ask a question',
@@ -742,6 +803,35 @@ const MS: ShopCopy = {
   askSamples: 'Apa kandungannya? Sesuai untuk kanak-kanak?',
   askPrefill: (name) => `Saya ada soalan tentang ${name}.`,
   addToBasket: (total) => `Masuk bakul · ${total}`,
+  askPill: 'Tanya',
+  askPillNamed: (name) => `Tanya tentang ${name}`,
+  askFrom: (price) => `Dari ${price} · tanya`,
+  priceOnRequest: 'Tanya harga',
+  askPrice: (price) => `Dari ${price}`,
+  enquiryLabel: (item) => `Tanya tentang ${item}`,
+  enquirySub: (price) => `${price ? `Dari ${price}` : 'Tanya harga'} · dibuat ikut tempahan`,
+  enquiryWhat: 'Apa yang anda perlukan?',
+  enquiryPlaceholder: 'Tarikh anda perlukan, untuk berapa orang, rekaannya, bajet anda…',
+  enquiryMessageLabel: (name) => `Mesej anda kepada ${name}`,
+  yourName: 'Nama anda',
+  yourWhatsApp: 'Nombor WhatsApp anda',
+  sendEnquiry: 'Hantar pertanyaan',
+  sendingEnquiry: 'Sedang dihantar…',
+  enquiryFoot: (name) => `${name} akan balas di WhatsApp. Anda belum perlu bayar apa-apa.`,
+  closeEnquiry: 'Tutup',
+  enquiryNeedMessage: 'Ceritakan apa yang anda perlukan.',
+  enquiryNeedName: 'Masukkan nama anda.',
+  enquiryNeedPhone: 'Masukkan nombor WhatsApp anda.',
+  enquiryPreview: 'Ini pratonton. Pelanggan hantar pertanyaan mereka dari sini.',
+  enquiryFailed: 'Tak berjaya dihantar. Cuba lagi.',
+  enquiryError: (code) =>
+    ({
+      ITEM_UNAVAILABLE: 'Barang ini tidak lagi menerima pertanyaan.',
+      ENQUIRIES_PAUSED: 'Kedai ini tidak menerima pertanyaan buat masa ini. Tanya terus di halamannya.',
+      ALREADY_ENQUIRED: 'Anda sudah bertanya tentang barang ini hari ini. Kedai akan balas di WhatsApp.',
+      PAGE_UNAVAILABLE: 'Halaman ini tidak tersedia buat masa ini.',
+    })[code] ?? null,
+  sentTo: (name) => `Dihantar kepada ${name}`,
   wantMore: 'Mahu sesuatu yang tiada di sini?',
   wantMoreBody: (name) => `Tanya ${name} tentang tempahan khas dan kuantiti lebih besar.`,
   askQuestion: 'Tanya soalan',
