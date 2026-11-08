@@ -51,6 +51,11 @@ export function ShopPageView(props: {
   halal: boolean;
   /** The owner's picture beside their note; null for none, and the note keeps the initial. */
   avatarUrl?: string | null;
+  /**
+   * The page's cover photo (stock or uploaded), worn blurred behind the shop's middle and faded into the
+   * page's colour above and below (owner, 8 Nov 2026); null for none, and the shelf has the accent's glow.
+   */
+  coverUrl?: string | null;
   /** The shop's live automatic vouchers; none when absent, and none shown while the shop cannot take orders. */
   vouchers?: VoucherTerms[];
   /**
@@ -142,7 +147,14 @@ export function ShopPageView(props: {
   const initial = props.displayName.trim().charAt(0).toUpperCase();
 
   return (
-    <div className={styles.shop}>
+    <div className={styles.shop} data-cover={props.coverUrl ? '' : undefined}>
+      {props.coverUrl ? (
+        <div className={styles.backdrop} aria-hidden="true">
+          <div className={styles.backdropPin}>
+            <img src={props.coverUrl} alt="" />
+          </div>
+        </div>
+      ) : null}
       <div className={styles.top}>
         <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)} onClick={stay()}>
           <Icon d={ICON.back} />

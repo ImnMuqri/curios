@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getCheckout } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../_system/unavailable.js';
 import { PageTheme } from '../../_bento/BentoPage.js';
-import { avatarUrl } from '../../../lib/avatar-url.js';
+import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
 import { BasketBar } from './basket-bar.js';
 import { whatsappNumber } from './basket.js';
 import { shopCopy } from './copy.js';
@@ -65,6 +65,7 @@ export default async function ShopPage({
             description={shop.shopDescription}
             halal={shop.shopHalal}
             avatarUrl={avatarUrl(shop.avatarKey)}
+            coverUrl={coverUrl(shop.coverKey)}
             vouchers={shop.canTakeOrders ? shop.vouchers : []}
           />
           <BasketBar

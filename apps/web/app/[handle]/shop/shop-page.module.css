@@ -280,26 +280,79 @@
 }
 
 /*
- * One solid colour from the top bar to the basket bar (owner, 8 Nov 2026: the cover photo behind the
- * shop put a different colour at the top, the middle and the foot). Soft glows of the accent sit
- * behind the sign and the shelf, on past the cards to the "not listed" card, each faded out before the
- * bars and the foot, so the strips a phone shows past the top and the foot are the page's colour, as
- * the bars are. The cards cover most of the shelf, so its glow is strong enough to read in the gaps.
+ * The page's own colour at the top bar and at the basket bar, so the strips a phone shows past the top
+ * and the foot match them (owner, 8 Nov 2026: the cover behind the whole shop put a different colour at
+ * the top, the middle and the foot).
+ *
+ * With a cover, the middle wears it blurred, as before, but faded into the page's colour above and
+ * below (owner, 8 Nov 2026). It is pinned to the screen, not the shelf: the fades sit under the top bar
+ * and over the basket bar however far the shop is scrolled, so no edge of the picture ever meets a bar.
+ * The wrapper spans the shop and clips the blur's soft edges; the pin inside it sticks at the top.
  */
-.sign::before,
-.grid::before {
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: clip;
+  pointer-events: none;
+}
+
+.backdropPin {
+  position: sticky;
+  top: 0;
+  height: min(100dvh, 100%);
+  -webkit-mask-image: linear-gradient(transparent 60px, black 230px, black calc(100% - 210px), transparent calc(100% - 90px));
+  mask-image: linear-gradient(transparent 60px, black 230px, black calc(100% - 210px), transparent calc(100% - 90px));
+}
+
+.backdropPin img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  filter: blur(22px) saturate(1.1);
+  transform: scale(1.3);
+}
+
+/* Under the page's colour, so the shelf's words read on any photo. */
+.backdropPin::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--page-bg) 45%, transparent);
+}
+
+/*
+ * The category bar over a cover is clear and frosted, so it draws no band across the picture at rest,
+ * and blurs the cards that pass under it once stuck. Not the top bar: at the top edge, iOS 26 Safari
+ * reads no colour from a frosted bar and paints its status bar's strip white.
+ */
+.shop[data-cover] .cats {
+  background: transparent;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/*
+ * With no cover, soft glows of the accent sit behind the sign and the shelf, on past the cards to the
+ * "not listed" card, each faded out before the bars and the foot. The cards cover most of the shelf, so
+ * its glow is strong enough to read in the gaps.
+ */
+.shop:not([data-cover]) .sign::before,
+.shop:not([data-cover]) .grid::before {
   content: '';
   position: absolute;
   z-index: -1;
   pointer-events: none;
 }
 
-.sign::before {
+.shop:not([data-cover]) .sign::before {
   inset: 24px 0 -40px;
   background: radial-gradient(65% 60% at 88% 55%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 72%);
 }
 
-.grid::before {
+.shop:not([data-cover]) .grid::before {
   inset: 0 0 -150px;
   background:
     radial-gradient(70% 45% at 12% 40%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 72%),
