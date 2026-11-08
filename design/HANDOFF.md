@@ -699,15 +699,14 @@ Boards: `Public.dc.html` (customer), `Store.dc.html` and `Leads.dc.html` (owner)
 **Owner (Store item editor)**
 - New "How they order" choice on physical items: **Add to basket** (default) or **Ask for a price**.
 - Ask items take an optional **Starting price** ("From RM"), which the page uses to answer "how much?".
-- A note lists what customers get asked: when, how many people, what they have in mind, name and WhatsApp.
+- A note explains that customers fill in one message plus their name and WhatsApp, and the page picks out the details for Leads.
 - Data: `item.ask = true`, `item.price` = the starting price, which can be empty ("Price on request").
 
 **Customer (shop)**
 - Ask items show a maroon **Ask** pill instead of **+**, priced "From RM180 · ask" (or "Price on request" with no starting price). They can't go in the basket.
 - The item page's bottom bar says **Ask Kek Lina**. The separate "Ask about this" row is hidden on Ask items.
-- The enquiry sheet is a bottom sheet with the item at the top:
-  - date chips, people chips, a message box, name and WhatsApp (prefilled if known)
-  - **Send enquiry**, then "You don't pay anything yet."
+- The enquiry sheet is a bottom sheet with the item at the top, then just **one message box** ("What do you need?", placeholder: the date, how many people, the design, your budget), name and WhatsApp (prefilled if known), **Send enquiry**, and "You don't pay anything yet."
+- There are no fixed questions for the owner to set up. The AI picks the date, number of people and budget out of the message for the Leads card ("Picked out of their message"), the same way it already does for chat leads.
 - After sending, the customer lands in the page's Ask chat:
   - their enquiry shows as a bubble with the item attached, then a green "Sent to Lina" tag
   - the page replies from facts only: the starting price, whether the date has a slot, and that Lina confirms on WhatsApp
