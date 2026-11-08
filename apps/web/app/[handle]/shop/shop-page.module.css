@@ -112,6 +112,7 @@
 }
 
 .sign {
+  position: relative;
   padding: 6px 20px 0;
 }
 
@@ -280,24 +281,33 @@
 
 /*
  * One solid colour from the top bar to the basket bar (owner, 8 Nov 2026: the cover photo behind the
- * shop put a different colour at the top, the middle and the foot). The shelf alone has a soft glow of
- * the accent behind its cards, faded out at every edge, so the strips a phone shows past the top and
- * the foot are the page's colour, as the bars are.
+ * shop put a different colour at the top, the middle and the foot). Soft glows of the accent sit
+ * behind the sign and the shelf, on past the cards to the "not listed" card, each faded out before the
+ * bars and the foot, so the strips a phone shows past the top and the foot are the page's colour, as
+ * the bars are. The cards cover most of the shelf, so its glow is strong enough to read in the gaps.
  */
+.sign::before,
 .grid::before {
   content: '';
   position: absolute;
-  inset: 0;
   z-index: -1;
   pointer-events: none;
+}
+
+.sign::before {
+  inset: 24px 0 -40px;
+  background: radial-gradient(65% 60% at 88% 55%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 72%);
+}
+
+.grid::before {
+  inset: 0 0 -150px;
   background:
-    radial-gradient(60% 40% at 15% 30%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
-    radial-gradient(55% 35% at 90% 65%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+    radial-gradient(70% 45% at 12% 40%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 72%),
+    radial-gradient(65% 40% at 92% 78%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 72%);
 }
 
 .grid {
   position: relative;
-  isolation: isolate;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
