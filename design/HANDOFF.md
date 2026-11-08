@@ -651,3 +651,69 @@ At ≤760px the old row of icons at the top is gone. CSS is in the block marked 
 - **More:** opens a sheet above the pill with Facts & sources (Knowledge), plus Billing and Settings (Account). The page behind is dimmed (`rgba(25,31,44,.35)`). Close it on tap outside, Esc or picking a page. The current page shows blue in the sheet, and More is blue while you're on one of those pages.
 - **Inbox:** on phone, Orders, Questions and Leads show a tab row (`.v2itab`) at the top with their own counts, so the owner switches between them there.
 - Content gets 96px of bottom padding so the pill never covers the last row.
+
+## Payment result pages (2 Nov 2026)
+
+### Subscription (owner pays Curios): Peek happy or sad
+Board: `Billing.dc.html`. To view it, use the preview bar's **Payment → Paid / Failed** buttons. Paying through the Billing modal also lands on the paid page now; it used to show a toast. CSS is in the block marked `/* payment result pages: Peek happy / sad (2 Nov) */`, and the markup is the `.pr` overlay. Screens: `Billing-paid.*`, `Billing-payment-failed.*`, plus the animation in `Billing-payment-result.peek.gif`.
+
+- Make it a full page at the CHIP return URL, not a modal. Grey ground `#edeff4`, logo on the left, **Back to Billing** on the right.
+- **Desktop:** one white card, 880px wide, 16px radius, split in two.
+  - Left side (42%) is Peek's art panel: `#e8edff` with falling confetti when paid, `#f1f2f5` when failed.
+  - Right side: kicker, a 32px Bricolage title, a short line, a receipt box (`#f5f6fa`), then the buttons.
+- **Phone (≤760px):** the art panel stacks on top (240px tall). The buttons go full width and stack.
+- **Peek** is the real mascot, with only pose and eyes changed. Don't redraw him.
+  - **Paid:** he looks up, both hands raised, and jumps in a loop: squash on landing, shadow shrinks while he's in the air, hands bob.
+  - **Failed:** he looks down with a small frown and sways slowly. One hand scratches his head, a sweat drop falls, and a "?" bubble pulses.
+  - Under `prefers-reduced-motion`, all of this stops.
+- **Copy:**
+  - Paid: "Payment received / Welcome to Business, {name}." plus the new paid-until date. "Nothing renews by itself." Buttons: **Go to dashboard** and **Download receipt**.
+  - Failed: "Not charged / That didn't go through." plus "your plan is still fine until {current date}". Then what was tried and the bank's reason (map CHIP's status to plain words). Buttons: **Try again** and **Pick another bank** (both reopen the pay flow), plus a "Need help?" link.
+
+### Shop (customer pays the owner)
+The success page already exists ("Paid. Order placed" with the order code), so keep it.
+
+The new failed page is in `Public.dc.html` as route `payfail` ("Payment failed" in the preview's route bar). CSS is in the block marked `/* payment failed (2 Nov) */`. Screens: `Shop-payment-failed.*`.
+
+- It uses the same layout as the placed page: a red cross in a soft circle, then "Payment didn't go through".
+- "Nothing was taken. {Shop} has saved your order for **30 minutes**." Hold the order (and any stock or slot) for 30 minutes, then release it.
+- The order code tiles turn grey (`#6b5a60`), with the order lines and total under them.
+- **Pay {total} again** is the main button and goes back to CHIP for the same order. **Pay another way** goes back to checkout with the basket kept.
+- At the bottom, a small line: "Tried with {method}. The bank said: {reason}."
+
+## Landing: "No cut, ever" block (8 Nov 2026)
+Board: `TanyaJe.dc.html`. It's a new `<section class="nc">` between the For business story and Pricing, on the same pink (`#fbeef1`). CSS is in the block marked `/* no cut, ever (8 Nov) */`. Screens: `Landing-no-cut.*`.
+- **Left:** eyebrow "No cut, ever", the title "Every sale is yours. We take 0%." with 0% in `#b5294e`, then "RM49 a month is all you pay us."
+- **Right:** a white card showing a RM100 order as two bars.
+  - Marketplace: keep about RM89, with a red ~RM11 cut.
+  - Curios: keep RM99, with only a sliver for the RM1 FPX fee.
+  - The bars grow in once (900ms). Under reduced motion they don't animate.
+- **Below:** three tiles: Website and hosting (`curios.my/keklina`), Payments (FPX, TNG, GrabPay, Visa through CHIP) and Found on Google (a search result preview).
+- **Small print:** keep it. It shows the fee assumptions and that CHIP fees still apply. Recheck the marketplace numbers before launch, because Shopee changes them often.
+- **Phones:** everything stacks, and the ~RM11 label is hidden so only the red bar shows.
+- The "usual way vs Curios" checklist (option B) is meant for the pricing page later. It isn't built yet.
+
+## Shop: Ask items and enquiries (8 Nov 2026)
+Boards: `Public.dc.html` (customer), `Store.dc.html` and `Leads.dc.html` (owner). CSS is in blocks marked `(8 Nov)`. Screens: `Shop-ask-*.phone.jpg`, `Store-ask-item.desktop.jpg`, `Leads-enquiry.desktop.jpg`.
+
+**Owner (Store item editor)**
+- New "How they order" choice on physical items: **Add to basket** (default) or **Ask for a price**.
+- Ask items take an optional **Starting price** ("From RM"), which the page uses to answer "how much?".
+- A note explains that customers fill in one message plus their name and WhatsApp, and the page picks out the details for Leads.
+- Data: `item.ask = true`, `item.price` = the starting price, which can be empty ("Price on request").
+
+**Customer (shop)**
+- Ask items show a maroon **Ask** pill instead of **+**, priced "From RM180 · ask" (or "Price on request" with no starting price). They can't go in the basket.
+- The item page's bottom bar says **Ask Kek Lina**. The separate "Ask about this" row is hidden on Ask items.
+- The enquiry sheet is a bottom sheet with the item at the top, then just **one message box** ("What do you need?", placeholder: the date, how many people, the design, your budget), name and WhatsApp (prefilled if known), **Send enquiry**, and "You don't pay anything yet."
+- There are no fixed questions for the owner to set up. The AI picks the date, number of people and budget out of the message for the Leads card ("Picked out of their message"), the same way it already does for chat leads.
+- After sending, the customer lands in the page's Ask chat:
+  - their enquiry shows as a bubble with the item attached, then a green "Sent to Lina" tag
+  - the page replies from facts only: the starting price, whether the date has a slot, and that Lina confirms on WhatsApp
+  - **Never invent a price.** With no starting price, say Lina will send one.
+
+**Owner (Leads)**
+- Enquiries come in as leads with an **Enquiry** tag in the list, and "Sent an enquiry … from your shop · {name}" in the header.
+- A "Their enquiry" card shows the item, When / For / Budget, their note, and **Send a quote**.
+- **Send a quote** creates a payment link for a set price. Once paid, it becomes a normal order in Orders.
+- The first WhatsApp draft is written for the enquiry.
