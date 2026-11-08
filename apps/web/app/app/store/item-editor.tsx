@@ -2,11 +2,11 @@
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS, priceLine } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS } from '@curios/core/store';
 import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
-import { blankOption, checkFields, draftOf, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
+import { blankOption, checkFields, draftOf, ownerPriceLine, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
 import { DigitalPanels, KindSwitch } from './digital-fields.js';
 import { ItemPhotos } from './item-photos.js';
 import { checkDigital, digitalDraftOf, type DigitalDraft } from './digital-draft.js';
@@ -37,6 +37,7 @@ export function fromRow(row: ItemRow, photoUrl: (key: string) => string): Editor
     photoKey: row.photoKey,
     available: row.available,
     priceCents: row.priceCents,
+    askForPrice: row.askForPrice,
     options: row.options,
     kind: row.kind,
     delivery: row.delivery,
@@ -87,9 +88,20 @@ function previewDigital(draft: DigitalDraft, saved: EditorItem | null): Pick<Edi
 /** CHIP lists no online banking for a total under RM1, so a basket of just this price is paid another way. */
 const ONLINE_MIN_CENTS = 100;
 const underOnlineMin = (pricing: CheckedItem['pricing']) => {
+  // An Ask item is never paid at checkout: its starting price is only a guide.
+  if (pricing.kind === 'ask') return false;
   const { priceCents, options } = pricedFields(pricing);
   return [priceCents, ...options.map((option) => option.priceCents)].some((cents) => cents !== null && cents < ONLINE_MIN_CENTS);
 };
+
+/** Asking for a price is for physical items only: a digital one is always priced for the basket. */
+const pricingFor = (draft: PricingDraft, digital: DigitalDraft): PricingDraft => (digital.kind === 'DIGITAL' && draft.ask ? { ...draft, ask: false } : draft);
+
+/** "How they order" (Store board, 8 Nov): the basket, or an enquiry. */
+const HOWS = [
+  [false, 'Add to basket', 'They pick, pay and it lands in Orders'],
+  [true, 'Ask for a price', 'They send an enquiry. You reply with a price'],
+] as const;
 
 export function ItemEditor({
   item,
@@ -140,7 +152,8 @@ export function ItemEditor({
   const savedRef = useRef(saved);
   savedRef.current = saved;
 
-  const checked = checkFields(name, description, draft, { category, tag, sku });
+  const asking = digital.kind !== 'DIGITAL' && draft.ask === true;
+  const checked = checkFields(name, description, pricingFor(draft, digital), { category, tag, sku });
   const checkedDigital = checkDigital(digital);
   const problem = 'error' in checked ? checked.error : 'error' in checkedDigital ? checkedDigital.error : null;
 
@@ -188,6 +201,7 @@ export function ItemEditor({
       photoUrl: saved?.photoUrl ?? null,
       available: saved?.available ?? true,
       priceCents: pricedFields(checked.pricing).priceCents,
+      askForPrice: pricedFields(checked.pricing).askForPrice,
       // Unsaved options have no ids yet; the preview only needs them to tell the options apart.
       options: pricedFields(checked.pricing).options.map((option, i) => ({ id: `draft-${i}`, ...option })),
     });
@@ -210,7 +224,7 @@ export function ItemEditor({
     if (next.draft) setDraft(next.draft);
     if (next.digital) setDigital(next.digital);
     setError('');
-    const fields = checkFields(nextName, nextDescription, nextDraft, { category: nextCategory, tag: nextTag, sku: nextSku });
+    const fields = checkFields(nextName, nextDescription, pricingFor(nextDraft, nextDigital), { category: nextCategory, tag: nextTag, sku: nextSku });
     const kinds = checkDigital(nextDigital);
     // A digital item that is not yet complete (no link, no length) is not sent: it would be saved as the wrong thing.
     if ('error' in fields || 'error' in kinds) return;
@@ -243,8 +257,10 @@ export function ItemEditor({
     // Switching a priced item to options keeps its price as the first option.
     const options = kind === 'options' && blank && draft.price.trim() !== '' ? [{ ...blankOption(), label: 'Regular', price: draft.price }] : draft.options;
     const price = kind === 'single' && draft.price.trim() === '' ? (draft.options[0]?.price ?? '') : draft.price;
-    edit({ draft: { kind, price, options } });
+    edit({ draft: { ...draft, kind, price, options } });
   }
+
+  const setAsk = (ask: boolean) => ask !== asking && edit({ draft: { ...draft, ask } });
 
   const setOption = (key: number, change: Partial<{ label: string; price: string }>) =>
     edit({ draft: { ...draft, options: draft.options.map((o) => (o.key === key ? { ...o, ...change } : o)) } });
@@ -379,72 +395,115 @@ export function ItemEditor({
       </div>
 
       <KindSwitch draft={digital} onDraft={editDigital} />
-      {digital.kind === 'DIGITAL' ? <DigitalPanels draft={digital} onDraft={editDigital} item={saved} api={api} ready={ready} patchItem={patchItem} /> : null}
-
-      <div className={styles.sub}>
-        <b id="price-title">Price</b>
-        <span>Options suit sizes, like 1kg and 2kg</span>
-      </div>
-      <div className={styles.pricedBy} role="radiogroup" aria-labelledby="price-title" style={{ '--at': draft.kind === 'single' ? 0 : 1 } as CSSProperties}>
-        {(
-          [
-            ['single', 'One price'],
-            ['options', 'Options'],
-          ] as const
-        ).map(([kind, label]) => (
-          <button key={kind} type="button" role="radio" aria-checked={draft.kind === kind} onClick={() => setKind(kind)}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {draft.kind === 'single' ? (
-        <label className={`${styles.money} ${styles.price}`}>
-          <span>RM</span>
-          <input value={draft.price} inputMode="decimal" aria-label="Price in ringgit" placeholder="0.00" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
-        </label>
+      {digital.kind === 'DIGITAL' ? (
+        <DigitalPanels draft={digital} onDraft={editDigital} item={saved} api={api} ready={ready} patchItem={patchItem} />
       ) : (
         <>
-          <div className={styles.options}>
-            {draft.options.map((option, index) => (
-              <div key={option.key} className={styles.option}>
-                <input
-                  className={styles.optionName}
-                  value={option.label}
-                  placeholder={`Option ${index + 1}, like 1kg`}
-                  aria-label={`Option ${index + 1} name`}
-                  onChange={(event) => setOption(option.key, { label: event.target.value })}
-                />
-                <label className={styles.money}>
-                  <span>RM</span>
-                  <input
-                    value={option.price}
-                    inputMode="decimal"
-                    aria-label={`Option ${index + 1} price in ringgit`}
-                    placeholder="0.00"
-                    onChange={(event) => setOption(option.key, { price: event.target.value })}
-                  />
-                </label>
-                <button
-                  type="button"
-                  className={ui.iconButton}
-                  aria-label={`Remove option ${index + 1}`}
-                  disabled={draft.options.length === 1}
-                  onClick={() => edit({ draft: { ...draft, options: draft.options.filter((o) => o.key !== option.key) } })}
-                >
-                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
-                    <path d={BIN} />
+          <div className={styles.sub}>
+            <b id="how-title">How they order</b>
+            <span>Made-to-order things, like custom cakes, work best as Ask</span>
+          </div>
+          <div className={styles.askTiles} role="group" aria-labelledby="how-title">
+            {HOWS.map(([ask, label, note]) => (
+              <button key={label} type="button" className={`${ui.tile} ${styles.deliveryTile} ${styles.digitalTile}`} aria-pressed={asking === ask} onClick={() => setAsk(ask)}>
+                <span className={ui.tick} aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="12" height="12">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
                   </svg>
-                </button>
-              </div>
+                </span>
+                <span>
+                  <b>{label}</b>
+                  <span>{note}</span>
+                </span>
+              </button>
             ))}
           </div>
-          {draft.options.length < MAX_OPTIONS ? (
-            <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, options: [...draft.options, blankOption()] } })}>
-              + Add option
-            </button>
+        </>
+      )}
+
+      {asking ? (
+        <>
+          <div className={styles.sub}>
+            <b>Starting price</b>
+            <span>Optional. Helps your page answer “how much?”</span>
+          </div>
+          <label className={`${styles.money} ${styles.price}`}>
+            <span>From RM</span>
+            <input value={draft.price} inputMode="decimal" aria-label="Starting price in ringgit" placeholder="Leave empty" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
+          </label>
+          <div className={styles.askNote}>
+            <b>What they fill in</b>
+            <p>One message box, plus their name and WhatsApp. Your page picks out the date, how many people and the budget for you, and puts it in Leads.</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={styles.sub}>
+            <b id="price-title">Price</b>
+            <span>Options suit sizes, like 1kg and 2kg</span>
+          </div>
+          <div className={styles.pricedBy} role="radiogroup" aria-labelledby="price-title" style={{ '--at': draft.kind === 'single' ? 0 : 1 } as CSSProperties}>
+            {(
+              [
+                ['single', 'One price'],
+                ['options', 'Options'],
+              ] as const
+            ).map(([kind, label]) => (
+              <button key={kind} type="button" role="radio" aria-checked={draft.kind === kind} onClick={() => setKind(kind)}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {draft.kind === 'single' ? (
+            <label className={`${styles.money} ${styles.price}`}>
+              <span>RM</span>
+              <input value={draft.price} inputMode="decimal" aria-label="Price in ringgit" placeholder="0.00" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
+            </label>
           ) : (
-            <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
+            <>
+              <div className={styles.options}>
+                {draft.options.map((option, index) => (
+                  <div key={option.key} className={styles.option}>
+                    <input
+                      className={styles.optionName}
+                      value={option.label}
+                      placeholder={`Option ${index + 1}, like 1kg`}
+                      aria-label={`Option ${index + 1} name`}
+                      onChange={(event) => setOption(option.key, { label: event.target.value })}
+                    />
+                    <label className={styles.money}>
+                      <span>RM</span>
+                      <input
+                        value={option.price}
+                        inputMode="decimal"
+                        aria-label={`Option ${index + 1} price in ringgit`}
+                        placeholder="0.00"
+                        onChange={(event) => setOption(option.key, { price: event.target.value })}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className={ui.iconButton}
+                      aria-label={`Remove option ${index + 1}`}
+                      disabled={draft.options.length === 1}
+                      onClick={() => edit({ draft: { ...draft, options: draft.options.filter((o) => o.key !== option.key) } })}
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
+                        <path d={BIN} />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {draft.options.length < MAX_OPTIONS ? (
+                <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, options: [...draft.options, blankOption()] } })}>
+                  + Add option
+                </button>
+              ) : (
+                <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
+              )}
+            </>
           )}
         </>
       )}
@@ -453,7 +512,7 @@ export function ItemEditor({
         <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
           <path d={problem ? 'M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' : 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'} />
         </svg>
-        {problem ?? `Customers see ${'error' in checked ? '' : priceLine(pricedFields(checked.pricing))}`}
+        {problem ?? `Customers see ${'error' in checked ? '' : ownerPriceLine(pricedFields(checked.pricing))}`}
       </p>
       {paysOnline && !('error' in checked) && underOnlineMin(checked.pricing) ? (
         <p className={ui.note}>Under RM1, a customer buying only this can’t pay by online banking: CHIP takes RM1 or more.</p>

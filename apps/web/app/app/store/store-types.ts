@@ -62,7 +62,10 @@ export type ItemRow = {
   sku: string | null;
   photoKey: string | null;
   available: boolean;
+  /** On an Ask item, its starting price, or null for "Price on request". */
   priceCents: number | null;
+  /** An Ask item: customers send an enquiry rather than adding it to the basket. Physical items only. */
+  askForPrice: boolean;
   options: { id: string; label: string; priceCents: number }[];
   kind: 'PHYSICAL' | 'DIGITAL';
   delivery: Delivery | null;
@@ -78,8 +81,8 @@ export type ItemRow = {
   sessions: { id: string; startsAt: string; seats: number; booked: number; seatsLeft: number }[];
 };
 
-/** What the API says for an item that is not digital. */
-export const PHYSICAL_ROW: Pick<ItemRow, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'photos' | 'files' | 'codesLeft' | 'sessions'> = { kind: 'PHYSICAL', delivery: null, accessUrl: null, accessNote: null, sessionMinutes: null, sessionPlace: null, sessionWhere: null, photos: [], files: [], codesLeft: 0, sessions: [] };
+/** What the API says for an item that is not digital, and goes in the basket rather than asking for a price. */
+export const PHYSICAL_ROW: Pick<ItemRow, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'photos' | 'files' | 'codesLeft' | 'sessions' | 'askForPrice'> = { kind: 'PHYSICAL', delivery: null, accessUrl: null, accessNote: null, sessionMinutes: null, sessionPlace: null, sessionWhere: null, photos: [], files: [], codesLeft: 0, sessions: [], askForPrice: false };
 
 export type Delivery = 'FILES' | 'LINK' | 'CODES' | 'SESSION';
 

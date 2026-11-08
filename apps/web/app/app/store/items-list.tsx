@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { MAX_ITEMS, priceLine } from '@curios/core/store';
+import { MAX_ITEMS } from '@curios/core/store';
 import { Callout } from '@curios/ui';
 import ui from '../_ui/editor.module.css';
 import { SectionHead } from '../_ui/section-head.js';
+import { ownerPriceLine } from './pricing.js';
 import type { EditorItem } from './store-types.js';
 import styles from './store.module.css';
 
@@ -83,7 +84,7 @@ export function ItemsList({
               <Thumb item={item} tint={index} />
               <button type="button" className={styles.itemText} onClick={() => onEdit(item.id)}>
                 <b>{item.name}</b>
-                <span>{item.kind === 'DIGITAL' ? 'Digital · ' : ''}{priceLine(item) || 'Needs a price'}</span>
+                <span>{item.kind === 'DIGITAL' ? 'Digital · ' : ''}{ownerPriceLine(item) || 'Needs a price'}</span>
               </button>
               <span className={styles.available}>
                 <button

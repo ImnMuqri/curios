@@ -6,6 +6,7 @@ vi.mock('../curios/resize-image.js', () => ({
 
 const { ItemEditor, fromRow } = await import('./item-editor.js');
 import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
+import { FROM_PARSE_SENTENCE } from './pricing.js';
 
 const batik: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, sku: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
 const coklat: EditorItem = {
@@ -337,7 +338,106 @@ describe('ItemEditor, an existing item', () => {
   });
 });
 
+describe('ItemEditor, how they order', () => {
+  const cake: EditorItem = { ...batik, id: 'k', name: 'Custom birthday cake', description: null, priceCents: 18000, askForPrice: true };
+  const tile = (name: RegExp) => screen.getByRole('button', { name });
+
+  it('opens a physical item on Add to basket, with the hint, and no starting price', () => {
+    show(batik);
+    expect(screen.getByText('Made-to-order things, like custom cakes, work best as Ask')).toBeInTheDocument();
+    expect(tile(/^Add to basket/)).toHaveAttribute('aria-pressed', 'true');
+    expect(tile(/^Ask for a price/)).toHaveAttribute('aria-pressed', 'false');
+    expect(screen.queryByLabelText('Starting price in ringgit')).toBeNull();
+  });
+
+  it('choosing Ask hides the price, and with no starting price sends ask pricing with null', async () => {
+    vi.useFakeTimers();
+    const { calls, onPreview } = show(batik);
+    fireEvent.click(tile(/^Ask for a price/));
+    expect(tile(/^Ask for a price/)).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByLabelText('Price in ringgit')).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Options' })).toBeNull();
+    // The one price's box is the starting price's, as the board shares it.
+    const from = screen.getByLabelText('Starting price in ringgit');
+    expect(from).toHaveValue('45');
+    expect(from).toHaveAttribute('placeholder', 'Leave empty');
+    expect(screen.getByText('What they fill in')).toBeInTheDocument();
+    expect(screen.getByText(/One message box, plus their name and WhatsApp/)).toBeInTheDocument();
+
+    fireEvent.change(from, { target: { value: '' } });
+    expect(screen.getByText('Customers see Price on request')).toBeInTheDocument();
+    await pause();
+    expect(calls.update).toHaveBeenLastCalledWith('a', expect.objectContaining({ pricing: { kind: 'ask', fromCents: null } }));
+    expect(onPreview).toHaveBeenLastCalledWith(expect.objectContaining({ askForPrice: true, priceCents: null, options: [] }));
+  });
+
+  it('sends a typed starting price in sen, and says it as customers see it', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(null);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Custom cake' } });
+    fireEvent.click(tile(/^Ask for a price/));
+    fireEvent.change(screen.getByLabelText('Starting price in ringgit'), { target: { value: '180' } });
+    expect(screen.getByText('Customers see From RM180, ask for a price')).toBeInTheDocument();
+    await pause();
+    expect(calls.add).toHaveBeenCalledTimes(1);
+    expect(calls.add).toHaveBeenCalledWith({ name: 'Custom cake', description: null, category: null, tag: null, sku: null, pricing: { kind: 'ask', fromCents: 18000 } });
+  });
+
+  it("says core's sentence for a starting price out of range, and the board's for one that is not a number, sending nothing", async () => {
+    vi.useFakeTimers();
+    const { calls } = show(cake);
+    fireEvent.change(screen.getByLabelText('Starting price in ringgit'), { target: { value: '0' } });
+    expect(screen.getByText('A starting price is above RM0, up to RM10,000. Or leave it empty.')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Starting price in ringgit'), { target: { value: 'lots' } });
+    expect(screen.getByText(FROM_PARSE_SENTENCE)).toBeInTheDocument();
+    await pause();
+    expect(calls.update).not.toHaveBeenCalled();
+  });
+
+  it('opens an Ask item on Ask with its starting price', () => {
+    show(cake);
+    expect(tile(/^Ask for a price/)).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Starting price in ringgit')).toHaveValue('180');
+    expect(screen.getByText('Customers see From RM180, ask for a price')).toBeInTheDocument();
+  });
+
+  it('switching back to Add to basket sends one price, or the options it had', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(cake);
+    fireEvent.click(tile(/^Add to basket/));
+    expect(screen.getByLabelText('Price in ringgit')).toHaveValue('180');
+    await pause();
+    expect(calls.update).toHaveBeenLastCalledWith('k', expect.objectContaining({ pricing: { kind: 'single', priceCents: 18000 } }));
+    cleanup();
+
+    const second = show(coklat);
+    fireEvent.click(tile(/^Ask for a price/));
+    fireEvent.click(tile(/^Add to basket/));
+    expect(screen.getByLabelText('Option 2 name')).toHaveValue('2kg');
+    await pause();
+    expect(second.calls.update).toHaveBeenLastCalledWith('c', expect.objectContaining({ pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9500 }, { label: '2kg', priceCents: 17000 }] } }));
+  });
+
+  it('never offers the choice on a digital item, and a digital item is never sent as Ask', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(cake);
+    fireEvent.click(screen.getByRole('radio', { name: 'Digital' }));
+    expect(screen.queryByText('How they order')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Ask for a price/ })).toBeNull();
+    expect(screen.queryByLabelText('Starting price in ringgit')).toBeNull();
+    expect(screen.getByLabelText('Price in ringgit')).toHaveValue('180');
+    await pause();
+    const sent = vi.mocked(calls.update).mock.calls.map(([, patch]) => patch.pricing);
+    expect(sent).not.toContainEqual(expect.objectContaining({ kind: 'ask' }));
+  });
+});
+
 describe('fromRow', () => {
+  it('carries whether the item asks for a price', () => {
+    expect(fromRow(row({ askForPrice: true, priceCents: null }), (key) => key)).toMatchObject({ askForPrice: true, priceCents: null });
+    expect(fromRow(row(), (key) => key).askForPrice).toBe(false);
+  });
+
   it('keeps the photos the row carries, so an autosave does not make the editor forget them', () => {
     const photo = { id: 'p1', squareKey: 'items/a/p1.webp', width: 1000, height: 750, frame: { x: 0.125, y: 0, size: 1 } };
     expect(fromRow(row({ photos: [photo] }), (key) => key).photos).toEqual([photo]);

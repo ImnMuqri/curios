@@ -1,4 +1,4 @@
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, parseRinggit, pricingProblem, type Pricing } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, formatRinggit, parseRinggit, priceLine, pricingProblem, type Pricing } from '@curios/core/store';
 
 /**
  * An item's fields as the owner types them, and the checks that turn them
@@ -18,13 +18,24 @@ export function centsText(cents: number): string {
   return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
 }
 
+/** An Ask item's starting price that is not a number of ringgit (the Store board's words). */
+export const FROM_PARSE_SENTENCE = 'That starting price does not look right. Use ringgit, like 180, or leave it empty.';
+
 export type OptionDraft = { key: number; label: string; price: string };
-export type PricingDraft = { kind: 'single' | 'options'; price: string; options: OptionDraft[] };
+/**
+ * `ask` is "How they order: Ask for a price" (HANDOFF "Shop: Ask items", 8 Nov 2026); absent or
+ * false is Add to basket. An Ask item's starting price is typed in `price`, the box the one price
+ * uses, as the board shares it; `kind` and `options` wait there for a switch back to the basket.
+ */
+export type PricingDraft = { kind: 'single' | 'options'; ask?: boolean; price: string; options: OptionDraft[] };
 
 let nextKey = 1;
 export const blankOption = (): OptionDraft => ({ key: nextKey++, label: '', price: '' });
 
-export function draftOf(item: { priceCents: number | null; options: { label: string; priceCents: number }[] } | null): PricingDraft {
+export function draftOf(item: { priceCents: number | null; askForPrice?: boolean; options: { label: string; priceCents: number }[] } | null): PricingDraft {
+  if (item?.askForPrice) {
+    return { kind: 'single', ask: true, price: item.priceCents != null ? centsText(item.priceCents) : '', options: [blankOption()] };
+  }
   if (item && item.options.length > 0) {
     return {
       kind: 'options',
@@ -38,7 +49,13 @@ export function draftOf(item: { priceCents: number | null; options: { label: str
 /** The pricing to send, or the sentence the owner should read instead. */
 export function pricingOf(draft: PricingDraft): { pricing: Pricing } | { error: string } {
   let pricing: Pricing;
-  if (draft.kind === 'single') {
+  if (draft.ask) {
+    // No starting price is a choice ("Price on request"), not a mistake.
+    const typed = draft.price.trim();
+    const cents = typed === '' ? null : parseRinggit(typed);
+    if (typed !== '' && cents === null) return { error: FROM_PARSE_SENTENCE };
+    pricing = { kind: 'ask', fromCents: cents };
+  } else if (draft.kind === 'single') {
     const cents = parseRinggit(draft.price);
     if (cents === null) return { error: PRICE_PARSE_SENTENCE };
     pricing = { kind: 'single', priceCents: cents };
@@ -86,4 +103,13 @@ export function pricedFields(pricing: Pricing): { priceCents: number | null; ask
   if (pricing.kind === 'single') return { priceCents: pricing.priceCents, askForPrice: false, options: [] };
   if (pricing.kind === 'ask') return { priceCents: pricing.fromCents, askForPrice: true, options: [] };
   return { priceCents: null, askForPrice: false, options: pricing.options };
+}
+
+/**
+ * The price as the owner's screens say it (the Store board's `pricing().line`): an Ask item's
+ * "From RM180, ask for a price" or "Price on request", else core's line ("RM25", "1kg RM95 · 2kg RM170").
+ */
+export function ownerPriceLine(item: { priceCents: number | null; askForPrice?: boolean; options: { label: string; priceCents: number }[] }): string {
+  if (item.askForPrice) return item.priceCents === null ? 'Price on request' : `From ${formatRinggit(item.priceCents)}, ask for a price`;
+  return priceLine(item);
 }

@@ -8,8 +8,12 @@ import type { EditorItem, ShopLook, StoreSettings } from './store-types.js';
 import checkout from '../../[handle]/shop/checkout/checkout.module.css';
 import styles from './store.module.css';
 
-/** An item's first price: its own, or its first option's, as the board's sample order takes it. */
+/**
+ * An item's first price: its own, or its first option's, as the board's sample order takes it.
+ * None for an Ask item: it never goes in the basket, and its starting price is not a price.
+ */
 function firstPrice(item: EditorItem): { cents: number; option: string | null } | null {
+  if (item.askForPrice) return null;
   if (item.priceCents !== null) return { cents: item.priceCents, option: null };
   const first = item.options[0];
   return first ? { cents: first.priceCents, option: first.label } : null;

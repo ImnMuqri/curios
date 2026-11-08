@@ -1573,6 +1573,38 @@
   padding: 12px 30px 12px 12px;
 }
 
+/* ---- Ask-for-a-price items: how they order (8 Nov) ---- */
+
+.askTiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+/* "What they fill in": what an enquiry asks of the customer. */
+.askNote {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
+  animation: fadeUp 300ms ease both;
+}
+
+.askNote b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--biru-ink);
+}
+
+.askNote p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
 .dg {
   margin-top: 12px;
   animation: fadeUp 300ms ease both;

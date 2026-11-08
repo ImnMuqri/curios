@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { writeBasket } from '../../[handle]/shop/basket.js';
 import { StoreEditor } from './store-editor.js';
 import type { OwnerVoucher } from '@curios/core/vouchers';
-import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -383,6 +383,22 @@ describe('the preview', () => {
     expect(pay.getByText('Delivery · Sun 18 Oct')).toBeInTheDocument();
     // A preview: nothing in it uploads.
     expect(preview().querySelector('input[type="file"]')).toBeNull();
+  });
+
+  it('leaves an Ask item out of the Pay screen’s sample order: it never goes in the basket', () => {
+    const cake: EditorItem = { ...base, id: 'k', name: 'Custom birthday cake', priceCents: 18000, askForPrice: true, available: true };
+    show(ready, [cake, ...items]);
+    fireEvent.click(screenTab('Pay'));
+    const pay = within(preview());
+    expect(pay.getByText('1× Kek batik')).toBeInTheDocument();
+    expect(pay.queryByText(/Custom birthday cake/)).toBeNull();
+    expect(pay.getByRole('heading', { name: 'Pay RM55' })).toBeInTheDocument();
+  });
+
+  it('hands the shop and item pages whether an item asks for a price', () => {
+    const cake: EditorItem = { ...base, id: 'k', name: 'Custom birthday cake', priceCents: null, askForPrice: true, available: true };
+    expect(previewItem(cake)).toMatchObject({ askForPrice: true, priceCents: null });
+    expect(previewItem({ ...cake, askForPrice: false, priceCents: 4500 })).toMatchObject({ askForPrice: false });
   });
 
   it('says a rider’s fee is paid separately on the Pay screen, as the order page does', () => {

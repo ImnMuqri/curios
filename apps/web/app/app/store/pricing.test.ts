@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORY_SENTENCE, checkFields, type PricingDraft, SKU_SENTENCE, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
+import { pricingProblem } from '@curios/core/store';
+import { CATEGORY_SENTENCE, checkFields, FROM_PARSE_SENTENCE, ownerPriceLine, type PricingDraft, SKU_SENTENCE, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
 
 describe('draftOf', () => {
   it('reads a priced item as one price, and an item with options as its options', () => {
@@ -79,7 +80,41 @@ describe('checkFields, category and tag', () => {
 
 describe('pricedFields', () => {
   it('lays a pricing out as the item holds it', () => {
-    expect(pricedFields({ kind: 'single', priceCents: 900 })).toEqual({ priceCents: 900, options: [] });
-    expect(pricedFields({ kind: 'options', options: [{ label: '1kg', priceCents: 9500 }] })).toEqual({ priceCents: null, options: [{ label: '1kg', priceCents: 9500 }] });
+    expect(pricedFields({ kind: 'single', priceCents: 900 })).toEqual({ priceCents: 900, askForPrice: false, options: [] });
+    expect(pricedFields({ kind: 'options', options: [{ label: '1kg', priceCents: 9500 }] })).toEqual({ priceCents: null, askForPrice: false, options: [{ label: '1kg', priceCents: 9500 }] });
+    expect(pricedFields({ kind: 'ask', fromCents: 18000 })).toEqual({ priceCents: 18000, askForPrice: true, options: [] });
+    expect(pricedFields({ kind: 'ask', fromCents: null })).toEqual({ priceCents: null, askForPrice: true, options: [] });
+  });
+});
+
+describe('Ask items', () => {
+  const ask = (price: string): PricingDraft => ({ kind: 'single', ask: true, price, options: [] });
+
+  it('reads an Ask item as Ask, with its starting price or none', () => {
+    expect(draftOf({ priceCents: 18000, askForPrice: true, options: [] })).toMatchObject({ ask: true, price: '180' });
+    expect(draftOf({ priceCents: null, askForPrice: true, options: [] })).toMatchObject({ ask: true, price: '' });
+    expect(draftOf({ priceCents: 900, askForPrice: false, options: [] }).ask).toBeFalsy();
+  });
+
+  it('sends an empty starting price as null and a typed one in sen', () => {
+    expect(pricingOf(ask(''))).toEqual({ pricing: { kind: 'ask', fromCents: null } });
+    expect(pricingOf(ask('  '))).toEqual({ pricing: { kind: 'ask', fromCents: null } });
+    expect(pricingOf(ask('RM 180.50'))).toEqual({ pricing: { kind: 'ask', fromCents: 18050 } });
+  });
+
+  it("says the board's sentence for words, and core's for a price out of range", () => {
+    expect(pricingOf(ask('lots'))).toEqual({ error: FROM_PARSE_SENTENCE });
+    expect(pricingOf(ask('0'))).toEqual({ error: pricingProblem({ kind: 'ask', fromCents: 0 }) });
+    expect(pricingOf(ask('20000'))).toEqual({ error: 'A starting price is above RM0, up to RM10,000. Or leave it empty.' });
+  });
+
+  it('a draft that is not Ask is priced as before, whatever options wait in it', () => {
+    expect(pricingOf({ kind: 'single', ask: false, price: '9', options: [] })).toEqual({ pricing: { kind: 'single', priceCents: 900 } });
+  });
+
+  it('says the price as the owner sees it', () => {
+    expect(ownerPriceLine({ priceCents: 18000, askForPrice: true, options: [] })).toBe('From RM180, ask for a price');
+    expect(ownerPriceLine({ priceCents: null, askForPrice: true, options: [] })).toBe('Price on request');
+    expect(ownerPriceLine({ priceCents: 2500, options: [] })).toBe('RM25');
   });
 });

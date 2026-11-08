@@ -22,6 +22,16 @@ describe('ItemsList', () => {
     expect(screen.getByRole('listitem', { name: 'E-book' })).toHaveTextContent('Digital · RM25');
   });
 
+  it("says an Ask item's starting price, or Price on request, never Needs a price", () => {
+    show([
+      { ...base, id: 'k', name: 'Custom birthday cake', priceCents: 18000, askForPrice: true, available: true },
+      { ...base, id: 'w', name: 'Wedding cake', priceCents: null, askForPrice: true, available: true },
+    ]);
+    expect(screen.getByRole('listitem', { name: 'Custom birthday cake' })).toHaveTextContent('From RM180, ask for a price');
+    expect(screen.getByRole('listitem', { name: 'Wedding cake' })).toHaveTextContent('Price on request');
+    expect(screen.queryByText('Needs a price')).toBeNull();
+  });
+
   it('counts the items and how many are in the shop', () => {
     show();
     expect(screen.getByText('3 items · 2 in your shop')).toBeInTheDocument();
