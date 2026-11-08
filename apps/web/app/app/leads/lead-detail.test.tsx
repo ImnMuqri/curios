@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { OwnerLead } from '@curios/db-read';
-import { LeadDetail, type LeadActions } from './lead-detail.js';
+import { LeadDetail, type LeadActions, type LeadRow } from './lead-detail.js';
 
 const lead: OwnerLead = {
   id: 'l1',
@@ -21,7 +21,25 @@ const lead: OwnerLead = {
   enquiry: null,
 };
 
-function show(calls: Partial<LeadActions> = {}, shown: OwnerLead = lead) {
+// An enquiry from an Ask item in the shop (HANDOFF "Shop: Ask items", 8 Nov 2026), as on the Leads board.
+const note = 'For 20 people on Sun 15 Nov. Frozen theme, 2 tiers, with “Aisyah” on top. Budget around RM250.';
+const enquiryLead: LeadRow = {
+  id: 'e1',
+  phone: '+60123456789',
+  score: 2,
+  slots: { product: 'Custom birthday cake, 20 people', date: 'Sun 15 Nov', location: null, people: '20 people', budget: 'About RM250' },
+  status: 'NEW',
+  createdAt: new Date('2026-10-17T05:59:30Z'),
+  transcript: [
+    { role: 'USER', content: `Enquiry from the shop: Custom birthday cake. ${note}` },
+    { role: 'ASSISTANT', content: 'Thanks! Custom birthday cakes start from RM180. Lina will reply on WhatsApp with a price.' },
+  ],
+  messageCount: 2,
+  capturedAfter: 1,
+  enquiry: { name: 'Farah', note, item: { name: 'Custom birthday cake', photoKey: null, fromCents: 18000 } },
+};
+
+function show(calls: Partial<LeadActions> = {}, shown: LeadRow = lead, language = 'en') {
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onDeleted = vi.fn();
   const say = vi.fn();
@@ -31,7 +49,7 @@ function show(calls: Partial<LeadActions> = {}, shown: OwnerLead = lead) {
       status="NEW"
       handle="keklina"
       displayName="Kek Lina"
-      language="en"
+      language={language}
       now={new Date('2026-10-17T06:00:00Z')}
       actions={actions}
       onStatus={vi.fn(async () => undefined)}
@@ -133,5 +151,102 @@ describe('LeadDetail', () => {
     expect(onDeleted).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('No such lead.');
     expect(screen.getByRole('group', { name: 'Confirm deleting this lead' })).toBeInTheDocument();
+  });
+});
+
+describe('LeadDetail, an enquiry from the shop', () => {
+  const card = () => screen.getByRole('heading', { name: /Their enquiry/ }).closest('section')!;
+  const field = (label: string) => within(card()).getByText(label).parentElement!;
+
+  it('says they sent an enquiry from the shop, when, and their name', () => {
+    show({}, enquiryLead);
+    expect(screen.getByText('Sent an enquiry just now from your shop · Farah')).toBeInTheDocument();
+    expect(screen.queryByText(/Left their number/)).toBeNull();
+  });
+
+  it('leaves the name off the header when they gave none', () => {
+    show({}, { ...enquiryLead, enquiry: { ...enquiryLead.enquiry!, name: null } });
+    expect(screen.getByText('Sent an enquiry just now from your shop')).toBeInTheDocument();
+  });
+
+  it('shows their enquiry in place of what they’re after: the item, its starting price, the three details and their note', () => {
+    show({}, enquiryLead);
+    expect(card()).toHaveTextContent('Picked out of their message');
+    expect(within(card()).getByText('Custom birthday cake')).toBeInTheDocument();
+    expect(within(card()).getByText('Ask for a price · from RM180')).toBeInTheDocument();
+    expect(field('When')).toHaveTextContent('Sun 15 Nov');
+    expect(field('For')).toHaveTextContent('20 people');
+    expect(field('Budget')).toHaveTextContent('About RM250');
+    expect(within(card()).getByText(`“${note}”`)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: /What they.re after/ })).toBeNull();
+    expect(screen.queryByText(/of 3$/)).toBeNull();
+  });
+
+  it('draws the item’s initial when it has no photo', () => {
+    show({}, enquiryLead);
+    expect(card().querySelector('img')).toBeNull();
+    expect(within(card()).getByText('C')).toBeInTheDocument();
+  });
+
+  it('shows the item’s photo when it has one', () => {
+    show({}, { ...enquiryLead, itemPhotoUrl: 'https://files.example/items/cake.webp' });
+    expect(card().querySelector('img')).toHaveAttribute('src', 'https://files.example/items/cake.webp');
+  });
+
+  it('says only "Ask for a price" with no starting price', () => {
+    show({}, { ...enquiryLead, enquiry: { ...enquiryLead.enquiry!, item: { name: 'Custom birthday cake', photoKey: null, fromCents: null } } });
+    expect(within(card()).getByText('Ask for a price')).toBeInTheDocument();
+  });
+
+  it('says a detail was not mentioned when it was not picked out, as an older lead has none', () => {
+    show({}, { ...enquiryLead, slots: { product: null, date: 'Sun 15 Nov', location: null } });
+    expect(field('When')).toHaveTextContent('Sun 15 Nov');
+    expect(field('For')).toHaveTextContent('Not mentioned');
+    expect(field('Budget')).toHaveTextContent('Not mentioned');
+  });
+
+  it('keeps the item’s name from the first message once the item was removed', () => {
+    show({}, { ...enquiryLead, enquiry: { ...enquiryLead.enquiry!, item: null } });
+    expect(within(card()).getByText('Custom birthday cake')).toBeInTheDocument();
+    expect(within(card()).getByText('No longer in your shop')).toBeInTheDocument();
+  });
+
+  it('shows the details alone when the item’s name cannot be read', () => {
+    show({}, { ...enquiryLead, transcript: [], enquiry: { ...enquiryLead.enquiry!, item: null } });
+    expect(card().querySelector('img')).toBeNull();
+    expect(within(card()).queryByText(/Ask for a price/)).toBeNull();
+    expect(field('When')).toHaveTextContent('Sun 15 Nov');
+  });
+
+  it('offers no "Send a quote": that waits for payment links', () => {
+    show({}, enquiryLead);
+    expect(screen.queryByRole('button', { name: /quote/i })).toBeNull();
+    expect(screen.queryByText(/Send a quote/)).toBeNull();
+  });
+
+  it('shows the conversation with no "Left their number" in it', () => {
+    show({}, enquiryLead);
+    const lines = [...screen.getByLabelText('The conversation').children].map((line) => line.textContent);
+    expect(lines).toEqual([`Enquiry from the shop: Custom birthday cake. ${note}`, 'Kek Lina’s pageThanks! Custom birthday cakes start from RM180. Lina will reply on WhatsApp with a price.']);
+  });
+
+  it('drafts a first message for the enquiry, by their name and the item', () => {
+    show({}, enquiryLead);
+    expect(screen.getByRole('textbox', { name: 'WhatsApp message' })).toHaveValue(
+      "Hi Farah! This is Kek Lina. Thanks for asking about the Custom birthday cake for Sun 15 Nov (20 people). Let me check the details and I'll come back to you with a price.",
+    );
+  });
+
+  it('drafts it in Malay for a Malay page', () => {
+    show({}, enquiryLead, 'ms');
+    expect(screen.getByRole('textbox', { name: 'WhatsApp message' })).toHaveValue(
+      'Hai Farah! Ini Kek Lina. Terima kasih sebab bertanya tentang Custom birthday cake untuk Sun 15 Nov (20 people). Saya semak dulu, nanti saya bagi tahu harganya ya.',
+    );
+  });
+
+  it('leaves a chat lead as it was: no enquiry card', () => {
+    show();
+    expect(screen.queryByRole('heading', { name: /Their enquiry/ })).toBeNull();
+    expect(screen.getByRole('heading', { name: /What they.re after/ })).toBeInTheDocument();
   });
 });

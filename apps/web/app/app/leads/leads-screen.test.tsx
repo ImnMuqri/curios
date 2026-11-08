@@ -15,7 +15,21 @@ const leads: OwnerLead[] = [
   { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2, enquiry: null },
 ];
 
-function show(list = leads, calls?: Partial<LeadActions>, paging?: { older: string | null; paged: boolean }) {
+// An enquiry from an Ask item in the shop, newest, as the board lists it.
+const enquiry: OwnerLead = {
+  id: 'e1',
+  phone: '+60123456789',
+  score: 2,
+  slots: { product: 'Custom birthday cake, 20 people', date: 'Sun 15 Nov', location: null, people: '20 people', budget: 'About RM250' },
+  status: 'NEW',
+  createdAt: new Date('2026-10-17T05:59:30Z'),
+  transcript: [{ role: 'USER', content: 'Enquiry from the shop: Custom birthday cake. Frozen theme, 2 tiers.' }],
+  messageCount: 1,
+  capturedAfter: 1,
+  enquiry: { name: 'Farah', note: 'Frozen theme, 2 tiers.', item: { name: 'Custom birthday cake', photoKey: null, fromCents: 18000 } },
+};
+
+function show(list = leads,calls?: Partial<LeadActions>, paging?: { older: string | null; paged: boolean }) {
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onChanged = vi.fn();
   render(
@@ -65,6 +79,36 @@ describe('LeadsScreen, the list', () => {
     expect(within(first).getByLabelText('3 of 3 details')).toBeInTheDocument();
     expect(within(first).getByLabelText('New')).toBeInTheDocument();
     expect(list().getByRole('button', { name: /\+60 13-557 6610/ })).toHaveTextContent('Nothing picked out yet');
+  });
+
+  it('tags an enquiry from the shop, with its item and date', () => {
+    show([enquiry, ...leads]);
+    const row = list().getByRole('button', { name: /\+60 12-345 6789/ });
+    expect(within(row).getByText('Enquiry')).toBeInTheDocument();
+    expect(row).toHaveTextContent('EnquiryCustom birthday cake · Sun 15 Nov');
+    // A chat lead carries no tag.
+    expect(within(list().getByRole('button', { name: /\+60 12-781 4402/ })).queryByText('Enquiry')).toBeNull();
+  });
+
+  it('opens an enquiry with its own card, and a chat lead without one', () => {
+    show([enquiry, ...leads]);
+    expect(screen.getByText('Sent an enquiry just now from your shop · Farah')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Their enquiry/ })).toBeInTheDocument();
+    fireEvent.click(list().getByRole('button', { name: /\+60 12-781 4402/ }));
+    expect(screen.queryByRole('heading', { name: /Their enquiry/ })).toBeNull();
+    expect(screen.getByText('Left their number 25 min ago · in the chat on curios.my/keklina')).toBeInTheDocument();
+  });
+
+  it('finds an enquiry by its item or their name, and filters it by status with the rest', () => {
+    show([enquiry, ...leads]);
+    expect(filter(/^New/)).toHaveTextContent('2');
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search number or what they want' }), { target: { value: 'birthday' } });
+    expect(list().getAllByRole('button')).toHaveLength(1);
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search number or what they want' }), { target: { value: 'farah' } });
+    expect(list().getByRole('button', { name: /\+60 12-345 6789/ })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('searchbox', { name: 'Search number or what they want' }), { target: { value: '' } });
+    fireEvent.click(filter(/^Contacted/));
+    expect(list().queryByRole('button', { name: /\+60 12-345 6789/ })).toBeNull();
   });
 
   it('opens the newest first, and the one chosen', () => {

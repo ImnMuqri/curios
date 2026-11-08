@@ -27,5 +27,31 @@ export function firstMessage(displayName: string, slots: LeadSlots | null, langu
   return `${m}. ${any ? 'Happy to help. When suits you to talk it through?' : 'How can I help?'}`;
 }
 
+/**
+ * A first WhatsApp message to someone who sent an enquiry from an Ask item in
+ * the shop: by their name, about the item they asked after, with the date and
+ * how many people when those were picked out of their message. Like the chat
+ * one it names no price: the owner checks, then quotes.
+ */
+export function enquiryFirstMessage(
+  displayName: string,
+  enquiry: { name: string | null; item: string | null },
+  slots: LeadSlots | null,
+  language: string,
+): string {
+  const name = enquiry.name?.trim() || null;
+  const date = slots?.date ?? null;
+  const people = slots?.people ?? null;
+  const details = `${date ? (language === 'ms' ? ` untuk ${date}` : ` for ${date}`) : ''}${people ? ` (${people})` : ''}`;
+
+  if (language === 'ms') {
+    const about = enquiry.item ? `bertanya tentang ${enquiry.item}` : 'bertanya';
+    return `Hai${name ? ` ${name}` : ''}! Ini ${displayName}. Terima kasih sebab ${about}${details}. Saya semak dulu, nanti saya bagi tahu harganya ya.`;
+  }
+
+  const about = enquiry.item ? `asking about the ${enquiry.item}` : 'your enquiry';
+  return `Hi${name ? ` ${name}` : ''}! This is ${displayName}. Thanks for ${about}${details}. Let me check the details and I'll come back to you with a price.`;
+}
+
 /** wa.me wants digits only: no plus, no separators. */
 export const waNumber = (e164: string) => e164.replace(/\D/g, '');

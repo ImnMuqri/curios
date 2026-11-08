@@ -110,6 +110,23 @@ describe('LeadsPage', () => {
     expect(props.paging).toEqual({ older: 'l49', paged: false });
   });
 
+  it("hands an enquiry's item photo over as a URL, and a chat lead none", async () => {
+    vi.stubEnv('STORAGE_PUBLIC_URL', 'https://files.example/');
+    getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
+    getLeads.mockResolvedValue([
+      { id: 'e1', enquiry: { name: 'Farah', note: 'Frozen theme.', item: { name: 'Custom birthday cake', photoKey: 'items/cake.webp', fromCents: 18000 } } },
+      { id: 'e2', enquiry: { name: 'Aina', note: null, item: null } },
+      { id: 'l1', enquiry: null },
+    ]);
+
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
+
+    const shown = (Leads.mock.calls[0]![0] as { leads: { id: string; itemPhotoUrl: string | null; enquiry: unknown }[] }).leads;
+    expect(shown.map((lead) => lead.itemPhotoUrl)).toEqual(['https://files.example/items/cake.webp', null, null]);
+    expect(shown[0]!.enquiry).toMatchObject({ name: 'Farah', item: { photoKey: 'items/cake.webp' } });
+    vi.unstubAllEnvs();
+  });
+
   it('reads the next page from ?before, and offers no older link at the end', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
     getLeads.mockResolvedValue([{ id: 'l60' }]);

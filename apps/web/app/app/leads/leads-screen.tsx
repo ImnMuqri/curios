@@ -12,19 +12,23 @@ import inbox from '../_ui/inbox.module.css';
 import pills from '../_ui/pill-tabs.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
 import { useToast } from '../_ui/toast.js';
-import { LeadDetail, STATUSES, type LeadActions, type LeadStatus } from './lead-detail.js';
+import { enquiryItemName, leadSummary } from './enquiry.js';
+import { LeadDetail, STATUSES, type LeadActions, type LeadRow, type LeadStatus } from './lead-detail.js';
 import styles from './leads.module.css';
 
 type Filter = 'all' | LeadStatus;
 
 const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'All' }, ...STATUSES];
 
-/** Whether a lead answers the search box: the number's digits, or what they are after. */
+/** Whether a lead answers the search box: the number's digits, or what they are after (an enquiry's item and name too). */
 export function leadMatches(lead: OwnerLead, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
   const digits = q.replace(/\D/g, '');
-  const wants = [lead.slots?.product, lead.slots?.date, lead.slots?.location].filter(Boolean).join(' ').toLowerCase();
+  const wants = [lead.slots?.product, lead.slots?.date, lead.slots?.location, enquiryItemName(lead), lead.enquiry?.name]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase();
   return (digits.length >= 2 && lead.phone.replace(/\D/g, '').includes(digits)) || wants.includes(q);
 }
 
@@ -53,7 +57,7 @@ export function LeadsScreen({
   actions,
   onChanged,
 }: {
-  leads: OwnerLead[];
+  leads: LeadRow[];
   /** `older`: the last lead shown, when there are more below it. `paged`: this is not the newest page. */
   paging?: { older: string | null; paged: boolean };
   stats: LeadStats;
@@ -184,7 +188,7 @@ export function LeadsScreen({
               <ul className={inbox.rows} aria-label="Leads">
                 {shown.map((lead, i) => {
                   const status = statusOf(lead);
-                  const wants = [lead.slots?.product, lead.slots?.date, lead.slots?.location].filter(Boolean).join(' · ');
+                  const wants = leadSummary(lead);
                   return (
                     <li key={lead.id}>
                       <button
@@ -200,7 +204,10 @@ export function LeadsScreen({
                               {formatMalaysianPhone(lead.phone)}
                               {status === 'NEW' ? <span className={styles.newDot} aria-label="New" /> : null}
                             </span>
-                            <span className={styles.wants}>{wants || 'Nothing picked out yet'}</span>
+                            <span className={styles.wants}>
+                              {lead.enquiry ? <em className={styles.enquiryTag}>Enquiry</em> : null}
+                              {wants || 'Nothing picked out yet'}
+                            </span>
                           </span>
                           <span className={styles.leadEnd}>
                             <span>{relativeTime(lead.createdAt, now)}</span>

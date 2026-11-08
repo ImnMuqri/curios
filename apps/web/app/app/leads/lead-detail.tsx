@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { formatMalaysianPhone } from '@curios/core/phone';
+import { formatRinggit } from '@curios/core/store';
 import type { OwnerLead } from '@curios/db-read';
 import { Callout } from '@curios/ui';
 import inbox from '../_ui/inbox.module.css';
@@ -9,10 +10,14 @@ import { PageReply } from '../_ui/page-reply.js';
 import pills from '../_ui/pill-tabs.module.css';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { relativeTime } from '../_ui/relative-time.js';
-import { firstMessage, waNumber } from './first-message.js';
+import { enquiryItemName } from './enquiry.js';
+import { enquiryFirstMessage, firstMessage, waNumber } from './first-message.js';
 import styles from './leads.module.css';
 
 export type LeadStatus = OwnerLead['status'];
+
+/** A lead as the screen gets it: an enquiry's item photo as a URL, made on the server from its key. */
+export type LeadRow = OwnerLead & { itemPhotoUrl?: string | null };
 
 // Function-typed properties, not method shorthand: they are handed around as
 // bare values, and method syntax's implicit `this` trips unbound-method.
@@ -42,6 +47,57 @@ function Line({ line, name }: { line: OwnerLead['transcript'][number]; name: str
   return line.role === 'USER' ? <VisitorQuestion>{line.content}</VisitorQuestion> : <PageReply name={name}>{line.content}</PageReply>;
 }
 
+/** An enquiry's three details, as the board's card has them. */
+const ENQUIRY_FIELDS = [
+  { key: 'date', label: 'When' },
+  { key: 'people', label: 'For' },
+  { key: 'budget', label: 'Budget' },
+] as const;
+
+/**
+ * What someone asked for from an Ask item in the shop: the item (its photo, or
+ * its initial), how it is priced, the date, how many and the budget picked out
+ * of their message, and the message itself. A removed item keeps the name
+ * from the first message; with neither, the card is the details alone.
+ */
+function EnquiryCard({ lead, enquiry }: { lead: LeadRow; enquiry: NonNullable<OwnerLead['enquiry']> }) {
+  const name = enquiryItemName(lead);
+  const from = enquiry.item?.fromCents ?? null;
+  const note = enquiry.note?.trim();
+  return (
+    <section className={inbox.section} aria-labelledby="enquiry-title">
+      <h3 id="enquiry-title">
+        Their enquiry<span>Picked out of their message</span>
+      </h3>
+      <div className={styles.enquiry}>
+        {name ? (
+          <div className={styles.enquiryItem}>
+            <span className={styles.enquiryThumb} aria-hidden="true">
+              {lead.itemPhotoUrl ? <img src={lead.itemPhotoUrl} alt="" /> : name.trim().charAt(0).toUpperCase()}
+            </span>
+            <span>
+              <b>{name}</b>
+              <small>{enquiry.item ? (from !== null ? `Ask for a price · from ${formatRinggit(from)}` : 'Ask for a price') : 'No longer in your shop'}</small>
+            </span>
+          </div>
+        ) : null}
+        <div className={styles.enquiryFields}>
+          {ENQUIRY_FIELDS.map((field) => {
+            const value = lead.slots?.[field.key] ?? null;
+            return (
+              <span key={field.key} className={styles.enquiryField} data-missing={value ? undefined : ''}>
+                <small>{field.label}</small>
+                <b>{value ?? 'Not mentioned'}</b>
+              </span>
+            );
+          })}
+        </div>
+        {note ? <p className={styles.enquiryNote}>“{note}”</p> : null}
+      </div>
+    </section>
+  );
+}
+
 const READY = ['Start with hello', 'Ask a little more', 'Almost there', 'Ready to quote'];
 const RING = 2 * Math.PI * 18;
 
@@ -65,7 +121,7 @@ export function LeadDetail({
   onDeleted,
   say,
 }: {
-  lead: OwnerLead;
+  lead: LeadRow;
   /** The status as the screen shows it now, which may be ahead of `lead.status`. */
   status: LeadStatus;
   handle: string;
@@ -79,7 +135,12 @@ export function LeadDetail({
   /** The screen's toast ("Marked contacted."), which outlives this panel. */
   say: (text: string) => void;
 }) {
-  const [message, setMessage] = useState(() => firstMessage(displayName, lead.slots, language));
+  const enquiry = lead.enquiry;
+  const [message, setMessage] = useState(() =>
+    enquiry
+      ? enquiryFirstMessage(displayName, { name: enquiry.name, item: enquiryItemName(lead) }, lead.slots, language)
+      : firstMessage(displayName, lead.slots, language),
+  );
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -139,9 +200,16 @@ export function LeadDetail({
       <div className={styles.head}>
         <span className={styles.headText}>
           <h2 className={inbox.title}>{phone}</h2>
-          <p>
-            Left their number {relativeTime(lead.createdAt, now)} · in the chat on curios.my/{handle}
-          </p>
+          {enquiry ? (
+            <p>
+              Sent an enquiry {relativeTime(lead.createdAt, now)} from your shop
+              {enquiry.name ? ` · ${enquiry.name}` : ''}
+            </p>
+          ) : (
+            <p>
+              Left their number {relativeTime(lead.createdAt, now)} · in the chat on curios.my/{handle}
+            </p>
+          )}
         </span>
         <div className={styles.headEnd}>
           <div className={`${pills.track} ${styles.status}`} role="radiogroup" aria-label="Lead status" data-status={status}>
@@ -167,32 +235,37 @@ export function LeadDetail({
         </div>
       </div>
 
-      <section className={inbox.section} aria-labelledby="after-title">
-        <h3 id="after-title">
-          What they&apos;re after<span>Picked out of the conversation</span>
-        </h3>
-        <div className={styles.slots}>
-          {SLOTS.map((slot, i) => {
-            const value = lead.slots?.[slot.key] ?? null;
-            return (
-              <div key={slot.key} className={styles.slot} data-missing={value ? undefined : ''} style={{ animationDelay: `${i * 60}ms` }}>
-                <small>{slot.label}</small>
-                <b>{value ?? 'Not mentioned'}</b>
-              </div>
-            );
-          })}
-          <div className={styles.meter}>
-            <svg viewBox="0 0 44 44" width="48" height="48" aria-hidden="true">
-              <circle cx="22" cy="22" r="18" />
-              <circle cx="22" cy="22" r="18" strokeDasharray={RING} strokeDashoffset={RING * (1 - score / 3)} transform="rotate(-90 22 22)" />
-            </svg>
-            <span>
-              <b>{score} of 3</b>
-              <span>{READY[score]}</span>
-            </span>
+      {/* An enquiry has its own card in place of what they're after, as the board draws it. */}
+      {enquiry ? (
+        <EnquiryCard lead={lead} enquiry={enquiry} />
+      ) : (
+        <section className={inbox.section} aria-labelledby="after-title">
+          <h3 id="after-title">
+            What they&apos;re after<span>Picked out of the conversation</span>
+          </h3>
+          <div className={styles.slots}>
+            {SLOTS.map((slot, i) => {
+              const value = lead.slots?.[slot.key] ?? null;
+              return (
+                <div key={slot.key} className={styles.slot} data-missing={value ? undefined : ''} style={{ animationDelay: `${i * 60}ms` }}>
+                  <small>{slot.label}</small>
+                  <b>{value ?? 'Not mentioned'}</b>
+                </div>
+              );
+            })}
+            <div className={styles.meter}>
+              <svg viewBox="0 0 44 44" width="48" height="48" aria-hidden="true">
+                <circle cx="22" cy="22" r="18" />
+                <circle cx="22" cy="22" r="18" strokeDasharray={RING} strokeDashoffset={RING * (1 - score / 3)} transform="rotate(-90 22 22)" />
+              </svg>
+              <span>
+                <b>{score} of 3</b>
+                <span>{READY[score]}</span>
+              </span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className={inbox.section}>
         <div className={styles.pair}>
@@ -205,12 +278,15 @@ export function LeadDetail({
               {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
                 <Line key={i} line={line} name={displayName} />
               ))}
-              <span className={styles.leftNumber}>
-                <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
-                Left their number
-              </span>
+              {/* An enquiry's number came with it, not part-way through a chat. */}
+              {enquiry ? null : (
+                <span className={styles.leftNumber}>
+                  <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                  Left their number
+                </span>
+              )}
               {lead.transcript.slice(lead.capturedAfter).map((line, i) => (
                 <Line key={lead.capturedAfter + i} line={line} name={displayName} />
               ))}
