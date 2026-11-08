@@ -198,3 +198,62 @@ describe('runLeadJob', () => {
     expect(mailQueue.add.mock.calls[0]?.[1].text).toContain('Your 3 free leads are used');
   });
 });
+
+describe('runLeadJob: an enquiry from an Ask item', () => {
+  /** An ENQUIRY lead about Kek kahwin, as the enquiry route writes one, on the page beforeEach made. */
+  async function anEnquiryLead(over: { name?: string | null; withItem?: boolean } = {}) {
+    const page = await prisma.page.findUniqueOrThrow({ where: { handle: 'nadia' }, select: { id: true } });
+    const item = await prisma.item.create({ data: { pageId: page.id, name: 'Kek kahwin', slug: 'kek-kahwin', position: 0, priceCents: 18_000, askForPrice: true } });
+    const conversation = await prisma.conversation.create({
+      data: { pageId: page.id, messages: { create: { role: 'USER', content: 'Enquiry from the shop: Kek kahwin. Kek 3 tingkat untuk 150 orang, bajet RM800.' } } },
+    });
+    const lead = await prisma.lead.create({
+      data: {
+        pageId: page.id,
+        conversationId: conversation.id,
+        phone: '+60129876543',
+        kind: 'ENQUIRY',
+        itemId: over.withItem === false ? null : item.id,
+        name: over.name === undefined ? 'Aisyah' : over.name,
+        note: 'Kek 3 tingkat untuk 150 orang, bajet RM800.',
+      },
+    });
+    return lead.id;
+  }
+
+  const enquirySlots = { product: 'Kek kahwin 3 tingkat', date: null, location: null, people: '150 orang', budget: 'RM800' };
+
+  it('opens the email with who sent it and about which item, and lists For and Budget', async () => {
+    const id = await anEnquiryLead();
+    const mailQueue = aMailQueue();
+    const gateway = gatewayReturning(enquirySlots);
+
+    await runLeadJob({ prisma, gateway, mailQueue, settings }, { leadId: id });
+
+    const job = mailQueue.add.mock.calls[0]?.[1];
+    expect(job?.text.split('\n')[0]).toBe('Aisyah sent an enquiry about Kek kahwin from your shop.');
+    expect(job?.text).toContain('For: 150 orang');
+    expect(job?.text).toContain('Budget: RM800');
+    expect(job?.html).toContain('Aisyah sent an enquiry about Kek kahwin from your shop.');
+    // People and budget are kept with the slots, but only product, date and place score.
+    const lead = await prisma.lead.findUniqueOrThrow({ where: { id } });
+    expect(lead.slots).toMatchObject({ people: '150 orang', budget: 'RM800' });
+    expect(lead.score).toBe(1);
+  });
+
+  it('leaves the item out once it was removed, and still names who sent it', async () => {
+    const id = await anEnquiryLead({ withItem: false });
+    const mailQueue = aMailQueue();
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings }, { leadId: id });
+    expect(mailQueue.add.mock.calls[0]?.[1].text.split('\n')[0]).toBe('Aisyah sent an enquiry from your shop.');
+  });
+
+  it('a chat lead opens as it always did', async () => {
+    const mailQueue = aMailQueue();
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: 'kek butter 2kg', date: null, location: 'Klang' }), mailQueue, settings }, { leadId });
+    const text = mailQueue.add.mock.calls[0]?.[1].text ?? '';
+    expect(text.split('\n')[0]).toBe('Your page couldn’t answer this one, so it asked for their number.');
+    expect(text).not.toContain('sent an enquiry');
+    expect(text).not.toMatch(/^(For|Budget):/m);
+  });
+});

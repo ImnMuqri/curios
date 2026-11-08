@@ -3,6 +3,7 @@ import {
   formatRinggit,
   fromPrice,
   MAX_OPTIONS,
+  PRICE_MAX_CENTS,
   normalizeBankAccountNumber,
   parseRinggit,
   priceLine,
@@ -64,6 +65,16 @@ describe('pricingProblem', () => {
     expect(
       pricingProblem({ kind: 'options', options: [{ label: '1kg', priceCents: 100 }, { label: '1KG ', priceCents: 200 }] }),
     ).toMatch(/twice/);
+  });
+  it('accepts an Ask item with no starting price, or a valid one', () => {
+    expect(pricingProblem({ kind: 'ask', fromCents: null })).toBeNull();
+    expect(pricingProblem({ kind: 'ask', fromCents: 18000 })).toBeNull();
+    expect(pricingProblem({ kind: 'ask', fromCents: PRICE_MAX_CENTS })).toBeNull();
+  });
+  it('refuses an Ask item starting at zero, below it, a fraction of a sen or above the most', () => {
+    for (const fromCents of [0, -100, 95.5, PRICE_MAX_CENTS + 1]) {
+      expect(pricingProblem({ kind: 'ask', fromCents })).toMatch(/starting price/);
+    }
   });
 });
 

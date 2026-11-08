@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { hashSessionValue } from '@curios/core';
+import { FREE_LEADS, hashSessionValue } from '@curios/core';
 import { getCheckout, getOrderByToken, getShopItem, getOrderStats, getOwnerOrders, getOwnerOrdersPage } from './orders.query.js';
 import { countNavBadges } from './my-curios.query.js';
 import { clearSettingsCache } from './settings.query.js';
@@ -521,6 +521,36 @@ describe('getCheckout', () => {
 
     await write.page.update({ where: { id: owner.pageId }, data: { pickupEnabled: false } });
     expect((await getCheckout(owner.handle, NOW))?.pickupPlaces).toEqual([]);
+  });
+
+  it('says canEnquire by the lead rule, not the order one: a trial with leads left or a paid page yes, a spent trial no', async () => {
+    const fresh = await anOwner();
+    expect((await getCheckout(fresh.handle, NOW))?.canEnquire).toBe(true);
+
+    const spent = await anOwner({ leadsCaptured: FREE_LEADS });
+    const checkout = await getCheckout(spent.handle, NOW);
+    expect(checkout?.canEnquire).toBe(false);
+    // Orders are still taken: the two allowances are separate.
+    expect(checkout?.canTakeOrders).toBe(true);
+
+    const paid = await anOwner({ leadsCaptured: FREE_LEADS + 10, paidUntil: new Date('2026-12-01T00:00:00Z') });
+    expect((await getCheckout(paid.handle, NOW))?.canEnquire).toBe(true);
+    const lapsed = await anOwner({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2026-10-01T00:00:00Z') });
+    expect((await getCheckout(lapsed.handle, NOW))?.canEnquire).toBe(false);
+
+    // Orders spent but leads left: still takes enquiries.
+    const ordersSpent = await anOwner({ ordersPlaced: 3 });
+    expect(await getCheckout(ordersSpent.handle, NOW)).toMatchObject({ canTakeOrders: false, canEnquire: true });
+  });
+
+  it('counts the free leads the admin set for canEnquire', async () => {
+    const owner = await anOwner({ leadsCaptured: 3 });
+    await withSetting('freeLeads', 5, async () => {
+      expect((await getCheckout(owner.handle, NOW))?.canEnquire).toBe(true);
+    });
+    await withSetting('freeLeads', 3, async () => {
+      expect((await getCheckout(owner.handle, NOW))?.canEnquire).toBe(false);
+    });
   });
 
   it('counts the free orders the admin set: with 5, a page with 3 placed still takes orders', async () => {

@@ -109,6 +109,22 @@ describe('getPublicShop', () => {
     expect(shop).not.toHaveProperty('paymentQrKey');
   });
 
+  it('carries askForPrice on every item: true on an Ask item, with its starting price or none', async () => {
+    await seed('sq-ask', {
+      items: { create: [
+        { name: 'Kek kahwin', slug: 'kek-kahwin', position: 0, available: true, priceCents: 18000, askForPrice: true },
+        { name: 'Kek custom', slug: 'kek-custom', position: 1, available: true, priceCents: null, askForPrice: true },
+        { name: 'Tart', slug: 'tart', position: 2, available: true, priceCents: 2000 },
+      ] },
+    });
+    const shop = await getPublicShop('sq-ask');
+    expect(shop?.items.map((item) => [item.name, item.askForPrice, item.priceCents])).toEqual([
+      ['Kek kahwin', true, 18000],
+      ['Kek custom', true, null],
+      ['Tart', false, 2000],
+    ]);
+  });
+
   it("never carries the owner's item code", async () => {
     const shop = await getPublicShop('sq-open');
     expect(shop?.items[0]).not.toHaveProperty('sku');

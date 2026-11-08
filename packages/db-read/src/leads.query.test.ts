@@ -147,6 +147,33 @@ describe('getLeads', () => {
     expect(lead?.messageCount).toBe(total);
     expect(lead?.capturedAfter).toBe(3);
   });
+
+  it('reads an enquiry’s name, message and item, and null for a number left in the chat', async () => {
+    const { pageId, accountId } = await anOwnerWithAPage();
+    const item = await write.item.create({
+      data: { pageId, name: 'Kek kahwin', slug: 'kek-kahwin', position: 0, priceCents: 18_000, askForPrice: true, photoKey: 'items/p/kahwin.webp' },
+    });
+    const enquiry = await aLead(pageId, '+60121111111', {
+      kind: 'ENQUIRY',
+      itemId: item.id,
+      name: 'Aisyah',
+      note: 'Kek 3 tingkat untuk 150 orang.',
+      createdAt: new Date('2026-11-08T10:00:00Z'),
+    });
+    const removed = await aLead(pageId, '+60122222222', { kind: 'ENQUIRY', name: 'Ben', note: 'Untuk 20 orang.', createdAt: new Date('2026-11-08T09:00:00Z') });
+    const chat = await aLead(pageId, '+60123333333', { createdAt: new Date('2026-11-08T08:00:00Z') });
+
+    const leads = await getLeads(accountId);
+    const byId = new Map(leads.map((lead) => [lead.id, lead]));
+    expect(byId.get(enquiry)?.enquiry).toEqual({
+      name: 'Aisyah',
+      note: 'Kek 3 tingkat untuk 150 orang.',
+      item: { name: 'Kek kahwin', photoKey: 'items/p/kahwin.webp', fromCents: 18_000 },
+    });
+    // The item removed since: the enquiry stays, without it.
+    expect(byId.get(removed)?.enquiry).toEqual({ name: 'Ben', note: 'Untuk 20 orang.', item: null });
+    expect(byId.get(chat)?.enquiry).toBeNull();
+  });
 });
 
 describe('getLeadStats', () => {

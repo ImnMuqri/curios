@@ -317,6 +317,48 @@ describe('the shop', () => {
   });
 });
 
+describe('the shop: Ask items and an enquiry', () => {
+  const base = { displayName: 'Nadia Bakes', mode: 'BUSINESS' as const, facts, neverSay: [] };
+  const cookies = { name: 'Cookies balang', description: null, priceCents: 2500, options: [] };
+  const wedding = { name: 'Kek kahwin', description: '3 tingkat', priceCents: 18000, options: [], askForPrice: true };
+  const custom = { name: 'Kek custom', description: null, priceCents: null, options: [], askForPrice: true };
+  const ASK_INSTRUCTION = 'An item marked ask="yes" is made to order and cannot be ordered from the shop';
+
+  it('marks an Ask item ask="yes", with where its price starts, or price on request', () => {
+    const prompt = buildSystemPrompt({ ...base, shop: [cookies, wedding, custom] });
+    expect(prompt).toContain('<item name="Cookies balang">RM25</item>');
+    expect(prompt).toContain('<item name="Kek kahwin" ask="yes">from RM180, made to order: ask for a price -- 3 tingkat</item>');
+    expect(prompt).toContain('<item name="Kek custom" ask="yes">price on request, made to order: ask for a price</item>');
+  });
+
+  it('adds the Ask instruction only when the shop has an Ask item', () => {
+    const asks = buildSystemPrompt({ ...base, shop: [cookies, custom] });
+    expect(asks).toContain(ASK_INSTRUCTION);
+    expect(asks).toContain('tap Ask on it in the\nshop to send Nadia Bakes what they need');
+    expect(asks).toMatch(/never give it as the price of what they describe/);
+
+    const none = buildSystemPrompt({ ...base, shop: [cookies, { ...wedding, askForPrice: false }] });
+    expect(none).not.toContain(ASK_INSTRUCTION);
+    expect(none).not.toContain('ask="yes"');
+    expect(none).toContain('<item name="Kek kahwin">RM180 -- 3 tingkat</item>');
+  });
+
+  it('adds the enquiry block, naming the item, only for an enquiry', () => {
+    const ENQUIRY = 'This conversation began with an enquiry the visitor sent about';
+    const enquiry = buildSystemPrompt({ ...base, shop: [wedding], enquiry: { item: 'Kek kahwin' } });
+    expect(enquiry).toContain(`${ENQUIRY} Kek kahwin from the Ask button`);
+    expect(enquiry).toMatch(/do not ask for their\s+number/);
+
+    expect(buildSystemPrompt({ ...base, shop: [wedding] })).not.toContain(ENQUIRY);
+    expect(buildSystemPrompt({ ...base, shop: [wedding], enquiry: undefined })).not.toContain(ENQUIRY);
+  });
+
+  it('is byte identical across calls with an enquiry, so it stays cacheable', () => {
+    const input = { ...base, shop: [cookies, wedding], enquiry: { item: 'Kek kahwin' } };
+    expect(buildSystemPrompt(input)).toBe(buildSystemPrompt(input));
+  });
+});
+
 describe('buildSystemPrompt: phone numbers and the number box', () => {
   const page = { displayName: 'Iman Muqri', mode: 'BUSINESS' as const, neverSay: [] };
 
