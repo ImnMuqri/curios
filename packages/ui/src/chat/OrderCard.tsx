@@ -54,8 +54,11 @@ export interface ProductCardData {
   fromPriceCents: number | null;
   photoUrl: string | null;
   firstOptionId: string | null;
-  /** The button: add it, open its page to pick a time first, or nothing (sold out). Absent from an older server reads as add. */
-  buy: 'add' | 'pick' | 'soldOut';
+  /**
+   * The button: add it, open its page to pick a time first, open its page to ask (an Ask item, which never goes
+   * in the basket; its price is where it starts), or nothing (sold out). Absent from an older server reads as add.
+   */
+  buy: 'add' | 'pick' | 'ask' | 'soldOut';
 }
 
 /** One of the streamed `done`'s `productCards` when it is whole, else null: half a card is not drawn. */
@@ -67,7 +70,7 @@ export function validProductCard(value: unknown): ProductCardData | null {
   if (!text(card.itemId) || !text(card.slug) || !text(card.name)) return null;
   if (card.fromPriceCents !== null && !(typeof card.fromPriceCents === 'number' && Number.isInteger(card.fromPriceCents) && card.fromPriceCents >= 0)) return null;
   if (!maybe(card.photoUrl) || !maybe(card.firstOptionId)) return null;
-  return { itemId: card.itemId, slug: card.slug, name: card.name, fromPriceCents: card.fromPriceCents, photoUrl: card.photoUrl, firstOptionId: card.firstOptionId, buy: card.buy === 'pick' || card.buy === 'soldOut' ? card.buy : 'add' };
+  return { itemId: card.itemId, slug: card.slug, name: card.name, fromPriceCents: card.fromPriceCents, photoUrl: card.photoUrl, firstOptionId: card.firstOptionId, buy: card.buy === 'pick' || card.buy === 'ask' || card.buy === 'soldOut' ? card.buy : 'add' };
 }
 
 /** As `formatRinggit` (@curios/core/store) writes money; this package does not depend on core. */

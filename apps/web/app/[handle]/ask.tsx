@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, writeBasket } from './shop/basket.js';
 import { shopCopy } from './shop/copy.js';
+import { takeEnquiryHandoff, type EnquiryHandoff } from './shop/enquiry.js';
 import styles from './page.module.css';
 import { paintDocument } from '../_bento/document-color.js';
 
@@ -54,6 +55,8 @@ export function Ask({
   const [everOpened, setEverOpened] = useState(false);
   // A question the page was opened with (`?q=`, from a product's "Ask about this"), typed into the box and never sent for the visitor.
   const [prefill, setPrefill] = useState('');
+  // An enquiry the shop's sheet just sent (shop/enquiry.ts): chat mode starts its thread with it.
+  const [enquiry, setEnquiry] = useState<EnquiryHandoff | null>(null);
   const promptRef = useRef<HTMLDivElement>(null);
   // Read by the tab listeners, which are attached once and would otherwise see the first render's value.
   const openRef = useRef(open);
@@ -115,13 +118,16 @@ export function Ask({
     linksTab?.addEventListener('click', toLinks);
     if (window.location.hash === '#ask') {
       setPrefill(new URLSearchParams(window.location.search).get('q')?.slice(0, 500) ?? '');
+      // Taken once: Strict Mode's second run finds it gone, and must not clear the first's.
+      const handoff = takeEnquiryHandoff(handle);
+      if (handoff) setEnquiry(handoff);
       onOpen();
     }
     return () => {
       askTab?.removeEventListener('click', toAsk);
       linksTab?.removeEventListener('click', toLinks);
     };
-  }, [onOpen]);
+  }, [onOpen, handle]);
 
   /*
    * The document itself in the page's colour. A phone shows it wherever the
@@ -221,6 +227,29 @@ export function Ask({
     [handle],
   );
 
+  // The page's reply to an enquiry the shop sent; ChatMode asks for it once, as onAsk's stream.
+  const onEnquiryReply = useCallback(
+    async (conversationId: string) => {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/chat/${handle}/enquiry`,
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ conversationId }),
+        },
+      );
+      if (!response.ok) return null;
+      return response.body;
+    },
+    [handle],
+  );
+
+  // A new object only when the handoff changes, so chat mode's effect sees one enquiry, once.
+  const enquiryStart = useMemo(
+    () => (enquiry ? { ...enquiry, sentLabel: copy.sentTo(displayName) } : null),
+    [enquiry, copy, displayName],
+  );
+
   const onCapture = useCallback(async (phone: string, conversationId: string) => {
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/leads`,
@@ -281,8 +310,10 @@ export function Ask({
           basketItemIds={basketItemIds}
           replyLabel={copy.askLabel(displayName)}
           thinkingLabel={copy.askThinking}
-          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed, pick: copy.pickATime, soldOut: copy.soldOut }}
+          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed, pick: copy.pickATime, soldOut: copy.soldOut, ask: copy.askPill }}
           initialDraft={prefill}
+          enquiry={enquiryStart}
+          onEnquiryReply={onEnquiryReply}
         />
       ) : null}
     </>

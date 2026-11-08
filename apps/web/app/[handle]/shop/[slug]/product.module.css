@@ -569,6 +569,26 @@
   cursor: pointer;
 }
 
+/* An Ask item's bar (8 Nov): "Ask Kek Lina" with the chat bubble, the whole width; a link when it opens the chat. */
+.go.ask {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.ask svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
 .go:disabled {
   opacity: 0.5;
   cursor: default;

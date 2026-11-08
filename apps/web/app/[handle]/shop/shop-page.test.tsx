@@ -262,3 +262,50 @@ describe('ShopPageView promotions', () => {
     expect(screen.getByText('Diskaun 10% · Raya promo')).toBeInTheDocument();
   });
 });
+
+describe('ShopPageView, Ask items', () => {
+  const custom = { id: 'custom', name: 'Custom birthday cake', slug: 'custom-birthday-cake', category: 'Kek', tag: 'Made to order', description: null, photoKey: null, photoUrl: null, priceCents: 18000, askForPrice: true, options: [] };
+  const quote = { ...custom, id: 'quote', name: 'Wedding cake', slug: 'wedding-cake', priceCents: null };
+  const shelf = [...items, custom, quote];
+
+  it('shows an Ask pill instead of +, priced "From RM180 · ask" or "Price on request"', () => {
+    render(<ShopPageView {...base} items={shelf} />);
+    const card = screen.getByText('Custom birthday cake').closest('li')!;
+    const pill = within(card).getByRole('link', { name: 'Ask about Custom birthday cake' });
+    expect(pill).toHaveTextContent('Ask');
+    expect(within(card).queryByRole('button')).toBeNull();
+    expect(within(card).getByText('From RM180 · ask')).toBeInTheDocument();
+    expect(within(screen.getByText('Wedding cake').closest('li')!).getByText('Price on request')).toBeInTheDocument();
+  });
+
+  it('opens the item page from the pill, and never puts it in the basket', async () => {
+    const user = userEvent.setup();
+    render(<ShopPageView {...base} items={shelf} />);
+    expect(screen.getByRole('link', { name: 'Ask about Custom birthday cake' })).toHaveAttribute('href', '/keklina/shop/custom-birthday-cake');
+    await user.click(screen.getByRole('button', { name: 'Add Tart nenas' }));
+    expect(readBasket(key)).toEqual([{ itemId: 'tart', optionId: null, quantity: 1 }]);
+  });
+
+  it('opens the page’s chat with a question about it when the shop cannot take enquiries', () => {
+    render(<ShopPageView {...base} items={shelf} canEnquire={false} />);
+    expect(screen.getByRole('link', { name: 'Ask about Custom birthday cake' })).toHaveAttribute(
+      'href',
+      `/keklina?q=${encodeURIComponent('I have a question about Custom birthday cake.')}#ask`,
+    );
+  });
+
+  it('opens the editor’s item screen in the Store preview', async () => {
+    const user = userEvent.setup();
+    const onOpenItem = vi.fn();
+    render(<ShopPageView {...base} items={shelf} preview={{ storageKey: 'preview', onOpenItem }} />);
+    await user.click(screen.getByRole('link', { name: 'Ask about Custom birthday cake' }));
+    expect(onOpenItem).toHaveBeenCalledWith('custom');
+  });
+
+  it('speaks Malay', () => {
+    render(<ShopPageView {...base} items={shelf} language="ms" />);
+    expect(screen.getByRole('link', { name: 'Tanya tentang Custom birthday cake' })).toHaveTextContent('Tanya');
+    expect(screen.getByText('Dari RM180 · tanya')).toBeInTheDocument();
+    expect(screen.getByText('Tanya harga')).toBeInTheDocument();
+  });
+});

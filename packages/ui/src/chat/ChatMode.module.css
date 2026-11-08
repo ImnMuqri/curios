@@ -114,6 +114,82 @@
   overflow-wrap: anywhere;
 }
 
+/* An enquiry from the shop (8 Nov): the Public board's .enqb, the item on top of the message, and .enqsys under it. */
+.enquiry {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 6px 15px 11px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--page-fg, var(--ink)) 14%, transparent);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--page-fg, var(--ink));
+  overflow-wrap: anywhere;
+}
+
+.enquiry p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.enquiryItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 -9px 8px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--page-fg, var(--ink)) 12%, transparent);
+  font-size: 13px;
+}
+
+.enquiryItem i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 18%, var(--paper));
+  color: var(--accent, var(--biru));
+  font-style: normal;
+  font-weight: 700;
+}
+
+.enquiryItem img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sent {
+  align-self: center;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--hijau) 22%, transparent);
+  color: color-mix(in srgb, var(--hijau) 45%, var(--page-fg, var(--ink)));
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.sent svg {
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.6;
+}
+
 .reply {
   align-self: stretch;
   font-family: var(--font-body);

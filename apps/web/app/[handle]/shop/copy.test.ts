@@ -60,4 +60,21 @@ describe('shopCopy', () => {
     expect(en.askPrefill('Kek')).toBe('I have a question about Kek.');
     expect(ms.askPrefill('Kek')).toBe('Saya ada soalan tentang Kek.');
   });
+  it('words Ask items and the enquiry sheet in both languages', () => {
+    const en = shopCopy('en');
+    const ms = shopCopy('ms');
+    expect(en.askFrom('RM180')).toBe('From RM180 · ask');
+    expect(ms.askFrom('RM180')).toBe('Dari RM180 · tanya');
+    expect(en.enquirySub('RM180')).toBe('From RM180 · made to order');
+    expect(en.enquirySub(null)).toBe('Price on request · made to order');
+    expect(ms.enquirySub(null)).toBe('Tanya harga · dibuat ikut tempahan');
+    expect(en.enquiryFoot('Kek Lina')).toBe('Kek Lina replies on WhatsApp. You don’t pay anything yet.');
+    expect(en.sentTo('Kek Lina')).toBe('Sent to Kek Lina');
+    expect(ms.sentTo('Kek Lina')).toBe('Dihantar kepada Kek Lina');
+    for (const code of ['ITEM_UNAVAILABLE', 'ENQUIRIES_PAUSED', 'ALREADY_ENQUIRED', 'PAGE_UNAVAILABLE']) {
+      expect(en.enquiryError(code)).toBeTruthy();
+      expect(ms.enquiryError(code)).toBeTruthy();
+    }
+    expect(en.enquiryError('INVALID_PHONE')).toBeNull();
+  });
 });

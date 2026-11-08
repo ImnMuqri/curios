@@ -59,6 +59,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             noticeDays={shop.minNoticeDays}
             nextDay={nextOrderDay(shop, new Date())}
             pickup={shop.pickupEnabled}
+            canEnquire={shop.canEnquire}
             vouchers={shop.canTakeOrders ? shop.vouchers : []}
           />
         </div>

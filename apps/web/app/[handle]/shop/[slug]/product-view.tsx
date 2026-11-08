@@ -8,6 +8,8 @@ import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from '../copy.js';
 import { itemPromo, minText, offText } from '../promo.js';
+import { writeEnquiryHandoff, type EnquiryHandoff } from '../enquiry.js';
+import { EnquirySheet } from './enquiry-sheet.js';
 import { ProductGallery } from './product-gallery.js';
 import styles from './product.module.css';
 
@@ -20,6 +22,7 @@ const ICON = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   shield: 'M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z',
   chat: 'M4 5h16v11H8l-4 4z',
+  ask: 'M5 18.5V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5v8a1.5 1.5 0 0 1-1.5 1.5H9z',
   mail: 'M3 5h18v14H3zM3 7l9 6 9-6',
   more: 'M9 6l6 6-6 6',
 };
@@ -46,7 +49,7 @@ export function ProductView(props: {
   language: string;
   item: ProductItem;
   /** The whole shelf, so the basket's count ignores a line whose item has gone. */
-  items: Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options'>[];
+  items: Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options' | 'askForPrice'>[];
   halal: boolean;
   noticeDays: number;
   /** The first day an order could be for (an ISO date), or null (paused, or no way to get the order). */
@@ -59,6 +62,13 @@ export function ProductView(props: {
   vouchers?: VoucherTerms[];
   /** Called once an add is saved. Default: go back to the shop. */
   onDone?: () => void;
+  /**
+   * Checkout's canEnquire (the lead rule). An Ask item's bar opens the enquiry sheet; false and it opens the
+   * page's chat with a question about the item instead. Default true (the Store preview, whose sheet sends nothing).
+   */
+  canEnquire?: boolean;
+  /** Called once an enquiry is sent and handed to the chat. Default: open the page's Ask chat. */
+  onEnquirySent?: () => void;
 }) {
   const { item } = props;
   const copy = shopCopy(props.language);
@@ -70,6 +80,7 @@ export function ProductView(props: {
   const times = item.sessions ?? [];
   const [sessionId, setSessionId] = useState<string | null>(times.find((t) => t.seatsLeft > 0)?.id ?? null);
   const [announce, setAnnounce] = useState('');
+  const [enquiring, setEnquiring] = useState(false);
 
   useEffect(() => {
     const read = () => setBasket(readBasket(key));
@@ -84,8 +95,10 @@ export function ProductView(props: {
 
   const count = useMemo(() => priceBasket(basket, props.items).lines.reduce((sum, line) => sum + line.quantity, 0), [basket, props.items]);
 
+  // An Ask item (8 Nov) never goes in the basket: its price is where an enquiry starts, and its bar asks.
+  const ask = item.askForPrice === true;
   const option = item.options.find((candidate) => candidate.id === optionId) ?? null;
-  const unitCents = item.options.length > 0 ? (option?.priceCents ?? null) : item.priceCents;
+  const unitCents = ask ? null : item.options.length > 0 ? (option?.priceCents ?? null) : item.priceCents;
   const total = unitCents === null ? null : formatRinggit(unitCents * quantity);
   const digital = item.kind === 'DIGITAL';
   const session = digital && item.delivery === 'SESSION';
@@ -102,6 +115,12 @@ export function ProductView(props: {
   const stay = props.inline ? (event: { preventDefault: () => void }) => event.preventDefault() : undefined;
   const back = props.inline ? (event: { preventDefault: () => void }) => { event.preventDefault(); props.onDone?.(); } : undefined;
   const q = encodeURIComponent(copy.askPrefill(item.name));
+
+  function sent(handoff: EnquiryHandoff) {
+    writeEnquiryHandoff(props.handle, handoff);
+    if (props.onEnquirySent) props.onEnquirySent();
+    else window.location.assign(`/${props.handle}#ask`);
+  }
 
   function add() {
     if (unitCents === null || soldOut || (session && sessionId === null)) return;
@@ -141,7 +160,11 @@ export function ProductView(props: {
       <div className={styles.pd}>
         {digital || item.tag ? <span className={styles.ptag}>{digital ? copy.digital : item.tag}</span> : null}
         <h1>{item.name}</h1>
-        {unitCents !== null ? (
+        {ask ? (
+          <p className={styles.price} data-testid="price">
+            {item.priceCents === null ? copy.priceOnRequest : copy.askPrice(formatRinggit(item.priceCents))}
+          </p>
+        ) : unitCents !== null ? (
           <p className={styles.price} data-testid="price">
             {formatRinggit(unitCents)}
           </p>
@@ -236,17 +259,34 @@ export function ProductView(props: {
           </div>
         ) : null}
 
-        <a className={styles.askit} href={`/${props.handle}?q=${q}#ask`} onClick={stay}>
-          <Icon d={ICON.chat} />
-          <span>
-            <b>{copy.askAboutThis}</b>
-            <small>{copy.askSamples}</small>
-          </span>
-          <Icon d={ICON.more} />
-        </a>
+        {ask ? null : (
+          <a className={styles.askit} href={`/${props.handle}?q=${q}#ask`} onClick={stay}>
+            <Icon d={ICON.chat} />
+            <span>
+              <b>{copy.askAboutThis}</b>
+              <small>{copy.askSamples}</small>
+            </span>
+            <Icon d={ICON.more} />
+          </a>
+        )}
       </div>
 
-      {unitCents !== null && soldOut ? (
+      {ask && !soldOut ? (
+        <div className={styles.bar}>
+          {props.canEnquire === false ? (
+            // The page cannot take a lead now: the chat, with a question about the item typed in.
+            <a className={`${styles.go} ${styles.ask}`} href={`/${props.handle}?q=${q}#ask`} onClick={stay}>
+              <Icon d={ICON.ask} />
+              {copy.askName(props.displayName)}
+            </a>
+          ) : (
+            <button type="button" className={`${styles.go} ${styles.ask}`} aria-haspopup="dialog" onClick={() => setEnquiring(true)}>
+              <Icon d={ICON.ask} />
+              {copy.askName(props.displayName)}
+            </button>
+          )}
+        </div>
+      ) : (unitCents !== null || ask) && soldOut ? (
         <div className={styles.bar}>
           <button type="button" className={styles.go} disabled>
             {copy.soldOut}
@@ -267,6 +307,18 @@ export function ProductView(props: {
             {copy.addToBasket(total ?? '')}
           </button>
         </div>
+      ) : null}
+
+      {enquiring ? (
+        <EnquirySheet
+          handle={props.handle}
+          displayName={props.displayName}
+          item={{ id: item.id, name: item.name, photoUrl: item.photoUrl, priceCents: item.priceCents }}
+          copy={copy}
+          preview={props.inline}
+          onClose={() => setEnquiring(false)}
+          onSent={sent}
+        />
       ) : null}
     </div>
   );
