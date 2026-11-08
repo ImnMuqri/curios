@@ -181,6 +181,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   'ORDERS_PAUSED',
   'PRICES_CHANGED',
   'ITEM_UNAVAILABLE',
+  // An Ask item's enquiry (enquiry.service.ts): fix the message or name, ask on the page instead, or
+  // wait for the shop's reply to the one already sent.
+  'INVALID_ENQUIRY',
+  'ENQUIRIES_PAUSED',
+  'ALREADY_ENQUIRED',
   'ORDER_DATE',
   'METHOD_OFF',
   'ADDRESS_REQUIRED',
