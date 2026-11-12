@@ -717,3 +717,11 @@ Boards: `Public.dc.html` (customer), `Store.dc.html` and `Leads.dc.html` (owner)
 - A "Their enquiry" card shows the item, When / For / Budget, their note, and **Send a quote**.
 - **Send a quote** creates a payment link for a set price. Once paid, it becomes a normal order in Orders.
 - The first WhatsApp draft is written for the enquiry.
+
+## Help chat for owners (12 Nov 2026)
+This is the follow-up to the support inbox. The full design is in `design/help/help-chat-design.md`, and the guide it answers from is in `design/help/help-faq.md` (63 entries, written from `main` at `88d53a3`). The board is `design/boards/Help.dc.html`, whose preview bar steps through Start, Answer, Didn't help, Not in the guide, Sent and Topics. Screens: `design/screens/Help-*.jpg`.
+
+In short:
+- Help (top bar) and "Help & support" (account popover) open a 420px panel instead of `mailto:`.
+- It answers only from the guide: the whole file, cached, sent to Haiku. Each answer comes with a button to the screen it talks about.
+- Every state leads to **Send to support**, which drops the question straight into the support inbox. The team's reply goes to the owner's email.
