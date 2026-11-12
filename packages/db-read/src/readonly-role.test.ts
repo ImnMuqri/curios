@@ -43,3 +43,18 @@ describe('the read-only role and the support inbox', () => {
     }
   });
 });
+
+// The dashboard's Help log: the role counts questions (AI & usage) but never sees whose they were
+// or what was asked; the admin's list of questions comes through the admin API.
+describe('the read-only role and the Help log', () => {
+  const VISIBLE = ['id', 'screen', 'via', 'entryId', 'ok', 'helped', 'sentToSupport', 'createdAt'];
+  const HIDDEN = ['accountId', 'question', 'answer'];
+
+  it.each(VISIBLE)('can read HelpQuestion.%s', async (column) => {
+    await expect(prismaRead.$queryRawUnsafe(`SELECT "${column}" FROM "HelpQuestion" LIMIT 1`)).resolves.toBeDefined();
+  });
+
+  it.each(HIDDEN)('cannot read HelpQuestion.%s', async (column) => {
+    await expect(prismaRead.$queryRawUnsafe(`SELECT "${column}" FROM "HelpQuestion" LIMIT 1`)).rejects.toThrow(/permission denied/i);
+  });
+});

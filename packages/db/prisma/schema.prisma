@@ -193,6 +193,7 @@ model Account {
   password        PasswordCredential?
   authTokens      AuthToken[]
   supportThreads  SupportThread[]
+  helpQuestions   HelpQuestion[]
 }
 
 model AuthIdentity {
@@ -1370,4 +1371,39 @@ model SupportAttachment {
   storageKey         String         @unique
 
   @@unique([messageId, resendAttachmentId])
+}
+
+enum HelpVia {
+  /// Asked in the Help chat: the model picked the entry, or none.
+  CHAT
+  /// Picked from Help topics: no model call.
+  TOPIC
+}
+
+/// One question to the dashboard's Help chat, for the admin's Help section on AI & usage
+/// (design/help/help-chat-design.md, "What Iman sees"). The words are kept 90 days, then the workers
+/// clear `question` and `answer` and the row stays as a count. The read-only role sees the counting
+/// columns only: not whose question it was, nor what they asked.
+model HelpQuestion {
+  id            String   @id @default(cuid())
+  accountId     String?
+  account       Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  /// The dashboard screen it was asked from (HELP_SCREENS).
+  screen        String
+  via           HelpVia
+  /// The owner's words; null after 90 days.
+  question      String?
+  /// What the panel showed; null after 90 days.
+  answer        String?
+  /// The guide entry the answer came from; null when none fitted (or the chat could not answer).
+  entryId       String?
+  /// False when the model failed and the panel said the chat is resting.
+  ok            Boolean  @default(true)
+  /// The owner's Yes or No under the answer; null when they gave neither.
+  helped        Boolean?
+  sentToSupport Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([accountId, createdAt])
 }

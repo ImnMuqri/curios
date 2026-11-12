@@ -89,3 +89,13 @@ BEGIN
     REVOKE SELECT ON "SupportAttachment" FROM curios_readonly;
   END IF;
 END $$;
+
+-- A help question's screen, entry and outcome, but not whose it was or what they asked.
+DO $$
+BEGIN
+  IF to_regclass('"HelpQuestion"') IS NOT NULL THEN
+    REVOKE SELECT ON "HelpQuestion" FROM curios_readonly;
+    GRANT SELECT ("id", "screen", "via", "entryId", "ok", "helped", "sentToSupport", "createdAt")
+      ON "HelpQuestion" TO curios_readonly;
+  END IF;
+END $$;
