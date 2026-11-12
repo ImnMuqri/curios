@@ -1,7 +1,15 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { AiUsage } from '@curios/db-read/admin';
-import { AiScreen } from './ai-screen.js';
+
+// What the guide missed comes from the admin API in the browser.
+const misses = [
+  { id: 'm1', question: 'Can I use my own domain?', entry: null, screen: 'settings', sentToSupport: true, createdAt: '2026-10-27T03:40:00Z', owner: { email: 'lina@example.com', handle: 'keklina' } },
+  { id: 'm2', question: 'how much yearly', entry: { id: 'bill-price', question: 'How much is Business?' }, screen: 'billing', sentToSupport: false, createdAt: '2026-10-27T02:00:00Z', owner: null },
+];
+const apiFetch = vi.fn(async (_path: string) => ({ misses }));
+vi.mock('../../../lib/api.js', () => ({ apiFetch: (path: string) => apiFetch(path) }));
+const { AiScreen } = await import('./ai-screen.js');
 
 const NOW = new Date('2026-10-27T04:00:00Z');
 
@@ -16,7 +24,9 @@ function fixture(over: Partial<AiUsage> = {}): AiUsage {
       { job: 'chat', model: 'chat-model', calls: 8420, avgMs: 1400, failed: 22, milliCents: 6_100_000 },
       { job: 'reading', model: 'read-model', calls: 312, avgMs: 9800, failed: 0, milliCents: 1_400_000 },
       { job: 'grouping', model: '—', calls: 0, avgMs: 0, failed: 0, milliCents: 0 },
+      { job: 'help', model: 'chat-model', calls: 40, avgMs: 1100, failed: 0, milliCents: 9_000 },
     ],
+    help: { asked: 40, fromGuide: 30, topics: 12, no: 3, sent: 2 },
     unsureLatest: [
       { question: 'Boleh hantar ke Klang?', handle: 'keklina', askedAt: new Date('2026-10-27T03:48:00Z') },
       { question: 'Ada sambal sotong hari ni?', handle: 'nasilemakkakmah', askedAt: new Date('2026-10-27T02:50:00Z') },
@@ -76,12 +86,12 @@ describe('AiScreen', () => {
     expect(screen.queryByText(/Slowest 5%/)).not.toBeInTheDocument();
   });
 
-  it('lists the three jobs with their labels and models, and a dash for a job with no calls', () => {
+  it('lists the four jobs with their labels and models, and a dash for a job with no calls', () => {
     render(<AiScreen usage={fixture()} period="7d" cap={200} now={NOW} />);
 
     const table = screen.getByRole('table', { name: 'What the AI costs' });
     const rows = within(table).getAllByRole('row');
-    expect(rows).toHaveLength(4);
+    expect(rows).toHaveLength(5);
     expect(within(rows[1]!).getByText('Answering visitors')).toBeInTheDocument();
     expect(within(rows[1]!).getByText('chat-model')).toBeInTheDocument();
     expect(within(rows[1]!).getByText('8,420')).toBeInTheDocument();
@@ -128,5 +138,16 @@ describe('AiScreen', () => {
     expect(within(nav).getByRole('link', { name: 'Today' })).toHaveAttribute('href', '/ai?period=today');
     expect(within(nav).getByRole('link', { name: '7 days' })).toHaveAttribute('href', '/ai');
     expect(screen.getByText('From model calls, the last 30 days')).toBeInTheDocument();
+  });
+
+  it('shows Help for owners: its cost as a job, the period’s counts, and what the guide missed', async () => {
+    render(<AiScreen usage={fixture()} period="7d" cap={200} now={NOW} />);
+    expect(screen.getByText('Help for owners', { selector: 'b' })).toBeInTheDocument();
+    expect(screen.getByText('40 asked in the chat · 75% answered from the guide')).toBeInTheDocument();
+    expect(screen.getByText('12 picked from topics · 3 marked No · 2 sent to support')).toBeInTheDocument();
+    expect(await screen.findByText('Can I use my own domain?')).toBeInTheDocument();
+    expect(screen.getByText(/Not in the guide · sent to support · curios\.my\/keklina/)).toBeInTheDocument();
+    expect(screen.getByText(/Marked No · How much is Business\?/)).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenCalledWith('/admin/help/misses');
   });
 });

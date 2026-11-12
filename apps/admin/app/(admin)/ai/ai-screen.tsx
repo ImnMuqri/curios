@@ -4,6 +4,7 @@ import type { AiJob, AiUsage, Period } from '@curios/db-read/admin';
 import { ago } from '../ago.js';
 import { meterColour } from '../pages/format.js';
 import { PERIODS } from '../period.js';
+import { HelpMisses } from './help-misses.js';
 import ui from '../ui.module.css';
 import styles from './ai.module.css';
 
@@ -16,6 +17,7 @@ const JOB_LABEL: Record<AiJob, string> = {
   chat: 'Answering visitors',
   reading: 'Reading sources into facts',
   grouping: 'Grouping questions',
+  help: 'Help for owners',
 };
 
 interface Stat {
@@ -180,6 +182,27 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
             <p className={ui.note}>
               A page at {int(cap)} gets the short fixed reply until the 1st. Nothing is charged.
             </p>
+
+            <h2 className={`${ui.h2} ${ui.again}`}>
+              Help for owners<span>The dashboard’s Help, {phrase}</span>
+            </h2>
+            <div className={ui.box}>
+              <div className={styles.tr}>
+                <p>
+                  {int(u.help.asked)} asked in the chat
+                  {u.help.asked > 0 ? ` · ${Math.round((u.help.fromGuide / u.help.asked) * 100)}% answered from the guide` : ''}
+                </p>
+                <small>
+                  {int(u.help.topics)} picked from topics · {int(u.help.no)} marked No · {int(u.help.sent)} sent to support
+                </small>
+              </div>
+            </div>
+            <h2 className={`${ui.h2} ${ui.again}`}>
+              What the guide missed<span>Not in it, or marked No. Write the next entries from these</span>
+            </h2>
+            <div className={ui.box}>
+              <HelpMisses now={now} />
+            </div>
           </div>
         </div>
       </div>

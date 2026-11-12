@@ -4,7 +4,7 @@ import { getSettings } from '../settings.query.js';
 import { malaysiaMidnight } from './days.js';
 import { PERIOD_DAYS, type Period } from './overview.query.js';
 
-export type AiJob = 'chat' | 'reading' | 'grouping';
+export type AiJob = 'chat' | 'reading' | 'grouping' | 'help';
 
 export interface AiUsage {
   /** Model calls in the period. */
@@ -17,10 +17,17 @@ export interface AiUsage {
   unsure: { notSure: number; recorded: number };
   /** `share` is 0 to 1; 0 with no calls. */
   failed: { count: number; share: number };
-  /** Always the three jobs, in this order. `model` is the most used one, '—' with no calls. */
+  /** Always the four jobs, in this order. `model` is the most used one, '—' with no calls. */
   jobs: { job: AiJob; model: string; calls: number; avgMs: number; failed: number; milliCents: number }[];
   /** The 10 newest "I'm not sure" questions, whatever the period. No reply, no visitor id. */
   unsureLatest: { question: string; handle: string; askedAt: Date }[];
+  /**
+   * The dashboard's Help chat in the period, from the counting columns the read-only role may read
+   * (whose question it was, and its words, come from the admin API). `asked`: questions typed into
+   * the chat; `fromGuide`: of those, answered from a guide entry; `topics`: questions picked from
+   * Help topics; `no`: answers marked "No"; `sent`: sent to support.
+   */
+  help: { asked: number; fromGuide: number; topics: number; no: number; sent: number };
   /** Pages at 75% or more of this month's cap, fullest first, at most 10. */
   nearCap: { pageId: string; displayName: string; handle: string; used: number; cap: number }[];
 }
@@ -34,11 +41,13 @@ interface JobRow {
   cost: bigint | null;
 }
 
-const JOBS: AiJob[] = ['chat', 'reading', 'grouping'];
+const JOBS: AiJob[] = ['chat', 'reading', 'grouping', 'help'];
 
 /**
  * AI & usage. Period windows are those of the Overview. Grouping calls carry only a page id
- * (apps/workers/src/grouping/group.job.ts), so a call with no conversation and no ingestion is grouping.
+ * (apps/workers/src/grouping/group.job.ts), so a call with no conversation and no ingestion is
+ * grouping; the dashboard's Help is the owner's, not a page's, so a call with no page at all is help
+ * (apps/api/src/modules/help/help.service.ts).
  */
 export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
   const days = PERIOD_DAYS[period];
@@ -47,7 +56,8 @@ export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
   const { cap } = await getSettings();
   const threshold = Math.ceil(0.75 * cap);
 
-  const [callGroups, latency, cost, previousCost, conversations, previousConversations, notSure, recorded, jobRows, latest, counters] =
+  const inPeriod = { createdAt: { gte: start, lte: now } };
+  const [callGroups, latency, cost, previousCost, conversations, previousConversations, notSure, recorded, jobRows, latest, counters, asked, fromGuide, topics, no, sent] =
     await Promise.all([
       prismaRead.modelCall.groupBy({ by: ['ok'], where: { createdAt: { gte: start, lte: now } }, _count: { _all: true } }),
       prismaRead.$queryRaw<{ median: number | null; p95: number | null }[]>`
@@ -62,7 +72,7 @@ export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
       prismaRead.questionAsk.count({ where: { askedAt: { gte: start, lte: now }, answered: false } }),
       prismaRead.questionAsk.count({ where: { askedAt: { gte: start, lte: now }, answered: { not: null } } }),
       prismaRead.$queryRaw<JobRow[]>`
-        SELECT CASE WHEN "conversationId" IS NOT NULL THEN 'chat' WHEN "ingestionId" IS NOT NULL THEN 'reading' ELSE 'grouping' END AS job,
+        SELECT CASE WHEN "conversationId" IS NOT NULL THEN 'chat' WHEN "ingestionId" IS NOT NULL THEN 'reading' WHEN "pageId" IS NULL THEN 'help' ELSE 'grouping' END AS job,
                "model" AS model,
                COUNT(*) AS calls,
                AVG("latencyMs")::float8 AS latency,
@@ -83,6 +93,11 @@ export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
         take: 10,
         select: { pageId: true, count: true, page: { select: { displayName: true, handle: true } } },
       }),
+      prismaRead.helpQuestion.count({ where: { ...inPeriod, via: 'CHAT' } }),
+      prismaRead.helpQuestion.count({ where: { ...inPeriod, via: 'CHAT', entryId: { not: null } } }),
+      prismaRead.helpQuestion.count({ where: { ...inPeriod, via: 'TOPIC' } }),
+      prismaRead.helpQuestion.count({ where: { ...inPeriod, helped: false } }),
+      prismaRead.helpQuestion.count({ where: { ...inPeriod, sentToSupport: true } }),
     ]);
 
   const failedCount = callGroups.find((group) => !group.ok)?._count._all ?? 0;
@@ -115,6 +130,7 @@ export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
     failed: { count: failedCount, share: calls > 0 ? failedCount / calls : 0 },
     jobs,
     unsureLatest: latest.map((row) => ({ question: row.question.text, handle: row.question.page.handle, askedAt: row.askedAt })),
+    help: { asked, fromGuide, topics, no, sent },
     nearCap: counters.map((row) => ({ pageId: row.pageId, displayName: row.page.displayName, handle: row.page.handle, used: row.count, cap })),
   };
 }

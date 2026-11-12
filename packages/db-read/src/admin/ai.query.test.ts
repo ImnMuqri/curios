@@ -104,10 +104,33 @@ describe('getAiUsage', () => {
 
   it('splits the jobs by the ids a call carries, with the most used model', async () => {
     const u = await getAiUsage('7d', NOW);
-    expect(u.jobs.map((j) => j.job)).toEqual(['chat', 'reading', 'grouping']);
+    expect(u.jobs.map((j) => j.job)).toEqual(['chat', 'reading', 'grouping', 'help']);
     expect(u.jobs[0]).toEqual({ job: 'chat', model: 'haiku', calls: 6, avgMs: 1750, failed: 1, milliCents: 5000 });
     expect(u.jobs[1]).toEqual({ job: 'reading', model: 'sonnet', calls: 3, avgMs: 4000, failed: 1, milliCents: 15000 });
     expect(u.jobs[2]).toEqual({ job: 'grouping', model: 'haiku', calls: 1, avgMs: 50, failed: 0, milliCents: 10 });
+    expect(u.jobs[3]).toEqual({ job: 'help', model: '—', calls: 0, avgMs: 0, failed: 0, milliCents: 0 });
+  });
+
+  it('counts a call with no page as help, and the Help questions of the period from their counting columns', async () => {
+    // A week of its own, well after the rest, so nothing above is counted here.
+    const later = new Date(NOW.getTime() + 60 * DAY);
+    await call({ latencyMs: 900, costMilliCents: 70, createdAt: later });
+    const rows = await Promise.all(
+      [
+        { via: 'CHAT' as const, entryId: 'acc-dark', helped: true },
+        { via: 'CHAT' as const, entryId: null, sentToSupport: true },
+        { via: 'CHAT' as const, entryId: 'bill-price', helped: false },
+        { via: 'TOPIC' as const, entryId: 'acc-dark' },
+        { via: 'CHAT' as const, entryId: 'acc-dark', createdAt: new Date(later.getTime() - 30 * DAY) },
+      ].map((data) => write.helpQuestion.create({ data: { screen: 'home', createdAt: later, ...data }, select: { id: true } })),
+    );
+    try {
+      const u = await getAiUsage('7d', later);
+      expect(u.jobs.find((j) => j.job === 'help')).toEqual({ job: 'help', model: 'haiku', calls: 1, avgMs: 900, failed: 0, milliCents: 70 });
+      expect(u.help).toEqual({ asked: 3, fromGuide: 2, topics: 1, no: 1, sent: 1 });
+    } finally {
+      await write.helpQuestion.deleteMany({ where: { id: { in: rows.map((r) => r.id) } } });
+    }
   });
 
   it('gives the cost per conversation for this period and the one before', async () => {
