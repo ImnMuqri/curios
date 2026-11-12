@@ -20,6 +20,13 @@ export function retentionCutoff(now: Date): Date {
 /** How many old orders one sweep step reads, removes and deletes: far under Postgres's bind-parameter limit. */
 export const RETENTION_BATCH = 500;
 
+/** How long the dashboard's Help keeps what an owner asked (design/help/help-chat-design.md). */
+export const HELP_WORDS_DAYS = 90;
+
+export function helpWordsCutoff(now: Date): Date {
+  return new Date(now.getTime() - HELP_WORDS_DAYS * 24 * 60 * 60 * 1000);
+}
+
 type RetentionLog = { warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
 
 /**
@@ -50,7 +57,7 @@ export async function runRetention(deps: {
   removeObjects?: RemoveObjects | null;
   log?: RetentionLog;
   batchSize?: number;
-}): Promise<{ leads: number; messages: number; conversations: number; orders: number; receipts: number }> {
+}): Promise<{ leads: number; messages: number; conversations: number; orders: number; receipts: number; helpWords: number }> {
   const before = retentionCutoff(deps.now);
   const failures: unknown[] = [];
   const step = async (name: string, run: () => Promise<number>): Promise<number> => {
@@ -83,6 +90,15 @@ export async function runRetention(deps: {
       (await deps.prisma.conversation.deleteMany({ where: { ...emptied, id: { in: ids } } })).count,
     ),
   );
+  // The words of a help question, after 90 days: the row stays, so the admin's counts do too.
+  const helpWords = await step('help words', async () =>
+    (
+      await deps.prisma.helpQuestion.updateMany({
+        where: { createdAt: { lt: helpWordsCutoff(deps.now) }, OR: [{ question: { not: null } }, { answer: { not: null } }] },
+        data: { question: null, answer: null },
+      })
+    ).count,
+  );
   let receipts = 0;
   const orders = await step('orders', () =>
     sweepOrders(deps, before, batchSize, (removed) => {
@@ -91,7 +107,7 @@ export async function runRetention(deps: {
   );
 
   if (failures.length > 0) throw failures[0];
-  return { leads, messages, conversations, orders, receipts };
+  return { leads, messages, conversations, orders, receipts, helpWords };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { retentionCutoff, runRetention } from './retention.js';
+import { helpWordsCutoff, retentionCutoff, runRetention } from './retention.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 const now = new Date('2027-10-18T03:00:00Z');
@@ -247,5 +247,25 @@ describe('runRetention', () => {
 
     expect(await prisma.conversation.findUnique({ where: { id } })).not.toBeNull();
     expect(await prisma.message.findMany({ where: { conversationId: id }, select: { content: true } })).toEqual([{ content: 'Ya, RM10.' }]);
+  });
+});
+
+describe('help words', () => {
+  it('clears what an owner asked Help after 90 days and keeps the row, and keeps newer words', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const oldRow = await prisma.helpQuestion.create({
+      data: { screen: 'home', via: 'CHAT', question: 'old question', answer: 'old answer', entryId: 'acc-dark', helped: false, createdAt: new Date(helpWordsCutoff(now).getTime() - day) },
+    });
+    const newRow = await prisma.helpQuestion.create({
+      data: { screen: 'home', via: 'CHAT', question: 'new question', answer: 'new answer', createdAt: new Date(helpWordsCutoff(now).getTime() + day) },
+    });
+    try {
+      const result = await runRetention({ prisma, now });
+      expect(result.helpWords).toBeGreaterThanOrEqual(1);
+      expect(await prisma.helpQuestion.findUnique({ where: { id: oldRow.id } })).toMatchObject({ question: null, answer: null, entryId: 'acc-dark', helped: false });
+      expect(await prisma.helpQuestion.findUnique({ where: { id: newRow.id } })).toMatchObject({ question: 'new question', answer: 'new answer' });
+    } finally {
+      await prisma.helpQuestion.deleteMany({ where: { id: { in: [oldRow.id, newRow.id] } } });
+    }
   });
 });
