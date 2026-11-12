@@ -118,19 +118,19 @@ describe('the header', () => {
   it('counts a CHIP connection as a way to pay', async () => {
     const calls = show({ ...ready, enabled: false, bankName: null, bankAccountName: null, bankAccountNumber: null }, items, apis(), undefined, chipOn);
     expect(within(header()).getByText('Closed')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A way to pay\s*Online through CHIP/ })).toBeInTheDocument();
     await act(async () => { fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' })); });
     expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
   });
 
   it('names CHIP beside the QR and bank account in the ready strip', () => {
     show({ ...ready, paymentQrKey: null }, items, apis(), undefined, chipOn);
-    expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP and bank account/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A way to pay\s*CHIP and bank account/ })).toBeInTheDocument();
   });
 
   it('names CHIP beside DuitNow QR when there is a QR and no bank account', () => {
     show({ ...ready, paymentQrKey: 'qr.png', bankName: null, bankAccountName: null, bankAccountNumber: null }, items, apis(), undefined, chipOn);
-    expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP and DuitNow QR/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A way to pay\s*CHIP and DuitNow QR/ })).toBeInTheDocument();
   });
 
   it('reads Bank account for a shop with only a bank account, with no connect note', () => {

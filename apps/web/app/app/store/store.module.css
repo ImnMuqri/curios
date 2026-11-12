@@ -155,7 +155,7 @@
   font-weight: 600;
 }
 
-/* Wraps rather than cuts: the note is what the step needs ("Online payments through CHIP"). */
+/* Wraps rather than cuts, though payWords keeps every note to one line ("CHIP, QR and bank account"). */
 .stepText span {
   display: block;
   font-size: 12px;

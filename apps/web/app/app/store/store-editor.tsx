@@ -90,15 +90,15 @@ function trackedSettings(api: SettingsApi, track: SaveTrack): SettingsApi {
 
 /**
  * What "A way to pay" says once there is one: the board's "QR and bank account", "DuitNow
- * QR" or "Bank account", with CHIP named first when it is connected.
+ * QR" or "Bank account", with CHIP named first when it is connected. Short enough for one
+ * line in every mix: a second line made the whole strip taller (owner, 12 Nov 2026).
  */
 function payWords(chip: boolean, qr: boolean, bank: boolean): string {
   if (!chip) return qr && bank ? 'QR and bank account' : qr ? 'DuitNow QR' : 'Bank account';
-  const others = [...(qr ? ['DuitNow QR'] : []), ...(bank ? ['bank account'] : [])];
-  const online = 'Online payments through CHIP';
-  if (others.length === 0) return online;
-  if (others.length === 1) return `${online} and ${others[0]}`;
-  return `${online}, ${others.join(' and ')}`;
+  if (qr && bank) return 'CHIP, QR and bank account';
+  if (qr) return 'CHIP and DuitNow QR';
+  if (bank) return 'CHIP and bank account';
+  return 'Online through CHIP';
 }
 
 /**
