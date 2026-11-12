@@ -108,6 +108,7 @@
 /* The screen's header (PageHead) at the top of the left column: the column already gives the
    40px sides, so the header keeps only its top and bottom. Its alert, if any, follows it. */
 .head > header {
+  --head-x: 0px;
   padding: 28px 0 20px;
 }
 
@@ -1527,6 +1528,7 @@
   }
 
   .head > header {
+    --head-x: 0px;
     padding: 20px 0 14px;
   }
 

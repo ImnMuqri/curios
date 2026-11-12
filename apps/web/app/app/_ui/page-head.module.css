@@ -7,7 +7,10 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 12px;
-  padding: 28px 40px 20px;
+  /* The text's inset from the sheet: the loading bar (NavProgress) lines up with it, and a screen
+     whose column already gives the sides (Review, Facts & sources) sets it to 0. */
+  --head-x: 40px;
+  padding: 28px var(--head-x) 20px;
 }
 
 .text {
@@ -78,7 +81,8 @@
 
 @media (max-width: 760px) {
   .head {
-    padding: 20px 16px 14px;
+    --head-x: 16px;
+    padding: 20px var(--head-x) 14px;
   }
 
   .title {

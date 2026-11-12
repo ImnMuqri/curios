@@ -1,18 +1,22 @@
 /*
- * Sits in the header's bottom padding: it creeps most of the way while the next
- * screen loads (never claiming to be done), then fills and fades as it lands.
+ * Sits in the header's bottom padding, under the text and as wide as it (--head-x,
+ * page-head.module.css), on every screen alike: it creeps most of the way while the
+ * next screen loads (never claiming to be done), then fills and fades as it lands.
+ * Grown by scaleX, not width, so it fills the inset track exactly.
  * Not on the header's very edge: the header has no line under it, so the edge
  * is the top of whatever box comes next (Store's checklist, the Facts tabs),
  * and a bar there draws on that box's border (owner, 12 Nov 2026).
  */
 .bar {
   position: absolute;
-  left: 0;
+  left: var(--head-x, 0px);
+  right: var(--head-x, 0px);
   bottom: 8px;
   height: 2px;
-  width: 0;
   background: var(--biru);
-  border-radius: 0 2px 2px 0;
+  border-radius: 2px;
+  transform: scaleX(0);
+  transform-origin: left center;
   pointer-events: none;
 }
 
@@ -21,20 +25,20 @@
 }
 
 .bar[data-phase='done'] {
-  width: 100%;
+  transform: scaleX(1);
   opacity: 0;
-  transition: width 180ms ease-out, opacity 200ms ease 120ms;
+  transition: transform 180ms ease-out, opacity 200ms ease 120ms;
 }
 
 @keyframes creep {
   0% {
-    width: 0;
+    transform: scaleX(0);
   }
   10% {
-    width: 45%;
+    transform: scaleX(0.45);
   }
   100% {
-    width: 90%;
+    transform: scaleX(0.9);
   }
 }
 
@@ -42,7 +46,7 @@
 @media (prefers-reduced-motion: reduce) {
   .bar[data-phase='loading'] {
     animation: none;
-    width: 100%;
+    transform: scaleX(1);
     opacity: 0.6;
   }
 

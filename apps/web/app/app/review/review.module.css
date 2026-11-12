@@ -91,6 +91,7 @@
 }
 
 .head > header {
+  --head-x: 0px;
   padding: 28px 0 20px;
 }
 
@@ -1037,6 +1038,7 @@
   }
 
   .head > header {
+    --head-x: 0px;
     padding: 20px 0 14px;
   }
 
