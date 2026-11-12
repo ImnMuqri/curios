@@ -254,17 +254,17 @@ describe('BillingPage', () => {
     await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z') });
 
     const meter = screen.getByText('Leads').closest('div')!;
-    expect(meter).toHaveTextContent('2 no limit');
-    expect(within(meter).getByText('The capture card stays on your page.')).toBeInTheDocument();
+    expect(meter).toHaveTextContent('2 this month');
+    expect(within(meter).getByText('No limit. The capture card stays on your page.')).toBeInTheDocument();
     expect(countLeadsThisMonth).toHaveBeenCalledWith('p1', expect.any(Date));
   });
 
-  it('counts this month’s orders on a paid page, with no limit, as the board draws it', async () => {
+  it('counts this month’s orders on a paid page, saying there is no limit under it (owner, 12 Nov 2026)', async () => {
     await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z'), ordersPlaced: 40 });
 
     const meter = screen.getByText('Orders').closest('div')!;
-    expect(meter).toHaveTextContent('7 no limit');
-    expect(within(meter).getByText('Take as many as you get.')).toBeInTheDocument();
+    expect(meter).toHaveTextContent('7 this month');
+    expect(within(meter).getByText('No limit. Take as many as you get.')).toBeInTheDocument();
     expect(countOrdersThisMonth).toHaveBeenCalledWith('p1', expect.any(Date));
   });
 

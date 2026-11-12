@@ -81,7 +81,7 @@ function ordersNote(state: OrderState, freeOrders: number): { paid: boolean; not
   const stopped = 'Your shop takes no orders until you pay.';
   switch (state.kind) {
     case 'paid':
-      return { paid: true, note: 'Take as many as you get.' };
+      return { paid: true, note: 'No limit. Take as many as you get.' };
     case 'trial':
       return { paid: false, note: `${state.used} of ${freeOrders} free orders used` };
     case 'trialSpent':
@@ -294,18 +294,18 @@ export default async function BillingPage({
                   ? `Past the limit: the chat is giving a short fixed reply until ${shortDate(usageResets(now))}.`
                   : `Resets ${shortDate(usageResets(now))}. Past the limit, the chat gives a short fixed reply.`}
               </Meter>
-              <Meter label="Orders" used={orders} of={orderMeter.paid ? 'no limit' : 'this month'} share={orderMeter.paid ? 100 : 0} tone="hijau">
+              <Meter label="Orders" used={orders} of="this month" share={orderMeter.paid ? 100 : 0} tone="hijau">
                 {orderMeter.note}
               </Meter>
               <Meter
                 label="Leads"
                 used={leads}
-                of={state.kind === 'paid' ? 'no limit' : 'this month'}
+                of="this month"
                 share={state.kind === 'paid' ? 100 : 0}
                 tone="rose"
               >
                 {state.kind === 'paid'
-                  ? 'The capture card stays on your page.'
+                  ? 'No limit. The capture card stays on your page.'
                   : state.kind === 'trial'
                     ? `${state.remaining} of your ${freeLeads} free leads left. After that, the capture card needs a plan.`
                     : 'The capture card is off until you pay.'}
