@@ -1,6 +1,7 @@
 # Curios help guide (the FAQ behind the Help chat)
 
-Written 12 Nov 2026 from the Curios system on `main` (code, devDocs and dashboard copy at `88d53a3`).
+Written 12 Nov 2026 from the Curios system on `main` (code, devDocs and dashboard copy at `88d53a3`), then every
+entry checked against the code before it shipped.
 This is the **only** thing the Help chat answers from. If it is not here, the chat says it does not
 know and offers support. When the product changes, this file changes in the same commit.
 
@@ -8,6 +9,11 @@ Format, for the builder: each entry is a `###` heading `id · question`, then th
 use (it can shorten or reword it, never add to it), then two lines:
 - `Open:` the dashboard screen the answer points to (the chat shows it as a button), or `none`.
 - `Source:` where the answer was checked, for whoever edits this file. Never shown to owners.
+
+Numbers the admin can change are placeholders, filled from the live settings before the chat or
+Topics shows them: `{monthlyPrice}`, `{annualPrice}`, `{annualSaving}` ("two months free" while the
+year costs ten months), `{freeLeads}`, `{freeOrders}`, `{conversationCap}`. Never write those numbers
+as digits. After editing, run `pnpm --filter @curios/core gen:help` (a test fails until you do).
 
 Answers are written to the owner, in plain words, no jargon. The chat answers in the language the
 owner asks in (English or Malay); this file is English only.
@@ -22,7 +28,7 @@ Open: none
 Source: devDocs/README.md; apps/web/app/_landing/copy.ts (meta, hero)
 
 ### start-personal-business · What is the difference between a personal and a business page?
-A personal page is free. It answers questions about you and your work, and it stays out of Google unless you switch that on. A business page also takes the numbers of people ready to buy (leads), runs a shop with orders, gets its own FAQ pages, and always shows in search results. Business is RM49 a month or RM490 a year after the free trial.
+A personal page is free. It answers questions about you and your work, and it stays out of Google unless you switch that on. A business page also takes the numbers of people ready to buy (leads), runs a shop with orders, gets its own FAQ pages, and always shows in search results. Business is {monthlyPrice} a month or {annualPrice} a year after the free trial.
 Open: /app/billing
 Source: packages/core/src/plan.ts; apps/web/app/app/billing/page.tsx (INCLUDED); devDocs/README.md (Tiers, Price)
 
@@ -37,9 +43,9 @@ Open: /app/curios
 Source: packages/core/src/handle.ts; onboarding copy “You can change how it looks later, not the address.”
 
 ### start-publish · How do I get my page live?
-Publish it from My Curios when you are ready. After that, facts you accept show up on it straight away; there is nothing else to publish. Then put curios.my/yourname in your Instagram, TikTok or WhatsApp bio.
-Open: /app/curios
-Source: dashboard copy “Publish it when you are ready. After that, facts you accept show up on it straight away.”
+Publish it from Review when you are ready: the side panel says when your page is not public yet. After that, facts you accept show up on it straight away; there is nothing else to publish. Then put curios.my/yourname in your Instagram, TikTok or WhatsApp bio.
+Open: /app/review
+Source: apps/web/app/app/review/publish-button.tsx; review/page.tsx (footer)
 
 ### start-instagram · Can Curios read my Instagram or TikTok?
 Not yet. Instagram, TikTok, Facebook and LinkedIn don’t let us read profiles. Paste your bio or captions instead, or add a website or Linktree link.
@@ -56,14 +62,14 @@ Open: /app/curios
 Source: devDocs/slice-13-build-spec.md; My Curios copy
 
 ### page-links · How do I add, reorder or resize links?
-In My Curios, on Links. Add a link (a website, WhatsApp, Instagram, an email or a phone number), drag to reorder, and pick a size for each tile. You can have up to 30 links. Your page’s chat can point people to them too.
+In My Curios, on Links. Add a link (a website, WhatsApp, Instagram, an email or a phone number) and use the up and down arrows to reorder. You can have up to 30 links. Your page’s chat can point people to them too.
 Open: /app/curios
-Source: packages/core/src/bento.ts (MAX_LINKS, TILE_SIZES)
+Source: packages/core/src/bento.ts (MAX_LINKS); apps/web/app/app/curios/links-editor.tsx
 
-### page-shop-tile · How do I remove the shop tile from my page?
-The Visit shop tile shows whenever your shop is open. To remove it, turn the shop off in Store. You can still move it and change its size in My Curios like a link.
-Open: /app/store
-Source: devDocs/FRONTEND.md (The shop row in My Curios)
+### page-shop-tile · How do I remove the shop link from my page?
+The Shop link sits first in your links whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. It can’t be moved or resized.
+Open: /app/curios
+Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
 
 ### page-google · Why isn’t my page on Google?
 Personal pages start out of search results, because most people don’t want an AI page about themselves ranking for their name. You can switch that on in Settings. Business pages are always in search results. New pages can take Google a while to find.
@@ -95,7 +101,7 @@ Open: /app/knowledge?tab=sources
 Source: Sources copy; “This usually takes under a minute.”
 
 ### know-wrong · My page said something wrong. How do I fix it?
-Find the fact in Facts & sources and edit or remove it. Once removed, the chat stops using it and reading the source again won’t bring it back. If the answer came from Questions, edit your answer there. You can try questions in the test chat on Facts & sources to check.
+Find the fact in Facts & sources and edit or remove it. Once removed, the chat stops using it and reading the source again won’t bring it back. If the answer came from Questions, edit your answer there. You can try questions in Ask your page, beside Facts & sources, to check.
 Open: /app/knowledge
 Source: Knowledge copy “Remove it? The chat stops using it, and a re-read won’t bring it back.”; “Test what the chat says”
 
@@ -115,9 +121,9 @@ Open: none
 Source: landing FAQ “Does it reply in Malay?”
 
 ### know-test · How can I test what my page will say?
-Use the test chat on Facts & sources. Ask the way a customer would; it answers only from what is there, the same way your page does.
+Use Ask your page, beside Facts & sources. Ask the way a customer would; it answers only from the facts there, the same way your page does.
 Open: /app/knowledge
-Source: Knowledge ask panel copy
+Source: apps/web/app/app/knowledge/ask-panel.tsx
 
 ---
 
@@ -134,9 +140,9 @@ Open: /app/questions
 Source: packages/core/src/faq.ts (FAQ_MIN_ASKS); Questions copy “Hidden from your FAQ. The chat still uses the answer.”
 
 ### q-merge · Two topics are the same question. Can I join them?
-Yes. Open the topic’s menu and pick Same as…, then the other topic. If both have an answer, you pick which one to keep. If a wording was grouped wrongly, use Not the same question to split it out.
+Yes. On the topic, press Same question as…, pick the other topic, then Merge. If both have an answer, the one you merge into keeps its answer. If a wording was grouped wrongly, press Not the same beside it to split it out.
 Open: /app/questions
-Source: devDocs/FRONTEND.md (Questions)
+Source: apps/web/app/app/questions/topic-detail.tsx
 
 ### q-pinned · What are pinned answers?
 The answers you wrote in Questions. They are listed on the Pinned answers tab in Facts & sources. Remove one and the question goes back to Questions as unanswered.
@@ -153,14 +159,14 @@ Open: /app/leads
 Source: packages/core/src/qualify.ts; Leads copy
 
 ### lead-none · Why am I not getting leads?
-A few common reasons: the number card only shows after a real back-and-forth (a visitor asking specifics), your free leads are used up and the plan isn’t paid (the card stops showing), or the page has hit this month’s chat limit. Check Billing for your plan and this month’s use.
+A few common reasons: it’s a personal page (only business pages take numbers); the number card shows only when a visitor asks to be contacted, or after a real back-and-forth with specifics like a date or a quantity; or your free leads are used up and the plan isn’t paid, so the card stops showing. Check Billing for your plan.
 Open: /app/billing
-Source: packages/core/src/qualify.ts (MIN_VISITOR_TURNS); packages/core/src/plan.ts (canCapture)
+Source: packages/core/src/qualify.ts; packages/core/src/plan.ts (canCapture); chat.service.ts (a capped page still offers the card)
 
 ### lead-reply · How do I reply to a lead?
-Open the lead in Leads. There is a first message written for you that you can edit, then Open WhatsApp to send it from your own WhatsApp.
+Open the lead in Leads. There is a first message written for you that you can edit, then Send on WhatsApp to send it from your own WhatsApp.
 Open: /app/leads
-Source: Leads board and screen
+Source: apps/web/app/app/leads/lead-detail.tsx
 
 ### lead-delete · How long are leads kept?
 They agreed to be contacted when they left their number. Delete a lead once you are done with it. Leads are kept for 12 months at most.
@@ -177,23 +183,23 @@ Open: /app/store
 Source: devDocs/FRONTEND.md (/app/store); Store copy
 
 ### shop-items · How do I add items?
-In Store, under Items. Give each item a name, up to 8 photos, and one price or a list of priced options (like 1kg RM95, 2kg RM170). Turn Available off to hide an item from the shop and the chat at once.
+In Store, under Items. Give each item a name, up to 8 photos, and one price or a list of priced options (like 1kg RM95, 2kg RM170). Turn off In your shop to hide an item from the shop and the chat at once.
 Open: /app/store
-Source: devDocs/store-design.md; packages/core/src/item-photos.ts (MAX_ITEM_PHOTOS)
+Source: apps/web/app/app/store/item-editor.tsx; packages/core/src/item-photos.ts (MAX_ITEM_PHOTOS)
 
 ### shop-ask-items · Can customers ask about an item instead of buying it?
 Yes. Set the item to Ask for a price in Store. Customers send an enquiry with one message plus their name and WhatsApp, and it lands in Leads with the details picked out for you. You can give an optional starting price so your page can answer “how much?”.
 Open: /app/store
-Source: design/HANDOFF.md “Shop: Ask items and enquiries (8 Nov 2026)”. Check it is built before shipping this entry.
+Source: apps/web/app/app/store/item-editor.tsx (How they order: Ask for a price); apps/api/src/modules/store/enquiry.service.ts
 
 ### shop-pay · How do my customers pay?
 Two ways. By your own DuitNow QR or bank account: customers pay you directly and upload a receipt, and you check it and mark the order paid. Or connect your own CHIP account: customers pay by FPX, e-wallet or card at checkout and the order marks itself paid. Curios never holds your money and takes no cut.
-Open: /app/store
+Open: /app/store?tab=payment
 Source: devDocs/chip-payments-design.md (Part 2); Store copy
 
 ### shop-chip · What do I need to connect CHIP?
 Your own CHIP account, which needs SSM registration and a business bank account. If you don’t have one, the DuitNow QR or bank transfer way works without it.
-Open: /app/store
+Open: /app/store?tab=payment
 Source: devDocs/chip-payments-design.md (Why)
 
 ### shop-fees · Does Curios take a cut of my sales?
@@ -203,12 +209,12 @@ Source: devDocs/chip-payments-design.md (Non-goals: no Curios fee on shop orders
 
 ### shop-pickup · How do I set pickup and delivery?
 In Store. Pickup can have several places, and either any time that day or your own time windows, each with an optional limit. Delivery is a flat fee (up to RM500) or “rider paid separately”. You can also set the minimum days’ notice.
-Open: /app/store
+Open: /app/store?tab=delivery
 Source: devDocs/payment-results-and-pickup-design.md; Store copy “Give flat delivery a fee above RM0, up to RM500.”
 
 ### shop-vouchers · How do I give a discount?
 Make a voucher in Store. It can apply by itself when an order fits, or only with a code the customer types. It takes a percentage or a fixed amount off the whole order or one item, with an optional minimum spend, end date and limit on uses. One discount applies per order, the one that saves most, and delivery is never discounted.
-Open: /app/store
+Open: /app/store?tab=vouchers
 Source: devDocs/vouchers-design.md (Part A)
 
 ### order-flow · What do I do when an order comes in?
@@ -222,7 +228,7 @@ Open: /app/orders
 Source: Orders copy “Send it back yourself and refund the CHIP payment too, then mark it refunded.”
 
 ### order-free · Is there a limit on orders?
-On the free trial, a business page can take 3 orders. After that, the shop takes no orders until you pay. Once paid, there is no limit.
+On the free trial, a business page can take {freeOrders} orders. After that, the shop takes no orders until you pay. Once paid, there is no limit.
 Open: /app/billing
 Source: packages/core/src/plan.ts (FREE_ORDERS); Billing copy “No limit. Take as many as you get.”
 
@@ -251,12 +257,12 @@ Source: Store digital copy
 ## Billing and your plan
 
 ### bill-price · How much is Business?
-RM49 a month, or RM490 a year (two months free). Personal pages are free.
+{monthlyPrice} a month, or {annualPrice} a year ({annualSaving}). Personal pages are free.
 Open: /app/billing
-Source: packages/core/src/billing.ts (PLAN_PRICES_CENTS); devDocs/README.md (Price). Prices can be changed in admin; the chat must read the live prices, not this line.
+Source: packages/core/src/billing.ts (PLAN_PRICES_CENTS); the live prices come from admin settings
 
 ### bill-trial · Is there a free trial?
-Yes. A business page gets 3 free leads and 3 free orders. It isn’t timed: it ends once your page has actually worked for you.
+Yes. A business page gets {freeLeads} free leads and {freeOrders} free orders. It isn’t timed: it ends once your page has actually worked for you.
 Open: /app/billing
 Source: packages/core/src/plan.ts (FREE_LEADS, FREE_ORDERS); devDocs/README.md (Free trial)
 
@@ -271,14 +277,14 @@ Open: /app/billing
 Source: devDocs/chip-payments-design.md (Part 1); Billing copy
 
 ### bill-renew · Does my plan renew by itself?
-Only if you turn it on. If you pay by card, you can tick Renew automatically, and your card is charged when each period ends. FPX and e-wallets can’t charge automatically, so you renew those by hand. You can turn auto-renew off any time in Billing.
+Only if you turn it on. Tick Renew automatically by card before you pay (you then pay by card), and your card is charged when each period ends. FPX and e-wallets can’t charge automatically, so you renew those by hand. You can turn auto-renew off any time in Billing.
 Open: /app/billing
-Source: devDocs/chip-payments-design.md; Billing copy “We’ll charge your card when this period ends. Turn it off any time.”
+Source: apps/web/app/app/billing/pay-buttons.tsx; devDocs/chip-payments-design.md
 
 ### bill-renew-failed · My auto-renew payment failed. What now?
-We email you and try again the next day. You can also pay by hand from Billing. Your plan keeps running until its paid date.
+We email you and try your card again the next day, up to 3 tries; after that auto-renew turns off and we email you again. Your plan has ended until a payment goes through, so pay by hand from Billing to get it back straight away.
 Open: /app/billing
-Source: devDocs/chip-payments-design.md (Goals); Billing copy “We’ll try again tomorrow.”
+Source: apps/workers/src/billing/auto-renew.ts; packages/billing/src/grant.ts (MAX_RENEWAL_ATTEMPTS); billing/auto-renew.tsx
 
 ### bill-lapse · What happens if my plan runs out?
 Your page keeps working: the chat keeps answering and your FAQ pages stay. What stops is taking numbers (the lead card) and taking new orders in the shop, until you pay again.
@@ -286,9 +292,9 @@ Open: /app/billing
 Source: packages/core/src/plan.ts (canCapture, canTakeOrders); devDocs/README.md (Free trial)
 
 ### bill-limit · Is there a limit on how much my page can chat?
-Every page can start 200 new conversations a month. Past that, the chat gives a short fixed reply and points people to your links until the 1st of next month. Nothing extra is charged. Billing shows this month’s use.
+Every page can start {conversationCap} new conversations a month. Past that, the chat gives a short fixed reply pointing people to your links until the 1st of next month, though answers you wrote in Questions still go out. Nothing extra is charged. On a business page, Billing shows this month’s use.
 Open: /app/billing
-Source: packages/core/src/cap.ts; apps/web/app/app/alerts.ts. The number is set in admin; read it live.
+Source: packages/core/src/cap.ts; apps/api/src/modules/chat/chat.service.ts (pinned answers before the cap); the live cap comes from admin settings
 
 ### bill-paused · My page is giving a short fixed reply but I’m under the limit.
 Then chat is paused across Curios for a moment, not just your page. It isn’t your monthly limit and nothing is wrong with your page. It comes back by itself.
@@ -310,14 +316,14 @@ Open: none
 Source: Settings copy “To change it, use Forgot your password? when you sign in.”
 
 ### acc-emails · How do I change which emails I get?
-In Settings, under Email me when: a new order, a receipt uploaded, someone leaving their number, a question asked 3 times, and your plan ending. New orders and leads still show in the dashboard with the emails off.
+In Settings, under Email me when: a new order, a receipt is uploaded, and someone leaves their number. Your plan ending is always emailed (3 days before and on the day) and can’t be turned off. New orders and leads still show in the dashboard with the emails off.
 Open: /app/settings
-Source: apps/web/app/app/settings/notify-emails.tsx; Settings board
+Source: apps/web/app/app/settings/notify-emails.tsx; settings/page.tsx
 
 ### acc-dark · Is there a dark mode?
-Yes, the moon button in the top bar switches the dashboard to dark.
+Yes. The theme switch in the top bar (in the account menu on a phone) has Match device, Light and Dark. It follows your device until you pick one.
 Open: none
-Source: apps/web/app/app/dark-mode.test.ts; app-frame
+Source: apps/web/app/app/_ui/theme-switch.tsx; app-frame.tsx
 
 ### acc-delete · How do I delete my account?
 Email support@curios.my from your account’s email address and we will delete it. It removes your login and your page.

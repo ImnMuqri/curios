@@ -178,7 +178,8 @@ Follow the board for layout, sizes and copy.
 
 ## The guide file
 
-- `design/help/help-faq.md` is the first version, written from `main` at `88d53a3`. Every entry has
+- `design/help/help-faq.md` was the first version, written from `main` at `88d53a3`; it now lives at
+  `packages/core/src/help/faq.md`, checked entry by entry against the code. Every entry has
   `Open:` (the screen) and `Source:` (where it was checked).
 - Move it into the repo where both the API and admin can read it, for example
   `packages/core/src/help/faq.md` parsed at build time *(builder's call)*.

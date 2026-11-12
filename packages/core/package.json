@@ -29,12 +29,15 @@
     "./chip-status": "./src/chip-status.ts",
     "./pickup": "./src/pickup.ts",
     "./shutdown": "./src/shutdown.ts",
-    "./error-report": "./src/error-report.ts"
+    "./error-report": "./src/error-report.ts",
+    "./help": "./src/help/guide.ts",
+    "./help-guide": "./src/help/index.ts"
   },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:help": "node scripts/gen-help-guide.mjs"
   },
   "dependencies": {
     "zod": "^3.24.1"
