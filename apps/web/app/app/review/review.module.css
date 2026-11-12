@@ -77,6 +77,9 @@
   align-items: center;
   padding: 0 40px 48px;
   overflow: hidden;
+  /* The sheet's own corner (app-frame .sheet, 16px): a square white column here filled it in, so a
+     strip of white stood out past the rounded corner (owner, 12 Nov 2026). */
+  border-top-left-radius: 16px;
   background: var(--card);
   container-type: inline-size;
 }
