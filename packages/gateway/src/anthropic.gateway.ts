@@ -9,6 +9,8 @@ import type {
   Gateway,
   SameQuestionInput,
   SameQuestionOutput,
+  HelpInput,
+  HelpOutput,
   TokenUsage,
 } from './types.js';
 
@@ -254,6 +256,28 @@ export function createAnthropicGateway(apiKey: string): Gateway {
       return parseSlots(raw);
     },
 
+    /**
+     * Haiku, with the help guide as a cached system prompt (one prefix shared by every owner) and the
+     * output held to a schema whose `entry` can only be a guide id or "none".
+     */
+    async help({ systemPrompt, messages, entryIds }: HelpInput): Promise<HelpOutput> {
+      const started = Date.now();
+      const message = await client.messages.create({
+        model: CHAT_MODEL,
+        max_tokens: 600,
+        system: systemBlockFor(systemPrompt, true),
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
+        output_config: { format: { type: 'json_schema', schema: helpSchema(entryIds) } },
+      });
+      const raw = message.content
+        .filter((block): block is Anthropic.TextBlock => block.type === 'text')
+        .map((block) => block.text)
+        .join('');
+      const parsed = parseHelp(raw, entryIds);
+      if (!parsed) throw new Error(`help answer out of shape (stop: ${message.stop_reason ?? 'none'})`);
+      return { ...parsed, usage: usageFrom(message.usage), model: CHAT_MODEL, latencyMs: Date.now() - started };
+    },
+
     /** Haiku: a one-letter verdict. Background only. */
     async sameQuestion(input: SameQuestionInput): Promise<SameQuestionOutput> {
       const started = Date.now();
@@ -276,6 +300,38 @@ export function createAnthropicGateway(apiKey: string): Gateway {
       };
     },
   };
+}
+
+/** `entry` first, so the model commits to its source before it writes the answer. */
+export function helpSchema(entryIds: string[]): Record<string, unknown> {
+  return {
+    type: 'object',
+    properties: {
+      entry: { type: 'string', enum: [...entryIds, 'none'] },
+      answer: { type: 'string' },
+    },
+    required: ['entry', 'answer'],
+    additionalProperties: false,
+  };
+}
+
+/**
+ * The schema already holds the shape; this is the second lock. An id the guide does not have is
+ * "none" (so the panel shows "not in the guide", never a made-up link), and an empty answer or
+ * text that is not the JSON is no answer at all.
+ */
+export function parseHelp(raw: string, entryIds: string[]): { entryId: string | null; answer: string } | null {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!value || typeof value !== 'object') return null;
+  const { entry, answer } = value as { entry?: unknown; answer?: unknown };
+  if (typeof answer !== 'string' || !answer.trim()) return null;
+  const entryId = typeof entry === 'string' && entryIds.includes(entry) ? entry : null;
+  return { entryId, answer: answer.trim() };
 }
 
 /**

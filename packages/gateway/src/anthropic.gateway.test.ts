@@ -1,3 +1,4 @@
+import { helpSchema, parseHelp } from './anthropic.gateway.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   buildSameQuestionPrompt,
@@ -313,5 +314,57 @@ describe('createAnthropicGateway sameQuestion', () => {
     expect(call.max_tokens).toBe(10);
     expect(call.system).not.toContain('What is his full name');
     expect(call.messages).toEqual([{ role: 'user', content: buildSameQuestionPrompt(input) }]);
+  });
+});
+
+describe('the help answer', () => {
+  const ids = ['shop-vouchers', 'acc-dark'];
+
+  it('holds entry to the guide ids or none, entry before answer', () => {
+    const schema = helpSchema(ids) as { properties: Record<string, { enum?: string[] }>; required: string[]; additionalProperties: boolean };
+    expect(Object.keys(schema.properties)).toEqual(['entry', 'answer']);
+    expect(schema.properties.entry!.enum).toEqual(['shop-vouchers', 'acc-dark', 'none']);
+    expect(schema.required).toEqual(['entry', 'answer']);
+    expect(schema.additionalProperties).toBe(false);
+  });
+
+  it('reads the entry and answer', () => {
+    expect(parseHelp('{"entry":"acc-dark","answer":" The moon button. "}', ids)).toEqual({ entryId: 'acc-dark', answer: 'The moon button.' });
+  });
+
+  it('treats none, and any id the guide does not have, as no entry', () => {
+    expect(parseHelp('{"entry":"none","answer":"Not in the guide."}', ids)).toEqual({ entryId: null, answer: 'Not in the guide.' });
+    expect(parseHelp('{"entry":"made-up","answer":"x"}', ids)).toEqual({ entryId: null, answer: 'x' });
+  });
+
+  it('is no answer when the text is not the JSON or the answer is empty', () => {
+    expect(parseHelp('Sure! Make a voucher.', ids)).toBeNull();
+    expect(parseHelp('{"entry":"acc-dark","answer":"  "}', ids)).toBeNull();
+    expect(parseHelp('[]', ids)).toBeNull();
+  });
+});
+
+describe('help', () => {
+  beforeEach(() => createMock.mockReset());
+  const input = { systemPrompt: 'THE GUIDE', messages: [{ role: 'user' as const, content: 'how do i give a discount?' }], entryIds: ['shop-vouchers'] };
+
+  it('caches the guide, holds the output to the schema, and returns the entry and answer', async () => {
+    createMock.mockResolvedValue({
+      content: [{ type: 'text', text: '{"entry":"shop-vouchers","answer":"Make a voucher in **Store**."}' }],
+      usage: { input_tokens: 30, output_tokens: 12, cache_read_input_tokens: 6000 },
+      stop_reason: 'end_turn',
+    });
+    const out = await createAnthropicGateway('key').help(input);
+    expect(out).toMatchObject({ entryId: 'shop-vouchers', answer: 'Make a voucher in **Store**.', model: 'claude-haiku-4-5' });
+    expect(out.usage.cacheReadTokens).toBe(6000);
+    const call = createMock.mock.calls[0]?.[0];
+    expect(call.system).toEqual([{ type: 'text', text: 'THE GUIDE', cache_control: { type: 'ephemeral' } }]);
+    expect(call.output_config).toEqual({ format: { type: 'json_schema', schema: helpSchema(['shop-vouchers']) } });
+    expect(call.messages).toEqual(input.messages);
+  });
+
+  it('throws on an answer out of shape, so the caller says the chat is resting', async () => {
+    createMock.mockResolvedValue({ content: [{ type: 'text', text: '{"entry":"shop-vouchers"' }], usage: { input_tokens: 1, output_tokens: 1 }, stop_reason: 'max_tokens' });
+    await expect(createAnthropicGateway('key').help(input)).rejects.toThrow(/max_tokens/);
   });
 });

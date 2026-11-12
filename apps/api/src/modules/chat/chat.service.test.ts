@@ -27,6 +27,9 @@ function gatewaySaying(text: string): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -46,6 +49,9 @@ function gatewayThatFails(): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -61,6 +67,9 @@ function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -84,6 +93,9 @@ function gatewayCapturingCachePrompt(): { gateway: Gateway; cachePrompt: () => b
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -107,6 +119,9 @@ function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMes
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -130,6 +145,9 @@ function gatewayCapturingCall(): { gateway: Gateway; call: () => ChatInput } {
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -1494,7 +1512,7 @@ describe('an answered question, asked in new words', () => {
       yield { type: 'text' as const, text: reply };
       yield { type: 'done' as const, usage, model: 'claude-haiku-4-5', latencyMs: 700 };
     });
-    const gateway: Gateway = { extract: vi.fn(), slots: vi.fn(), sameQuestion, chat };
+    const gateway: Gateway = { extract: vi.fn(), slots: vi.fn(), sameQuestion, chat, help: vi.fn() };
     return { gateway, sameQuestion, chat };
   }
 

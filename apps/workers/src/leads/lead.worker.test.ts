@@ -18,6 +18,9 @@ function gatewayReturning(slots: {
     extract: vi.fn(),
     chat: vi.fn(),
     slots: vi.fn().mockResolvedValue(slots),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -88,6 +91,9 @@ describe('runLeadJob', () => {
       extract: vi.fn(),
       chat: vi.fn(),
       slots: vi.fn().mockRejectedValue(new Error('provider unavailable')),
+      help: async () => {
+        throw new Error('help is not used here');
+      },
       sameQuestion: async () => {
         throw new Error('not used');
       },

@@ -100,6 +100,27 @@ export interface SameQuestionOutput {
   latencyMs: number;
 }
 
+/**
+ * One question to the dashboard's Help chat. The system prompt is the whole help guide, the same for
+ * every owner, so it is cached; the owner's details and question come in `messages`, after it.
+ */
+export interface HelpInput {
+  systemPrompt: string;
+  /** Oldest first, ending with the question. */
+  messages: ChatMessage[];
+  /** The guide's entry ids: the only ids the answer may name, besides "none". */
+  entryIds: string[];
+}
+
+export interface HelpOutput {
+  /** An id from `entryIds`, or null when no entry fits (the model said "none"). */
+  entryId: string | null;
+  answer: string;
+  usage: TokenUsage;
+  model: string;
+  latencyMs: number;
+}
+
 export interface Gateway {
   extract(input: ExtractInput): Promise<ExtractOutput>;
   chat(input: ChatInput): AsyncIterable<ChatEvent>;
@@ -115,4 +136,9 @@ export interface Gateway {
    * Background only; never in a request.
    */
   sameQuestion(input: SameQuestionInput): Promise<SameQuestionOutput>;
+  /**
+   * The Help chat: which guide entry answers the owner, and the answer, as structured output so the
+   * panel never trusts a link the model wrote. Throws when the model fails or answers out of shape.
+   */
+  help(input: HelpInput): Promise<HelpOutput>;
 }

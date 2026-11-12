@@ -3,6 +3,8 @@ export {
   createAnthropicGateway,
   buildSameQuestionPrompt,
   parseSameQuestion,
+  parseHelp,
+  helpSchema,
   CHAT_MODEL,
   EXTRACT_MODEL,
 } from './anthropic.gateway.js';
@@ -19,4 +21,6 @@ export type {
   SameQuestionCandidate,
   SameQuestionInput,
   SameQuestionOutput,
+  HelpInput,
+  HelpOutput,
 } from './types.js';

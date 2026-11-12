@@ -31,6 +31,9 @@ function embedderFor(directions: Record<string, number>): Embedder {
 function gatewaySaying(verdict: (input: SameQuestionInput) => string | null) {
   const calls: SameQuestionInput[] = [];
   const gateway = {
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async (input: SameQuestionInput) => {
       calls.push(input);
       return { match: verdict(input), usage: { inputTokens: 10, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 }, model: 'claude-haiku-4-5', latencyMs: 5 };
@@ -170,6 +173,9 @@ describe('runGroupJob', () => {
     /** A gateway that does something to the database, then names the first candidate. */
     function gatewayDoing(during: () => Promise<unknown>): Gateway {
       return {
+        help: async () => {
+          throw new Error('help is not used here');
+        },
         sameQuestion: async (input: SameQuestionInput) => {
           await during();
           return { match: input.candidates[0]!.id, usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 }, model: 'claude-haiku-4-5', latencyMs: 1 };

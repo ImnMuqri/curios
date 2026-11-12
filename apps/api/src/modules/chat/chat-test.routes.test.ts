@@ -21,6 +21,9 @@ function stubGateway(): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },

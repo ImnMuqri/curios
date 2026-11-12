@@ -19,6 +19,9 @@ Open Monday to Saturday, 9am to 6pm`;
 function gatewayReturning(raw: string): Gateway {
   return {
     slots: vi.fn(),
+    help: async () => {
+      throw new Error('help is not used here');
+    },
     sameQuestion: async () => {
       throw new Error('not used');
     },
@@ -232,6 +235,9 @@ Email Iman at iman@example.com`;
   it('records a failed ModelCall and fails the ingestion when the gateway throws', async () => {
     const gateway: Gateway = {
       slots: vi.fn(),
+      help: async () => {
+        throw new Error('help is not used here');
+      },
       sameQuestion: async () => {
         throw new Error('not used');
       },
@@ -421,6 +427,9 @@ describe('runExtraction, as it reads', () => {
     const [first = '', second = ''] = RAW.split('---');
     const gateway: Gateway = {
       slots: vi.fn(),
+      help: async () => {
+        throw new Error('help is not used here');
+      },
       sameQuestion: async () => {
         throw new Error('not used');
       },
