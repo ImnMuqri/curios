@@ -8,6 +8,7 @@
   align-items: flex-start;
   gap: 12px;
   padding: 28px 40px 20px;
+  container-type: inline-size;
 }
 
 .text {
@@ -55,6 +56,16 @@
 @media (max-width: 1000px) {
   .withBeside .text {
     flex-basis: 100%;
+  }
+}
+
+/* A header with tabs beside the title, in a column too narrow for the actions on the title row too
+   (Store and My Curios beside their phone preview, even on a wide screen): the actions take their
+   own full line, as on a phone, rather than hanging at the right of an empty row (owner, 12 Nov 2026). */
+@container (max-width: 920px) {
+  .withBeside .actions {
+    flex: 1 1 100%;
+    margin-left: 0;
   }
 }
 
