@@ -3,9 +3,9 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
 import { FAIL_WHAT_HAPPENED, isFailReason, type FailReason } from '@curios/core/chip-status';
-import { supportAddress } from '@curios/core/support';
 import { getOwnerPage, getPaymentResult } from '@curios/db-read';
 import { resolveOwner } from '../../session.js';
+import { AskForHelp } from '../../help/help-context.js';
 import { receiptPrice, shortDate } from '../billing-copy.js';
 import { FailedArt, ResultTop } from '../result-art.js';
 import styles from '../result.module.css';
@@ -77,9 +77,8 @@ export default async function FailedPage({ searchParams }: { searchParams: Promi
               Pick another bank
             </Link>
           </div>
-          <a className={styles.help} href={`mailto:${supportAddress()}`}>
-            Need help? Email us
-          </a>
+          {/* The Help panel, with its way to support (the design's "Ask for help"); email where there is no panel. */}
+          <AskForHelp className={styles.help}>Ask for help</AskForHelp>
         </div>
       </div>
     </main>

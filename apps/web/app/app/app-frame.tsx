@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
@@ -14,6 +14,8 @@ import { Popover } from './_ui/popover.js';
 import { ThemeContext, ThemeSwitch } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
 import { SignOutButton } from './sign-out-button.js';
+import { HelpContext, type HelpControl } from './help/help-context.js';
+import { HelpPanel } from './help/help-panel.js';
 import { THEME_COOKIE, type Theme } from './theme.js';
 import styles from './app-frame.module.css';
 
@@ -98,9 +100,6 @@ function writeBellSeen(value: string) {
   document.cookie = `${BELL_COOKIE}=${value}; Path=/app; Max-Age=31536000; SameSite=Lax`;
 }
 
-/** Help goes to the support address the alerts and legal pages give: there is no help centre yet. */
-const SUPPORT = 'mailto:support@curios.my';
-
 /**
  * The dashboard's frame (Dashboard v2, 29 Oct 2026): a sidebar on a grey ground -- search, the
  * grouped modules with what is waiting in each, and the plan -- a 64px top bar on the same grey
@@ -169,6 +168,14 @@ export function AppFrame({
   const search = useRef<HTMLInputElement>(null);
   const [bellSeen, setBellSeen] = useState(savedBellSeen);
   const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
+  // Help (design/help/help-chat-design.md): the top bar's Help and the account menu's Help & support
+  // open the panel over the current screen, which stays underneath.
+  const [helpOpen, setHelpOpen] = useState(false);
+  const closeHelp = useCallback(() => setHelpOpen(false), []);
+  const help = useMemo<HelpControl>(
+    () => ({ open: helpOpen, show: () => setHelpOpen(true), close: () => setHelpOpen(false), toggle: () => setHelpOpen((was) => !was) }),
+    [helpOpen],
+  );
   const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
   const choose = (next: Theme) => {
     setTheme(next);
@@ -329,10 +336,10 @@ export function AppFrame({
           {svg(ICON.settings, styles.menuIcon)}
           Settings
         </Link>
-        <a href={SUPPORT} className={styles.menuRow} {...item}>
+        <button type="button" className={styles.menuRow} data-closes onClick={help.show} {...item}>
           {svg(ICON.help, styles.menuIcon)}
           Help &amp; support
-        </a>
+        </button>
         <span className={styles.menuRule} aria-hidden="true" />
         <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} icon={svg(ICON.signOut, styles.menuIcon)} {...item} />
       </>
@@ -341,7 +348,8 @@ export function AppFrame({
 
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
-      <div ref={frameRef} className={styles.frame} data-theme={theme}>
+     <HelpContext.Provider value={help}>
+      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined}>
         <aside className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
             <Wordmark />
@@ -434,9 +442,9 @@ export function AppFrame({
                 </>
               ) : null}
             </p>
-            <a className={styles.help} href={SUPPORT}>
+            <button type="button" className={styles.help} aria-expanded={helpOpen} onClick={help.toggle}>
               Help
-            </a>
+            </button>
             <ThemeSwitch className={styles.topTheme} />
             <Popover
               label={news > 0 ? `Notifications, ${news} new` : 'Notifications'}
@@ -577,7 +585,9 @@ export function AppFrame({
             })}
           </div>
         </nav>
+        {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}
       </div>
+     </HelpContext.Provider>
     </ThemeContext.Provider>
   );
 }

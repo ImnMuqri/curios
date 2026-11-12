@@ -9,6 +9,9 @@ const PLAN = { name: 'Business plan', note: '18 days left, until 14 Nov', fill: 
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios', useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push }) }));
+// The Help panel reads its guide when it opens.
+const apiFetch = vi.fn(async () => ({ sections: [], chat: true }));
+vi.mock('../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
 const { AppFrame } = await import('./app-frame.js');
 const { PageHead } = await import('./_ui/page-head.js');
 
@@ -334,8 +337,14 @@ describe('the top bar', () => {
     const { menu } = openAccount();
     expect(within(menu).getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Manage', 'Settings', 'Help & support', 'Sign out']);
     expect(within(menu).getByRole('menuitem', { name: 'Settings' })).toHaveAttribute('href', '/app/settings');
-    expect(within(menu).getByRole('menuitem', { name: 'Help & support' })).toHaveAttribute('href', 'mailto:support@curios.my');
     expect(within(menu).queryByRole('menuitem', { name: 'Billing' })).toBeNull();
+  });
+
+  it('opens Help from Help & support, closing the menu', () => {
+    const { account, menu } = openAccount();
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Help & support' }));
+    expect(account).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
   });
 
   it('moves focus into the menu, through it with the arrows, and back to the button on Escape', () => {
@@ -361,9 +370,17 @@ describe('the top bar', () => {
     expect(account).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('sends Help to the support address', () => {
+  it('opens and closes the Help panel from the top bar, showing Help as pressed while it is open', () => {
     frame();
-    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'mailto:support@curios.my');
+    const help = screen.getByRole('button', { name: 'Help' });
+    expect(help).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(help);
+    expect(help).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenCalledWith('/help/guide');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Help' })).toBeNull();
+    expect(help).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('carries the theme in the account menu too, for a phone, whose top bar has no room for it', () => {

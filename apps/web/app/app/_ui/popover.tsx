@@ -5,7 +5,7 @@ import styles from './popover.module.css';
 
 /**
  * A button that opens a small panel under it: the top bar's notifications and account menus.
- * Escape, a click outside or a link followed inside closes it, and Escape puts focus back on the
+ * Escape, a click outside, or a link followed (or a [data-closes] button pressed) inside closes it, and Escape puts focus back on the
  * button.
  *
  * By default a disclosure (aria-expanded), its contents announced as what they are. With `menu`
@@ -99,7 +99,7 @@ export function Popover({
         hidden={!open}
         {...(menu ? { role: 'menu', 'aria-label': label, onKeyDown: onMenuKey } : {})}
         onClick={(event) => {
-          if ((event.target as HTMLElement).closest('a')) setOpen(false);
+          if ((event.target as HTMLElement).closest('a, [data-closes]')) setOpen(false);
         }}
       >
         {children}

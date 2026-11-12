@@ -211,6 +211,15 @@
   text-decoration: none;
 }
 
+/* In the dashboard it is a button that opens Help, looking the same as the link. */
+button.help {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 .mail {
   margin: 14px 0 0;
   font-size: 12.5px;

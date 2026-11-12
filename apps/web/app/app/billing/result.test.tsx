@@ -136,7 +136,8 @@ describe('the failed page', () => {
     expect(within(receipt).getByText('RM49.00')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Try again' })).toHaveAttribute('href', '/app/billing?pay=1');
     expect(screen.getByRole('link', { name: 'Pick another bank' })).toHaveAttribute('href', '/app/billing?pay=1');
-    expect(screen.getByRole('link', { name: 'Need help? Email us' })).toHaveAttribute('href', 'mailto:support@curios.my');
+    // Outside the frame (no Help panel) it emails support; in the dashboard it opens the panel.
+    expect(screen.getByRole('link', { name: 'Ask for help' })).toHaveAttribute('href', 'mailto:support@curios.my');
   });
 
   it.each([

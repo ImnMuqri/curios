@@ -347,6 +347,13 @@
   background: color-mix(in srgb, var(--card) 75%, transparent);
 }
 
+/* Help shows as pressed while its panel is open (the Help board). */
+.help[aria-expanded='true'] {
+  background: var(--card);
+  color: var(--biru);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
 .help:focus-visible,
 .iconButton:focus-visible,
 .account:focus-visible,
@@ -1288,4 +1295,11 @@ a.menuAlert:hover {
   --nav-on: var(--light-nav-on);
   --pick: var(--light-pick);
   --chat: var(--light-chat);
+}
+
+/* On a phone Help takes the whole screen, so the floating menu pill hides while it is open. */
+@media (max-width: 760px) {
+  .frame[data-help-open] .dock {
+    display: none;
+  }
 }
