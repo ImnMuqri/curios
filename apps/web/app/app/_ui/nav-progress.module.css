@@ -1,11 +1,14 @@
 /*
- * Sits on the header's bottom border: it creeps most of the way while the next
+ * Sits in the header's bottom padding: it creeps most of the way while the next
  * screen loads (never claiming to be done), then fills and fades as it lands.
+ * Not on the header's very edge: the header has no line under it, so the edge
+ * is the top of whatever box comes next (Store's checklist, the Facts tabs),
+ * and a bar there draws on that box's border (owner, 12 Nov 2026).
  */
 .bar {
   position: absolute;
   left: 0;
-  bottom: -1px;
+  bottom: 8px;
   height: 2px;
   width: 0;
   background: var(--biru);
