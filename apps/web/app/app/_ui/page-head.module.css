@@ -8,7 +8,6 @@
   align-items: flex-start;
   gap: 12px;
   padding: 28px 40px 20px;
-  container-type: inline-size;
 }
 
 .text {
@@ -52,20 +51,28 @@
   margin-left: auto;
 }
 
-/* Tabs beside the title (Store, My Curios): title and tabs take their own line in a narrow column. */
+/* Tabs beside the title (Store, My Curios, often beside a phone preview): the actions sit at the right
+   of the title row when they fit there, and when they do not they start a line of their own at the
+   left, never at the right of an empty row. space-between does both: two items on a line go to its
+   ends, and one alone starts it. Whether they fit is the content's, not a width picked here: My
+   Curios' header is far shorter than Store's (owner, 12 Nov 2026). */
+.withBeside {
+  justify-content: space-between;
+}
+
+.withBeside .text {
+  flex: 0 1 auto;
+}
+
+.withBeside .actions {
+  margin-left: 0;
+}
+
+/* Tabs beside the title (Store, My Curios): title and tabs take their own line in a narrow column.
+   After the rule above, whose flex shorthand it narrows. */
 @media (max-width: 1000px) {
   .withBeside .text {
     flex-basis: 100%;
-  }
-}
-
-/* A header with tabs beside the title, in a column too narrow for the actions on the title row too
-   (Store and My Curios beside their phone preview, even on a wide screen): the actions take their
-   own full line, as on a phone, rather than hanging at the right of an empty row (owner, 12 Nov 2026). */
-@container (max-width: 920px) {
-  .withBeside .actions {
-    flex: 1 1 100%;
-    margin-left: 0;
   }
 }
 
