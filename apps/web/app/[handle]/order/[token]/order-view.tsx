@@ -336,6 +336,12 @@ export function OrderView(props: OrderViewProps) {
   return (
     <Root className={checkout.column}>
       <div className={checkout.top}>
+        {/* Back to the shop, as checkout's top bar has it: a paid order is not a dead end (owner, 12 Nov 2026). */}
+        <a className={checkout.back} href={preview ? undefined : `/${props.handle}/shop`} aria-label={copy.backToShop}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M15 6l-6 6 6 6" />
+          </svg>
+        </a>
         <span>{name}</span>
         <span className={styles.bookmark}>{copy.bookmark}</span>
       </div>

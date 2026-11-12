@@ -501,9 +501,13 @@ describe('OrderView: paid online', () => {
     expect(await screen.findByRole('heading', { name: copy.paidPlaced })).toBeInTheDocument();
     expect(screen.getByText(copy.paidPlacedSub('RM215', 'Kek Lina'))).toBeInTheDocument();
     expect(screen.getByLabelText('Order code 7Q4M')).toBeInTheDocument();
+    // Paid, nothing left to do: a way back to the shop under See your order.
+    expect(screen.getByRole('link', { name: copy.backTo('Kek Lina') })).toHaveAttribute('href', '/keklina/shop');
     await user.click(screen.getByRole('button', { name: copy.seeOrder }));
     expect(screen.getByText(copy.paidBy('RM215', 'FPX · Maybank2u'))).toBeInTheDocument();
     expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBeNull();
+    // And the order page's top bar goes back to the shop too.
+    expect(screen.getByRole('link', { name: copy.backToShop })).toHaveAttribute('href', '/keklina/shop');
   });
 
   it('says it is still waiting for the bank after a few checks, and keeps checking', async () => {

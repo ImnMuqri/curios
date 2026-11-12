@@ -160,6 +160,12 @@ export function Placed(props: {
         </a>
       )}
       {props.digitalNote ? <p className={styles.digitalNote}>{props.digitalNote}</p> : null}
+      {/* Nothing left to do here once it is paid: a way back to the shop (owner, 12 Nov 2026). */}
+      {paid || free ? (
+        <a className={styles.sendLink} href={`/${props.handle}/shop`}>
+          {copy.backTo(props.displayName)}
+        </a>
+      ) : null}
       {props.holds && !paid && !free ? <p className={styles.digitalNote}>{copy.holdNote}</p> : null}
       {props.phone ? (
         <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
