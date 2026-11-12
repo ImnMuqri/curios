@@ -253,8 +253,13 @@
 
 /* ---- The four steps: a bar each, its step and when under it ---- */
 
+/* In a box, as Store's ready strip: bare, the four bars floated (owner, 12 Nov 2026). */
 .progress {
   margin: 24px 0 0;
+  padding: 16px 18px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--paper);
 }
 
 .steps {
