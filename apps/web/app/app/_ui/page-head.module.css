@@ -57,14 +57,29 @@
 /* Tabs beside the title (Store, My Curios, often beside a phone preview): the actions sit at the right
    of the title row when they fit there, and when they do not they start a line of their own at the
    left, never at the right of an empty row. space-between does both: two items on a line go to its
-   ends, and one alone starts it. Whether they fit is the content's, not a width picked here: My
+   ends, and one alone starts it; the text grows into what the actions leave. Whether they fit is the content's, not a width picked here: My
    Curios' header is far shorter than Store's (owner, 12 Nov 2026). */
 .withBeside {
   justify-content: space-between;
 }
 
 .withBeside .text {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+}
+
+/* Whether the actions fit beside the title is the title row's to say, not the summary's: the summary
+   wraps to the width it is given (Store's sentence is as wide as its four tabs, and was the 3px that
+   put Store's actions on their own line at 1920 wide). Alone on its line, it takes the whole width. */
+.withBeside .summary {
+  contain: inline-size;
+  /* Wrapped beside the actions, no word left alone on the second line ("them."). */
+  text-wrap: pretty;
+}
+
+/* A little closer than the 20px a lone title gets, so Store's title, tabs and actions share a line
+   at 1920 wide (owner, 12 Nov 2026). */
+.withBeside .titleRow {
+  column-gap: 12px;
 }
 
 .withBeside .actions {
