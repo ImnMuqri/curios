@@ -574,3 +574,38 @@ export function shopPayStatusPerOrderLimit(redis: IORedis): RateLimitPluginOptio
     errorResponseBuilder: tooMany((after) => `Too many checks just now. Try again in ${after}.`),
   };
 }
+
+const HELP_MESSAGE = (after: string) => `Too many help questions just now. Try again in ${after}, or browse the topics.`;
+
+/**
+ * Per owner, for the dashboard's Help chat. Every question is a model call no conversation cap
+ * counts (help never spends the page's month), so this is what bounds it.
+ */
+export function helpAskPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('help-ask-account:'),
+    max: limit('RATE_LIMIT_HELP_ASK_PER_ACCOUNT', 30),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => request.account?.id ?? caller(request),
+    errorResponseBuilder: tooMany(HELP_MESSAGE),
+  };
+}
+
+/** Per owner, for Help's "Send to support": each one opens a thread a person has to read. */
+export function helpSupportPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('help-support-account:'),
+    max: limit('RATE_LIMIT_HELP_SUPPORT_PER_ACCOUNT', 5),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => request.account?.id ?? caller(request),
+    errorResponseBuilder: tooMany((after) => `Too many messages to support just now. Try again in ${after}, or email support@curios.my.`),
+  };
+}

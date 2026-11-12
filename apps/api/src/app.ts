@@ -22,6 +22,7 @@ import {
 import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/admin-pages.routes.js';
 import { adminReportsRoutes } from './modules/admin/admin-reports.routes.js';
 import { adminSupportRoutes } from './modules/admin/admin-support.routes.js';
+import { adminHelpRoutes } from './modules/admin/admin-help.routes.js';
 import { adminPaymentsRoutes } from './modules/admin/admin-payments.routes.js';
 import { adminSettingsRoutes } from './modules/admin/admin-settings.routes.js';
 import { adminSourcesRoutes } from './modules/admin/admin-sources.routes.js';
@@ -31,6 +32,8 @@ import {
   authPerIpLimit,
   billingPerAccountLimit,
   chatTestPerAccountLimit,
+  helpAskPerAccountLimit,
+  helpSupportPerAccountLimit,
   chatPerIpLimit,
   chatPerPageLimit,
   ingestPerIpLimit,
@@ -52,6 +55,7 @@ import {
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
+import { helpAskRoutes, helpRoutes, helpSupportRoutes, type HelpRouteOptions } from './modules/help/help.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { reportRoutes, type ReportRouteOptions } from './modules/reports/report.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
@@ -109,6 +113,7 @@ export interface AppOverrides {
   auth?: AuthRouteOptions;
   ingest?: IngestRouteOptions;
   chat?: ChatRouteOptions;
+  help?: HelpRouteOptions;
   billing?: BillingRouteOptions;
   facts?: FactRouteOptions;
   pages?: PageRouteOptions;
@@ -220,6 +225,20 @@ export async function buildApp(overrides: AppOverrides = {}) {
     scope.addHook('onRequest', requireSession);
     await scope.register(rateLimit, chatTestPerAccountLimit(app.rateLimitRedis));
     await scope.register(chatTestRoutes, overrides.chat ?? {});
+  });
+
+  // The dashboard's Help chat. Signed in, session first, and per account: asking is a model call that
+  // no conversation cap counts, and sending to support opens a thread a person reads. Reading the
+  // guide, picking a topic and Yes/No cost nothing and sit in the plain signed-in scope below.
+  await app.register(async (scope) => {
+    scope.addHook('onRequest', requireSession);
+    await scope.register(rateLimit, helpAskPerAccountLimit(app.rateLimitRedis));
+    await scope.register(helpAskRoutes, overrides.help ?? { gateway: overrides.chat?.gateway });
+  });
+  await app.register(async (scope) => {
+    scope.addHook('onRequest', requireSession);
+    await scope.register(rateLimit, helpSupportPerAccountLimit(app.rateLimitRedis));
+    await scope.register(helpSupportRoutes);
   });
 
   // Its own scope, with the per-IP limiter only. It cannot join the chat scope
@@ -337,6 +356,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(factRoutes, overrides.facts ?? {});
     await scope.register(sourceRoutes);
     await scope.register(neverSayRoutes);
+    await scope.register(helpRoutes);
     await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
     await scope.register(storeRoutes, { ...(overrides.pages ?? {}), privateFiles: overrides.privateFiles });
@@ -399,6 +419,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
       await scope.register(adminSettingsRoutes);
       await scope.register(adminPaymentsRoutes, { messages: chipMessages });
       await scope.register(adminSourcesRoutes);
+      await scope.register(adminHelpRoutes);
     });
   }
 

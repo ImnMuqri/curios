@@ -97,6 +97,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_NEVER_SAY',
   'NEVER_SAY_DUPLICATE',
   'NEVER_SAY_LIMIT',
+  // Help: "Send to support" from Topics with nothing written.
+  'HELP_EMPTY',
   // My Curios: a link an owner typed wrong, one too many, or an order from a
   // tab that is behind. Each says what to do next.
   'INVALID_LINK',
