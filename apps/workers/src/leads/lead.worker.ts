@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
-import { LEAD_QUEUE, MAIL_QUEUE, planState, trialSpentMail, type LeadJobData, type MailJobData } from '@curios/core';
+import { LEAD_QUEUE, leadPush, MAIL_QUEUE, planState, PUSH_QUEUE, trialSpentMail, type LeadJobData, type MailJobData, type PushJobData } from '@curios/core';
 import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import type { Gateway } from '@curios/gateway';
@@ -11,10 +11,16 @@ export interface MailQueueLike {
   add(name: string, data: MailJobData, opts?: unknown): Promise<{ id?: string }>;
 }
 
+export interface PushQueueLike {
+  add(name: string, data: PushJobData, opts?: unknown): Promise<{ id?: string }>;
+}
+
 export interface LeadJobDeps {
   prisma: PrismaClient;
   gateway: Gateway;
   mailQueue: MailQueueLike;
+  /** The owner's phones and computers (Settings, "Notify this device"). Left out, no push is queued. */
+  pushQueue?: PushQueueLike;
   /** The dashboard's address, for the email's "See in Leads". */
   appUrl?: string;
   log?: { warn: (details: object, message: string) => void };
@@ -49,6 +55,7 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
           mode: true,
           paidUntil: true,
           leadsCaptured: true,
+          accountId: true,
           account: { select: { email: true } },
         },
       },
@@ -94,6 +101,19 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
     data: { slots: { ...slots }, score },
   });
 
+  // The push follows the device's own switch, not the email's, and never carries the number.
+  // Best-effort: a lead is worth more than its notification, so a queue failure is only logged.
+  if (deps.pushQueue) {
+    const push = leadPush({
+      name: lead.name,
+      about: lead.kind === 'ENQUIRY' ? (lead.item?.name ?? null) : slots.product,
+      url: `${(deps.appUrl ?? 'http://localhost:3000').replace(/\/+$/, '')}/app/leads`,
+    });
+    await deps.pushQueue
+      .add(PUSH_QUEUE, { accountId: lead.page.accountId, ...push }, { attempts: 3, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true, removeOnFail: 100 })
+      .catch((error: unknown) => deps.log?.warn({ leadId: lead.id, err: error instanceof Error ? error.message : String(error) }, 'could not queue the lead push'));
+  }
+
   // Switched off in Settings ("Email me when"): the lead is saved and
   // scored above, and waits in Leads; only the email is skipped.
   const { freeLeads, prices } = await deps.settings.get();
@@ -137,6 +157,7 @@ export function createLeadWorker(deps: {
   prisma: PrismaClient;
   gateway: Gateway;
   mailQueue: MailQueueLike;
+  pushQueue?: PushQueueLike;
   appUrl?: string;
   log?: { warn: (details: object, message: string) => void };
   settings: { get(): Promise<Settings> };
@@ -149,6 +170,7 @@ export function createLeadWorker(deps: {
           prisma: deps.prisma,
           gateway: deps.gateway,
           mailQueue: deps.mailQueue,
+          pushQueue: deps.pushQueue,
           appUrl: deps.appUrl,
           log: deps.log,
           settings: deps.settings,

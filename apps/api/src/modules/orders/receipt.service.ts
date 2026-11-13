@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { hashSessionValue, MAIL_QUEUE, receiptMail } from '@curios/core';
+import { hashSessionValue, MAIL_QUEUE, receiptMail, receiptPush } from '@curios/core';
+import { queueOwnerPush, type OwnerPushQueue } from '../../lib/owner-push.js';
 import { RECEIPT_MAX_BYTES } from '@curios/core/orders';
 import type { PrismaClient } from '@curios/db';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
@@ -13,6 +14,8 @@ import type { OrderMailQueue } from './place.service.js';
 export interface ReceiptDeps {
   prisma: PrismaClient;
   mailQueue: OrderMailQueue;
+  /** The owner's phones and computers; left out (tests), no push is queued. */
+  pushQueue?: OwnerPushQueue;
   /** Null: uploads are switched off in this environment. */
   store: AvatarStore | null;
   log?: { warn?: (obj: object, msg: string) => void };
@@ -59,7 +62,7 @@ export async function uploadReceipt(
       number: true,
       totalCents: true,
       customerName: true,
-      page: { select: { notifyReceipts: true, account: { select: { email: true } } } },
+      page: { select: { notifyReceipts: true, accountId: true, account: { select: { email: true } } } },
     },
   });
   // Random, so the URL cannot be guessed and a replaced file is never served stale.
@@ -94,6 +97,12 @@ export async function uploadReceipt(
     );
   }
 
+  // The device's own switch, not the email's.
+  queueOwnerPush(
+    deps.pushQueue,
+    { accountId: order.page.accountId, ...receiptPush({ number: order.number, customerName: order.customerName, totalCents: order.totalCents, url: `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${order.id}` }) },
+    (details, message) => deps.log?.warn?.({ orderId: order.id, ...details }, message),
+  );
   if (order.page.notifyReceipts) {
     const warn = (error: unknown) =>
       deps.log?.warn?.({ orderId: order.id, err: error instanceof Error ? error.message : String(error) }, 'could not queue the receipt email');

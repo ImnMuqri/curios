@@ -480,3 +480,14 @@
     transition: none;
   }
 }
+
+/* "Send a test" under the device's notification switch, with what happened beside it. */
+.pushTest {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 12.5px;
+}

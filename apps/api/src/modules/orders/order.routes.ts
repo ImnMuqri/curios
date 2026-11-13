@@ -11,10 +11,13 @@ import { cancelOrder, markCompleted, markNotReceived, markPaid, markRefunded } f
 import { uploadReceipt } from './receipt.service.js';
 import { cancelChipBeforeOwnerMove } from './pay-online.service.js';
 import type { PayOnline } from './pay-online.routes.js';
+import type { OwnerPushQueue } from '../../lib/owner-push.js';
 
 export interface OrderRouteOptions {
   /** Injected only by tests; production queues on the app's mail queue. */
   mailQueue?: OrderMailQueue;
+  /** As mailQueue, for the owner's push notifications. */
+  pushQueue?: OwnerPushQueue;
   /** As StoreRouteOptions.store: undefined builds from the environment, null is uploads off, tests pass a stub. */
   store?: AvatarStore | null;
   /** How often the order page's check may ask CHIP about one order; tests pass 0. */
@@ -121,6 +124,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           {
             prisma: app.prisma,
             mailQueue: options.mailQueue ?? app.mailQueue,
+            pushQueue: options.pushQueue ?? app.pushQueue,
             log: request.log,
             appUrl: process.env.APP_URL ?? 'http://localhost:3000',
             apiUrl,
@@ -171,6 +175,7 @@ export const receiptRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (ap
         {
           prisma: app.prisma,
           mailQueue: options.mailQueue ?? app.mailQueue,
+          pushQueue: options.pushQueue ?? app.pushQueue,
           store,
           log: request.log,
           appUrl: process.env.APP_URL ?? 'http://localhost:3000',

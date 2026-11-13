@@ -196,6 +196,25 @@ model Account {
   authTokens      AuthToken[]
   supportThreads  SupportThread[]
   helpQuestions   HelpQuestion[]
+  pushDevices     PushSubscription[]
+}
+
+/// A phone or computer the owner turned notifications on for (Settings, "Notify this device").
+/// The endpoint is the browser's own push address; p256dh and auth are its keys, which
+/// web-push encrypts each message with. Removed when the owner turns it off on that device,
+/// or when the browser's push service answers that the address is gone (404 or 410).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  accountId String
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  /// The browser's own description, so Settings can say "this device" apart from the rest.
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([accountId])
 }
 
 model AuthIdentity {

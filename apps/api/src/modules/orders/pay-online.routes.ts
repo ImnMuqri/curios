@@ -22,6 +22,7 @@ import {
   type PayOnlineDeps,
 } from './pay-online.service.js';
 import type { OrderMailQueue } from './place.service.js';
+import type { OwnerPushQueue } from '../../lib/owner-push.js';
 
 export interface PayOnlineOptions {
   chip?: ShopChipRouteOptions;
@@ -29,6 +30,8 @@ export interface PayOnlineOptions {
   store?: AvatarStore | null;
   /** As OrderRouteOptions.mailQueue, read when the first email is queued (the app's queue exists only later). */
   mailQueue?: () => OrderMailQueue;
+  /** The owner's push queue, read the same way. */
+  pushQueue?: () => OwnerPushQueue | undefined;
   /** How often the order page's check may ask CHIP about one order. Tests pass 0. */
   payStatusEveryMs?: number;
 }
@@ -71,6 +74,7 @@ function payOnlineSettings(options: PayOnlineOptions) {
     mailQueue: options.mailQueue ?? (() => {
       throw new Error('no mail queue');
     }),
+    pushQueue: options.pushQueue,
   };
 }
 

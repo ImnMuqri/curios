@@ -1,5 +1,5 @@
 import { ChipRefusedError, DEAD_PURCHASE_STATUSES, wasPaid, type ChipClient, type ChipPurchase, type PurchaseProduct } from '@curios/billing';
-import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidAndSentOwnerMail, paidOrderMail, paidTwiceMail } from '@curios/core';
+import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidAndSentOwnerMail, paidOrderMail, paidOrderPush, paidTwiceMail } from '@curios/core';
 import { failReason, type FailReason } from '@curios/core/chip-status';
 import { openSecret } from '@curios/core/secret-box';
 import { formatRinggit } from '@curios/core/store';
@@ -23,6 +23,7 @@ import {
   OrderStateError,
 } from './order.errors.js';
 import type { OrderMailQueue } from './place.service.js';
+import { queueOwnerPush, type OwnerPushQueue } from '../../lib/owner-push.js';
 
 type Log = {
   info: (obj: object, msg: string) => void;
@@ -95,6 +96,8 @@ export interface PayOnlineDeps {
   store: AvatarStore | null;
   /** The owner's emails; a function because the queue is built after the settings are read. */
   mailQueue: () => OrderMailQueue;
+  /** The owner's phones and computers, read when the first push is queued; left out (tests), none is. */
+  pushQueue?: () => OwnerPushQueue | undefined;
   methods: MethodsCache;
   lookups: LookupCache;
   log: Log;
@@ -554,10 +557,17 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
         pickupFrom: true,
         pickupTo: true,
         lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
-        page: { select: { notifyOrders: true, account: { select: { email: true } } } },
+        page: { select: { notifyOrders: true, accountId: true, account: { select: { email: true } } } },
       },
     });
-    if (!order?.page.notifyOrders) return;
+    if (!order) return;
+    // The device's own switch, not the email's: queued before the email's switch is read.
+    queueOwnerPush(
+      deps.pushQueue?.(),
+      { accountId: order.page.accountId, ...paidOrderPush({ number: order.number, customerName: order.customerName, totalCents: order.totalCents, kind, url: `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${orderId}` }) },
+      (details, message) => deps.log.warn({ orderId, ...details }, message),
+    );
+    if (!order.page.notifyOrders) return;
     const { method, day } = order;
     const base = { number: order.number, totalCents: order.totalCents, customerName: order.customerName, via: order.paidMethodLabel ?? 'CHIP' };
     const url = `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${orderId}`;

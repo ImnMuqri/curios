@@ -81,6 +81,7 @@ import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.j
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
 import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
 import { topicRoutes } from './modules/topics/topic.routes.js';
+import { pushRoutes, type PushRouteOptions } from './modules/push/push.routes.js';
 import {
   chipRoutes,
   chipSettings,
@@ -120,6 +121,7 @@ export interface AppOverrides {
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
   supportInbound?: SupportInboundRouteOptions;
+  push?: PushRouteOptions;
   admin?: AdminPagesRouteOptions;
   reports?: ReportRouteOptions;
   /** Private storage for digital files; tests pass a disk one rooted in a temp dir. */
@@ -185,6 +187,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     chip: overrides.shopChip,
     store: overrides.orders?.store,
     mailQueue: () => overrides.orders?.mailQueue ?? app.mailQueue,
+    pushQueue: () => overrides.orders?.pushQueue ?? app.pushQueue,
     payStatusEveryMs: overrides.orders?.payStatusEveryMs,
   });
   await app.register(sessionPlugin);
@@ -358,6 +361,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(neverSayRoutes);
     await scope.register(helpRoutes);
     await scope.register(topicRoutes);
+    await scope.register(pushRoutes, overrides.push ?? {});
     await scope.register(ownerLeadRoutes);
     await scope.register(storeRoutes, { ...(overrides.pages ?? {}), privateFiles: overrides.privateFiles });
     await scope.register(pickupRoutes);

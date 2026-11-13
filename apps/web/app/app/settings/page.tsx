@@ -11,6 +11,7 @@ import { Notify } from './notify-emails.js';
 import { SearchIndexing } from './search-indexing.js';
 import { Done, GoogleIcon, KeyIcon, SettingRow } from './setting-row.js';
 import { SignOutButton } from '../sign-out-button.js';
+import { PushDevice } from './push-device.js';
 import { sourcePlace } from '../_ui/source-place.js';
 import { PageHead } from '../_ui/page-head.js';
 import { avatarUrl } from '../../../lib/avatar-url.js';
@@ -174,6 +175,17 @@ export default async function SettingsPage({
                 </p>
                 <div className={styles.list}>
                   <Notify on={notifications} />
+                </div>
+              </section>
+              <section aria-labelledby="push-title">
+                <h2 id="push-title" className={styles.h}>
+                  Notify this device
+                </h2>
+                <p className={styles.note} data-lead="">
+                  A buzz on this phone or computer, as well as or instead of the email. Each device is turned on by itself.
+                </p>
+                <div className={styles.list}>
+                  <PushDevice />
                 </div>
               </section>
             </div>

@@ -238,6 +238,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   'SIGNUPS_CLOSED',
   'READING_PAUSED',
   'PAYMENTS_OFF',
+  // Push notifications: no VAPID keys here (a 503, its own sentence), and a test for a device the
+  // owner has not saved (push.routes.ts).
+  'PUSH_OFF',
+  'PUSH_DEVICE_UNKNOWN',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --
@@ -253,7 +257,7 @@ export const DOMAIN_ERROR_CODES = new Set([
  * purpose, so the message is shown as written rather than replaced with "something failed", and
  * nothing is logged as an error.
  */
-export const SWITCH_CODES = new Set(['SIGNUPS_CLOSED', 'READING_PAUSED', 'PAYMENTS_OFF']);
+export const SWITCH_CODES = new Set(['SIGNUPS_CLOSED', 'READING_PAUSED', 'PAYMENTS_OFF', 'PUSH_OFF']);
 
 /**
  * 5xx codes whose own sentence is safe to show as written: it says what failed and that nothing was

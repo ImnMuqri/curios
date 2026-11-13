@@ -14,11 +14,11 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1141.0",
     "@curios/billing": "workspace:*",
-    "@curios/storage": "workspace:*",
     "@curios/core": "workspace:*",
     "@curios/db": "workspace:*",
     "@curios/embeddings": "workspace:*",
     "@curios/gateway": "workspace:*",
+    "@curios/storage": "workspace:*",
     "@prisma/client": "^6.1.0",
     "@sentry/node": "10.76.2",
     "bullmq": "^5.34.0",
@@ -26,10 +26,12 @@
     "ioredis": "^5.4.2",
     "nodemailer": "^9.0.6",
     "pino": "^9.6.0",
-    "undici": "^7.29.0"
+    "undici": "^7.29.0",
+    "web-push": "3.6.7"
   },
   "devDependencies": {
     "@types/nodemailer": "^8.0.1",
+    "@types/web-push": "3.6.4",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"

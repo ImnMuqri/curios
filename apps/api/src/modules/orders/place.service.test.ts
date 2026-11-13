@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { hashSessionValue, type MailJobData } from '@curios/core';
+import { hashSessionValue, PUSH_QUEUE, type MailJobData, type PushJobData } from '@curios/core';
 import { openDays } from '@curios/core/orders';
 import { buildApp } from '../../app.js';
 import { placeOrder, type PlaceInput } from './place.service.js';
@@ -221,5 +221,25 @@ describe('placing a pickup order at a place and time', () => {
     const shop = await aShop([]);
     const placed = await placeNow(basket(shop));
     expect(await orderOf(placed.token)).toMatchObject({ method: 'PICKUP', pickupPlaceId: null, pickupPlaceName: null, pickupWindowId: null });
+  });
+});
+
+describe("the owner's push notification", () => {
+  // The device's own switch, not "Email me when": an owner with the email off still hears of it.
+  it('queues one for each new order, with the order number and total, the email switch aside', async () => {
+    const shop = await aShop([HOME]);
+    const page = await app.prisma.page.update({ where: { id: shop.pageId }, data: { notifyOrders: false }, select: { accountId: true } });
+    const pushQueue = { add: vi.fn(async (_name: string, _data: PushJobData, _opts?: unknown) => ({})) };
+    const mails = mailQueue.add.mock.calls.length;
+
+    const placed = await placeOrder({ ...(await deps()), pushQueue }, basket(shop, { pickupPlaceId: shop.places[0]!.id }), new Date());
+
+    expect(mailQueue.add.mock.calls.length).toBe(mails);
+    expect(pushQueue.add).toHaveBeenCalledTimes(1);
+    const [name, data] = pushQueue.add.mock.calls[0]!;
+    expect(name).toBe(PUSH_QUEUE);
+    expect(data).toMatchObject({ accountId: page.accountId, title: `New order #${placed.number}`, tag: `order-${placed.number}` });
+    expect(data.body).toContain('RM40');
+    expect(data.url).toMatch(/^https:\/\/curios\.example\/app\/orders\?order=/);
   });
 });

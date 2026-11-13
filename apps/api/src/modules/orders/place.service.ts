@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
+import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, newOrderPush, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
 import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
 import { sealSecret } from '@curios/core/secret-box';
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
@@ -12,6 +12,7 @@ import { InvalidPhoneError } from '../leads/lead.service.js';
 import { StoreBusinessOnlyError } from '../store/store.errors.js';
 import { liveVouchers } from '../store/voucher.service.js';
 import { deliverOrder, queueDeliveryMail } from './deliver.service.js';
+import { queueOwnerPush, type OwnerPushQueue } from '../../lib/owner-push.js';
 import {
   AddressRequiredError,
   EmailRequiredError,
@@ -40,6 +41,8 @@ export interface OrderMailQueue {
 export interface PlaceDeps {
   prisma: PrismaClient;
   mailQueue: OrderMailQueue;
+  /** The owner's phones and computers; left out (tests), no push is queued. */
+  pushQueue?: OwnerPushQueue;
   log?: { warn?: (obj: object, msg: string) => void };
   /** Where the owner's order screen lives, for the email's button. */
   appUrl: string;
@@ -166,6 +169,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         minNoticeDays: true,
         closedDays: true,
         notifyOrders: true,
+        accountId: true,
         account: { select: { email: true } },
       },
     });
@@ -321,6 +325,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       pickup,
       notify: page.notifyOrders,
       ownerEmail: page.account.email,
+      accountId: page.accountId,
     };
     // Above Prisma's 2s/5s defaults: a burst on one shop queues on the row
     // lock, one placement after another, and the last in line must not be
@@ -334,6 +339,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   if (placed.sent) {
     await queueDeliveryMail({ prisma: deps.prisma, mailQueue: deps.mailQueue, secretsKey: deps.secretsKey ?? null, appUrl: deps.appUrl, apiUrl: deps.apiUrl, log: deps.log }, placed.orderId);
   }
+  // The device's own switch, not the email's: queued whatever "Email me when" says.
+  const orderUrl = `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${placed.orderId}`;
+  queueOwnerPush(deps.pushQueue, { accountId: placed.accountId, ...newOrderPush({ number: placed.number, customerName, totalCents: placed.totals.totalCents, url: orderUrl }) }, (details, message) => deps.log?.warn?.({ orderId: placed.orderId, ...details }, message));
   if (placed.notify) {
     const warn = (error: unknown) =>
       deps.log?.warn?.({ orderId: placed.orderId, err: error instanceof Error ? error.message : String(error) }, 'could not queue the new-order email');

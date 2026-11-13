@@ -57,7 +57,7 @@ Source: devDocs/README.md (Definition of done, amended 2026-10-26); dashboard co
 ## Your page (My Curios)
 
 ### page-look · How do I change how my page looks?
-In My Curios. You can change your picture, name and the line people read first, the cover behind your name, your colours (a page colour and one accent colour), how your links look, and the font for your name. The preview beside it shows your page as visitors see it.
+In My Curios. You can change your picture, name and the line people read first, the cover behind your name, your colours (a page colour and one accent colour), how your links look (Soft, High contrast, Chunky or Outline, all in your accent colour: the first link in full, the rest a lighter shade), and the font for your name. The preview beside it shows your page as visitors see it.
 Open: /app/curios
 Source: devDocs/slice-13-build-spec.md; My Curios copy
 
@@ -316,9 +316,34 @@ Open: none
 Source: Settings copy “To change it, use Forgot your password? when you sign in.”
 
 ### acc-emails · How do I change which emails I get?
-In Settings, under Email me when: a new order, a receipt is uploaded, and someone leaves their number. Your plan ending is always emailed (3 days before and on the day) and can’t be turned off. New orders and leads still show in the dashboard with the emails off.
+In Settings, under Email me when: a new order, a receipt is uploaded, and someone leaves their number. Your plan ending is always emailed (3 days before and on the day) and can’t be turned off. New orders and leads still show in the dashboard with the emails off. To get a notification on your phone as well, or instead, turn on Notify this device in Settings.
 Open: /app/settings
 Source: apps/web/app/app/settings/notify-emails.tsx; settings/page.tsx
+
+### acc-home-screen · How do I put Curios on my phone’s home screen?
+On Android, open curios.my in Chrome, tap the ⋮ menu, then Add to Home screen (or Install app). On iPhone, open curios.my in Safari, tap the Share button (the square with an arrow), then Add to Home Screen, then Add. On a computer, Chrome and Edge show an install icon at the end of the address bar. Curios then opens from its own icon, straight to your dashboard, without the browser bar. On iPhone you sign in once more inside it.
+Open: none
+Source: apps/web/public/manifest.webmanifest (start_url /app, standalone); app/app/pwa-metadata.ts
+
+### acc-push · How do I get notifications on my phone?
+In Settings, under Notify this device, turn the switch on and allow notifications when your phone asks. You’ll get one for each new order, each online payment, each receipt uploaded and each person who leaves their number, and tapping it opens that order or Leads. Tap Send a test to check it works. Turn it on on each phone or computer you want, as each one has its own switch. It works whatever your email switches are set to. On iPhone, put Curios on your Home Screen first and open it from there.
+Open: /app/settings
+Source: apps/web/app/app/settings/push-device.tsx; apps/api/src/modules/push/push.routes.ts; packages/core/src/push.ts
+
+### acc-push-iphone · Why can’t I turn on notifications on my iPhone?
+Apple only lets websites send notifications once they are on your Home Screen, on iOS 16.4 or newer. In Safari, tap Share, then Add to Home Screen, then open Curios from its new icon, sign in, and turn on Notify this device in Settings. In Safari’s own tab the switch is not offered.
+Open: /app/settings
+Source: apps/web/lib/push-client.ts (ios-install); push-device.tsx
+
+### acc-push-missing · I turned notifications on but nothing arrives.
+Tap Send a test in Settings under Notify this device. If the test doesn’t arrive, check that notifications for Curios (or your browser) are allowed in your phone’s settings, and that Do Not Disturb or a Focus mode isn’t on. If Settings says notifications are blocked, allow them for curios.my in your browser’s settings and come back. After removing Curios from your Home Screen or clearing your browser, turn the switch on again. The emails still come as set, so you won’t miss an order meanwhile.
+Open: /app/settings
+Source: apps/web/app/app/settings/push-device.tsx (denied, Send a test); apps/workers/src/push/push.worker.ts (gone devices removed)
+
+### acc-offline · Does Curios work without internet?
+No. Your orders, stock and chats are always live, so Curios needs a connection and never shows you an old copy that might have changed. When you’re back online, open it again.
+Open: none
+Source: apps/web/public/sw.js (no offline cache, on purpose)
 
 ### acc-dark · Is there a dark mode?
 Yes. The theme switch in the top bar (in the account menu on a phone) has Match device, Light and Dark. It follows your device until you pick one.

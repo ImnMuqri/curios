@@ -8,11 +8,13 @@ import {
   INGEST_QUEUE,
   LEAD_QUEUE,
   MAIL_QUEUE,
+  PUSH_QUEUE,
   SUPPORT_INBOUND_QUEUE,
   type GroupJobData,
   type IngestJobData,
   type LeadJobData,
   type MailJobData,
+  type PushJobData,
   type SupportInboundJobData,
 } from '@curios/core';
 
@@ -20,6 +22,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     ingestQueue: Queue<IngestJobData>;
     mailQueue: Queue<MailJobData>;
+    pushQueue: Queue<PushJobData>;
     leadQueue: Queue<LeadJobData>;
     groupQueue: Queue<GroupJobData>;
     supportInboundQueue: Queue<SupportInboundJobData>;
@@ -36,12 +39,14 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
   const connection = new IORedis(url, { maxRetriesPerRequest: null });
   const queue = new Queue<IngestJobData>(INGEST_QUEUE, { connection });
   const mailQueue = new Queue<MailJobData>(MAIL_QUEUE, { connection });
+  const pushQueue = new Queue<PushJobData>(PUSH_QUEUE, { connection });
   const leadQueue = new Queue<LeadJobData>(LEAD_QUEUE, { connection });
   const groupQueue = new Queue<GroupJobData>(GROUP_QUEUE, { connection });
   const supportInboundQueue = new Queue<SupportInboundJobData>(SUPPORT_INBOUND_QUEUE, { connection });
 
   app.decorate('ingestQueue', queue);
   app.decorate('mailQueue', mailQueue);
+  app.decorate('pushQueue', pushQueue);
   app.decorate('leadQueue', leadQueue);
   app.decorate('groupQueue', groupQueue);
   app.decorate('supportInboundQueue', supportInboundQueue);
@@ -53,11 +58,12 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
     // booting. Bounded, because with maxRetriesPerRequest: null readiness
     // never arrives during a Redis outage, and a shutdown must not hang on it.
     await Promise.race([
-      Promise.allSettled([queue, mailQueue, leadQueue, groupQueue, supportInboundQueue].map((q) => q.waitUntilReady())),
+      Promise.allSettled([queue, mailQueue, pushQueue, leadQueue, groupQueue, supportInboundQueue].map((q) => q.waitUntilReady())),
       sleep(QUEUE_READY_ON_CLOSE_MS, undefined, { ref: false }),
     ]);
     await queue.close();
     await mailQueue.close();
+    await pushQueue.close();
     await leadQueue.close();
     await groupQueue.close();
     await supportInboundQueue.close();

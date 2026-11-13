@@ -3,7 +3,7 @@ import { createSettingsReader, prisma } from '@curios/db';
 import { createAnthropicGateway } from '@curios/gateway';
 import { createOpenAiEmbedder, EMBEDDING_BATCH_TIMEOUT_MS } from '@curios/embeddings';
 import { Queue } from 'bullmq';
-import { BILLING_QUEUE, HOUSEKEEPING_QUEUE, MAIL_QUEUE, type MailJobData } from '@curios/core';
+import { BILLING_QUEUE, HOUSEKEEPING_QUEUE, MAIL_QUEUE, PUSH_QUEUE, type MailJobData, type PushJobData } from '@curios/core';
 import { resolveApiUrl } from '@curios/core/digital';
 import { paymentSecretsKey } from '@curios/core/secret-box';
 import { onShutdown } from '@curios/core/shutdown';
@@ -14,6 +14,7 @@ import { createObjectRemover } from './lib/storage.js';
 import { createIngestionWorker } from './ingestion/ingestion.worker.js';
 import { createMailWorker, recordFinalFailure } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
+import { createPushWorker, createWebPushSender, pushKeysFromEnv, type PushSender } from './push/push.worker.js';
 import { createGroupWorker } from './grouping/group.worker.js';
 import { createSupportInboundWorker } from './support/inbound.js';
 import { createResendClient } from './support/resend-client.js';
@@ -117,12 +118,15 @@ const leadConnection = redis();
 // the mail queue the mail worker above is already draining.
 const mailProducer = new Queue<MailJobData>(MAIL_QUEUE, { connection: redis() });
 queues.push(mailProducer);
+const pushProducer = new Queue<PushJobData>(PUSH_QUEUE, { connection: redis() });
+queues.push(pushProducer);
 const leadWorker = createLeadWorker({
   appUrl,
   connection: leadConnection,
   prisma,
   gateway,
   mailQueue: mailProducer,
+  pushQueue: pushProducer,
   log,
   settings,
 });
@@ -159,7 +163,15 @@ groupWorker.on('error', (err) => log.error({ err: err.message }, 'group worker e
 const housekeepingWorker = createHousekeepingWorker({ connection: redis(), prisma, removeObjects: createObjectRemover(), embedder, reminders: { mailQueue: mailProducer, appUrl, apiUrl, secretsKey: paymentSecretsKey() }, log });
 housekeepingWorker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'housekeeping job failed'));
 housekeepingWorker.on('error', (err) => log.error({ err: err.message }, 'housekeeping worker error'));
-workers.push(worker, mailWorker, leadWorker, groupWorker, housekeepingWorker);
+// Push notifications to owners' devices. Always drained, so jobs never pile up in Redis: with no
+// VAPID keys (development) each one is dropped and logged instead of sent.
+const pushKeys = pushKeysFromEnv();
+if (!pushKeys) log.warn('No VAPID keys: push notifications are off; queued pushes are dropped.');
+const pushSender: PushSender = pushKeys ? createWebPushSender(pushKeys) : { send: async () => log.info('push dropped: no VAPID keys') };
+const pushWorker = createPushWorker({ connection: redis(), prisma, sender: pushSender, log });
+pushWorker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'push failed'));
+pushWorker.on('error', (err) => log.error({ err: err.message }, 'push worker error'));
+workers.push(worker, mailWorker, leadWorker, groupWorker, housekeepingWorker, pushWorker);
 const housekeepingQueue = new Queue(HOUSEKEEPING_QUEUE, { connection: redis() });
 queues.push(housekeepingQueue);
 await scheduleHousekeepingJobs(housekeepingQueue);
