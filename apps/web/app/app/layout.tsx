@@ -14,6 +14,8 @@ import { resolveOwner } from './session.js';
 import { parseTheme, THEME_COOKIE } from './theme.js';
 import { BELL_COOKIE, parseBellSeen } from './bell-seen.js';
 
+export { metadata, viewport } from './pwa-metadata.js';
+
 /**
  * The second of the three session layers, and the first that proves anything.
  *
