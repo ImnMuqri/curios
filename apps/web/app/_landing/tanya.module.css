@@ -256,6 +256,28 @@
   }
 }
 
+/* The smallest phones: the logo, Sign in and the button only fit a step smaller. */
+@media (max-width: 380px) {
+  .navpill {
+    padding-left: 14px;
+  }
+
+  .brand {
+    --l-wordmark: 22px;
+    flex: none;
+    margin-right: 0;
+  }
+
+  .navright a {
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .navright .navcta {
+    padding: 0 14px;
+  }
+}
+
 /* ---- The page card ---- */
 
 .pc {
@@ -705,6 +727,11 @@
 @media (max-width: 560px) {
   .hero {
     padding: 120px 0 72px;
+  }
+
+  /* Under the field on a phone, the button is as wide as the field, not a stub beside nothing. */
+  .claim > .btn {
+    flex: 1 1 100%;
   }
 
   .deckStage {
@@ -5047,6 +5074,11 @@
 
   .endField input {
     height: 54px;
+  }
+
+  .endButton {
+    flex: 1 1 100%;
+    margin: 12px 0 0;
   }
 }
 

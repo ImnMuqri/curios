@@ -7,6 +7,8 @@
   font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
+  /* One word: squeezed in a narrow bar it broke into "curi" over "os". */
+  white-space: nowrap;
   color: currentColor;
 }
 
