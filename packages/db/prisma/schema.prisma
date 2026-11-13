@@ -106,6 +106,8 @@ enum TileSize {
 enum PageStyle {
   SOFT
   CONTRAST
+  CHUNKY
+  OUTLINE
 }
 
 /// The page's background band, from the palette. PAPER is the look every page had before there was a choice.

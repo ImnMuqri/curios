@@ -20,7 +20,7 @@ const accents = () => screen.getByRole('group', { name: 'Button colour' });
  * to whatever a static prop said. This stands in for that caller, the same
  * way profile-editor.test.tsx's `Controlled` does for ProfileEditor. */
 function Controlled({ save }: { save: (patch: AppearancePatch) => Promise<unknown> }) {
-  const [state, setState] = useState<{ background: 'PAPER' | 'MUDA' | 'KUNING' | 'BIRU' | 'INK' | 'CUSTOM'; backgroundColor: string | null; style: 'SOFT' | 'CONTRAST'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
+  const [state, setState] = useState<{ background: 'PAPER' | 'MUDA' | 'KUNING' | 'BIRU' | 'INK' | 'CUSTOM'; backgroundColor: string | null; style: 'SOFT' | 'CONTRAST' | 'CHUNKY' | 'OUTLINE'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
     background: 'PAPER', backgroundColor: null,
     style: 'SOFT',
     accentColor: '#2340c8',
@@ -42,6 +42,16 @@ describe('AppearanceEditor', () => {
     await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
     expect(props.onChange).toHaveBeenCalledWith({ style: 'CONTRAST' });
     expect(props.save).toHaveBeenCalledWith({ style: 'CONTRAST' });
+  });
+
+  it('offers four button styles, Chunky and Outline among them', async () => {
+    const props = setup();
+    const group = screen.getByRole('group', { name: 'Button style' });
+    expect(within(group).getAllByRole('button')).toHaveLength(4);
+    await userEvent.click(screen.getByRole('button', { name: /^Chunky/ }));
+    expect(props.save).toHaveBeenCalledWith({ style: 'CHUNKY' });
+    await userEvent.click(screen.getByRole('button', { name: /^Outline/ }));
+    expect(props.save).toHaveBeenCalledWith({ style: 'OUTLINE' });
   });
 
   it('picks a preset accent', async () => {

@@ -10,7 +10,7 @@
 export const TILE_SIZES = ['SMALL', 'WIDE', 'TALL', 'BIG'] as const;
 export type TileSize = (typeof TILE_SIZES)[number];
 
-export const PAGE_STYLES = ['SOFT', 'CONTRAST'] as const;
+export const PAGE_STYLES = ['SOFT', 'CONTRAST', 'CHUNKY', 'OUTLINE'] as const;
 export type PageStyle = (typeof PAGE_STYLES)[number];
 
 export const HEADING_FONTS = ['JAKARTA', 'BRICOLAGE', 'FRAUNCES', 'SPACE_GROTESK', 'DM_SERIF', 'OUTFIT'] as const;

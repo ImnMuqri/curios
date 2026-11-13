@@ -20,10 +20,21 @@
   --veil-1: color-mix(in srgb, var(--page-fg) 6%, transparent);
   --veil-2: color-mix(in srgb, var(--page-fg) 10%, transparent);
   --veil-3: color-mix(in srgb, var(--page-fg) 14%, transparent);
-  /* A pale page's pills are white; a dark page's are its own text, faintly. */
-  --pill: var(--card);
+  /*
+   * The buttons. The first link (and the shop) wears the accent in full; every other link is a
+   * quieter version of it: the accent let into the pill's base, white on a pale page and the
+   * page's own colour on a dark one. Each style below only moves these knobs.
+   */
+  --quiet-base: var(--card);
+  --quiet: 16%;
+  --pill: color-mix(in oklab, var(--accent) var(--quiet), var(--quiet-base));
   --pill-fg: var(--page-fg);
   --pill-ring: var(--veil-1);
+  --lead-ring: var(--veil-2);
+  --btn-radius: 999px;
+  --btn-edge: 0px;
+  --btn-edge-color: transparent;
+  --btn-shadow: none;
   --warm: color-mix(in srgb, var(--accent) 20%, var(--card));
   --ask-border: transparent;
   --ask-tint: color-mix(in srgb, var(--accent) 16%, var(--paper));
@@ -74,22 +85,56 @@
 }
 
 /*
- * On a dark page, and on any colour the owner picked, the pills are the page's own text at low
- * strength (glass), not white: on a custom colour a white pill sat on it like a sticker, where the
- * glass takes the colour in. The built-in light grounds keep their white pills, as the board draws.
+ * On a dark page, and on any colour the owner picked, the quiet pills tint the page's own colour
+ * rather than white: on a custom colour a white pill sat on it like a sticker. It takes more of the
+ * accent to show against a dark ground. The built-in light grounds keep their white base.
  */
 .page:is([data-bg='BIRU'], [data-bg='INK'], [data-bg='CUSTOM']) {
   --veil-1: color-mix(in srgb, var(--page-fg) 8%, transparent);
-  --pill: var(--veil-3);
+  --quiet-base: var(--page-bg);
+  --quiet: 30%;
   --pill-ring: var(--veil-1);
 }
 
-/* High contrast: solid pills in the page's text colour, bold rings. */
+/*
+ * High contrast: solid pills, bold rings, all in the owner's colour. It once drew them in the
+ * page's text colour, so on a blue page every link but the first came out white, whatever was picked.
+ */
 .page[data-style='CONTRAST'] {
-  --pill: var(--page-fg);
-  --pill-fg: var(--page-bg);
-  --pill-ring: color-mix(in srgb, var(--page-fg) 22%, transparent);
+  --pill: color-mix(in oklab, var(--accent) calc(var(--quiet) + 20%), var(--quiet-base));
+  --pill-ring: color-mix(in oklab, var(--accent) 55%, var(--page-fg));
+  --lead-ring: color-mix(in oklab, var(--accent) 55%, var(--page-fg));
   --ask-border: var(--page-fg);
+}
+
+/* Chunky: a squarer button with a dark outline and a hard shadow, like a key you press. */
+.page[data-style='CHUNKY'] {
+  --btn-radius: 12px;
+  --btn-edge: 2px;
+  --btn-edge-color: var(--page-fg);
+  --btn-shadow: 4px 4px 0 var(--page-fg);
+  --pill-ring: transparent;
+  --lead-ring: transparent;
+}
+
+/* Outline: see-through past the first link, with only a coloured edge. */
+.page[data-style='OUTLINE'] {
+  --btn-radius: 12px;
+  --btn-edge: 2px;
+  --btn-edge-color: color-mix(in oklab, var(--accent) 70%, var(--page-fg));
+  --lead-edge-color: var(--accent);
+  --pill: transparent;
+  --pill-ring: transparent;
+  --lead-ring: transparent;
+}
+
+/* Chunky and Outline have no ring; Chunky keeps room for its shadow. */
+.page:is([data-style='CHUNKY'], [data-style='OUTLINE']) :is(.link, .shopLink) {
+  padding: 0;
+}
+
+.page[data-style='CHUNKY'] :is(.link, .shopLink) {
+  padding: 0 4px 4px 0;
 }
 
 :is(.page, .theme)[data-on-accent='dark'] { --on-accent: var(--ink); }
@@ -369,7 +414,7 @@
 .link {
   display: block;
   padding: 5px;
-  border-radius: 999px;
+  border-radius: var(--btn-radius);
   background: var(--pill-ring);
   color: var(--pill-fg);
   text-decoration: none;
@@ -378,8 +423,10 @@
 .link > span {
   display: block;
   padding: 14px 18px;
-  border-radius: 999px;
+  border: var(--btn-edge) solid var(--btn-edge-color);
+  border-radius: var(--btn-radius);
   background: var(--pill);
+  box-shadow: var(--btn-shadow);
   font-weight: 600;
   text-align: center;
   overflow-wrap: anywhere;
@@ -389,14 +436,10 @@
 .shopLink {
   display: block;
   padding: 5px;
-  border-radius: 999px;
-  background: var(--veil-2);
+  border-radius: var(--btn-radius);
+  background: var(--lead-ring);
   color: var(--on-accent);
   text-decoration: none;
-}
-
-.page[data-style='CONTRAST'] .shopLink {
-  background: var(--page-fg);
 }
 
 .shopIn {
@@ -404,8 +447,10 @@
   align-items: center;
   gap: 12px;
   padding: 7px 14px 7px 7px;
-  border-radius: 999px;
+  border: var(--btn-edge) solid var(--lead-edge-color, var(--btn-edge-color));
+  border-radius: var(--btn-radius);
   background: var(--accent);
+  box-shadow: var(--btn-shadow);
 }
 
 .shopPhotos {
@@ -502,20 +547,13 @@
 /* The first link is the one the owner most wants pressed: it wears the accent. */
 .links > li:first-child .link,
 .links[data-shop] > li:nth-child(2) .link {
-  background: var(--veil-2);
+  background: var(--lead-ring);
   color: var(--on-accent);
 }
 
-.page[data-style='CONTRAST'] .links > li:first-child .link,
-.page[data-style='CONTRAST'] .links[data-shop] > li:nth-child(2) .link {
-  background: var(--page-fg);
-}
-
-.links > li:first-child .link > span {
-  background: var(--accent);
-}
-
+.links > li:first-child .link > span,
 .links[data-shop] > li:nth-child(2) .link > span {
+  border-color: var(--lead-edge-color, var(--btn-edge-color));
   background: var(--accent);
 }
 
@@ -526,6 +564,17 @@
 
   a.link:hover {
     transform: scale(1.015);
+  }
+
+  /* Chunky lifts off its shadow on hover and presses into it on tap. */
+  .page[data-style='CHUNKY'] :is(a.link, a.shopLink):hover {
+    --btn-shadow: 5px 5px 0 var(--page-fg);
+    transform: translate(-1px, -1px);
+  }
+
+  .page[data-style='CHUNKY'] :is(a.link, a.shopLink):active {
+    --btn-shadow: 1px 1px 0 var(--page-fg);
+    transform: translate(3px, 3px);
   }
 }
 

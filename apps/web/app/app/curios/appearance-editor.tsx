@@ -48,6 +48,8 @@ const BACKGROUND_NAMES: Record<PageBackground, string> = {
 const STYLES: { value: PageStyle; name: string; note: string }[] = [
   { value: 'SOFT', name: 'Soft', note: 'Light pills, gentle edges' },
   { value: 'CONTRAST', name: 'High contrast', note: 'Solid pills, bold edges' },
+  { value: 'CHUNKY', name: 'Chunky', note: 'Outlined, with a hard shadow' },
+  { value: 'OUTLINE', name: 'Outline', note: 'See-through, coloured edge' },
 ];
 
 function Tick() {

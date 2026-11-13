@@ -45,8 +45,10 @@ describe('BentoPage', () => {
   // package's vitest config has no `css: true`.
   it('draws every link as a pill, the first in the accent', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
-    expect(css).toMatch(/\.link > span\s*\{[^}]*border-radius:\s*999px;/s);
-    expect(css).toMatch(/\.links > li:first-child \.link > span\s*\{[^}]*background:\s*var\(--accent\);/s);
+    // Pill by default; Chunky and Outline square it off through the same knob.
+    expect(css).toMatch(/^\.page\s*\{[^}]*--btn-radius:\s*999px;/m);
+    expect(css).toMatch(/\.link > span\s*\{[^}]*border-radius:\s*var\(--btn-radius\);/s);
+    expect(css).toMatch(/\.links > li:first-child \.link > span,[^{]*\{[^}]*background:\s*var\(--accent\);/s);
   });
 
   it('carries the style, accent and readable text colour to the stylesheet', () => {
@@ -196,14 +198,35 @@ describe('BentoPage', () => {
   });
 });
 
-describe('BentoPage High contrast', () => {
-  // Solid pills in the page's own text colour, with a bold ring: on a pale
-  // page that is ink, on a dark one paper, so it never needs a fixed colour.
-  it("draws solid pills in the page's text colour", () => {
-    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
-    const contrast = css.match(/\.page\[data-style='CONTRAST'\]\s*\{([^}]*)\}/)?.[1] ?? '';
-    expect(contrast).toMatch(/--pill:\s*var\(--page-fg\)/);
-    expect(contrast).toMatch(/--pill-fg:\s*var\(--page-bg\)/);
+describe('BentoPage button styles', () => {
+  const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+  const block = (style: string) => css.match(new RegExp(`\\.page\\[data-style='${style}'\\]\\s*\\{([^}]*)\\}`))?.[1] ?? '';
+
+  // Every link after the first is a quieter version of the owner's colour, in every style.
+  it("fills the other links with a quieter version of the owner's colour", () => {
+    const page = css.match(/^\.page\s*\{([^}]*)\}/m)?.[1] ?? '';
+    expect(page).toMatch(/--pill:\s*color-mix\([^;]*var\(--accent\)/);
+  });
+
+  // The owner's report: on High contrast every link but the first came out white (the page's
+  // text colour on a blue page), whatever colour they picked. The colour is theirs now.
+  it("never paints High contrast pills or rings in the page's text colour alone", () => {
+    const contrast = block('CONTRAST');
+    expect(contrast).toMatch(/--pill:\s*color-mix\([^;]*var\(--accent\)/);
+    expect(contrast).toMatch(/--lead-ring:\s*color-mix\([^;]*var\(--accent\)/);
+    expect(contrast).not.toMatch(/--pill:\s*var\(--page-fg\)/);
+  });
+
+  it('draws Chunky as a squarer button with an outline and a hard shadow', () => {
+    const chunky = block('CHUNKY');
+    expect(chunky).toMatch(/--btn-radius:\s*1\dpx/);
+    expect(chunky).toMatch(/--btn-shadow:\s*\dpx \dpx 0/);
+  });
+
+  it('draws Outline see-through, with only an edge, past the first link', () => {
+    const outline = block('OUTLINE');
+    expect(outline).toMatch(/--pill:\s*transparent/);
+    expect(outline).toMatch(/--btn-edge-color:\s*color-mix\([^;]*var\(--accent\)/);
   });
 });
 
@@ -250,8 +273,8 @@ describe('BentoPage, a custom background', () => {
   it('gives a dark custom colour light text, and every custom colour glass pills, read from the stylesheet', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\[data-bg='CUSTOM'\]\[data-bg-text='light'\]\s*\{[^}]*--page-fg:\s*var\(--paper\)/);
-    // On any custom colour, light or dark, the pills are the page's own text, faintly, not white (DEVIATIONS 218).
-    expect(css).toMatch(/\[data-bg='CUSTOM'\]\)\s*\{[^}]*--pill:\s*var\(--veil-3\)/s);
+    // On any custom colour, light or dark, the quiet pills tint the page's own colour, not white (DEVIATIONS 218).
+    expect(css).toMatch(/\[data-bg='CUSTOM'\]\)\s*\{[^}]*--quiet-base:\s*var\(--page-bg\)/s);
   });
 });
 
