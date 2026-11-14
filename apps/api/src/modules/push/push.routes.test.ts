@@ -100,6 +100,6 @@ describe('the push routes', () => {
     const owner = await anOwner();
     const res = await call(off, 'PUT', '/push/devices', owner.cookie, aDevice());
     expect(res.statusCode).toBe(503);
-    expect(res.json()).toMatchObject({ code: 'PUSH_OFF' });
+    expect(res.json()).toMatchObject({ error: { code: 'PUSH_OFF' } });
   });
 });
