@@ -6,6 +6,108 @@ dashboard module.
 
 Implement **one module at a time** and compare against the screenshots after each one. Where the build departs from a board, it is recorded in `DEVIATIONS.md`.
 
+## Start here: the calm redesign (14 Nov 2026)
+
+The whole product was redesigned in a calmer style, and **these four boards replace the older ones**. Build from them. Where this section and older notes below disagree, this section wins.
+
+| New board | Replaces | Screens |
+|---|---|---|
+| `Landing2` | `Main`, `TanyaJe` | `Calm-Landing.*.jpg` |
+| `Site` (sign in, sign up, check your email, verify, forgot, reset, bad link, 404, error, unavailable, report, terms) | `SignIn`, `SignUp`, `System` | `Calm-Site-<screen>.*.jpg` |
+| `Dash` (every app page, plus help, account menu, notifications, plan banners, payment notice, phone menu, dark mode) | `MyCurios`, `Store`, `Orders`, `Questions`, `Leads`, `Review`, `Knowledge`, `Billing`, `Settings`, `Help`, `Alerts`, the 2 Nov payment result pages | `Calm-Dash-<page>[-dark].*.jpg` |
+| `More` (onboarding, customer pages, all ten emails) | `Onboarding`, `Public`, `Emails` | `Calm-More-<screen>.*.jpg` |
+
+`Admin` is unchanged. The old boards stay in `boards/` for reference only. On the canvas they sit lower down, titled "Old ·".
+
+These four boards are plain HTML with the behaviour in vanilla JS inside `boot()`. They do not use `{{ }}`, `<sc-if>` or `<sc-for>`. The copy is in the markup. The bottom pill bars on `Site` and `More`, and the "Plan state" picker on `Dash`, are canvas-only switchers. **Do not build them.**
+
+### Style rules
+
+- **Look:** quiet and flat. Warm off-white page, white cards with a 1px line, black pill buttons, little colour. Colour only goes where it carries meaning (status tags, money, stops).
+- **Font:** Inter on the landing, auth, onboarding and the app. Headings use weight 600 and -0.045em tracking (big titles), body text 400–500. This replaces IBM Plex Sans from "Rules that apply everywhere", and Bricolage on the landing. Mono is still used for codes and handles.
+- **Highlight only words that mean something.** On auth, only "free" is highlighted. No decorative highlights.
+- **Corners, one rule everywhere:**
+  - Anything you click or type into is a full pill (999px): buttons, inputs, chips, tabs, menu items.
+  - Containers are 16px: cards, panels, popovers, sheets, banners, tables.
+  - Circles stay circles: avatars, icon buttons, badges.
+  - Grouped fields share one box, like Name and Bio on My Curios.
+- **Tokens (light):**
+
+  | Token | Value | Use |
+  |---|---|---|
+  | `--bg` | `#fbfaf7` | page |
+  | surface | `#ffffff` | cards, panels |
+  | `--ink` | `#1d1d1b` | text, primary buttons |
+  | `--mut` | `#6f6d68` | secondary text |
+  | `--line` | `#ece9e3` | dividers, card lines |
+  | `--soft` | `#f4f2ed` | hover, quiet fills |
+  | input ring | `#e2ded6` | inset 1px on inputs and pills |
+  | badge | `#b5294e` | counts on the bell, menu and dock |
+
+  Status tags: `t-ok` green, `t-wait` amber, `t-new` blue, `t-grey`, `t-red`.
+- **Dark mode** is switched from the account menu and remembered per device. It is built for the app (`Dash`), and the same mapping applies anywhere else later:
+
+  | Light | Dark |
+  |---|---|
+  | page `#fbfaf7` | `#151514` |
+  | surface `#ffffff` | `#1f1f1d` |
+  | soft `#f4f2ed` | `#262624` |
+  | line `#ece9e3` | `#2e2d2a` |
+  | input ring `#e2ded6` | `#3a3936` |
+  | ink `#1d1d1b` | `#f2f0ea` |
+  | muted `#6f6d68` | `#a3a09a` |
+  | primary button: ink bg, white text | `#f2f0ea` bg, `#151514` text |
+  | pastel tag fills | the same hue, dark (for example green `#e6f3ec` → `#1f3928`) |
+
+  The live preview of the owner's page, and the customer pages, keep the owner's own theme in dark mode.
+- **Motion:** small and springy. Screens fade up 8px. Popovers scale from 0.98. Lists stagger in. Everything respects `prefers-reduced-motion`.
+- **Peek** (the mascot) is alive everywhere he appears: his eyes follow the pointer, and every few seconds he does a small habit (blink, tilt, squish, hop, little wave). On auth he covers his eyes with his hands **only while a password is being typed**. Happy or sad Peek goes on result states.
+
+### App frame (`Dash`)
+
+- **Desktop:** a sidebar of pill links. The Kek Lina card at the top of the sidebar opens the **account menu**:
+  - name and email
+  - conversations used this month, and the plan with a Manage link to Billing
+  - Settings, Help & support, Dark mode, Sign out
+- **Top bar:** Help, and the bell with a count.
+- **Notifications** open from the bell as a popover, or a bottom sheet on phone. They show "Waiting on you" (orders, questions, leads, facts) and "Heads up" (plan alerts). Each row opens its page. "Mark all as read" clears only the badge, and items stay until they are done. The empty state reads "Nothing needs you right now."
+- **Phone (under 1100px):** the sidebar hides and a floating pill menu sits at the bottom.
+  - Tabs: Page, Store, Orders, Questions, More. Only the active tab shows its label.
+  - One spring drives the black pill and the tab widths, and the pill's leading edge moves faster than its trailing edge.
+  - The icon shrinks a little on press.
+  - More opens a sheet whose items stagger in.
+  - The menu hides on scroll down and comes back on scroll up.
+- **Help panel:** a 420px panel from the right, or a bottom sheet on phone.
+  - It starts with a Peek greeting and common questions, then answers in chat.
+  - Each answer shows its source in the guide with a button to that screen, "Did this help?", and "Still stuck? Email support".
+  - The behaviour is the same as in the 12 Nov section below.
+- **Plan banners:** one slot under the page title, 16px corners, with an icon or count badge, title, one line, one button and a ×. There are three tones: info (blue), warn (amber), stop (red).
+
+  | Plan state | Banner | Page |
+  |---|---|---|
+  | 1 or 2 of 3 free leads used | info | Leads |
+  | free leads used | warn | Leads |
+  | near the chat limit | warn | Questions |
+  | free orders used | stop | Orders |
+  | plan ended | stop | Billing |
+
+- **Payment result (owner pays Curios):** no result page and no modal. They come back to Billing and a black pill notice rises from the bottom.
+  - **Paid:** "Paid RM49 · Business runs until 2 Jan 2027" with See receipt. The plan card shows the new date, and the new payment row comes in tinted green.
+  - **Failed:** "Payment didn’t go through · Nothing was charged" with Try again.
+  - It hides itself after 7 seconds.
+  - This replaces the subscription half of "Payment result pages (2 Nov 2026)".
+- **Billing usage boxes** take only the height they need. They do not stretch to match the plan card.
+
+### Onboarding, customer pages, emails (`More`)
+
+- **Onboarding:** 4 steps (claim your page, what is this page for, teach it, done reading), centred, in the landing-hero style with a step bar at the top.
+- **Customer pages:** the page, Ask chat (with product cards and the "message you back" card), shop, product, checkout, paid, payment failed, and the FAQ page. They always use the owner's theme. Kek Lina's maroon is only the sample.
+- **Emails:** one layout for all ten.
+  - A white card on a warm background, the logo (or the shop name for emails to customers), a small kicker, the title, a status tag, a short paragraph, an item card or key-value rows, one black pill button, and a small footer.
+  - Owner emails: new order, paid order, receipt to check, new lead, digital sale.
+  - Customer emails: digital delivery, class reminder.
+  - Account emails: confirm email, reset password, already have an account.
+
 ## What is in here
 
 | Path | What it is |
