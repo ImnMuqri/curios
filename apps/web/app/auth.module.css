@@ -31,6 +31,7 @@
   --field-radius: var(--r-pill);
   --field-area-radius: var(--r-box);
   --field-reveal-radius: 50%;
+  --callout-radius: var(--r-box);
   display: flex;
   min-height: 100dvh;
   background: var(--paper);
@@ -142,7 +143,7 @@
   color: var(--ink);
 }
 
-/* "Last used": a biru pill, on the Google button's top edge or after "or with email". */
+/* "Last used": the t-new tag, on the Google button's top edge or after "or with email". */
 .lastUsed {
   padding: 2px 8px;
   border-radius: 999px;
@@ -245,7 +246,7 @@
   font-weight: 500;
 }
 
-/* The submit: a biru pill, full width. */
+/* The submit: the black action pill, full width. Its hover is the Button hook's (--button-primary-hover), so a busy, disabled submit keeps its fill. */
 .content button[type='submit'] {
   width: 100%;
   min-height: 54px;
@@ -258,10 +259,6 @@
   font-size: 16px;
   font-weight: 600;
   transition: background-color 160ms ease;
-}
-
-.content button[type='submit']:hover {
-  background: var(--l-biru-700);
 }
 
 .switch {

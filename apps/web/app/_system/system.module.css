@@ -26,6 +26,7 @@
   --field-radius: var(--r-pill);
   --field-area-radius: var(--r-box);
   --field-reveal-radius: 50%;
+  --callout-radius: var(--r-box);
   position: relative;
   display: flex;
   flex-direction: column;
@@ -207,7 +208,7 @@
 }
 
 .meter[data-strength='3'] i:nth-child(-n + 3) {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .meter[data-strength='4'] i {
@@ -231,8 +232,8 @@
   margin-top: 22px;
   border: 0;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
   font: inherit;
   font-weight: 600;
   text-decoration: none;
@@ -243,8 +244,8 @@
 }
 
 .go:hover {
-  background: var(--biru-deep);
-  color: var(--paper);
+  background: var(--action-hover);
+  color: var(--action-fg);
 }
 
 .go[data-ready='false'],
@@ -257,7 +258,7 @@
 }
 
 .go:disabled:hover {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .next {

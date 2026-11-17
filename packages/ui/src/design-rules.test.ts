@@ -196,7 +196,16 @@ describe('the calm rules on the shared pieces', () => {
   const brandMarks = [
     // Peek's face on Help's answers: two eyes on a biru disc.
     'apps/web/app/app/help/help.module.css: .mark',
+    // Happy Peek's art panel on the paid page, drawn on his biru-muda.
+    "apps/web/app/app/billing/result.module.css: .art[data-tone='ok']",
   ];
+
+  /**
+   * A biru fill in any spelling: the token, its deep step, the landing's --l-biru-* ramp and every
+   * --light-biru* alias (a light-locked page is still in the calm look). The theme-following
+   * --biru-muda tint is not matched; it is no action.
+   */
+  const BIRU_FILL = /background(?:-color)?:\s*var\(--(?:biru|biru-deep|l-biru-[\w-]+|light-biru[\w-]*)\)/g;
 
   it('paints primary actions with --action, not --biru, in the app and auth', () => {
     const files = [
@@ -204,12 +213,14 @@ describe('the calm rules on the shared pieces', () => {
         ...shared,
         ...walk('apps/web/app/app', (name) => name.endsWith('.module.css')),
         ...walk('apps/web/app/_auth', (name) => name.endsWith('.css')),
+        // The system shell (.sy: forgot, reset, verify, 404, error) is a calm scope too.
+        ...walk('apps/web/app/_system', (name) => name.endsWith('.module.css')),
       ]),
     ];
     expect(files.length).toBeGreaterThan(30);
     const found = files.flatMap((file) => {
       const css = readFileSync(join(repo, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, (c) => ' '.repeat(c.length));
-      return [...css.matchAll(/background:\s*var\(--biru\)/g)].map((m) => `${file}: ${selectorAt(css, m.index)}`);
+      return [...css.matchAll(BIRU_FILL)].map((m) => `${file}: ${selectorAt(css, m.index)}`);
     });
     expect(found.filter((at) => !brandMarks.includes(at))).toEqual([]);
     // Every allowed mark still exists: a stale entry would let the next biru fill through unseen.

@@ -106,10 +106,33 @@ describe('dashboard dark mode', () => {
     expect(derived).toContain('--biru-deep');
     expect(derived).toContain('--soft');
     expect(derived).toContain('color');
-    // `initial` counts too: it unsets a component hook, so the component falls back to what a customer sees.
+    // A component hook may instead be unset (`initial`): the component then falls back to what a customer
+    // sees. Only a hook may; a colour token must come back as its light value.
+    const hook = /^--(button|field|callout)-/;
     for (const name of derived) {
-      expect(islandRule, name).toMatch(new RegExp(`^\\s*${name}\\s*:\\s*([^;]*var\\(--light-|initial;)`, 'm'));
+      const back = hook.test(name) ? '([^;]*var\\(--light-|initial;)' : '[^;]*var\\(--light-';
+      expect(islandRule, name).toMatch(new RegExp(`^\\s*${name}\\s*:\\s*${back}`, 'm'));
     }
+  });
+
+  it('unsets in the island every component hook the frame gives the calm look', () => {
+    // The calm corners and the black pill's hover are the frame's voice, not the owner's: a Button or a
+    // Field in the preview takes its customer-page fallback, so the island resets each such hook.
+    const calmHooks = [...frameRoot.matchAll(/^\s*(--(?:button|field|callout)-[a-z0-9-]+)\s*:\s*([^;]+);/gm)]
+      .filter(([, name, value]) => name!.includes('radius') || /var\(--(r-|action)/.test(value!))
+      .map(([, name]) => name!);
+    expect(calmHooks).toEqual(
+      expect.arrayContaining([
+        '--button-radius',
+        '--button-primary-hover',
+        '--button-primary-active',
+        '--field-radius',
+        '--field-area-radius',
+        '--field-reveal-radius',
+        '--callout-radius',
+      ]),
+    );
+    for (const name of calmHooks) expect(islandRule, name).toMatch(new RegExp(`^\\s*${name}\\s*:\\s*initial;`, 'm'));
   });
 
   it('keeps no --dark-* token that the calm mapping replaced', () => {

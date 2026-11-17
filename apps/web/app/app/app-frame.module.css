@@ -1330,9 +1330,14 @@ a.menuAlert:hover {
   --callout-info-bg: var(--light-card);
   --callout-info-edge: inset 0 0 0 1px var(--light-line);
   --soft: var(--light-ink-soft);
-  /* initial: the hooks go unset, so a Button in the preview falls back to how a customer sees it. */
+  /* initial: the calm hooks go unset, so a Button, Field or Callout in the preview falls back to how a customer sees it. */
   --button-primary-hover: initial;
   --button-primary-active: initial;
+  --button-radius: initial;
+  --field-radius: initial;
+  --field-area-radius: initial;
+  --field-reveal-radius: initial;
+  --callout-radius: initial;
   color: var(--light-ink);
 }
 

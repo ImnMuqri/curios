@@ -68,6 +68,7 @@
   --field-radius: var(--r-pill);
   --field-area-radius: var(--r-box);
   --field-reveal-radius: 50%;
+  --callout-radius: var(--r-box);
   display: flex;
   min-height: 100vh;
   background: var(--paper);

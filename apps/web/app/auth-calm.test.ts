@@ -61,6 +61,7 @@ describe('the calm scopes read in Inter and set the shared pieces to the corner 
     '--field-radius': 'var(--r-pill)',
     '--field-area-radius': 'var(--r-box)',
     '--field-reveal-radius': '50%',
+    '--callout-radius': 'var(--r-box)',
   };
 
   for (const [file, selector] of scopes) {

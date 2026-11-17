@@ -12,6 +12,10 @@
   animation: prFade 200ms ease both;
   --card: var(--light-card);
   --ink: var(--light-ink);
+  /* The calm action pill, light like the rest of the page whatever the frame's theme. */
+  --action: var(--calm-ink);
+  --action-fg: var(--calm-surface);
+  --action-hover: var(--calm-ink-deep);
   --l-wordmark: 18px;
 }
 
@@ -184,12 +188,12 @@
 }
 
 .p {
-  background: var(--light-biru);
-  color: var(--light-card);
+  background: var(--action);
+  color: var(--action-fg);
 }
 
 .p:hover {
-  background: var(--biru-deep);
+  background: var(--action-hover);
 }
 
 .s {
