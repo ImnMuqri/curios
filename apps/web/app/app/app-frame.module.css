@@ -1324,6 +1324,8 @@ a.menuAlert:hover {
   --field-label-color: var(--light-ink);
   --callout-info-bg: var(--light-card);
   --callout-info-edge: inset 0 0 0 1px var(--light-line);
+  --soft: var(--light-ink-soft);
+  color: var(--light-ink);
 }
 
 /* On a phone Help takes the whole screen, so the floating menu pill hides while it is open. */
