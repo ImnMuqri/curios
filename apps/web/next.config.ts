@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 // No .js here, unlike every other import in the workspace: Next loads this file with its own
 // require hook, which finds lib/security-headers.ts by its bare name and fails on the .js one.
@@ -21,6 +22,21 @@ const config: NextConfig = {
   // break a dev server. Builds from agents and scripts set NEXT_DIST_DIR (to
   // .next-build) to keep out of its way; everyone else gets the default.
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
+  // Production (Dockerfile.web) runs the standalone server: only the files the server needs, and a
+  // smaller process than `next start`, which on Railway is billed by the memory it holds. Only the
+  // image sets NEXT_STANDALONE, so `next dev`, tests and local builds are untouched. The root is the
+  // monorepo's, so the workspace packages this app imports are traced into the output too.
+  // Prisma's query engine is a native file loaded by path, which the tracer cannot follow: without
+  // this, every page that reads the database fails with "could not locate the Query Engine".
+  ...(process.env.NEXT_STANDALONE === '1'
+    ? {
+        output: 'standalone' as const,
+        outputFileTracingRoot: path.join(__dirname, '../..'),
+        outputFileTracingIncludes: {
+          '/**/*': ['../../node_modules/.pnpm/@prisma+client@*/node_modules/.prisma/client/**/*'],
+        },
+      }
+    : {}),
   // Says nothing a visitor needs, and tells a scanner which exploits to try.
   poweredByHeader: false,
   async headers() {
