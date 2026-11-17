@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { findHexLiterals, findOffScaleFontSizes } from './design-rules.js';
+import { findHexLiterals, findOffRuleRadii, findOffScaleFontSizes } from './design-rules.js';
 
 describe('findHexLiterals', () => {
   it('finds a hex colour', () => {
@@ -88,5 +88,43 @@ describe('the rules hold across every stylesheet in the repo', () => {
       findOffScaleFontSizes(readFileSync(file, 'utf8')).map((size) => `${file}: ${size}`),
     );
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('findOffRuleRadii', () => {
+  it('finds radii off the calm rule', () => {
+    expect(findOffRuleRadii('a{border-radius:12px}b{border-radius:999px}c{border-radius:var(--r-box)}')).toEqual([
+      '12px',
+    ]);
+  });
+
+  it('accepts every value the rule allows', () => {
+    const css =
+      'a{border-radius:999px}b{border-radius:50%}c{border-radius:var(--r-box)}d{border-radius:var(--r-pill)}e{border-radius:0}f{border-radius:inherit}g{border-radius:var(--btn-radius)}';
+    expect(findOffRuleRadii(css)).toEqual([]);
+  });
+});
+
+describe('the calm tokens', () => {
+  const tokens = readFileSync(join(import.meta.dirname, 'tokens.css'), 'utf8');
+  const light = ['bg', 'surface', 'ink', 'ink-deep', 'muted', 'line', 'soft', 'ring', 'badge'];
+  const tags = ['ok', 'wait', 'new', 'red'].flatMap((t) => [`tag-${t}`, `tag-${t}-ink`]);
+  const names = [
+    ...light.map((n) => `--calm-${n}`),
+    ...light.map((n) => `--calm-dark-${n}`),
+    ...tags.map((n) => `--${n}`),
+    ...tags.map((n) => `--calm-dark-${n}`),
+    '--action',
+    '--action-fg',
+    '--action-hover',
+    '--r-box',
+    '--r-pill',
+  ];
+
+  it('defines every calm token, light and dark', () => {
+    for (const name of names) {
+      const declared = tokens.match(new RegExp(`^\\s*${name}:`, 'gm')) ?? [];
+      expect(declared, name).toHaveLength(1);
+    }
   });
 });

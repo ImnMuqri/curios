@@ -42,3 +42,17 @@ export function findOffScaleFontSizes(css: string): string[] {
     .filter((value) => /^[\d.]+px$/.test(value))
     .filter((value) => !SCALE.has(value));
 }
+
+/**
+ * The calm corner rule: anything clicked or typed into is a pill, containers
+ * are --r-box, circles are 50%. Returns every border-radius value that is none
+ * of those (a var(--btn-radius)-style custom property is a token reference and
+ * passes, as does 0 or inherit).
+ */
+const RULE_RADII = new Set(['999px', '50%', '0', 'inherit', 'var(--r-box)', 'var(--r-pill)']);
+
+export function findOffRuleRadii(css: string): string[] {
+  return [...css.matchAll(/border-radius:\s*([^;}]+)/gi)]
+    .map((match) => (match[1] ?? '').trim())
+    .filter((value) => !RULE_RADII.has(value) && !/^var\(--[\w-]*radius[\w-]*\)$/.test(value));
+}

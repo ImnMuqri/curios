@@ -286,3 +286,54 @@
   /* The tile a bank's logo sits on: white whatever the theme, so a dark mark still reads in the dark theme. */
   --logo-tile: #ffffff;
 }
+
+/*
+ * The calm redesign (design/HANDOFF.md, "Start here: the calm redesign", 14 Nov 2026). Nothing reads
+ * these until a scope maps them onto the base tokens; the role tokens default to the brand values so
+ * nothing changes visibly. Dark tag inks are the light inks: the board only re-fills the pastels.
+ */
+:root {
+  --calm-bg: #fbfaf7;
+  --calm-surface: #ffffff;
+  --calm-ink: #1d1d1b;
+  --calm-ink-deep: #000000;
+  --calm-muted: #6f6d68;
+  --calm-line: #ece9e3;
+  --calm-soft: #f4f2ed;
+  --calm-ring: #e2ded6;
+  --calm-badge: #b5294e;
+
+  --calm-dark-bg: #151514;
+  --calm-dark-surface: #1f1f1d;
+  --calm-dark-ink: #f2f0ea;
+  --calm-dark-ink-deep: #ffffff;
+  --calm-dark-muted: #a3a09a;
+  --calm-dark-line: #2e2d2a;
+  --calm-dark-soft: #262624;
+  --calm-dark-ring: #3a3936;
+  --calm-dark-badge: #b5294e;
+
+  --tag-ok: #e3f3ea;
+  --tag-ok-ink: #1d7a4c;
+  --tag-wait: #fdf0d8;
+  --tag-wait-ink: #a1640c;
+  --tag-new: #e5ecff;
+  --tag-new-ink: #2340c8;
+  --tag-red: #fbe3ea;
+  --tag-red-ink: #b5294e;
+
+  --calm-dark-tag-ok: #1f3928;
+  --calm-dark-tag-ok-ink: #1d7a4c;
+  --calm-dark-tag-wait: #5a451d;
+  --calm-dark-tag-wait-ink: #a1640c;
+  --calm-dark-tag-new: #1f2a47;
+  --calm-dark-tag-new-ink: #2340c8;
+  --calm-dark-tag-red: #451f28;
+  --calm-dark-tag-red-ink: #b5294e;
+
+  --action: var(--biru);
+  --action-fg: var(--paper);
+  --action-hover: var(--biru-deep);
+  --r-box: 16px;
+  --r-pill: 999px;
+}
