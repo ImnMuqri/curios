@@ -128,3 +128,15 @@ describe('the calm tokens', () => {
     }
   });
 });
+
+describe('findOffRuleRadii, longhand and multi-value', () => {
+  it('reads the corner longhands', () => {
+    expect(findOffRuleRadii('a{border-top-left-radius:12px}b{border-bottom-right-radius:var(--r-box)}')).toEqual([
+      '12px',
+    ]);
+  });
+
+  it('flags a multi-value shorthand', () => {
+    expect(findOffRuleRadii('a{border-radius:16px 16px 0 0}')).toEqual(['16px 16px 0 0']);
+  });
+});

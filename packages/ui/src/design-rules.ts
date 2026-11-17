@@ -52,7 +52,7 @@ export function findOffScaleFontSizes(css: string): string[] {
 const RULE_RADII = new Set(['999px', '50%', '0', 'inherit', 'var(--r-box)', 'var(--r-pill)']);
 
 export function findOffRuleRadii(css: string): string[] {
-  return [...css.matchAll(/border-radius:\s*([^;}]+)/gi)]
+  return [...css.matchAll(/border(?:-(?:top|bottom)-(?:left|right))?-radius:\s*([^;}]+)/gi)]
     .map((match) => (match[1] ?? '').trim())
     .filter((value) => !RULE_RADII.has(value) && !/^var\(--[\w-]*radius[\w-]*\)$/.test(value));
 }

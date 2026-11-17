@@ -290,7 +290,8 @@
 /*
  * The calm redesign (design/HANDOFF.md, "Start here: the calm redesign", 14 Nov 2026). Nothing reads
  * these until a scope maps them onto the base tokens; the role tokens default to the brand values so
- * nothing changes visibly. Dark tag inks are the light inks: the board only re-fills the pastels.
+ * nothing changes visibly. The board keeps the light tag inks on the dark fills; they are lightened
+ * here for contrast (4.5:1 or better), a deviation Task 7 logs.
  */
 :root {
   --calm-bg: #fbfaf7;
@@ -323,13 +324,13 @@
   --tag-red-ink: #b5294e;
 
   --calm-dark-tag-ok: #1f3928;
-  --calm-dark-tag-ok-ink: #1d7a4c;
+  --calm-dark-tag-ok-ink: #7fd3a3;
   --calm-dark-tag-wait: #5a451d;
-  --calm-dark-tag-wait-ink: #a1640c;
+  --calm-dark-tag-wait-ink: #f5c56b;
   --calm-dark-tag-new: #1f2a47;
-  --calm-dark-tag-new-ink: #2340c8;
+  --calm-dark-tag-new-ink: #a8baff;
   --calm-dark-tag-red: #451f28;
-  --calm-dark-tag-red-ink: #b5294e;
+  --calm-dark-tag-red-ink: #f2a0b5;
 
   --action: var(--biru);
   --action-fg: var(--paper);
