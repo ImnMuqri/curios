@@ -10,6 +10,19 @@
  * behaviour; only their look is restyled inside .content.
  */
 .auth {
+  /* The calm scope (light): the base tokens take the calm values on the screens outside the dashboard. */
+  --paper: var(--calm-bg);
+  --card: var(--calm-surface);
+  --surface: var(--calm-soft);
+  --ink: var(--calm-ink);
+  --muted: var(--calm-muted);
+  --line: var(--calm-line);
+  --edge: var(--calm-ring);
+  --ground: var(--calm-bg);
+  --nav-on: var(--calm-surface);
+  --action: var(--calm-ink);
+  --action-fg: var(--calm-surface);
+  --action-hover: var(--calm-ink-deep);
   display: flex;
   min-height: 100dvh;
   background: var(--paper);
