@@ -27,33 +27,9 @@ const LOOKS: Record<Side, { dark: string; tint: string; acc: string; acc2: strin
   },
 };
 
-export type Wait = (ms: number) => Promise<void>;
-
-/**
- * Plays `scene` over and over until the returned stop is called. Stopping
- * clears the pending waits and they never resolve, so nothing after them runs.
- */
-export function play(scene: (wait: Wait) => Promise<void>): () => void {
-  const timers = new Set<number>();
-  let stopped = false;
-  const wait: Wait = (ms) =>
-    new Promise((resolve) => {
-      if (stopped) return;
-      const id = window.setTimeout(() => {
-        timers.delete(id);
-        resolve();
-      }, ms);
-      timers.add(id);
-    });
-  void (async () => {
-    for (;;) await scene(wait);
-  })();
-  return () => {
-    stopped = true;
-    for (const id of timers) clearTimeout(id);
-    timers.clear();
-  };
-}
+export { play, type Wait } from './scene.js';
+import type { Wait } from './scene.js';
+import { play } from './scene.js';
 
 interface Scene<S> {
   /** The finished frame: the server, reduced motion and no IntersectionObserver. */

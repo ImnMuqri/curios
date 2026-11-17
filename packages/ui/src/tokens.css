@@ -332,3 +332,62 @@
   --r-box: 16px;
   --r-pill: 999px;
 }
+
+/*
+ * The calm landing (Landing2 board). The board's own values that the calm tokens above do not
+ * cover: secondary inks, the dot grid, the highlight and art washes, the depicted owner pages and
+ * phones (--cl-mock-*), the Instagram bio, and the closing word pill pairs. Only the landing reads them.
+ */
+:root {
+  --cl-text-2: #55534e;
+  --cl-text-3: #3e3c38;
+  --cl-faint: #a19e97;
+  --cl-hint: #9b9891;
+  --cl-placeholder: #c2bfb8;
+  --cl-ghost: #cdc9c1;
+  --cl-ring-hover: #cfcac0;
+  --cl-dot: #e7e3da;
+  --cl-hl-green: #dcefe5;
+  --cl-hl-green-ink: #14523d;
+  --cl-hl-rose: #f8e3ea;
+  --cl-hl-rose-ink: #9b2347;
+  --cl-art-blue: #eef2ff;
+  --cl-art-peach: #fff1ea;
+  --cl-art-mint: #ecf6f0;
+  --cl-mark: #dfe6ff;
+  --cl-mark-ink: #1d2f99;
+  --cl-fact-next: #fbf7f4;
+  --cl-amber-ink: #b4541b;
+  --cl-paid-wash: #eaf6ef;
+  --cl-mint-on-ink: #9fe3bd;
+  --cl-hot: #fde6dc;
+  --cl-hot-ink: #c2410c;
+  --cl-miss: #e8a33a;
+  --cl-sys: #d9f2e3;
+  --cl-sent: #e9eefc;
+  --cl-zone-key: #8d8a83;
+  --cl-zone-empty: #b3afa7;
+  --cl-receipt-rule: #e4e0d8;
+  --cl-mock-line: #e3e6ec;
+  --cl-mock-soft: #f2f3f6;
+  --cl-mock-hair: #eef0f3;
+  --cl-mock-ring: #d9dce3;
+  --cl-mock-radio: #b9bec9;
+  --cl-mock-text-2: #3f4552;
+  --cl-ig-a: #f6c39f;
+  --cl-ig-b: #e98f7b;
+  --cl-ig-ring: #f0a07c;
+  --cl-ig-ink: #5a2416;
+  --cl-word-1: #dcefe5;
+  --cl-word-1-ink: #14523d;
+  --cl-word-2: #f8e3ea;
+  --cl-word-2-ink: #9b2347;
+  --cl-word-3: #f6efe6;
+  --cl-word-3-ink: #8a5a2b;
+  --cl-word-4: #e5ecff;
+  --cl-word-4-ink: #2340c8;
+  --cl-word-5: #fdefe6;
+  --cl-word-5-ink: #c2410c;
+  --cl-word-6: #f8f1dc;
+  --cl-word-6-ink: #8a6410;
+}
