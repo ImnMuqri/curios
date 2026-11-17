@@ -498,7 +498,10 @@ The English is the board's own text, at the line numbers in each task. These dra
 
 ## Open decisions
 
-These are rulings already taken in this plan. The owner should confirm or overturn each one.
+These were rulings taken in this plan. **Decided by the owner on 17 Nov 2026** ("Always follow the boards", and the calm spec's "where this section and older notes disagree, this section wins"). Each decided item that reverses an earlier DEVIATIONS row marks that row superseded or resolved rather than deleting it.
+
+- **Decided:** 1 (16px containers, 999px controls, the board's corners for mock phones and receipts), 2 (scroll reveal returns), 3 (the closing says "Tanya je."), 5 (section labels uppercase as on the board), 6 (the footer keeps its legal links), 7 (15.5px becomes 15px, so sizes stay on SCALE), 8 (the calculator line shows only when it is true), 9 (the landing stays light only), 10 (Kek Lina's name uses Outfit).
+- **Decided, item 4:** the photos are **not** from Unsplash. "Photos from Unsplash." stays out of the footer note, with a DEVIATIONS row.
 
 1. **Container corners.** The board draws the landing's cards, plans, band and closing at 18–30px. The calm rule says containers are 16px. *Ruling:* 16px for Curios's own containers, the board's radii for the depicted owner pages, phones, receipts and the Instagram bio. *Recommend* keeping that ruling, because the calm section says "one rule everywhere". One DEVIATIONS row.
 2. **Scroll reveal is back.** The 23 Oct "less template" pass banned scroll reveal, and the calm board brings it back (`.rv`, 22px). *Ruling:* follow the board (the calm section wins over older notes), with content visible without JS and nothing hidden on the server. The old test is deleted.
