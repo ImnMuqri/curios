@@ -47,6 +47,15 @@ const calmDark: Record<string, string> = {
   '--action-fg': '--calm-dark-bg',
   '--action-hover': '--calm-dark-ink-deep',
 };
+/** Tokens the frame computes from a remapped one, so a preview island must work them out again from its own light values. */
+const derived: Record<string, string> = {
+  '--biru-deep': 'color-mix(in oklch, var(--biru) 72%, var(--light-ink))',
+  '--button-secondary-bg': 'var(--light-card)',
+  '--button-secondary-border': 'var(--light-edge)',
+  '--field-label-color': 'var(--light-ink)',
+  '--callout-info-bg': 'var(--light-card)',
+  '--callout-info-edge': 'inset 0 0 0 1px var(--light-line)',
+};
 const tokens = declarations(read('../../../../packages/ui/src/tokens.css'));
 
 describe('dashboard dark mode', () => {
@@ -93,6 +102,10 @@ describe('dashboard dark mode', () => {
     expect(islandBlock['--action']).toBe('var(--light-action)');
   });
 
+  it('works the frame-derived tokens out again inside the island, from its own light values', () => {
+    for (const [name, value] of Object.entries(derived)) expect(islandBlock[name], name).toBe(value);
+  });
+
   it('keeps no --dark-* token that the calm mapping replaced', () => {
     for (const name of Object.keys(calmDark)) {
       if (name.startsWith('--action')) continue;
@@ -101,7 +114,7 @@ describe('dashboard dark mode', () => {
   });
 
   it('gives every swapped token its light value back in a preview island, from the light alias of that same token', () => {
-    expect(Object.keys(islandBlock).sort()).toEqual(Object.keys(darkBlock).sort());
+    expect(Object.keys(islandBlock).filter((n) => !(n in derived)).sort()).toEqual(Object.keys(darkBlock).sort());
     for (const name of Object.keys(darkBlock)) {
       expect(islandBlock[name], name).toBe(`var(--light-${name.slice(2)})`);
       expect(tokens[`--light-${name.slice(2)}`], name).toBe(`var(${name})`);

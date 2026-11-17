@@ -1317,6 +1317,13 @@ a.menuAlert:hover {
   --action: var(--light-action);
   --action-fg: var(--light-action-fg);
   --action-hover: var(--light-action-hover);
+  /* What the frame works out from a remapped token is worked out again here, or the island would inherit the frame's result. */
+  --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--light-ink));
+  --button-secondary-bg: var(--light-card);
+  --button-secondary-border: var(--light-edge);
+  --field-label-color: var(--light-ink);
+  --callout-info-bg: var(--light-card);
+  --callout-info-edge: inset 0 0 0 1px var(--light-line);
 }
 
 /* On a phone Help takes the whole screen, so the floating menu pill hides while it is open. */
