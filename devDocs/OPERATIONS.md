@@ -639,7 +639,10 @@ exactly as the project shows it (`${{Curios-Api.APP_URL}}`). Typing `${{` in a v
   failure there stops the deploy and the running one stays up.
 - `web` is built by `Dockerfile.web`, on Linux, so the font preloads survive (a Windows build
   drops them). `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SENTRY_DSN` are written into the browser
-  code at build time: changing either needs a redeploy, not a restart.
+  code at build time: changing either needs a redeploy, not a restart. It runs Next's standalone
+  server (`node server.js`, not `next start`): measured in Docker, about half the memory, which is
+  what Railway bills. A Custom Start Command of `next start` would fail, since the image no longer
+  carries the full `node_modules`.
 - `admin` is built by `Dockerfile.admin` the same way, with `NEXT_PUBLIC_ADMIN_API_URL` written in
   at build time. Its own service and address, never a path under `curios.my`: owners are never
   served admin code.
