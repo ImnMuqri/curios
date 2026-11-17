@@ -60,10 +60,19 @@
   --action: var(--calm-ink);
   --action-fg: var(--calm-surface);
   --action-hover: var(--calm-ink-deep);
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  /* The shared Button and Field in the calm voice: pills to click and type into, a box for prose. */
+  --button-radius: var(--r-pill);
+  --button-primary-hover: var(--action-hover);
+  --button-primary-active: var(--action-hover);
+  --field-radius: var(--r-pill);
+  --field-area-radius: var(--r-box);
+  --field-reveal-radius: 50%;
   display: flex;
   min-height: 100vh;
   background: var(--paper);
   color: var(--ink);
+  font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.55;
 }
@@ -106,7 +115,7 @@
 }
 
 .steps i[data-on] {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .steps i[data-now] {
@@ -379,7 +388,7 @@
   width: 12px;
   height: 12px;
   fill: none;
-  stroke: var(--card);
+  stroke: var(--action-fg);
   stroke-width: 3.2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -387,7 +396,7 @@
 }
 
 .mode[aria-checked='true'] .rad {
-  background: var(--biru);
+  background: var(--action);
   box-shadow: none;
 }
 
@@ -526,8 +535,8 @@
   padding: 0 26px;
   border: 0;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
   font: inherit;
   font-weight: 600;
   text-decoration: none;
@@ -536,8 +545,8 @@
 }
 
 .go:hover {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
-  color: var(--paper);
+  background: var(--action-hover);
+  color: var(--action-fg);
 }
 
 .go:active {
@@ -686,7 +695,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 3px;
-  background: var(--biru);
+  background: var(--action);
   transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 

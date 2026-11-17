@@ -420,7 +420,7 @@
   border-radius: 999px;
   background: rgb(25 31 44 / 62%);
   color: var(--on-photo);
-  font-family: var(--font-plex-sans), sans-serif;
+  font-family: var(--font-body);
   font-size: 12px;
   font-weight: 600;
   opacity: 0;
@@ -455,7 +455,7 @@
   height: 22px;
   padding: 0 9px;
   border-radius: 999px;
-  font-family: var(--font-plex-sans), sans-serif;
+  font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
 }
@@ -1374,8 +1374,8 @@
 }
 
 .day[data-when='first'] {
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   transform: scale(1.06);
 }
 
@@ -1667,7 +1667,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--biru);
+  background: var(--action);
   transition: width 160ms ease;
 }
 

@@ -42,7 +42,7 @@
   height: 38px;
   margin: 16px 16px 0;
   padding: 0 12px;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   background: var(--card);
   box-shadow: inset 0 0 0 1px var(--line);
   color: var(--faint);
@@ -123,7 +123,7 @@
   width: 100%;
   padding: 12px 14px 14px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-box);
   background: transparent;
   color: inherit;
   font: inherit;
@@ -223,7 +223,7 @@
   gap: 10px;
   padding: 16px;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: var(--r-box);
   background: var(--chat);
   color: var(--ink);
 }
@@ -332,7 +332,7 @@
   min-width: 32px;
   height: 32px;
   padding: 0 6px;
-  border-radius: 7px;
+  border-radius: var(--r-pill);
   font-variant-numeric: tabular-nums;
 }
 

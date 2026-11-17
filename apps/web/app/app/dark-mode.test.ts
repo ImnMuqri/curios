@@ -106,7 +106,10 @@ describe('dashboard dark mode', () => {
     expect(derived).toContain('--biru-deep');
     expect(derived).toContain('--soft');
     expect(derived).toContain('color');
-    for (const name of derived) expect(islandRule, name).toMatch(new RegExp(`^\\s*${name}\\s*:\\s*[^;]*var\\(--light-`, 'm'));
+    // `initial` counts too: it unsets a component hook, so the component falls back to what a customer sees.
+    for (const name of derived) {
+      expect(islandRule, name).toMatch(new RegExp(`^\\s*${name}\\s*:\\s*([^;]*var\\(--light-|initial;)`, 'm'));
+    }
   });
 
   it('keeps no --dark-* token that the calm mapping replaced', () => {

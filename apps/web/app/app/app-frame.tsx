@@ -115,7 +115,7 @@ function writeBellSeen(value: string) {
  * The bell lists what the nav counts and the frame's alerts; there are no other notifications.
  *
  * A client component because it reads the pathname to mark the current module. The layout (a
- * Server Component) passes plain values. IBM Plex Sans comes from the root layout (lib/fonts.ts):
+ * Server Component) passes plain values. Inter comes from the root layout (lib/fonts.ts):
  * next/font read inside a client component names its class differently on the server and in the browser.
  */
 export function AppFrame({

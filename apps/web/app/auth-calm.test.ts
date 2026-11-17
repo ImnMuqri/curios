@@ -47,3 +47,58 @@ describe('the auth screens take the calm tokens', () => {
     });
   }
 });
+
+/*
+ * Inter and the calm shared pieces, scope by scope. Only the calm scopes change: :root keeps its
+ * fonts and the shared components keep their fallbacks, so customer pages and emails look as before.
+ */
+describe('the calm scopes read in Inter and set the shared pieces to the corner rule', () => {
+  const scopes: [string, string][] = [['./app/app-frame.module.css', '.frame'], ...roots.map(([f, s]) => [f, s] as [string, string])];
+  const hooks = {
+    '--button-radius': 'var(--r-pill)',
+    '--button-primary-hover': 'var(--action-hover)',
+    '--button-primary-active': 'var(--action-hover)',
+    '--field-radius': 'var(--r-pill)',
+    '--field-area-radius': 'var(--r-box)',
+    '--field-reveal-radius': '50%',
+  };
+
+  for (const [file, selector] of scopes) {
+    it(`points --font-body at Inter on ${selector}, and the root reads it`, () => {
+      const css = read(file);
+      const start = css.indexOf(`\n${selector} {`);
+      const block = css.slice(start, css.indexOf('\n}', start));
+      expect(rule(css, selector)['--font-body']).toMatch(/^var\(--font-inter\)/);
+      expect(block).toMatch(/\n\s*font-family:\s*var\(--font-body\);/);
+      expect(css).not.toMatch(/--font-plex-sans/);
+    });
+
+    it(`sets the Button and Field hooks to pills and boxes on ${selector}`, () => {
+      const body = rule(read(file), selector);
+      for (const [name, value] of Object.entries(hooks)) expect(body[name], name).toBe(value);
+    });
+  }
+
+  it('leaves :root on its own fonts, so customer pages and emails keep theirs', () => {
+    const tokens = readFileSync(path.resolve(__dirname, '../../../packages/ui/src/tokens.css'), 'utf8');
+    expect(tokens).toMatch(/--font-body: var\(--font-inter, Inter, system-ui, sans-serif\);/);
+    expect(tokens).toMatch(/--font-display: var\(--font-bricolage,/);
+  });
+});
+
+describe('the page title, from the calm Dash board (.pg h1)', () => {
+  const css = read('./app/_ui/page-head.module.css');
+  const title = (from: number) => css.slice(css.indexOf('.title {', from), css.indexOf('}', css.indexOf('.title {', from)));
+
+  it('is Inter 48px, weight 600, -0.045em on a desktop', () => {
+    const t = title(0);
+    expect(t).toMatch(/font-family:\s*var\(--font-body\)/);
+    expect(t).toMatch(/font-size:\s*48px/);
+    expect(t).toMatch(/font-weight:\s*600/);
+    expect(t).toMatch(/letter-spacing:\s*-0\.045em/);
+  });
+
+  it('steps down to 38px on a phone', () => {
+    expect(title(css.indexOf('@media (max-width: 760px)'))).toMatch(/font-size:\s*38px/);
+  });
+});

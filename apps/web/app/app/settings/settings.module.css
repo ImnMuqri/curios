@@ -280,8 +280,8 @@
   padding: 0 16px;
   border: 0;
   border-radius: 10px;
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   font: inherit;
   font-weight: 500;
   white-space: nowrap;
@@ -289,7 +289,7 @@
 }
 
 .prim:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  background: var(--action-hover);
 }
 
 .prim:disabled,
@@ -360,7 +360,7 @@
 }
 
 .meter[data-level='3'] i:nth-child(-n + 3) {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .meter[data-level='4'] i {
@@ -395,7 +395,7 @@
 }
 
 .switch[aria-checked='true'] {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .switch i {
@@ -412,6 +412,7 @@
 
 .switch[aria-checked='true'] i {
   transform: translateX(16px);
+  background: var(--action-fg);
 }
 
 .switch:disabled {

@@ -11,7 +11,7 @@
   min-width: 220px;
   max-width: min(340px, calc(100vw - 32px));
   padding: 6px;
-  border-radius: 10px;
+  border-radius: var(--r-box);
   background: var(--card);
   box-shadow: 0 0 0 1px var(--line), 0 12px 32px -12px var(--soft-shadow, rgb(25 31 44 / 25%));
 }

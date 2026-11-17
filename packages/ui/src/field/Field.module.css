@@ -31,12 +31,17 @@
   min-height: 44px;
   padding: 11px 14px;
   border: 1.5px solid var(--surface);
-  border-radius: 10px;
+  border-radius: var(--field-radius, 10px);
   background: var(--paper);
   font-family: var(--font-body);
   font-size: var(--field-size, var(--text-body));
   color: var(--ink);
   transition: border-color 120ms ease;
+}
+
+/* Prose takes a box, not a pill: a pill's ends would eat a tall textarea's corners. */
+textarea.control {
+  border-radius: var(--field-area-radius, 10px);
 }
 
 .control:focus {
@@ -96,7 +101,7 @@
   height: 40px;
   padding: 0;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--field-reveal-radius, 10px);
   background: none;
   color: var(--ink-soft);
   cursor: pointer;

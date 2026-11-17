@@ -18,6 +18,14 @@
   --action: var(--calm-ink);
   --action-fg: var(--calm-surface);
   --action-hover: var(--calm-ink-deep);
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  /* The shared Button and Field in the calm voice: pills to click and type into, a box for prose. */
+  --button-radius: var(--r-pill);
+  --button-primary-hover: var(--action-hover);
+  --button-primary-active: var(--action-hover);
+  --field-radius: var(--r-pill);
+  --field-area-radius: var(--r-box);
+  --field-reveal-radius: 50%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -26,7 +34,7 @@
   overflow: hidden;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 15px;
   line-height: 1.55;
 }

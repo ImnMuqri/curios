@@ -157,7 +157,7 @@
 }
 
 .pbar > i[data-state='now'] {
-  background: var(--biru);
+  background: var(--action);
 }
 
 /* Past a couple of dozen facts: one bar, accepted then rejected. */
@@ -480,11 +480,11 @@
 
 /* Saving a correction is not accepting it: blue, not green. */
 .save {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .save:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  background: var(--action-hover);
 }
 
 .rj:active:not(:disabled),
@@ -602,7 +602,7 @@
 }
 
 .burst span[data-tone='1'] {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .burst span[data-tone='2'] {
@@ -755,15 +755,15 @@
   height: 38px;
   padding: 0 16px;
   border-radius: 10px;
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   font-weight: 500;
   text-decoration: none;
 }
 
 .prim:hover {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
-  color: var(--card);
+  background: var(--action-hover);
+  color: var(--action-fg);
 }
 
 .btn2 {
@@ -997,15 +997,15 @@
   padding: 0 18px;
   border: 0;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   font: inherit;
   font-weight: 500;
   cursor: pointer;
 }
 
 .publish:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  background: var(--action-hover);
 }
 
 .publish:disabled {

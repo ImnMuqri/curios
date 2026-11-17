@@ -23,13 +23,19 @@
   cursor: default;
 }
 
+/* --action is biru everywhere but the calm scopes, where it is the calm ink: one black pill. */
 .primary {
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
+}
+
+/* Unset, hover changes nothing and a press goes to ink, as before; a calm scope sets both hooks. */
+.primary:hover:not(:disabled):not([aria-disabled='true']) {
+  background: var(--button-primary-hover, var(--action));
 }
 
 .primary:active:not(:disabled):not([aria-disabled='true']) {
-  background: var(--ink);
+  background: var(--button-primary-active, var(--ink));
 }
 
 .secondary {

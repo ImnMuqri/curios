@@ -5,7 +5,7 @@
  *
  * From the design handoff's SignIn and SignUp boards: the form on paper
  * beside a Peek panel (_auth/scene.module.css), Bricolage 800 for the title,
- * IBM Plex Sans for everything else, white fields with a soft edge, a biru
+ * Inter for everything else (the calm redesign), white pill fields with a soft edge, a black
  * pill to submit. The product's Field, Button and Callout keep their
  * behaviour; only their look is restyled inside .content.
  */
@@ -23,11 +23,19 @@
   --action: var(--calm-ink);
   --action-fg: var(--calm-surface);
   --action-hover: var(--calm-ink-deep);
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  /* The shared Button and Field in the calm voice: pills to click and type into, a box for prose. */
+  --button-radius: var(--r-pill);
+  --button-primary-hover: var(--action-hover);
+  --button-primary-active: var(--action-hover);
+  --field-radius: var(--r-pill);
+  --field-area-radius: var(--r-box);
+  --field-reveal-radius: 50%;
   display: flex;
   min-height: 100dvh;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.55;
 }
@@ -106,8 +114,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
   font-size: 13px;
   font-style: normal;
 }
@@ -138,8 +146,8 @@
 .lastUsed {
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--tag-new);
+  color: var(--tag-new-ink);
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
@@ -190,7 +198,7 @@
   min-height: 52px;
   padding: 0 16px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--r-pill);
   background: var(--card);
   box-shadow: inset 0 0 0 1.5px var(--edge);
   font-family: inherit;
@@ -244,8 +252,8 @@
   margin-top: 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
   font-family: inherit;
   font-size: 16px;
   font-weight: 600;
@@ -292,7 +300,7 @@
   width: 84px;
   height: 84px;
   margin-bottom: 22px;
-  border-radius: 24px;
+  border-radius: var(--r-box);
   background: var(--biru-muda);
 }
 
@@ -307,7 +315,7 @@
 .sentTo {
   margin: 18px 0 0;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--r-box);
   background: var(--surface);
   font-size: 14.5px;
 }
