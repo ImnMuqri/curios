@@ -10,6 +10,19 @@
  * window, because the sidebar takes space.
  */
 .frame {
+  /* The calm scope (light): the base tokens take the calm values here, and nowhere a customer sees. A preview island takes the owner's own back, below. */
+  --paper: var(--calm-bg);
+  --card: var(--calm-surface);
+  --surface: var(--calm-soft);
+  --ink: var(--calm-ink);
+  --muted: var(--calm-muted);
+  --line: var(--calm-line);
+  --edge: var(--calm-ring);
+  --ground: var(--calm-bg);
+  --nav-on: var(--calm-surface);
+  --action: var(--calm-ink);
+  --action-fg: var(--calm-surface);
+  --action-hover: var(--calm-ink-deep);
   --font-display: var(--font-bricolage), system-ui, sans-serif;
   --font-body: var(--font-plex-sans), system-ui, sans-serif;
   /* Biru, a step deeper: text on biru-muda, 11:1. */
@@ -1128,18 +1141,18 @@ a.menuAlert:hover {
 @media (prefers-color-scheme: dark) {
   .frame:not([data-theme='light']) {
     color-scheme: dark;
-    --paper: var(--dark-paper);
-    --card: var(--dark-card);
-    --surface: var(--dark-surface);
+    --paper: var(--calm-dark-bg);
+    --card: var(--calm-dark-surface);
+    --surface: var(--calm-dark-soft);
     --field: var(--dark-field);
     --soft-page: var(--dark-soft-page);
-    --ink: var(--dark-ink);
+    --ink: var(--calm-dark-ink);
     --ink-soft: var(--dark-ink-soft);
-    --muted: var(--dark-muted);
+    --muted: var(--calm-dark-muted);
     --faint: var(--dark-faint);
     --hint: var(--dark-hint);
-    --line: var(--dark-line);
-    --edge: var(--dark-edge);
+    --line: var(--calm-dark-line);
+    --edge: var(--calm-dark-ring);
     --phone-edge: var(--dark-phone-edge);
     --biru: var(--dark-biru);
     --biru-muda: var(--dark-biru-muda);
@@ -1176,28 +1189,31 @@ a.menuAlert:hover {
     --ghost-ink: var(--dark-ghost-ink);
     --soft-shadow: var(--dark-soft-shadow);
     --scrim: var(--dark-scrim);
-    --ground: var(--dark-ground);
-    --nav-on: var(--dark-nav-on);
+    --ground: var(--calm-dark-bg);
+    --nav-on: var(--calm-dark-surface);
     --pick: var(--dark-pick);
     --chat: var(--dark-chat);
+    --action: var(--calm-dark-ink);
+    --action-fg: var(--calm-dark-bg);
+    --action-hover: var(--calm-dark-ink-deep);
   }
 }
 
 /* Chosen in the header's switch, whatever the device says. The same list as above. */
 .frame[data-theme='dark'] {
   color-scheme: dark;
-  --paper: var(--dark-paper);
-  --card: var(--dark-card);
-  --surface: var(--dark-surface);
+  --paper: var(--calm-dark-bg);
+  --card: var(--calm-dark-surface);
+  --surface: var(--calm-dark-soft);
   --field: var(--dark-field);
   --soft-page: var(--dark-soft-page);
-  --ink: var(--dark-ink);
+  --ink: var(--calm-dark-ink);
   --ink-soft: var(--dark-ink-soft);
-  --muted: var(--dark-muted);
+  --muted: var(--calm-dark-muted);
   --faint: var(--dark-faint);
   --hint: var(--dark-hint);
-  --line: var(--dark-line);
-  --edge: var(--dark-edge);
+  --line: var(--calm-dark-line);
+  --edge: var(--calm-dark-ring);
   --phone-edge: var(--dark-phone-edge);
   --biru: var(--dark-biru);
   --biru-muda: var(--dark-biru-muda);
@@ -1234,10 +1250,13 @@ a.menuAlert:hover {
   --ghost-ink: var(--dark-ghost-ink);
   --soft-shadow: var(--dark-soft-shadow);
   --scrim: var(--dark-scrim);
-  --ground: var(--dark-ground);
-  --nav-on: var(--dark-nav-on);
+  --ground: var(--calm-dark-bg);
+  --nav-on: var(--calm-dark-surface);
   --pick: var(--dark-pick);
   --chat: var(--dark-chat);
+  --action: var(--calm-dark-ink);
+  --action-fg: var(--calm-dark-bg);
+  --action-hover: var(--calm-dark-ink-deep);
 }
 
 /* Unconditional: in a light frame these are the values a preview has anyway. */
@@ -1295,6 +1314,9 @@ a.menuAlert:hover {
   --nav-on: var(--light-nav-on);
   --pick: var(--light-pick);
   --chat: var(--light-chat);
+  --action: var(--light-action);
+  --action-fg: var(--light-action-fg);
+  --action-hover: var(--light-action-hover);
 }
 
 /* On a phone Help takes the whole screen, so the floating menu pill hides while it is open. */

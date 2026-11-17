@@ -176,18 +176,11 @@
  * and the previews of what customers see (`data-island`) take them back.
  */
 :root {
-  --dark-paper: #0f131b;
-  --dark-card: #161b25;
-  --dark-surface: #1d2330;
   --dark-field: #1a202c;
   --dark-soft-page: #12161f;
-  --dark-ink: #e9ecf2;
   --dark-ink-soft: #c2c7d2;
-  --dark-muted: #9aa1ae;
   --dark-faint: #6f7685;
   --dark-hint: #7c8392;
-  --dark-line: #262d3b;
-  --dark-edge: #313949;
   --dark-phone-edge: #2b3242;
   --dark-biru: #4f6cf0;
   --dark-biru-muda: #1c2650;
@@ -224,8 +217,6 @@
   --dark-ghost-ink: #c9cfdc;
   --dark-soft-shadow: rgb(0 0 0 / 35%);
   --dark-scrim: rgb(0 0 0 / 60%);
-  --dark-ground: #0a0d13;
-  --dark-nav-on: #1c2650;
   --dark-pick: #18203a;
   --dark-chat: #1a202c;
 
@@ -281,6 +272,9 @@
   --light-nav-on: var(--nav-on);
   --light-pick: var(--pick);
   --light-chat: var(--chat);
+  --light-action: var(--action);
+  --light-action-fg: var(--action-fg);
+  --light-action-hover: var(--action-hover);
   /* Text drawn on a photo under a dark tint: white whatever the theme. */
   --on-photo: #ffffff;
   /* The tile a bank's logo sits on: white whatever the theme, so a dark mark still reads in the dark theme. */

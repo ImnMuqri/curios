@@ -18,6 +18,35 @@ const rule = (selector: string) => {
 const darkBlock = rule(".frame:not([data-theme='light'])");
 const chosenBlock = rule(".frame[data-theme='dark']");
 const islandBlock = rule('.frame [data-island]');
+/** The base tokens the calm scope re-maps, and what they take in the light frame and in dark mode. */
+const calmLight: Record<string, string> = {
+  '--paper': 'var(--calm-bg)',
+  '--card': 'var(--calm-surface)',
+  '--surface': 'var(--calm-soft)',
+  '--ink': 'var(--calm-ink)',
+  '--muted': 'var(--calm-muted)',
+  '--line': 'var(--calm-line)',
+  '--edge': 'var(--calm-ring)',
+  '--ground': 'var(--calm-bg)',
+  '--nav-on': 'var(--calm-surface)',
+  '--action': 'var(--calm-ink)',
+  '--action-fg': 'var(--calm-surface)',
+  '--action-hover': 'var(--calm-ink-deep)',
+};
+const calmDark: Record<string, string> = {
+  '--paper': '--calm-dark-bg',
+  '--card': '--calm-dark-surface',
+  '--surface': '--calm-dark-soft',
+  '--ink': '--calm-dark-ink',
+  '--muted': '--calm-dark-muted',
+  '--line': '--calm-dark-line',
+  '--edge': '--calm-dark-ring',
+  '--ground': '--calm-dark-bg',
+  '--nav-on': '--calm-dark-surface',
+  '--action': '--calm-dark-ink',
+  '--action-fg': '--calm-dark-bg',
+  '--action-hover': '--calm-dark-ink-deep',
+};
 const tokens = declarations(read('../../../../packages/ui/src/tokens.css'));
 
 describe('dashboard dark mode', () => {
@@ -38,8 +67,36 @@ describe('dashboard dark mode', () => {
 
   it('takes every dark value from tokens.css, which defines it', () => {
     for (const [name, value] of Object.entries(darkBlock)) {
-      expect(value, name).toBe(`var(--dark-${name.slice(2)})`);
-      expect(tokens[`--dark-${name.slice(2)}`], name).toBeDefined();
+      const source = value.slice('var('.length, -1);
+      expect(value, name).toBe(`var(${source})`);
+      expect(tokens[source], name).toBeDefined();
+      // Calm tokens are the dark mapping of the base tokens in `calmDark`; the rest are the old dark values.
+      expect(source, name).toBe(calmDark[name] ?? `--dark-${name.slice(2)}`);
+    }
+  });
+
+  it('maps the calm light values onto the base tokens on the frame', () => {
+    const start = frame.indexOf('.frame {');
+    const body = declarations(frame.slice(start, frame.indexOf('\n}\n', start)));
+    for (const [name, value] of Object.entries(calmLight)) expect(body[name], name).toBe(value);
+    expect(frame).toMatch(/--paper:\s*var\(--calm-bg\)/);
+    expect(frame).toMatch(/--action:\s*var\(--calm-ink\)/);
+  });
+
+  it('maps the calm dark values in dark mode, and the preview island keeps the owner light', () => {
+    expect(darkBlock['--paper']).toBe('var(--calm-dark-bg)');
+    expect(darkBlock['--action']).toBe('var(--calm-dark-ink)');
+    expect(darkBlock['--action-fg']).toBe('var(--calm-dark-bg)');
+    expect(darkBlock['--action-hover']).toBe('var(--calm-dark-ink-deep)');
+    expect(islandBlock['--paper']).toBe('var(--light-paper)');
+    expect(islandBlock['--ink']).toBe('var(--light-ink)');
+    expect(islandBlock['--action']).toBe('var(--light-action)');
+  });
+
+  it('keeps no --dark-* token that the calm mapping replaced', () => {
+    for (const name of Object.keys(calmDark)) {
+      if (name.startsWith('--action')) continue;
+      expect(tokens[`--dark-${name.slice(2)}`], name).toBeUndefined();
     }
   });
 
