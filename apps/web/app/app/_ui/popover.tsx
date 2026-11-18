@@ -6,14 +6,15 @@ import styles from './popover.module.css';
 /**
  * A button that opens a small panel under it: the bell's notifications and the account menu.
  * A disclosure (aria-expanded): its contents are announced as what they are -- links, buttons, the
- * account menu's Dark mode switch. Escape, a click outside, or a link followed (or a [data-closes]
- * button pressed) inside closes it, and Escape puts focus back on the button.
+ * account menu's Dark mode switch. Escape, a click outside (or on its scrim), or a link followed (or
+ * a [data-closes] button pressed) inside closes it, and Escape or the scrim puts focus back on the button.
  */
 export function Popover({
   label,
   button,
   buttonClassName,
   panelClassName,
+  scrimClassName,
   align = 'end',
   children,
 }: {
@@ -23,6 +24,12 @@ export function Popover({
   buttonClassName: string | undefined;
   /** Added to the panel's own look (the account menu is wider). */
   panelClassName?: string | undefined;
+  /**
+   * A scrim behind the open panel, for a panel shown as a sheet (the bell on a phone). It takes the
+   * tap that closes the panel, so the tap never reaches what is under it. Its class decides where it
+   * is drawn; where it is `display: none` a click outside closes the panel as usual.
+   */
+  scrimClassName?: string | undefined;
   /** Which edge of the button the panel lines up with. */
   align?: 'start' | 'end';
   children: ReactNode;
@@ -63,6 +70,17 @@ export function Popover({
       >
         {button}
       </button>
+      {scrimClassName && open ? (
+        <div
+          className={scrimClassName}
+          data-scrim
+          aria-hidden="true"
+          onClick={() => {
+            setOpen(false);
+            trigger.current?.focus();
+          }}
+        />
+      ) : null}
       <div
         id={id}
         className={panelClassName ? `${styles.panel} ${panelClassName}` : styles.panel}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
@@ -10,7 +10,7 @@ import { BANNER_ALERT_ID } from './alert-ids.js';
 import { BELL_COOKIE, bellAlertKey, formatBellSeen, heldTo, type BellSeen } from './bell-seen.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
-import { PeekBody } from './_ui/peek.js';
+import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
 import { Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
@@ -74,37 +74,6 @@ const ICON = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
 } as const;
 
-/**
- * What the bell lists under "Waiting on you" for each count in the nav (the calm Dash board's
- * notifications): the module's waiting work in a line, what to do about it under that, and its
- * icon on the status tag's tint (`tag`: receipts amber, questions blue, leads red, facts green).
- */
-const WAITING: { key: keyof NavBadges; href: string; say: (n: number) => string; note: string; icon: string; tag: 'wait' | 'new' | 'red' | 'ok'; business?: true }[] = [
-  {
-    key: 'orders',
-    href: '/app/orders',
-    say: (n) => `${n} ${n === 1 ? 'receipt' : 'receipts'} to check`,
-    note: 'Check each one and mark it paid.',
-    icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4',
-    tag: 'wait',
-    business: true,
-  },
-  {
-    key: 'questions',
-    href: '/app/questions',
-    say: (n) => `${n} new ${n === 1 ? 'question' : 'questions'}`,
-    note: 'Answer once, the page uses it every time.',
-    icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01',
-    tag: 'new',
-  },
-  { key: 'leads', href: '/app/leads', say: (n) => `${n} new ${n === 1 ? 'lead' : 'leads'}`, note: 'Reply within the day, leads go cold.', icon: 'M4 6h16v10H8l-4 4z', tag: 'red' },
-  // The board's "Found in your menu page." names one source; the count covers them all (DEVIATIONS 315).
-  { key: 'review', href: '/app/review', say: (n) => `${n} ${n === 1 ? 'fact' : 'facts'} to review`, note: 'Found in your sources. Nothing reaches customers until you accept it.', icon: PATH.review, tag: 'ok' },
-];
-
-/** The chevron at the end of a notification row. */
-const CHEVRON = 'M9 6l6 6-6 6';
-
 /** The three inboxes: one tab on a phone's bottom menu, a row of their own at the top of each. */
 const INBOX = ['/app/orders', '/app/questions', '/app/leads'];
 
@@ -119,23 +88,6 @@ export function countLabel(count: number): string {
   return count > 99 ? '99+' : String(count);
 }
 
-/** The notifications' empty state: Peek, happy (the board's .nfe). */
-function NotificationsPeek() {
-  return (
-    <svg className={styles.nfPeek} viewBox="0 0 160 150" aria-hidden="true">
-      <defs>
-        <clipPath id="nf-peek">
-          <ellipse cx="80" cy="84" rx="54" ry="49" />
-        </clipPath>
-      </defs>
-      <ellipse cx="80" cy="143" rx="40" ry="4" fill="var(--line)" />
-      <ellipse cx="63" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
-      <ellipse cx="97" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
-      <PeekBody clipId="nf-peek" mouth="happy" />
-    </svg>
-  );
-}
-
 /** A year, and only for the dashboard, as the theme's cookie. */
 function writeBellSeen(value: string) {
   document.cookie = `${BELL_COOKIE}=${value}; Path=/app; Max-Age=31536000; SameSite=Lax`;
@@ -144,8 +96,8 @@ function writeBellSeen(value: string) {
 /**
  * The dashboard's frame (the calm Dash board, 14 Nov 2026): a sidebar on the warm ground -- the
  * wordmark, the account card that opens the account menu, the grouped modules as pill links with
- * what is waiting in each, and the plan at its foot -- a 64px top bar on the same ground (where you
- * are, Help, what needs you), and the screen on one sheet. Each screen draws its own header (PageHead).
+ * what is waiting in each, and the plan at its foot -- a 64px top bar on the same ground (Help, and
+ * the bell with what needs you), and the screen on one sheet. Each screen draws its own header (PageHead).
  *
  * The sidebar narrows to an icon rail under 1100px (the card shows only its picture); on a phone
  * it goes, and the account menu opens from the avatar at the end of the top bar instead. The
@@ -173,7 +125,7 @@ export function AppFrame({
   bellSeen: savedBellSeen = { counts: {}, alerts: [] },
   children,
 }: {
-  /** The page's name: the breadcrumb starts with it. */
+  /** The page's name: on the sidebar card, and in the account buttons' names. */
   displayName: string;
   /** The owner's own name, at the head of the account menu (the boards' "Lina binti Kamal"), its first word on the card; the page's name when the account has none. */
   ownerName?: string | null;
@@ -256,32 +208,10 @@ export function AppFrame({
     };
   }, [theme]);
 
-  // Onboarding is its own full screen, as the design handoff's Onboarding
-  // board draws it, before and after the page exists. Both of those return
-  // the screen in the same place, so claiming the page mid-onboarding does
-  // not remount it and lose where the owner is.
-  if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
-  const who = ownerName?.trim() || displayName;
-  const initial = (name: string) => (name.trim()[0] ?? '').toUpperCase();
-  // The card is the page's ("Kek Lina"); under it the owner's first name and the plan, short:
-  // "Lina · Business". With no name of its own on the account, the plan stands alone in full.
-  const firstName = ownerName?.trim().split(/\s+/)[0] ?? '';
-  const planShort = plan.name.replace(/ (plan|page)$/, '');
-  const cardLine = firstName ? `${firstName} · ${planShort}` : plan.name;
+  // The bell, worked out before the frameless return below so its hook runs on every render.
+  const framed = !bare && !pathname.startsWith('/app/onboarding');
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
-  const groups = GROUPS.map((group) => ({
-    title: group.title,
-    items: group.items.filter(business),
-  })).filter((group) => group.items.length > 0);
-  const here = GROUPS.flatMap((group) => group.items).find((item) => pathname.startsWith(item.href));
   const waiting = WAITING.filter((w) => business(w) && badges[w.key] > 0);
-  const items = GROUPS.flatMap((group) => group.items).filter(business);
-  const inboxes = items.filter((item) => INBOX.includes(item.href));
-  const inInbox = inboxes.some((item) => pathname.startsWith(item.href));
-  const inboxCount = inboxes.reduce((sum, item) => sum + (item.count ? badges[item.count] : 0), 0);
-  const moreItems = items.filter((item) => MORE.includes(item.href));
-  const inMore = moreItems.some((item) => pathname.startsWith(item.href));
-  const tab = (href: string) => items.find((item) => item.href === href);
   // What the bell holds now, and what of it is new: a count above what was read, an alert not read.
   const bellNow: BellSeen = {
     counts: Object.fromEntries(waiting.map((w) => [w.key, badges[w.key]])),
@@ -289,9 +219,9 @@ export function AppFrame({
   };
   const read = heldTo(bellSeen, bellNow);
   // How much of each count came after the read: 3 leads read and 5 waiting is 2 new.
-  const newIn = (w: (typeof WAITING)[number]) => Math.max(0, badges[w.key] - (read.counts[w.key] ?? 0));
+  const newIn = (w: Waiting) => Math.max(0, badges[w.key] - (read.counts[w.key] ?? 0));
   const isNew = {
-    waiting: (w: (typeof WAITING)[number]) => newIn(w) > 0,
+    waiting: (w: Waiting) => newIn(w) > 0,
     alert: (alert: Alert) => !read.alerts.includes(bellAlertKey(alert, BANNER_ALERT_ID)),
   };
   // The badge counts the new things themselves, so it can pass 99 and read "99+" as the nav's counts do.
@@ -299,12 +229,36 @@ export function AppFrame({
   const readCookie = formatBellSeen(read);
   // Keep the cookie held to what is there, so a count that went down and comes back up is news.
   useEffect(() => {
-    if (readCookie !== formatBellSeen(bellSeen)) writeBellSeen(readCookie);
-  }, [readCookie, bellSeen]);
+    if (framed && readCookie !== formatBellSeen(bellSeen)) writeBellSeen(readCookie);
+  }, [framed, readCookie, bellSeen]);
   const markRead = () => {
     setBellSeen(bellNow);
     writeBellSeen(formatBellSeen(bellNow));
   };
+
+  // Onboarding is its own full screen, as the design handoff's Onboarding
+  // board draws it, before and after the page exists. Both of those return
+  // the screen in the same place, so claiming the page mid-onboarding does
+  // not remount it and lose where the owner is.
+  if (!framed) return <>{children}</>;
+  const who = ownerName?.trim() || displayName;
+  const initial = (name: string) => (name.trim()[0] ?? '').toUpperCase();
+  // The card is the page's ("Kek Lina"); under it the owner's first name and the plan, short:
+  // "Lina · Business". With no name of its own on the account, the plan stands alone in full.
+  const firstName = ownerName?.trim().split(/\s+/)[0] ?? '';
+  const planShort = plan.name.replace(/ (plan|page)$/, '');
+  const cardLine = firstName ? `${firstName} · ${planShort}` : plan.name;
+  const groups = GROUPS.map((group) => ({
+    title: group.title,
+    items: group.items.filter(business),
+  })).filter((group) => group.items.length > 0);
+  const items = GROUPS.flatMap((group) => group.items).filter(business);
+  const inboxes = items.filter((item) => INBOX.includes(item.href));
+  const inInbox = inboxes.some((item) => pathname.startsWith(item.href));
+  const inboxCount = inboxes.reduce((sum, item) => sum + (item.count ? badges[item.count] : 0), 0);
+  const moreItems = items.filter((item) => MORE.includes(item.href));
+  const inMore = moreItems.some((item) => pathname.startsWith(item.href));
+  const tab = (href: string) => items.find((item) => item.href === href);
   // The page's picture, or its initial on a soft rose disc (the board's "K").
   const avatar = avatarUrl ? (
     <img className={styles.avatar} src={avatarUrl} alt="" width={34} height={34} />
@@ -357,89 +311,6 @@ export function AppFrame({
         </button>
         <DarkModeRow />
         <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} />
-      </>
-    );
-  };
-  // The notifications (the calm Dash board, .nfp): a head with Mark all as read, "Waiting on you"
-  // (the nav's counts) and "Heads up" (the frame's alerts), each row a link to its screen with a dot
-  // while it is new, and a line saying read is only the badge. A popover here; a sheet on a phone.
-  const notifications = () => {
-    // Each row's place in the list, for the stagger as the panel opens.
-    let row = 0;
-    const order = () => ({ '--i': row++ }) as CSSProperties;
-    const rowIcon = (content: ReactNode, tag?: string) => (
-      <i className={styles.nfIcon} data-tag={tag} aria-hidden="true">
-        {content}
-      </i>
-    );
-    const chevron = svg(CHEVRON, styles.nfChevron);
-    const alertBody = (alert: Alert) => (
-      <>
-        {rowIcon('!')}
-        <span className={styles.nfText}>
-          <b>{alert.title}</b>
-          <small>{alert.text}</small>
-        </span>
-      </>
-    );
-    return (
-      <>
-        <div className={styles.nfHead}>
-          <b>Notifications</b>
-          {/* Read is only the badge: what still needs the owner stays listed until it is done. */}
-          {news > 0 ? (
-            <button type="button" className={styles.nfRead} onClick={markRead}>
-              Mark all as read
-            </button>
-          ) : null}
-        </div>
-        {waiting.length + alerts.length === 0 ? (
-          <div className={styles.nfEmpty}>
-            <NotificationsPeek />
-            <b>Nothing needs you right now.</b>
-            <small>{mode === 'BUSINESS' ? 'New orders, questions and leads show up here.' : 'New questions and leads show up here.'}</small>
-          </div>
-        ) : (
-          <>
-            {waiting.length > 0 ? (
-              <div role="group" aria-labelledby="nf-waiting">
-                <p id="nf-waiting" className={styles.nfGroup}>
-                  Waiting on you
-                </p>
-                {waiting.map((w) => (
-                  <Link key={w.key} href={w.href} className={styles.nfRow} style={order()} data-new={isNew.waiting(w) ? '' : undefined}>
-                    {rowIcon(svg(w.icon, styles.nfGlyph), w.tag)}
-                    <span className={styles.nfText}>
-                      <b>{w.say(badges[w.key])}</b>
-                      <small>{w.note}</small>
-                    </span>
-                    {chevron}
-                  </Link>
-                ))}
-              </div>
-            ) : null}
-            {alerts.length > 0 ? (
-              <div role="group" aria-labelledby="nf-heads">
-                <p id="nf-heads" className={styles.nfGroup}>
-                  Heads up
-                </p>
-                {alerts.map((alert) =>
-                  alert.action ? (
-                    <Link key={alert.id} href={alert.action.href} className={`${styles.nfRow} ${styles.nfAlert}`} style={order()} data-new={isNew.alert(alert) ? '' : undefined}>
-                      {alertBody(alert)}
-                    </Link>
-                  ) : (
-                    // The Curios team's banner has nowhere to go, so it is the one row that is not a link.
-                    <p key={alert.id} className={`${styles.nfRow} ${styles.nfAlert}`} style={order()} data-new={isNew.alert(alert) ? '' : undefined}>
-                      {alertBody(alert)}
-                    </p>
-                  ),
-                )}
-              </div>
-            ) : null}
-            <p className={styles.nfFoot}>Things stay here until they’re done. Mark all as read only clears the badge.</p>
-          </>
-        )}
       </>
     );
   };
@@ -529,15 +400,6 @@ export function AppFrame({
               <Wordmark />
               <span className={styles.srOnly}>Curios dashboard</span>
             </Link>
-            <p className={styles.crumb}>
-              {displayName}
-              {here ? (
-                <>
-                  <i aria-hidden="true">/</i>
-                  <b>{here.label}</b>
-                </>
-              ) : null}
-            </p>
             <button type="button" className={styles.help} aria-expanded={helpOpen} onClick={help.toggle}>
               Help
             </button>
@@ -545,6 +407,7 @@ export function AppFrame({
               label={news > 0 ? `Notifications, ${countLabel(news)} new` : 'Notifications'}
               buttonClassName={styles.iconButton}
               panelClassName={styles.notifications}
+              scrimClassName={styles.notifyScrim}
               button={
                 <>
                   {svg(ICON.bell, styles.topIcon)}
@@ -556,7 +419,7 @@ export function AppFrame({
                 </>
               }
             >
-              {notifications()}
+              <Notifications waiting={waiting} alerts={alerts} badges={badges} isNew={isNew} news={news} markRead={markRead} business={mode === 'BUSINESS'} />
             </Popover>
             {/* A phone has no sidebar, so no card: the account menu opens from the avatar here (shown at 760px and under). */}
             <div className={styles.phoneAccount}>

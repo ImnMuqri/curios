@@ -342,32 +342,11 @@
 .top {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: flex-end;
+  gap: 16px;
   flex: none;
   height: 64px;
   padding: 0 24px 0 32px;
-}
-
-.crumb {
-  flex: 1;
-  min-width: 0;
-  margin: 0 12px 0 0;
-  overflow: hidden;
-  font-size: 14px;
-  color: var(--muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.crumb i {
-  margin: 0 8px;
-  font-style: normal;
-  color: var(--faint);
-}
-
-.crumb b {
-  font-weight: 600;
-  color: var(--ink);
 }
 
 .help,
@@ -460,14 +439,6 @@
   line-height: 17px;
   text-align: center;
   text-decoration: none;
-  transform-origin: 30% 70%;
-  animation: unreadIn 0.3s cubic-bezier(0.3, 1.6, 0.5, 1) both;
-}
-
-@keyframes unreadIn {
-  from {
-    transform: scale(0);
-  }
 }
 
 /* The account menu's opener on a phone, where the sidebar's card is gone: the page's avatar. Shown at 760px and under. */
@@ -539,218 +510,6 @@
   padding: 8px;
   box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px var(--soft-shadow, rgb(40 30 10 / 45%));
   transform-origin: 90% 0;
-}
-
-.nfHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 46px;
-  padding: 6px 12px 4px;
-}
-
-.nfHead b {
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-/* "Mark all as read": a quiet pill at the head, on the right; gone once everything is read. */
-.nfRead {
-  padding: 5px 10px;
-  border: 0;
-  border-radius: var(--r-pill);
-  background: none;
-  color: var(--soft);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.nfRead:hover {
-  background: var(--surface);
-}
-
-.nfRead:focus-visible,
-.nfRow:focus-visible {
-  outline: 2px solid var(--ink);
-  outline-offset: -2px;
-}
-
-.nfGroup {
-  margin: 8px 12px 4px;
-  font-size: 11.5px;
-  font-weight: 600;
-  color: var(--faint);
-}
-
-.nfRow {
-  position: relative;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  padding: 10px 12px;
-  border-radius: 12px;
-  color: var(--ink);
-  font-size: 14.5px;
-  text-decoration: none;
-  animation: nfIn 0.32s cubic-bezier(0.3, 1.3, 0.5, 1) both;
-  animation-delay: calc(var(--i, 0) * 35ms);
-}
-
-a.nfRow:hover {
-  background: color-mix(in srgb, var(--surface) 60%, var(--card));
-}
-
-@keyframes nfIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-}
-
-/* A new row: a badge-red dot at its left edge. Read rows stay listed, without it, until the work is done. */
-.nfRow[data-new]::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 3px;
-  width: 6px;
-  height: 6px;
-  margin-top: -3px;
-  border-radius: 50%;
-  background: var(--calm-badge);
-}
-
-.nfIcon {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  font-style: normal;
-  font-weight: 700;
-}
-
-.nfIcon[data-tag='wait'] {
-  background: var(--nf-wait);
-  color: var(--nf-wait-ink);
-}
-
-.nfIcon[data-tag='new'] {
-  background: var(--nf-new);
-  color: var(--nf-new-ink);
-}
-
-.nfIcon[data-tag='red'] {
-  background: var(--nf-red);
-  color: var(--nf-red-ink);
-}
-
-.nfIcon[data-tag='ok'] {
-  background: var(--nf-ok);
-  color: var(--nf-ok-ink);
-}
-
-.nfGlyph {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.nfText {
-  flex: 1;
-  min-width: 0;
-}
-
-.nfText b {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.nfText small {
-  display: block;
-  margin-top: 1px;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--muted);
-}
-
-.nfChevron {
-  flex: none;
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: var(--faint);
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* Heads up: the plan's alerts, on amber, with "!" in the icon. */
-.nfAlert {
-  align-items: flex-start;
-  background: var(--nf-alert);
-}
-
-a.nfAlert:hover {
-  background: var(--nf-alert-hover);
-}
-
-.nfAlert .nfIcon {
-  background: var(--nf-alert-icon);
-  color: var(--nf-wait-ink);
-}
-
-.nfFoot {
-  margin: 6px 0 0;
-  padding: 10px 12px 6px;
-  border-top: 1px solid var(--line);
-  font-size: 12.5px;
-  color: var(--faint);
-}
-
-.nfEmpty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 18px 20px 22px;
-  text-align: center;
-}
-
-.nfPeek {
-  width: 86px;
-}
-
-.nfEmpty b {
-  margin-top: 10px;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.nfEmpty small {
-  margin-top: 4px;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .nfRow {
-    animation: none;
-  }
-
-  .unread {
-    animation: none;
-  }
 }
 
 /* ---- The account menu (the calm Dash board: .accp, .ah, .ag, .am) ---- */
@@ -1026,10 +785,6 @@ a.nfAlert:hover {
   }
 
   /* The board's phone top bar: the logo, then Help and the bell (and, until Task 6c, the avatar). */
-  .crumb {
-    display: none;
-  }
-
   .help {
     padding: 0 10px;
   }
@@ -1484,6 +1239,11 @@ a.nfAlert:hover {
   color: var(--calm-dark-tag-red-ink);
 }
 
+/* The sheet's scrim (Popover's scrimClassName): drawn only on a phone, where the panel is a sheet. */
+.top .notifyScrim {
+  display: none;
+}
+
 /* ---- Notifications on a phone: the same panel as a bottom sheet (the board's .nfp under its phone width) ---- */
 @media (max-width: 760px) {
   .top .notifications {
@@ -1496,9 +1256,18 @@ a.nfAlert:hover {
     max-width: none;
     max-height: 80vh;
     padding: 8px 8px 14px;
-    /* The page behind dims, as the board's scrim does; a tap on it closes the sheet (Popover). */
-    box-shadow: 0 0 0 1px var(--line), 0 0 0 100vmax color-mix(in srgb, var(--calm-ink) 25%, transparent);
+    box-shadow: 0 0 0 1px var(--line), 0 -20px 50px -30px var(--soft-shadow, rgb(40 30 10 / 45%));
     transform-origin: 50% 100%;
+  }
+
+  /* The page behind dims (the board's .nscrim), and a tap on it lands here and closes the sheet. */
+  .top .notifyScrim:not([hidden]) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 39;
+    background: color-mix(in srgb, var(--calm-ink) 25%, transparent);
+    animation: scrimIn 0.2s ease-out;
   }
 
   .top .notifications:not([hidden]) {
@@ -1522,6 +1291,12 @@ a.nfAlert:hover {
   }
 }
 
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+}
+
 @keyframes nfSheetIn {
   from {
     opacity: 0;
@@ -1530,7 +1305,8 @@ a.nfAlert:hover {
 }
 
 @media (max-width: 760px) and (prefers-reduced-motion: reduce) {
-  .top .notifications:not([hidden]) {
+  .top .notifications:not([hidden]),
+  .top .notifyScrim:not([hidden]) {
     animation: none;
   }
 }

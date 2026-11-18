@@ -107,11 +107,29 @@ describe('AppFrame', () => {
     expect(screen.getByRole('main')).toHaveTextContent('content');
   });
 
-  // Both render straight from props, so swapping them would leave every test
-  // above green.
-  it('shows the page and the screen in the breadcrumb', () => {
+  it('draws no breadcrumb: the top bar has only Help and the bell (and the phone avatar)', () => {
     const { container } = frame();
-    expect(container.querySelector('header p')).toHaveTextContent('Iman Muqri/My Curios');
+    const top = container.querySelector('header:not(main header)') as HTMLElement;
+    expect(top.querySelector(':scope > p')).toBeNull();
+    expect(top).not.toHaveTextContent('My Curios');
+    expect(within(top).getAllByRole('button').map((b) => b.getAttribute('aria-label') ?? b.textContent)).toEqual(['Help', 'Notifications, 3 new', 'Account, Iman Muqri']);
+  });
+
+  it('runs the same hooks with and without the frame, so a page arriving does not break it', () => {
+    const props = { displayName: 'Iman Muqri', avatarUrl: null, plan: PLAN, badges: { review: 1, questions: 0, leads: 0, orders: 0 }, mode: 'PERSONAL' as const };
+    const { rerender } = render(
+      <AppFrame {...props} bare>
+        <p>content</p>
+      </AppFrame>,
+    );
+    expect(() =>
+      rerender(
+        <AppFrame {...props}>
+          <p>content</p>
+        </AppFrame>,
+      ),
+    ).not.toThrow();
+    expect(screen.getByRole('navigation', { name: 'Dashboard' })).toBeInTheDocument();
   });
 
   it('marks the current page', () => {
@@ -362,8 +380,39 @@ describe('the top bar', () => {
     expect(focus).not.toContain('biru');
     const phone = css.slice(css.indexOf('/* ---- Notifications on a phone'));
     expect(phone).toMatch(/@media \(max-width: 760px\)\s*\{\s*\.top \.notifications\s*\{[^}]*position: fixed;[^}]*bottom: /);
-    // The rows' stagger and the badge's pop are motion: off under reduced motion.
-    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.nfRow[^{]*\{\s*animation: none;/);
+    // The scrim is a real element that takes the tap on a phone, and is not drawn on a desktop.
+    expect(css).toMatch(/\.top \.notifyScrim\s*\{[^}]*display: none;/);
+    expect(phone).toMatch(/\.top \.notifyScrim:not\(\[hidden\]\)\s*\{[^}]*display: block;[^}]*position: fixed;[^}]*inset: 0;/);
+    expect(phone).not.toContain('100vmax');
+    // The badge does not pop in on load: the board animates only its leaving.
+    const unread = css.match(/\n\.unread\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(unread).not.toContain('animation');
+    // The rows' stagger is motion: off under reduced motion.
+    const rows = readFileSync(path.join(import.meta.dirname, '_ui/notifications.module.css'), 'utf8');
+    expect(rows).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.row[^{]*\{\s*animation: none;/);
+  });
+
+  it('takes a tap outside the open sheet itself, so it never reaches what is under it', () => {
+    const markPaid = vi.fn();
+    render(
+      <AppFrame displayName="Kek Lina" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 2 }} mode="BUSINESS">
+        <button type="button" onClick={markPaid}>
+          Mark paid
+        </button>
+      </AppFrame>,
+    );
+    expect(document.querySelector('[data-scrim]')).toBeNull();
+    fireEvent.click(bell());
+    const scrim = document.querySelector('[data-scrim]') as HTMLElement;
+    expect(scrim).not.toBeNull();
+    expect(scrim).toHaveAttribute('aria-hidden', 'true');
+    // A tap on the page behind lands on the scrim: pointerdown and click both hit it, not Mark paid.
+    fireEvent.pointerDown(scrim);
+    fireEvent.click(scrim);
+    expect(markPaid).not.toHaveBeenCalled();
+    expect(bell()).toHaveAttribute('aria-expanded', 'false');
+    expect(bell()).toHaveFocus();
+    expect(document.querySelector('[data-scrim]')).toBeNull();
   });
 
   const business = (badges: NavBadges, bellSeen?: BellSeen, alerts: Alert[] = [alert]) =>
@@ -387,6 +436,8 @@ describe('the top bar', () => {
     expect(screen.getByRole('link', { name: /^1 fact to review/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Your free leads are used up/ })).not.toHaveAttribute('data-new');
     expect(screen.queryByRole('button', { name: 'Mark all as read' })).not.toBeInTheDocument();
+    // Focus stays in the panel: it moves to the first row as the button goes.
+    expect(screen.getByRole('link', { name: /^2 new leads/ })).toHaveFocus();
     expect(cookie).toHaveBeenLastCalledWith('curios_bell=leads:2.review:1|trial; Path=/app; Max-Age=31536000; SameSite=Lax');
     cookie.mockRestore();
   });
