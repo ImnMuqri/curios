@@ -136,9 +136,14 @@ export interface LandingCopy {
   askStrip: { eyebrow: string; lead: string; words: string[]; body: string };
   who: {
     eyebrow: string;
-    title: string;
+    /** "Same question. ", "Their own" (highlighted), " answer." */
+    title: [string, string, string];
     lede: string;
-    rows: { key: PersonaKey; label: string; qs: string[] }[];
+    asking: (n: number) => string;
+    questionsLabel: string;
+    questions: [string, string, string, string];
+    answers: Record<WhoKey, [string, string, string, string]>;
+    roles: Record<WhoKey, string>;
     pageOf: (name: string) => string;
   };
   how: {
@@ -298,6 +303,8 @@ export interface LandingCopy {
 }
 
 export type PersonaKey = 'aisyah' | 'lina' | 'hana' | 'daniel' | 'aina' | 'farah';
+/** The five pages Who asks, in the board's order. */
+export type WhoKey = 'aisyah' | 'daniel' | 'farah' | 'lina' | 'hana';
 
 const EN: LandingBase = {
   locale: 'en',
@@ -346,16 +353,20 @@ const EN: LandingBase = {
   },
   who: {
     eyebrow: 'Who it’s for',
-    title: 'One page for whoever’s asking.',
-    lede: 'Pick who you are. Each page knows its owner, and nothing else.',
-    rows: [
-      { key: 'aisyah', label: 'Freelancers', qs: ['taking commissions?', 'rate for a portrait?', 'ada slot Disember?', 'how long does it take?'] },
-      { key: 'daniel', label: 'Job seekers', qs: ['open to hybrid?', 'notice period?', 'what stack do you use?', 'expected salary range?'] },
-      { key: 'farah', label: 'Creators & coaches', qs: ['online coaching ada?', 'beginner friendly?', 'collab rates?', 'class schedule?'] },
-      { key: 'lina', label: 'Home businesses', qs: ['hantar Klang tak?', 'berapa harga 1kg?', 'boleh tulis nama?', 'buka hari Ahad?'] },
-      { key: 'hana', label: 'Studios & services', qs: ['what’s in the package?', 'how long does it take?', 'boleh buat logo je?', 'do you work remote?'] },
-    ],
-    pageOf: (name) => `${name}’s Curios page`,
+    title: ['Same question. ', 'Their own', ' answer.'],
+    lede: 'Each page knows its owner, and nothing else. Ask five of them the same thing.',
+    asking: (n) => `asking ${n} pages`,
+    questionsLabel: 'Questions',
+    questions: ['Are you free this month?', 'How much?', 'Where are you?', 'Boleh WhatsApp?'],
+    answers: {
+      aisyah: ['Yes, two slots left this month. A portrait takes about a week.', 'Portraits from RM250. Book covers from RM900.', 'Ipoh, and I work with clients anywhere online.', 'Boleh, tekan WhatsApp di bawah nama saya.'],
+      daniel: ['I can start 1 January. My notice period is one month.', 'Looking at RM7,000 to RM8,500 a month. Open to talk.', 'Kuala Lumpur. Hybrid in KL or PJ, or fully remote.', 'Email lebih baik, ada di page saya. LinkedIn pun boleh.'],
+      farah: ['The Saturday 8am class has three spots. Online plans start any day.', 'Online plans are RM150 a month. A drop-in class is RM35.', 'Classes at Taman Tun park. Online plans work anywhere.', 'Boleh, tekan butang WhatsApp di page saya.'],
+      lina: ['Weekend orders close Thursday night. Saturday pickup is open.', 'Kek coklat 1kg is RM95. Kek batik is RM45.', 'Seksyen 7, Shah Alam. Delivery to Klang is RM15.', 'Boleh. Tinggalkan nombor, Kek Lina akan WhatsApp anda.'],
+      hana: ['Our next project slot opens in mid-January.', 'Starter from RM1,800. Full branding from RM3,800.', 'Bangsar, KL. We work with clients across Malaysia.', 'Boleh. Tinggalkan nombor, Studio Hana akan hubungi anda.'],
+    },
+    roles: { aisyah: 'Illustrator', daniel: 'Frontend developer', farah: 'Fitness coach', lina: 'Home baker', hana: 'Branding studio' },
+    pageOf: (name) => `${name}’s page`,
   },
   how: {
     eyebrow: 'How it works',
@@ -697,16 +708,20 @@ const MS: LandingBase = {
   },
   who: {
     eyebrow: 'Untuk siapa',
-    title: 'Satu halaman untuk sesiapa yang bertanya.',
-    lede: 'Pilih siapa anda. Setiap halaman kenal pemiliknya, dan tiada yang lain.',
-    rows: [
-      { key: 'aisyah', label: 'Freelancer', qs: ['ambil tempahan lagi?', 'harga potret berapa?', 'ada slot Disember?', 'berapa lama siap?'] },
-      { key: 'daniel', label: 'Pencari kerja', qs: ['ok kerja hybrid?', 'notis berapa lama?', 'guna stack apa?', 'gaji yang diharap?'] },
-      { key: 'farah', label: 'Kreator & jurulatih', qs: ['online coaching ada?', 'sesuai untuk baru mula?', 'kadar collab?', 'jadual kelas?'] },
-      { key: 'lina', label: 'Bisnes dari rumah', qs: ['hantar Klang tak?', 'berapa harga 1kg?', 'boleh tulis nama?', 'buka hari Ahad?'] },
-      { key: 'hana', label: 'Studio & servis', qs: ['pakej ada apa?', 'berapa lama siap?', 'boleh buat logo je?', 'boleh kerja remote?'] },
-    ],
-    pageOf: (name) => `Halaman Curios ${name}`,
+    title: ['Soalan sama. Jawapan ', 'mereka sendiri', '.'],
+    lede: 'Setiap halaman kenal pemiliknya, dan tiada yang lain. Tanya lima daripadanya soalan yang sama.',
+    asking: (n) => `tanya ${n} halaman`,
+    questionsLabel: 'Soalan',
+    questions: ['Free bulan ni?', 'Berapa harga?', 'Kat mana?', 'Boleh WhatsApp?'],
+    answers: {
+      aisyah: ['Ya, tinggal dua slot bulan ni. Satu potret ambil masa lebih kurang seminggu.', 'Potret dari RM250. Kulit buku dari RM900.', 'Ipoh, dan saya ambil klien dari mana-mana secara online.', 'Boleh, tekan WhatsApp di bawah nama saya.'],
+      daniel: ['Saya boleh mula 1 Januari. Notis saya sebulan.', 'Saya cari RM7,000 hingga RM8,500 sebulan. Boleh bincang.', 'Kuala Lumpur. Hybrid di KL atau PJ, atau remote sepenuhnya.', 'Email lebih baik, ada di page saya. LinkedIn pun boleh.'],
+      farah: ['Kelas Sabtu 8 pagi ada tiga tempat. Pelan online boleh mula bila-bila hari.', 'Pelan online RM150 sebulan. Kelas sekali datang RM35.', 'Kelas di Taman Tun. Pelan online boleh dari mana-mana.', 'Boleh, tekan butang WhatsApp di page saya.'],
+      lina: ['Tempahan hujung minggu tutup Khamis malam. Ambil hari Sabtu masih ada.', 'Kek coklat 1kg RM95. Kek batik RM45.', 'Seksyen 7, Shah Alam. Hantar ke Klang RM15.', 'Boleh. Tinggalkan nombor, Kek Lina akan WhatsApp anda.'],
+      hana: ['Slot projek kami yang seterusnya buka pertengahan Januari.', 'Starter dari RM1,800. Branding penuh dari RM3,800.', 'Bangsar, KL. Kami ambil klien di seluruh Malaysia.', 'Boleh. Tinggalkan nombor, Studio Hana akan hubungi anda.'],
+    },
+    roles: { aisyah: 'Ilustrator', daniel: 'Pembangun frontend', farah: 'Jurulatih kecergasan', lina: 'Pembuat kek rumah', hana: 'Studio branding' },
+    pageOf: (name) => `Halaman ${name}`,
   },
   how: {
     eyebrow: 'Cara ia berfungsi',
