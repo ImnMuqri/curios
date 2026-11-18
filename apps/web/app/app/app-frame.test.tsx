@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { NavBadges } from '@curios/db-read';
@@ -14,6 +16,7 @@ const apiFetch = vi.fn(async () => ({ sections: [], chat: true }));
 vi.mock('../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
 const { AppFrame } = await import('./app-frame.js');
 const { PageHead } = await import('./_ui/page-head.js');
+const { DarkModeRow, ThemeContext } = await import('./_ui/theme-switch.js');
 
 const frame = ({
   badges = { review: 3, questions: 0, leads: 0, orders: 0 },
@@ -30,6 +33,11 @@ const frame = ({
 
 const sideNav = () => within(screen.getByRole('navigation', { name: 'Dashboard' }));
 const links = () => sideNav().getAllByRole('link');
+/** The sidebar, and the account card at its top: the button that opens the account menu. */
+const sideCol = () => within(screen.getByRole('complementary'));
+const card = () => sideCol().getByRole('button', { name: 'Account' });
+/** The panel a popover button opens. */
+const panelOf = (button: HTMLElement) => document.getElementById(button.getAttribute('aria-controls')!)!;
 
 describe('AppFrame', () => {
   it('groups the modules as Page, Inbox, Knowledge and Account', () => {
@@ -101,45 +109,71 @@ describe('AppFrame', () => {
 
   // Both render straight from props, so swapping them would leave every test
   // above green.
-  it("shows the owner's name and initials on the account button, and the page and screen in the breadcrumb", () => {
+  it('shows the page and the screen in the breadcrumb', () => {
     const { container } = frame();
-    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('IMIman MuqriBusiness plan');
     expect(container.querySelector('header p')).toHaveTextContent('Iman Muqri/My Curios');
   });
 
-  it('shows the plan where the account block was, with its bar, and sends it to Billing', () => {
+  it('marks the current page', () => {
+    frame();
+    expect(sideNav().getByRole('link', { name: 'My Curios' })).toHaveAttribute('aria-current', 'page');
+    expect(sideNav().getAllByRole('link').filter((a) => a.getAttribute('aria-current') === 'page')).toHaveLength(1);
+  });
+
+  it('shows 99+ for a count of 150', () => {
+    frame({ badges: { review: 150, questions: 99, leads: 0, orders: 0 } });
+    expect(sideNav().getByRole('link', { name: /review/i }).textContent).toBe('Review99+');
+    expect(sideNav().getByRole('link', { name: /questions/i }).textContent).toBe('Questions99');
+  });
+
+  it('shows the plan at the foot of the sidebar, with its bar, and sends it to Billing', () => {
     const { container } = frame();
-    const plan = screen.getByRole('link', { name: /Business plan/ });
+    const plan = sideCol().getByRole('link', { name: /18 days left/ });
     expect(plan).toHaveAttribute('href', '/app/billing');
-    expect(plan).toHaveTextContent('18 days left, until 14 Nov');
+    expect(plan).toHaveTextContent(/^Business18 days left, until 14 Nov$/);
     expect(container.querySelector('aside a[href="/app/billing"] i')).toHaveStyle({ width: '60%' });
   });
 
-  it("puts the owner's own name on the account button when the account has one, the page's name in the breadcrumb", () => {
-    const { container } = render(
+  it("puts the page's name on the sidebar card, with the owner's first name and the plan under it", () => {
+    render(
       <AppFrame displayName="Kek Lina" ownerName="Lina binti Kamal" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
         <p>content</p>
       </AppFrame>,
     );
-    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('LBLina binti KamalKek Lina · Business');
-    expect(container.querySelector('header p')).toHaveTextContent('Kek Lina/');
+    expect(card()).toHaveTextContent(/^KKek LinaLina · Business$/);
   });
 
-  it('does not repeat the name under it when the page is named after its owner', () => {
-    render(
-      <AppFrame displayName="Iman Muqri" ownerName="iman muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
-        <p>content</p>
-      </AppFrame>,
-    );
-    const account = screen.getByRole('button', { name: 'Account' });
-    expect(account).toHaveTextContent('iman muqriBusiness plan');
-    expect(account).not.toHaveTextContent('Iman Muqri ·');
+  it('shows the plan alone under the page name when the account has no name of its own', () => {
+    frame();
+    expect(card()).toHaveTextContent(/^IIman MuqriBusiness plan$/);
   });
 
-  it("shows the owner's picture in place of initials when there is one", () => {
-    const { container } = frame({ avatarUrl: 'https://cdn.example/a.webp' });
-    expect(container.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/a.webp');
-    expect(screen.queryByText('IM')).toBeNull();
+  it('keeps the name and plan out of the top bar: the sidebar card carries them', () => {
+    const { container } = frame();
+    const top = container.querySelector('header:not(main header)')!;
+    expect(top).not.toHaveTextContent('Business plan');
+    expect(within(top as HTMLElement).queryByRole('group', { name: 'Theme' })).toBeNull();
+  });
+
+  it('truncates a long name in the card', () => {
+    const css = readFileSync(path.resolve(__dirname, 'app-frame.module.css'), 'utf8');
+    const ruleOf = (selector: string) => {
+      const at = css.search(new RegExp(`^${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[\\s,{]`, 'm'));
+      expect(at, selector).toBeGreaterThan(-1);
+      return css.slice(at, css.indexOf('}', at));
+    };
+    expect(ruleOf('.cardText')).toMatch(/min-width:\s*0/);
+    const lines = ruleOf('.cardText b,');
+    expect(lines).toMatch(/text-overflow:\s*ellipsis/);
+    expect(lines).toMatch(/white-space:\s*nowrap/);
+    expect(lines).toMatch(/overflow:\s*hidden/);
+    expect(lines).toContain('.cardText small');
+  });
+
+  it("shows the page's picture in place of its initial when there is one", () => {
+    frame({ avatarUrl: 'https://cdn.example/a.webp' });
+    expect(card().querySelector('img')).toHaveAttribute('src', 'https://cdn.example/a.webp');
+    expect(card()).toHaveTextContent(/^Iman Muqri/);
   });
 
   it('puts a dot on Billing when Billing needs the owner, and says so to a screen reader', () => {
@@ -153,7 +187,7 @@ describe('AppFrame', () => {
   });
 });
 
-describe('the theme switch', () => {
+describe('dark mode', () => {
   const themed = (theme?: Theme) =>
     render(
       <AppFrame displayName="Iman Muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL" {...(theme ? { theme } : {})}>
@@ -161,84 +195,91 @@ describe('the theme switch', () => {
       </AppFrame>,
     );
   const frameOf = (container: HTMLElement) => container.firstElementChild as HTMLElement;
-  const option = (name: string) => within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name });
+  /** The Dark mode switch in the account menu, opened from the sidebar card. */
+  const darkSwitch = () => {
+    if (card().getAttribute('aria-expanded') !== 'true') fireEvent.click(card());
+    return within(panelOf(card())).getByRole('switch', { name: 'Dark mode' });
+  };
+  const deviceIsDark = (dark: boolean) =>
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({ matches: dark && query === '(prefers-color-scheme: dark)', media: query, onchange: null, addEventListener: () => {}, removeEventListener: () => {}, addListener: () => {}, removeListener: () => {}, dispatchEvent: () => false }) as MediaQueryList,
+    );
 
   afterEach(() => {
     document.cookie = `${THEME_COOKIE}=; Path=/app; Max-Age=0`;
+    vi.restoreAllMocks();
   });
 
   it('follows the device when nothing was chosen', () => {
     const { container } = themed();
     expect(frameOf(container)).toHaveAttribute('data-theme', 'system');
-    expect(option('Match device')).toHaveAttribute('aria-pressed', 'true');
+    expect(darkSwitch()).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('shows Dark mode on when nothing was chosen and the device is dark', () => {
+    deviceIsDark(true);
+    const { container } = themed();
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'system');
+    expect(darkSwitch()).toHaveAttribute('aria-checked', 'true');
   });
 
   it('starts in the theme the layout read from the cookie', () => {
-    const { container } = themed('dark');
-    expect(frameOf(container)).toHaveAttribute('data-theme', 'dark');
-    expect(option('Dark')).toHaveAttribute('aria-pressed', 'true');
-    expect(option('Light')).toHaveAttribute('aria-pressed', 'false');
+    deviceIsDark(true);
+    const { container } = themed('light');
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'light');
+    expect(darkSwitch()).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('switches the frame and remembers the choice in the cookie', () => {
+  it('switches dark mode from the account menu', () => {
     const cookie = vi.spyOn(document, 'cookie', 'set');
     const { container } = themed();
-    fireEvent.click(option('Dark'));
+    fireEvent.click(darkSwitch());
+    // choose('dark'): the frame turns dark, the cookie remembers it, and the menu stays open.
     expect(frameOf(container)).toHaveAttribute('data-theme', 'dark');
     expect(cookie).toHaveBeenLastCalledWith(`${THEME_COOKIE}=dark; Path=/app; Max-Age=31536000; SameSite=Lax`);
-    fireEvent.click(option('Match device'));
-    expect(frameOf(container)).toHaveAttribute('data-theme', 'system');
-    expect(cookie).toHaveBeenLastCalledWith(`${THEME_COOKIE}=; Path=/app; Max-Age=0; SameSite=Lax`);
-    cookie.mockRestore();
+    expect(card()).toHaveAttribute('aria-expanded', 'true');
+    expect(darkSwitch()).toHaveAttribute('aria-checked', 'true');
+    fireEvent.click(darkSwitch());
+    // choose('light'): an explicit choice, not back to following the device.
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'light');
+    expect(cookie).toHaveBeenLastCalledWith(`${THEME_COOKIE}=light; Path=/app; Max-Age=31536000; SameSite=Lax`);
+    expect(darkSwitch()).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('shows its three choices in the top bar, not behind a button or in the header', () => {
+  it('turns a dark device light with one press', () => {
+    deviceIsDark(true);
     const { container } = themed();
-    expect(screen.queryByRole('button', { name: 'Theme' })).toBeNull();
-    const group = screen.getByRole('group', { name: 'Theme' });
-    expect(container.querySelector('header:not(main header)')).toContainElement(group);
-    expect(within(group).getAllByRole('button')).toHaveLength(3);
+    fireEvent.click(darkSwitch());
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'light');
+  });
+
+  it('calls choose with dark, then light', () => {
+    const choose = vi.fn();
+    const { rerender } = render(
+      <ThemeContext.Provider value={{ theme: 'system', choose }}>
+        <DarkModeRow />
+      </ThemeContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Dark mode' }));
+    expect(choose).toHaveBeenLastCalledWith('dark');
+    rerender(
+      <ThemeContext.Provider value={{ theme: 'dark', choose }}>
+        <DarkModeRow />
+      </ThemeContext.Provider>,
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'Dark mode' }));
+    expect(choose).toHaveBeenLastCalledWith('light');
+  });
+
+  it('leaves the old three-way theme control out of the frame', () => {
+    themed();
+    expect(screen.queryByRole('group', { name: 'Theme', hidden: true })).toBeNull();
   });
 
   it('is not drawn outside the frame', () => {
-    render(<PageHead title="Alone" />);
-    expect(screen.queryByRole('group', { name: 'Theme', hidden: true })).toBeNull();
-  });
-});
-
-describe('search', () => {
-  const box = () => screen.getByRole('searchbox', { name: 'Search the dashboard' });
-
-  it('narrows the nav to the modules whose names match, and says so when none do', () => {
-    frame({ mode: 'BUSINESS' });
-    fireEvent.change(box(), { target: { value: 'or' } });
-    expect(links().map((a) => a.textContent)).toEqual(['Store', 'Orders']);
-    fireEvent.change(box(), { target: { value: 'zzz' } });
-    expect(screen.getByText('Nothing called that')).toBeInTheDocument();
-  });
-
-  it('opens the first match on Enter, and Escape clears it', () => {
-    push.mockClear();
-    frame();
-    fireEvent.change(box(), { target: { value: 'lead' } });
-    fireEvent.keyDown(box(), { key: 'Enter' });
-    expect(push).toHaveBeenCalledWith('/app/leads');
-    fireEvent.change(box(), { target: { value: 'set' } });
-    fireEvent.keyDown(box(), { key: 'Escape' });
-    expect(box()).toHaveValue('');
-  });
-
-  it('takes the cursor on "/", except while typing in a field', () => {
-    frame();
-    fireEvent.keyDown(document.body, { key: '/' });
-    expect(box()).toHaveFocus();
-    box().blur();
-    const field = document.createElement('input');
-    document.body.append(field);
-    field.focus();
-    fireEvent.keyDown(field, { key: '/' });
-    expect(field).toHaveFocus();
-    field.remove();
+    render(<DarkModeRow />);
+    expect(screen.queryByRole('switch', { hidden: true })).toBeNull();
   });
 });
 
@@ -303,6 +344,21 @@ describe('the top bar', () => {
     cookie.mockRestore();
   });
 
+  it('opens and closes the Help panel from the top bar, showing Help as pressed while it is open', () => {
+    frame();
+    const help = screen.getByRole('button', { name: 'Help' });
+    expect(help).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(help);
+    expect(help).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenCalledWith('/help/guide');
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog', { name: 'Help' })).toBeNull();
+    expect(help).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+describe('the account menu', () => {
   const openAccount = () => {
     render(
       <AppFrame
@@ -318,75 +374,49 @@ describe('the top bar', () => {
         <p>content</p>
       </AppFrame>,
     );
-    const account = screen.getByRole('button', { name: 'Account' });
+    const account = card();
+    expect(account).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(account);
-    return { account, menu: screen.getByRole('menu', { name: 'Account' }) };
+    return { account, menu: within(panelOf(account)), panel: panelOf(account) };
   };
 
-  it('opens the plan at a glance: who, this month’s conversations, the plan and Manage', () => {
-    const { account, menu } = openAccount();
-    expect(account).toHaveAttribute('aria-haspopup', 'menu');
-    expect(menu).toHaveTextContent('Lina binti Kamallina@keklina.example');
-    expect(menu).toHaveTextContent('Conversations this month41 / 200');
-    expect(menu.querySelector('i[style]')).toHaveStyle({ width: '20.5%' });
-    expect(menu).toHaveTextContent('Business · paid until 14 Nov');
-    expect(within(menu).getByRole('menuitem', { name: 'Manage' })).toHaveAttribute('href', '/app/billing');
+  it('opens the account menu from the sidebar card, with usage, plan, and the four items', () => {
+    const { account, menu, panel } = openAccount();
+    expect(account).toHaveAttribute('aria-expanded', 'true');
+    expect(panel).toBeVisible();
+    expect(panel).toHaveTextContent('Lina binti Kamallina@keklina.example');
+    expect(panel).toHaveTextContent('Conversations this month41 / 200');
+    expect(panel.querySelector('i[style]')).toHaveStyle({ width: '20.5%' });
+    expect(panel).toHaveTextContent('Business · paid until 14 Nov');
+    expect(menu.getByRole('link', { name: 'Manage' })).toHaveAttribute('href', '/app/billing');
+    expect(menu.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/app/settings');
+    expect(menu.getByRole('button', { name: 'Help & support' })).toBeInTheDocument();
+    expect(menu.getByRole('switch', { name: 'Dark mode' })).toBeInTheDocument();
+    expect(menu.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    // The four, in the board's order, and no Billing row (Manage goes there).
+    const rows = [...panel.querySelectorAll('a, button')].map((el) => el.textContent?.trim()).filter((text) => text !== 'Manage');
+    expect(rows).toEqual(['Settings', 'Help & support', 'Dark mode', 'Sign out']);
   });
 
-  it('lists Settings, Help & support and Sign out, and no Billing row (Manage goes there)', () => {
-    const { menu } = openAccount();
-    expect(within(menu).getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Manage', 'Settings', 'Help & support', 'Sign out']);
-    expect(within(menu).getByRole('menuitem', { name: 'Settings' })).toHaveAttribute('href', '/app/settings');
-    expect(within(menu).queryByRole('menuitem', { name: 'Billing' })).toBeNull();
+  it('closes the account menu on Escape and gives focus back to the card', () => {
+    const { account, menu } = openAccount();
+    menu.getByRole('link', { name: 'Settings' }).focus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(account).toHaveAttribute('aria-expanded', 'false');
+    expect(account).toHaveFocus();
   });
 
   it('opens Help from Help & support, closing the menu', () => {
     const { account, menu } = openAccount();
-    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Help & support' }));
+    fireEvent.click(menu.getByRole('button', { name: 'Help & support' }));
     expect(account).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
-  });
-
-  it('moves focus into the menu, through it with the arrows, and back to the button on Escape', () => {
-    const { account, menu } = openAccount();
-    const items = within(menu).getAllByRole('menuitem');
-    expect(items[0]).toHaveFocus();
-    fireEvent.keyDown(menu, { key: 'ArrowDown' });
-    expect(items[1]).toHaveFocus();
-    fireEvent.keyDown(menu, { key: 'End' });
-    expect(items[3]).toHaveFocus();
-    fireEvent.keyDown(menu, { key: 'ArrowDown' });
-    expect(items[0]).toHaveFocus();
-    fireEvent.keyDown(menu, { key: 'ArrowUp' });
-    expect(items[3]).toHaveFocus();
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(account).toHaveAttribute('aria-expanded', 'false');
-    expect(account).toHaveFocus();
   });
 
   it('closes when the owner clicks outside it', () => {
     const { account } = openAccount();
     fireEvent.pointerDown(document.body);
     expect(account).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('opens and closes the Help panel from the top bar, showing Help as pressed while it is open', () => {
-    frame();
-    const help = screen.getByRole('button', { name: 'Help' });
-    expect(help).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(help);
-    expect(help).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
-    expect(apiFetch).toHaveBeenCalledWith('/help/guide');
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('dialog', { name: 'Help' })).toBeNull();
-    expect(help).toHaveAttribute('aria-expanded', 'false');
-  });
-
-  it('carries the theme in the account menu too, for a phone, whose top bar has no room for it', () => {
-    frame();
-    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
-    expect(within(screen.getByRole('menu', { name: 'Account' })).getByRole('group', { name: 'Theme' })).toBeInTheDocument();
   });
 });
 

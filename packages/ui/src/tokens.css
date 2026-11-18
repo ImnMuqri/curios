@@ -178,9 +178,6 @@
 :root {
   --dark-field: #1a202c;
   --dark-soft-page: #12161f;
-  --dark-ink-soft: #c2c7d2;
-  --dark-faint: #6f7685;
-  --dark-hint: #7c8392;
   --dark-phone-edge: #2b3242;
   --dark-biru: #4f6cf0;
   --dark-biru-muda: #1c2650;
@@ -293,6 +290,8 @@
   --calm-ink: #1d1d1b;
   --calm-ink-deep: #000000;
   --calm-muted: #6f6d68;
+  /* Fainter than muted: group titles and placeholders (the board's #a19e97). */
+  --calm-faint: #a19e97;
   --calm-line: #ece9e3;
   --calm-soft: #f4f2ed;
   --calm-ring: #e2ded6;
@@ -303,6 +302,7 @@
   --calm-dark-ink: #f2f0ea;
   --calm-dark-ink-deep: #ffffff;
   --calm-dark-muted: #a3a09a;
+  --calm-dark-faint: #75736d;
   --calm-dark-line: #2e2d2a;
   --calm-dark-soft: #262624;
   --calm-dark-ring: #3a3936;

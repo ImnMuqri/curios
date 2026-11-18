@@ -4,7 +4,7 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode 
 import styles from './popover.module.css';
 
 /**
- * A button that opens a small panel under it: the top bar's notifications and account menus.
+ * A button that opens a small panel under it: the bell's notifications and the account menu.
  * Escape, a click outside, or a link followed (or a [data-closes] button pressed) inside closes it, and Escape puts focus back on the
  * button.
  *

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
 import type { Alert } from './alerts.js';
@@ -11,7 +11,7 @@ import { BELL_COOKIE, bellAlertKey, formatBellSeen, heldTo, type BellSeen } from
 import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
 import { Popover } from './_ui/popover.js';
-import { ThemeContext, ThemeSwitch } from './_ui/theme-switch.js';
+import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
 import { SignOutButton } from './sign-out-button.js';
 import { HelpContext, type HelpControl } from './help/help-context.js';
@@ -67,12 +67,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
 ];
 
 const ICON = {
-  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4',
-  chevron: 'M7 10l5 5 5-5',
-  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1',
-  help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01',
-  signOut: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
   ...PATH,
   inbox: 'M4 13l2.5-8h11L20 13M4 13v6h16v-6M4 13h4.5l1 2.5h5l1-2.5H20',
   more: 'M5 12h.01M12 12h.01M19 12h.01',
@@ -95,23 +90,26 @@ const MORE = ['/app/knowledge', '/app/billing', '/app/settings'];
 /** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
 export type PlanBlock = { name: string; note: string; fill: number | null; glance: string };
 
+/** A count as a chip shows it: past 99 it reads "99+" (the calm boards, everywhere a count sits). */
+export function countLabel(count: number): string {
+  return count > 99 ? '99+' : String(count);
+}
+
 /** A year, and only for the dashboard, as the theme's cookie. */
 function writeBellSeen(value: string) {
   document.cookie = `${BELL_COOKIE}=${value}; Path=/app; Max-Age=31536000; SameSite=Lax`;
 }
 
 /**
- * The dashboard's frame (Dashboard v2, 29 Oct 2026): a sidebar on a grey ground -- search, the
- * grouped modules with what is waiting in each, and the plan -- a 64px top bar on the same grey
- * (where you are, the theme's three choices, what needs you, the account), and the screen on one white sheet
- * whose top-left corner alone is rounded. Each screen draws its own header (PageHead).
+ * The dashboard's frame (the calm Dash board, 14 Nov 2026): a sidebar on the warm ground -- the
+ * wordmark, the account card that opens the account menu, the grouped modules as pill links with
+ * what is waiting in each, and the plan at its foot -- a 64px top bar on the same ground (where you
+ * are, Help, what needs you), and the screen on one sheet. Each screen draws its own header (PageHead).
  *
- * The sidebar narrows to an icon rail under 1100px and becomes a scrolling row of icons across
- * the top on a phone, where the top bar goes and the account menu (with the theme in it) ends
- * that row. The labels stay in the DOM, so a screen reader still hears every link by name.
+ * The sidebar narrows to an icon rail under 1100px (the card shows only its picture); on a phone
+ * it goes, and the account menu opens from the avatar at the end of the top bar instead. The
+ * labels stay in the DOM, so a screen reader still hears every link by name.
  *
- * Search filters the modules by name and Enter opens the first one left; `/` jumps to it from
- * anywhere that is not a field (owner decision 2026-10-29: no search across the inboxes yet).
  * The bell lists what the nav counts and the frame's alerts; there are no other notifications.
  *
  * A client component because it reads the pathname to mark the current module. The layout (a
@@ -136,7 +134,7 @@ export function AppFrame({
 }: {
   /** The page's name: the breadcrumb starts with it. */
   displayName: string;
-  /** The owner's own name, on the account button (the boards' "Lina binti Kamal"); the page's name when the account has none. */
+  /** The owner's own name, at the head of the account menu (the boards' "Lina binti Kamal"), its first word on the card; the page's name when the account has none. */
   ownerName?: string | null;
   /** The sign-in email, under the name in the account menu. */
   ownerEmail?: string;
@@ -154,18 +152,15 @@ export function AppFrame({
   billingDot?: boolean;
   /** No page yet: no frame, only the screen. */
   bare?: boolean;
-  /** The owner's choice from the top bar's theme menu (theme.ts); the layout reads it from the cookie. */
+  /** The owner's choice from the account menu's Dark mode (theme.ts); the layout reads it from the cookie. */
   theme?: Theme;
   /** What the bell held when it was last marked read (bell-seen.ts); the layout reads it from the cookie. */
   bellSeen?: BellSeen;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
-  const router = useRouter();
   const [theme, setTheme] = useState(savedTheme);
-  const [query, setQuery] = useState('');
   const [more, setMore] = useState(false);
-  const search = useRef<HTMLInputElement>(null);
   const [bellSeen, setBellSeen] = useState(savedBellSeen);
   const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
   // Help (design/help/help-chat-design.md): the top bar's Help and the account menu's Help & support
@@ -185,19 +180,6 @@ export function AppFrame({
         ? `${THEME_COOKIE}=; Path=/app; Max-Age=0; SameSite=Lax`
         : `${THEME_COOKIE}=${next}; Path=/app; Max-Age=31536000; SameSite=Lax`;
   };
-
-  // `/` puts the cursor in search, unless the owner is typing somewhere already.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
-      event.preventDefault();
-      search.current?.focus();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
 
   // The More sheet closes on Escape and whenever the screen changes (a page picked in it).
   useEffect(() => {
@@ -239,17 +221,16 @@ export function AppFrame({
   // not remount it and lose where the owner is.
   if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
   const who = ownerName?.trim() || displayName;
-  const initials = who.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
-  // Under the name on the account button: "Kek Lina · Business". When the page is named after its
-  // owner (or the account has no name of its own) the page would only repeat the line above, so the
-  // plan stands alone in full: "Business plan".
-  const pageIsWho = displayName.trim().toLowerCase() === who.toLowerCase();
-  const accountLine = pageIsWho ? plan.name : `${displayName} · ${plan.name.replace(/ (plan|page)$/, '')}`;
+  const initial = (name: string) => (name.trim()[0] ?? '').toUpperCase();
+  // The card is the page's ("Kek Lina"); under it the owner's first name and the plan, short:
+  // "Lina · Business". With no name of its own on the account, the plan stands alone in full.
+  const firstName = ownerName?.trim().split(/\s+/)[0] ?? '';
+  const planShort = plan.name.replace(/ (plan|page)$/, '');
+  const cardLine = firstName ? `${firstName} · ${planShort}` : plan.name;
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
-  const needle = query.trim().toLowerCase();
   const groups = GROUPS.map((group) => ({
     title: group.title,
-    items: group.items.filter((item) => business(item) && (!needle || item.label.toLowerCase().includes(needle))),
+    items: group.items.filter(business),
   })).filter((group) => group.items.length > 0);
   const here = GROUPS.flatMap((group) => group.items).find((item) => pathname.startsWith(item.href));
   const waiting = WAITING.filter((w) => business(w) && badges[w.key] > 0);
@@ -280,36 +261,28 @@ export function AppFrame({
     setBellSeen(bellNow);
     writeBellSeen(formatBellSeen(bellNow));
   };
+  // The page's picture, or its initial on a soft rose disc (the board's "K").
   const avatar = avatarUrl ? (
-    <img className={styles.avatar} src={avatarUrl} alt="" width={28} height={28} />
+    <img className={styles.avatar} src={avatarUrl} alt="" width={34} height={34} />
   ) : (
     <span className={styles.avatar} aria-hidden="true">
-      {initials}
+      {initial(displayName)}
     </span>
   );
-  // The account menu, "plan at a glance" (29 Oct 2026 boards): who you are, this month's
-  // conversations and how the plan stands (Manage goes to Billing, so Billing is no row of its own),
-  // then Settings, Help & support and Sign out. On a phone, where the top bar has no room for it,
-  // the theme switch sits under who you are.
+  // The account menu (the calm Dash board): who you are, this month's conversations and how the
+  // plan stands (Manage goes to Billing, so Billing is no row of its own), then Settings, Help &
+  // support, Dark mode and Sign out. A disclosure, not an ARIA menu: Dark mode is a switch.
   const account = () => {
-    const item = { role: 'menuitem' } as const;
     return (
       <>
         <div className={styles.menuHead}>
-          {avatarUrl ? (
-            <img className={styles.menuAvatar} src={avatarUrl} alt="" width={38} height={38} />
-          ) : (
-            <span className={styles.menuAvatar} aria-hidden="true">
-              {initials}
-            </span>
-          )}
+          <span className={styles.menuAvatar} aria-hidden="true">
+            {initial(who)}
+          </span>
           <span className={styles.menuText}>
             <b>{who}</b>
             {ownerEmail ? <small>{ownerEmail}</small> : null}
           </span>
-        </div>
-        <div className={styles.menuPhoneTheme}>
-          <ThemeSwitch />
         </div>
         <div className={styles.menuPlan}>
           {usage ? (
@@ -327,21 +300,19 @@ export function AppFrame({
           ) : null}
           <p>
             <span>{plan.glance}</span>
-            <Link href="/app/billing" className={styles.menuManage} {...item}>
+            <Link href="/app/billing" className={styles.menuManage}>
               Manage
             </Link>
           </p>
         </div>
-        <Link href="/app/settings" className={styles.menuRow} {...item}>
-          {svg(ICON.settings, styles.menuIcon)}
+        <Link href="/app/settings" className={styles.menuRow}>
           Settings
         </Link>
-        <button type="button" className={styles.menuRow} data-closes onClick={help.show} {...item}>
-          {svg(ICON.help, styles.menuIcon)}
+        <button type="button" className={styles.menuRow} data-closes onClick={help.show}>
           Help &amp; support
         </button>
-        <span className={styles.menuRule} aria-hidden="true" />
-        <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} icon={svg(ICON.signOut, styles.menuIcon)} {...item} />
+        <DarkModeRow />
+        <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} />
       </>
     );
   };
@@ -355,27 +326,26 @@ export function AppFrame({
             <Wordmark />
             <span className={styles.srOnly}>Curios dashboard</span>
           </Link>
-          <label className={styles.search}>
-            {svg(ICON.search, styles.searchIcon)}
-            <input
-              ref={search}
-              type="search"
-              placeholder="Search"
-              aria-label="Search the dashboard"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') setQuery('');
-                if (event.key !== 'Enter') return;
-                const first = groups[0]?.items[0];
-                if (!first) return;
-                event.preventDefault();
-                setQuery('');
-                router.push(first.href);
-              }}
-            />
-            <kbd aria-hidden="true">/</kbd>
-          </label>
+          {/* The account card: the page, and whose and on what plan; it opens the account menu. */}
+          <div className={styles.cardSlot}>
+            <Popover
+              label="Account"
+              align="start"
+              buttonClassName={styles.card}
+              panelClassName={styles.accountPanel}
+              button={
+                <>
+                  {avatar}
+                  <span className={styles.cardText}>
+                    <b>{displayName}</b>
+                    <small>{cardLine}</small>
+                  </span>
+                </>
+              }
+            >
+              {account()}
+            </Popover>
+          </div>
           <nav aria-label="Dashboard" className={styles.nav}>
             {groups.map((group) => (
               <div key={group.title} className={styles.group}>
@@ -402,7 +372,7 @@ export function AppFrame({
                     >
                       {item.icon}
                       <span className={styles.label}>{item.label}</span>
-                      {count > 0 ? <span className={styles.count}>{count}</span> : null}
+                      {count > 0 ? <span className={styles.count}>{countLabel(count)}</span> : null}
                       {billingDot && item.href === '/app/billing' ? (
                         <span className={styles.dot}>
                           <span className={styles.srOnly}>, needs you</span>
@@ -413,10 +383,9 @@ export function AppFrame({
                 })}
               </div>
             ))}
-            {groups.length === 0 ? <p className={styles.noMatch}>Nothing called that</p> : null}
           </nav>
           <Link href="/app/billing" className={styles.plan}>
-            <b>{plan.name}</b>
+            <b>{plan.name.replace(/ plan$/, '')}</b>
             <span>{plan.note}</span>
             {plan.fill !== null ? (
               <span className={styles.planBar} aria-hidden="true">
@@ -445,7 +414,6 @@ export function AppFrame({
             <button type="button" className={styles.help} aria-expanded={helpOpen} onClick={help.toggle}>
               Help
             </button>
-            <ThemeSwitch className={styles.topTheme} />
             <Popover
               label={news > 0 ? `Notifications, ${news} new` : 'Notifications'}
               buttonClassName={styles.iconButton}
@@ -486,25 +454,12 @@ export function AppFrame({
                 ),
               )}
             </Popover>
-            <span className={styles.divider} aria-hidden="true" />
-            <Popover
-              label="Account"
-              menu
-              buttonClassName={styles.account}
-              panelClassName={styles.accountPanel}
-              button={
-                <>
-                  {avatar}
-                  <span className={styles.accountWho}>
-                    <b>{who}</b>
-                    <small>{accountLine}</small>
-                  </span>
-                  {svg(ICON.chevron, styles.chevron)}
-                </>
-              }
-            >
-              {account()}
-            </Popover>
+            {/* A phone has no sidebar, so no card: the account menu opens from the avatar here (shown at 760px and under). */}
+            <div className={styles.phoneAccount}>
+              <Popover label="Account" buttonClassName={styles.account} panelClassName={styles.phonePanel} button={avatar}>
+                {account()}
+              </Popover>
+            </div>
           </header>
           <main className={styles.sheet}>
             {/* On a phone the three inboxes share one tab below, so each starts with a row to switch between them. */}
