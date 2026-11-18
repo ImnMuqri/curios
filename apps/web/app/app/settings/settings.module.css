@@ -492,3 +492,24 @@
   color: var(--muted);
   font-size: 12.5px;
 }
+
+/* The lite pill: white, a 1px ring, as the board's quiet button. */
+.pushTest .btn2 {
+  border-radius: var(--r-pill);
+}
+
+/* Notify this device on its own: a 16px card group, its rows drawn as the email rows are. */
+.pushCard {
+  border: 1px solid var(--line);
+  border-radius: var(--r-box);
+  background: var(--card);
+  padding: 0 16px;
+}
+
+.pushCard .rowWrap:last-child {
+  border-bottom: 0;
+}
+
+.pushCard:empty {
+  display: none;
+}

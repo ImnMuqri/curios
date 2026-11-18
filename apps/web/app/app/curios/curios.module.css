@@ -748,12 +748,30 @@
   gap: 10px;
 }
 
-/* A style as a card: two pills on grey in the style's own look, its name centred under them. */
+/* The board's selectable card: white, a 1px line, 16px corners, an ink ring when chosen. */
 .styleTile {
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 14px;
+  border-color: var(--line);
+  border-radius: var(--r-box);
+  background: var(--card);
+}
+
+.styleTiles .styleTile:hover {
+  border-color: var(--ink);
+}
+
+.styleTiles .styleTile[aria-pressed='true'] {
+  border-color: var(--ink);
+  box-shadow: 0 0 0 1px var(--ink);
+  background: var(--card);
+}
+
+.styleTiles .styleTile:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
 }
 
 .styleTile > span:last-child {
@@ -769,8 +787,8 @@
   width: 100%;
   height: 58px;
   padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: var(--r-box);
+  background: var(--paper);
 }
 
 .styleMini i {
@@ -953,6 +971,12 @@
 }
 
 /* The board's phone: the covers wrap as 64px squares, the colours stack, the fonts go two across. */
+@media (min-width: 761px) {
+  .styleTiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 760px) {
   .gallery > *,
   .gallery .galleryTile {

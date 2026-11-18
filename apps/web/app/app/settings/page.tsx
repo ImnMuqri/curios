@@ -184,7 +184,7 @@ export default async function SettingsPage({
                 <p className={styles.note} data-lead="">
                   A buzz on this phone or computer, as well as or instead of the email. Each device is turned on by itself.
                 </p>
-                <div className={styles.list}>
+                <div className={styles.pushCard}>
                   <PushDevice />
                 </div>
               </section>

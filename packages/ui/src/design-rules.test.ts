@@ -234,3 +234,16 @@ describe('the calm rules on the shared pieces', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('the button style tiles', () => {
+  it('keeps the four button style tiles on the calm corner rule', () => {
+    const css = readFileSync(join(import.meta.dirname, '../../../apps/web/app/app/curios/curios.module.css'), 'utf8');
+    // The tile, its mini preview and the preview's bars as the editor draws them. The Chunky and
+    // Outline bars (`[data-style]`) are the owner's page in small, so they keep that page's own corners.
+    const rules = [...css.matchAll(/(^|\n)(\.style(?:Tiles|Tile|Mini)[^{}]*)\{([^}]*)\}/g)]
+      .filter((m) => !m[2]!.includes('[data-style'))
+      .map((m) => `${m[2]}{${m[3]}}`);
+    expect(rules.length).toBeGreaterThanOrEqual(3);
+    expect(findOffRuleRadii(rules.join('\n'))).toEqual([]);
+  });
+});
