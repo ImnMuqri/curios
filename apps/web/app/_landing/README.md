@@ -85,7 +85,7 @@ Nothing claims ratings or reviews.
 1. **A native speaker reads the Malay** in `copy.ts`. The owner read the
    earlier landing's Malay on 2026-10-22 (DEVIATIONS 10), but the calm
    sections (Who, How, What lands, No cut, Pricing, the closing) are drafted
-   by an AI and still need that read (DEVIATIONS 313).
+   by an AI and still need that read (DEVIATIONS 333).
 2. ~~**Font preloading is broken app-wide**~~ Resolved 2026-10-26: only a Windows
    build loses it; a Linux build preloads (`devDocs/deferred-findings.md`).
 3. ~~**The sitemap lists only the landing page** and the Terms, Privacy and
