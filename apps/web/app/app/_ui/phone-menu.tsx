@@ -36,8 +36,8 @@ const dots = (
  * A phone's menu, under 1100px where the sidebar goes (the calm Dash board's .dock): a pill floating
  * at the foot with Page, Store, Orders, Questions and More, More opening a sheet of the rest above it.
  *
- * Only the tab you are on shows its label, on a black pill. One spring (CSS, the board's
- * cubic-bezier(.3, 1.7, .5, 1)) opens the label and moves the pill; the pill's two edges are separate
+ * Only the tab you are on shows its label, on a black pill. One spring (CSS, cubic-bezier(.3, 1.3, .5, 1),
+ * near the board's scripted spring) opens the label and moves the pill; the pill's two edges are separate
  * registered properties, so the edge it moves toward arrives first and the other follows. The pill's
  * place is worked out from the tabs' resting widths, not read mid-spring.
  *
@@ -83,7 +83,9 @@ export function PhoneMenu({
     const r = l + TAB + Math.ceil(label?.getBoundingClientRect().width ?? 0);
     setPill((was) => (was && was.l === l && was.r === r ? was : { l, r, dir: was && r < was.r ? 'left' : 'right' }));
   }, []);
-  useLayoutEffect(() => place(), [place, pathname]);
+  // Again when the page changes, or the tabs do (a page turned Business or Personal without a navigation).
+  const tabKey = items.map((item) => item.href).join(' ');
+  useLayoutEffect(() => place(), [place, pathname, tabKey]);
   useEffect(() => {
     window.addEventListener('resize', place);
     // The label's width changes once Inter has loaded.
@@ -129,6 +131,8 @@ export function PhoneMenu({
       aria-label="Menu"
       className={className ? `${styles.dock} ${className}` : styles.dock}
       data-away={away || undefined}
+      // A hidden menu comes back when the keyboard reaches it.
+      onFocus={() => setAway(false)}
       data-ready={pill ? '' : undefined}
       data-dir={pill?.dir}
     >

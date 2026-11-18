@@ -590,7 +590,9 @@ describe("a phone's menu", () => {
 
   it('springs the pill and the tabs, the leading edge first, and stills it all under reduced motion', () => {
     const css = readFileSync(path.join(import.meta.dirname, '_ui/phone-menu.module.css'), 'utf8');
-    expect(css).toContain('cubic-bezier(0.3, 1.7, 0.5, 1)');
+    // The pill and the labels take the board's gentle 1.3 spring; the sharper 1.7 is only the icon's press (ruling R13).
+    expect(css).toMatch(/--menu-spring: cubic-bezier\(0\.3, 1\.3, 0\.5, 1\);/);
+    expect(css).toMatch(/\n\.icon\s*\{[^}]*transition: transform 0\.35s cubic-bezier\(0\.3, 1\.7, 0\.5, 1\);/);
     // Moving right the right edge leads, moving left the left edge does.
     const right = css.match(/\.dock\[data-dir='right'\] \.pill\s*\{([^}]*)\}/)?.[1] ?? '';
     const left = css.match(/\.dock\[data-dir='left'\] \.pill\s*\{([^}]*)\}/)?.[1] ?? '';
@@ -669,6 +671,38 @@ describe("a phone's menu", () => {
     expect(nav).toHaveAttribute('data-away');
     scrollTo(300);
     expect(nav).not.toHaveAttribute('data-away');
+  });
+
+  it('comes back when the keyboard reaches a hidden menu', () => {
+    frame();
+    const nav = screen.getByRole('navigation', { name: 'Menu' });
+    scrollTo(200);
+    scrollTo(400);
+    expect(nav).toHaveAttribute('data-away');
+    act(() => {
+      dock().getByRole('link', { name: 'Page' }).focus();
+    });
+    expect(nav).not.toHaveAttribute('data-away');
+  });
+
+  it('places the pill again when the tabs change without a navigation', () => {
+    at.pathname = '/app/questions';
+    const props = { displayName: 'Kek Lina', avatarUrl: null, plan: PLAN, badges: { review: 0, questions: 0, leads: 0, orders: 0 } };
+    const { rerender } = render(
+      <AppFrame {...props} mode="PERSONAL">
+        <p>content</p>
+      </AppFrame>,
+    );
+    const pill = () => (screen.getByRole('navigation', { name: 'Menu' }).children[1] as HTMLElement).style.getPropertyValue('--pill-l');
+    // Page, Questions: the pill starts past one circle.
+    expect(pill()).toBe('56px');
+    rerender(
+      <AppFrame {...props} mode="BUSINESS">
+        <p>content</p>
+      </AppFrame>,
+    );
+    // Page, Store, Orders, Questions: past three.
+    expect(pill()).toBe('156px');
   });
 
   it('stays while More is open, and near the top of the page', () => {
