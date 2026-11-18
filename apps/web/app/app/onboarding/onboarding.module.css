@@ -53,6 +53,10 @@
   --surface: var(--calm-soft);
   --ink: var(--calm-ink);
   --muted: var(--calm-muted);
+  /* The old blue-grey text steps, on the calm greys, as on the dashboard's frame: --faint stays a step fainter than muted. */
+  --ink-soft: var(--calm-muted);
+  --hint: var(--calm-muted);
+  --faint: var(--calm-faint);
   --line: var(--calm-line);
   --edge: var(--calm-ring);
   --ground: var(--calm-bg);

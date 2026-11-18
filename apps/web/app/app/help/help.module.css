@@ -14,7 +14,7 @@
   display: block;
   padding: 0;
   border: 0;
-  background: color-mix(in srgb, var(--scrim) 30%, transparent);
+  background: var(--calm-scrim);
   cursor: pointer;
   animation: scrimIn 300ms ease-out both;
 }

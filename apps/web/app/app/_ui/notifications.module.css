@@ -89,7 +89,7 @@ a.row:hover {
   height: 6px;
   margin-top: -3px;
   border-radius: 50%;
-  background: var(--calm-badge);
+  background: var(--badge);
 }
 
 .icon {

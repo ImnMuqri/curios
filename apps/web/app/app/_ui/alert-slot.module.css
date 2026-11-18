@@ -3,9 +3,8 @@
  * icon badge, a title, one line, one button and a ×. Blue says what is coming, amber that something
  * has stopped, red that the plan or the shop has stopped.
  *
- * The tones are built from the status tags (--tag-*), so the dark scopes only swap those six values
- * for their lighter-ink twins here, on the banner, and nothing else in the frame or the owner's
- * preview picks them up.
+ * The tones are built from the status tags (--tag-*), which the frame's dark scopes swap for their
+ * lighter-ink twins (and a preview island takes back), so the banner follows dark mode on its own.
  */
 
 @keyframes fadeUp {
@@ -63,27 +62,6 @@
   --ban-btn-bg: var(--action);
   --ban-btn: var(--action-fg);
   --ban-btn-edge: transparent;
-}
-
-/* Dark: the same banner on the dark tag fills, with their readable inks (the explicit choice, then the device's). */
-:global([data-theme='dark']) .ban {
-  --ban-new: var(--calm-dark-tag-new);
-  --ban-new-ink: var(--calm-dark-tag-new-ink);
-  --ban-wait: var(--calm-dark-tag-wait);
-  --ban-wait-ink: var(--calm-dark-tag-wait-ink);
-  --ban-red: var(--calm-dark-tag-red);
-  --ban-red-ink: var(--calm-dark-tag-red-ink);
-}
-
-@media (prefers-color-scheme: dark) {
-  :global([data-theme='system']) .ban {
-    --ban-new: var(--calm-dark-tag-new);
-    --ban-new-ink: var(--calm-dark-tag-new-ink);
-    --ban-wait: var(--calm-dark-tag-wait);
-    --ban-wait-ink: var(--calm-dark-tag-wait-ink);
-    --ban-red: var(--calm-dark-tag-red);
-    --ban-red-ink: var(--calm-dark-tag-red-ink);
-  }
 }
 
 .bi {

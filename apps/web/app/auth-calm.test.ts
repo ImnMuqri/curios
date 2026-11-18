@@ -18,6 +18,9 @@ const calm = {
   '--surface': 'var(--calm-soft)',
   '--ink': 'var(--calm-ink)',
   '--muted': 'var(--calm-muted)',
+  '--ink-soft': 'var(--calm-muted)',
+  '--hint': 'var(--calm-muted)',
+  '--faint': 'var(--calm-faint)',
   '--line': 'var(--calm-line)',
   '--edge': 'var(--calm-ring)',
   '--ground': 'var(--calm-bg)',
@@ -46,6 +49,15 @@ describe('the auth screens take the calm tokens', () => {
       expect(css).not.toMatch(/--calm-dark-/);
     });
   }
+
+  it('maps the same calm tokens on every calm root, the light frame included, so they cannot drift', () => {
+    // Every --token: value the four roots set from the calm palette (the frame's root is its light scope).
+    const calmOf = (file: string, selector: string) =>
+      Object.fromEntries(Object.entries(rule(read(file), selector)).filter(([, value]) => value.startsWith('var(--calm-')));
+    const frame = calmOf('./app/app-frame.module.css', '.frame');
+    expect(Object.keys(frame).length).toBeGreaterThanOrEqual(Object.keys(calm).length);
+    for (const [file, selector] of roots) expect(calmOf(file, selector), selector).toEqual(frame);
+  });
 });
 
 /*

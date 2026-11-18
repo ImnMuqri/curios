@@ -207,7 +207,7 @@
   height: 16px;
   padding: 0 4px;
   border-radius: var(--r-pill);
-  background: var(--calm-badge);
+  background: var(--badge);
   box-shadow: 0 0 0 2px var(--card);
   color: var(--calm-surface);
   font-size: 10px;
@@ -220,6 +220,22 @@
   box-shadow: 0 0 0 2px var(--action);
 }
 
+/* Something inside More needs the owner (a count on Leads, Review or Facts & sources, or Billing's dot): a dot, not a sum, ringed like the counts (owner, 2026-11-18). */
+.moreDot {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--badge);
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.tab[data-on] .moreDot {
+  box-shadow: 0 0 0 2px var(--action);
+}
+
 /* ---- More's sheet (the board's .dscrim and .dsheet) ---- */
 
 /* The page behind, dimmed; a tap on it closes the sheet and goes no further. */
@@ -227,7 +243,7 @@
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: color-mix(in srgb, var(--calm-ink) 22%, transparent);
+  background: var(--calm-scrim);
   animation: menuScrimIn 0.3s ease-out;
 }
 
@@ -311,7 +327,7 @@
   margin-left: auto;
   padding: 1px 8px;
   border-radius: var(--r-pill);
-  background: var(--calm-badge);
+  background: var(--badge);
   color: var(--calm-surface);
   font-size: 12px;
   font-weight: 600;
@@ -324,7 +340,7 @@
   height: 7px;
   margin-left: auto;
   border-radius: 50%;
-  background: var(--calm-badge);
+  background: var(--badge);
 }
 
 @keyframes menuScrimIn {

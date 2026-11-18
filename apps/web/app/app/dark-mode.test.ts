@@ -52,6 +52,16 @@ const calmDark: Record<string, string> = {
   '--action': '--calm-dark-ink',
   '--action-fg': '--calm-dark-bg',
   '--action-hover': '--calm-dark-ink-deep',
+  // The status tags keep their hue on dark fills, with lighter inks (rulings R5); the badge red is a role (R6).
+  '--tag-ok': '--calm-dark-tag-ok',
+  '--tag-ok-ink': '--calm-dark-tag-ok-ink',
+  '--tag-wait': '--calm-dark-tag-wait',
+  '--tag-wait-ink': '--calm-dark-tag-wait-ink',
+  '--tag-new': '--calm-dark-tag-new',
+  '--tag-new-ink': '--calm-dark-tag-new-ink',
+  '--tag-red': '--calm-dark-tag-red',
+  '--tag-red-ink': '--calm-dark-tag-red-ink',
+  '--badge': '--calm-dark-badge',
 };
 /** The `.frame {…}` root rule, and the island rule, as text. */
 const frameRoot = frame.slice(frame.indexOf('.frame {'), frame.indexOf('\n}\n', frame.indexOf('.frame {')));
@@ -139,6 +149,30 @@ describe('dashboard dark mode', () => {
       ]),
     );
     for (const name of calmHooks) expect(islandRule, name).toMatch(new RegExp(`^\\s*${name}\\s*:\\s*initial;`, 'm'));
+  });
+
+  it('swaps the status tags and the badge in dark, so anything reading --tag-* or --badge follows (Leads new dot)', () => {
+    for (const name of ['--tag-ok', '--tag-ok-ink', '--tag-wait', '--tag-wait-ink', '--tag-new', '--tag-new-ink', '--tag-red', '--tag-red-ink', '--badge']) {
+      expect(darkBlock[name], name).toBe(`var(${calmDark[name]})`);
+      expect(chosenBlock[name], name).toBe(`var(${calmDark[name]})`);
+      expect(islandBlock[name], name).toBe(`var(--light-${name.slice(2)})`);
+    }
+    // Every calm dark token is read somewhere: a declared but unused one is a promise nothing keeps.
+    const declared = Object.keys(tokens).filter((name) => name.startsWith('--calm-dark-'));
+    for (const name of declared) expect(frame, name).toContain(`var(${name})`);
+  });
+
+  it('draws the counts and the avatar disc from the --badge role, never the raw calm red, and Sign out from the red tag ink', () => {
+    // Sign out: the board's badge red in light, the lighter red tag ink in dark (DEVIATIONS row 314).
+    expect(frame).toMatch(/\n\.menuOut \{\s*color:\s*var\(--tag-red-ink\);/);
+    for (const file of ['./app-frame.module.css', './_ui/phone-menu.module.css', './_ui/notifications.module.css']) {
+      expect(read(file), file).not.toContain('var(--calm-badge)');
+      expect(read(file), file).toContain('var(--badge)');
+    }
+    // The avatar's initial takes the red tag ink, which lightens in dark (about 2.4:1 on the dark disc otherwise).
+    const start = frame.indexOf('\n.avatar {');
+    const avatar = frame.slice(start, frame.indexOf('}', start));
+    expect(avatar).toMatch(/\n\s*color:\s*var\(--tag-red-ink\);/);
   });
 
   it('keeps no --dark-* token that the calm mapping replaced', () => {

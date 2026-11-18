@@ -311,7 +311,7 @@
   outline-offset: -2px;
 }
 
-/* The page's initial on a soft rose disc, or its picture. */
+/* The page's initial on a soft rose disc, or its picture. The initial takes the red tag ink, which lightens in dark. */
 .avatar {
   display: grid;
   place-items: center;
@@ -320,8 +320,8 @@
   flex: none;
   border-radius: 50%;
   object-fit: cover;
-  background: color-mix(in srgb, var(--calm-badge) 15%, var(--card));
-  color: var(--calm-badge);
+  background: color-mix(in srgb, var(--badge) 15%, var(--card));
+  color: var(--tag-red-ink);
   font-size: 14px;
   font-style: normal;
   font-weight: 700;
@@ -425,7 +425,7 @@
   height: 17px;
   padding: 0 5px;
   border-radius: var(--r-pill);
-  background: var(--calm-badge);
+  background: var(--badge);
   box-shadow: 0 0 0 2px var(--ground);
   color: var(--calm-surface);
   font-size: 10.5px;
@@ -547,7 +547,7 @@
   height: 34px;
   flex: none;
   border-radius: 50%;
-  background: var(--calm-badge);
+  background: var(--badge);
   color: var(--calm-surface);
   font-size: 14px;
   font-weight: 700;
@@ -637,9 +637,9 @@
   outline-offset: -2px;
 }
 
-/* Sign out, in the badge red, a row like the rest. */
+/* Sign out, in the red tag ink, a row like the rest: the board's badge red in light, lightened in dark (DEVIATIONS row 314). */
 .menuOut {
-  color: var(--calm-badge);
+  color: var(--tag-red-ink);
 }
 
 .menuOut:disabled {
@@ -786,6 +786,16 @@
     --action: var(--calm-dark-ink);
     --action-fg: var(--calm-dark-bg);
     --action-hover: var(--calm-dark-ink-deep);
+    /* The status tags keep their hue on dark fills, with lighter inks (ruling R5), for anything that reads them; and the badge (R6). */
+    --tag-ok: var(--calm-dark-tag-ok);
+    --tag-ok-ink: var(--calm-dark-tag-ok-ink);
+    --tag-wait: var(--calm-dark-tag-wait);
+    --tag-wait-ink: var(--calm-dark-tag-wait-ink);
+    --tag-new: var(--calm-dark-tag-new);
+    --tag-new-ink: var(--calm-dark-tag-new-ink);
+    --tag-red: var(--calm-dark-tag-red);
+    --tag-red-ink: var(--calm-dark-tag-red-ink);
+    --badge: var(--calm-dark-badge);
   }
 }
 
@@ -847,6 +857,16 @@
   --action: var(--calm-dark-ink);
   --action-fg: var(--calm-dark-bg);
   --action-hover: var(--calm-dark-ink-deep);
+  /* The status tags keep their hue on dark fills, with lighter inks (ruling R5), for anything that reads them; and the badge (R6). */
+  --tag-ok: var(--calm-dark-tag-ok);
+  --tag-ok-ink: var(--calm-dark-tag-ok-ink);
+  --tag-wait: var(--calm-dark-tag-wait);
+  --tag-wait-ink: var(--calm-dark-tag-wait-ink);
+  --tag-new: var(--calm-dark-tag-new);
+  --tag-new-ink: var(--calm-dark-tag-new-ink);
+  --tag-red: var(--calm-dark-tag-red);
+  --tag-red-ink: var(--calm-dark-tag-red-ink);
+  --badge: var(--calm-dark-badge);
 }
 
 /* Unconditional: in a light frame these are the values a preview has anyway. */
@@ -907,6 +927,15 @@
   --action: var(--light-action);
   --action-fg: var(--light-action-fg);
   --action-hover: var(--light-action-hover);
+  --tag-ok: var(--light-tag-ok);
+  --tag-ok-ink: var(--light-tag-ok-ink);
+  --tag-wait: var(--light-tag-wait);
+  --tag-wait-ink: var(--light-tag-wait-ink);
+  --tag-new: var(--light-tag-new);
+  --tag-new-ink: var(--light-tag-new-ink);
+  --tag-red: var(--light-tag-red);
+  --tag-red-ink: var(--light-tag-red-ink);
+  --badge: var(--light-badge);
   /* What the frame works out from a remapped token is worked out again here, or the island would inherit the frame's result. */
   --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--light-ink));
   --button-secondary-bg: var(--light-card);
@@ -931,17 +960,6 @@
   .frame[data-help-open] .phoneMenu {
     display: none;
   }
-}
-
-/* Sign out in dark: the board's badge red reads about 2.7:1 on the dark surface, so it takes the dark red tag ink (DEVIATIONS row 314). */
-@media (prefers-color-scheme: dark) {
-  .frame:not([data-theme='light']) .menuOut {
-    color: var(--calm-dark-tag-red-ink);
-  }
-}
-
-.frame[data-theme='dark'] .menuOut {
-  color: var(--calm-dark-tag-red-ink);
 }
 
 /* The sheet's scrim (Popover's scrimClassName): drawn only on a phone, where the panel is a sheet. */
@@ -971,7 +989,7 @@
     position: fixed;
     inset: 0;
     z-index: 39;
-    background: color-mix(in srgb, var(--calm-ink) 25%, transparent);
+    background: var(--calm-scrim);
     animation: scrimIn 0.2s ease-out;
   }
 
@@ -990,8 +1008,8 @@
     background: var(--edge);
   }
 
-  /* Over the floating menu while the sheet is open. */
-  .top:has(.notifications:not([hidden])) {
+  /* Over the floating menu while a panel of the top bar is open: the bell's sheet, or the avatar's account menu. */
+  .top:has(.notifications:not([hidden]), .phonePanel:not([hidden])) {
     z-index: 50;
   }
 }
@@ -1016,33 +1034,13 @@
   }
 }
 
-/* Notifications in dark: the tags keep their hue on dark fills, and Heads up takes a dark amber. */
+/* Notifications in dark: the tags swap on the frame, so the rows follow; Heads up's icon takes a little more of the ink there. */
 @media (prefers-color-scheme: dark) {
   .frame:not([data-theme='light']) .notifications {
-    --nf-wait: var(--calm-dark-tag-wait);
-    --nf-wait-ink: var(--calm-dark-tag-wait-ink);
-    --nf-new: var(--calm-dark-tag-new);
-    --nf-new-ink: var(--calm-dark-tag-new-ink);
-    --nf-red: var(--calm-dark-tag-red);
-    --nf-red-ink: var(--calm-dark-tag-red-ink);
-    --nf-ok: var(--calm-dark-tag-ok);
-    --nf-ok-ink: var(--calm-dark-tag-ok-ink);
-    --nf-alert: color-mix(in srgb, var(--calm-dark-tag-wait) 60%, var(--card));
-    --nf-alert-hover: var(--calm-dark-tag-wait);
-    --nf-alert-icon: color-mix(in srgb, var(--calm-dark-tag-wait) 80%, var(--calm-dark-tag-wait-ink));
+    --nf-alert-icon: color-mix(in srgb, var(--tag-wait) 80%, var(--tag-wait-ink));
   }
 }
 
 .frame[data-theme='dark'] .notifications {
-  --nf-wait: var(--calm-dark-tag-wait);
-  --nf-wait-ink: var(--calm-dark-tag-wait-ink);
-  --nf-new: var(--calm-dark-tag-new);
-  --nf-new-ink: var(--calm-dark-tag-new-ink);
-  --nf-red: var(--calm-dark-tag-red);
-  --nf-red-ink: var(--calm-dark-tag-red-ink);
-  --nf-ok: var(--calm-dark-tag-ok);
-  --nf-ok-ink: var(--calm-dark-tag-ok-ink);
-  --nf-alert: color-mix(in srgb, var(--calm-dark-tag-wait) 60%, var(--card));
-  --nf-alert-hover: var(--calm-dark-tag-wait);
-  --nf-alert-icon: color-mix(in srgb, var(--calm-dark-tag-wait) 80%, var(--calm-dark-tag-wait-ink));
+  --nf-alert-icon: color-mix(in srgb, var(--tag-wait) 80%, var(--tag-wait-ink));
 }

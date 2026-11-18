@@ -326,6 +326,26 @@
   --calm-dark-tag-red: #451f28;
   --calm-dark-tag-red-ink: #f2a0b5;
 
+  /*
+   * The frame swaps the tags and the badge in dark; a preview island takes these back (the owner's
+   * light values), as it does every token the dark scopes swap.
+   */
+  --light-tag-ok: var(--tag-ok);
+  --light-tag-ok-ink: var(--tag-ok-ink);
+  --light-tag-wait: var(--tag-wait);
+  --light-tag-wait-ink: var(--tag-wait-ink);
+  --light-tag-new: var(--tag-new);
+  --light-tag-new-ink: var(--tag-new-ink);
+  --light-tag-red: var(--tag-red);
+  --light-tag-red-ink: var(--tag-red-ink);
+  --light-badge: var(--badge);
+
+  /* The page behind an open sheet or panel (More, the bell on a phone, Help): one dim, the board's More scrim. */
+  --calm-scrim: color-mix(in srgb, var(--calm-ink) 22%, transparent);
+
+  /* The badge red as a role: counts, the account's initial disc and Sign out read it; the frame's dark scopes swap it. */
+  --badge: var(--calm-badge);
+
   --action: var(--biru);
   --action-fg: var(--paper);
   --action-hover: var(--biru-deep);
