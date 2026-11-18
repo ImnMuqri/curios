@@ -772,14 +772,6 @@ describe('less template', () => {
     expect(css).not.toMatch(/\.loop\b/);
   });
 
-  it('has no blur-in, scroll-reveal or blur on the rotating words', () => {
-    expect(css).not.toMatch(/reveal/);
-    expect(css).not.toMatch(/filter:\s*blur\(3px\)/);
-    expect(rule('.focusWord')).not.toMatch(/filter/);
-    expect(rule('.focusWord')).not.toMatch(/transition:[^;]*filter/);
-    expect(rule('.focusWord[data-on]')).not.toMatch(/filter/);
-  });
-
   it('sets section labels in plain sentence case, Inter 15px semibold', () => {
     const eyebrow = rule('.eyebrow');
     expect(eyebrow).toMatch(/font-family:\s*var\(--font-inter\)/);

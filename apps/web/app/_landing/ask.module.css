@@ -1,0 +1,29 @@
+/* The ask strip (Landing2 board, L2:159–161). */
+
+.askh {
+  max-width: 16em;
+  margin: 0 auto;
+  font-size: clamp(34px, 4.4vw, 62px);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.18;
+  text-align: center;
+}
+
+.w {
+  display: inline-block;
+  margin: 0 -0.06em;
+  padding: 0 0.2em 0.04em;
+  border-radius: var(--r-pill);
+  color: var(--cl-ghost);
+  transition:
+    color 0.45s,
+    background 0.45s,
+    transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.w[data-on] {
+  background: var(--tag-new);
+  color: var(--tag-new-ink);
+  transform: scale(1.03);
+}

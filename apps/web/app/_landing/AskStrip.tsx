@@ -1,38 +1,53 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { useReducedMotion } from './useReducedMotion.js';
-import styles from './tanya.module.css';
+import calm from './calm.module.css';
+import styles from './ask.module.css';
+
+/** How long each word stays lit (Landing2 board, L2:992). */
+export const ASK_WORD_MS = 1700;
 
 /**
- * "Ask about my rates, services, hours…": one word in focus at a time, ringed,
- * the rest dimmed. With reduced motion every word is lit.
+ * "Ask about my rates, services, hours…" (Landing2 board): one word lit at a
+ * time, every 1.7s. Under reduced motion only the first word is lit, as the
+ * board's still state shows.
  */
 export function AskStrip({ locale }: { locale: Locale }) {
   const copy = COPY[locale].askStrip;
   const reduced = useReducedMotion();
-  const [focus, setFocus] = useState(0);
+  const [on, setOn] = useState(0);
 
   useEffect(() => {
-    if (reduced) return;
-    const timer = window.setInterval(() => setFocus((f) => (f + 1) % copy.words.length), 1500);
+    if (reduced) {
+      setOn(0);
+      return;
+    }
+    const timer = window.setInterval(() => setOn((f) => (f + 1) % copy.words.length), ASK_WORD_MS);
     return () => window.clearInterval(timer);
   }, [reduced, copy.words.length]);
 
   return (
-    <section className={styles.askStrip} aria-label={copy.eyebrow}>
-      <div className={styles.wrap}>
-        <p className={styles.eyebrow}>{copy.eyebrow}</p>
-        <p className={styles.focusLine}>
-          <span className={styles.focusLead}>{copy.lead}</span>
+    <section className={calm.sec} aria-labelledby="ask-label">
+      <div className={calm.wrap}>
+        <p id="ask-label" className={`${calm.lbl} ${calm.rv}`} data-rv="">
+          {copy.eyebrow}
+        </p>
+        <h2 className={`${styles.askh} ${calm.rv}`} data-rv="">
+          {copy.lead}{' '}
           {copy.words.map((word, i) => (
-            <span key={word} className={styles.focusWord} data-on={reduced || i === focus || undefined}>
-              {i === copy.words.length - 1 ? `${word}.` : `${word},`}
+            <span key={word}>
+              <span className={styles.w} data-on={i === on ? '' : undefined}>
+                {i === copy.words.length - 1 ? `${word}.` : `${word},`}
+              </span>
+              {i < copy.words.length - 1 ? ' ' : null}
             </span>
           ))}
+        </h2>
+        <p className={`${calm.s2} ${calm.rv}`} data-rv="" style={{ '--d': '120ms' } as CSSProperties}>
+          {copy.body}
         </p>
-        <p className={styles.askBody}>{copy.body}</p>
       </div>
     </section>
   );
