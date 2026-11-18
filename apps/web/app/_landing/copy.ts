@@ -250,8 +250,9 @@ export interface LandingCopy {
     monthlyText: string;
     annualAMonthText: string;
   };
-  faq: { title: string; items: Faq[] };
-  closing: { title: string; onePageFor: string; words: string[]; button: string; note: string };
+  faq: { label: string; title: string; items: Faq[] };
+  /** `label` reads "Tanya je." on both landings (plan, Open decision 3). */
+  closing: { label: string; onePageFor: string; words: string[]; button: string; note: string };
   footer: { note: string; signIn: string };
   personas: Record<PersonaKey, PersonaWords>;
 }
@@ -505,6 +506,7 @@ const EN: LandingBase = {
     fine: 'Marketplace example uses typical 2026 Malaysian fees: 5% platform fee, 2–6% commission and a 2.16% transaction fee. Card and e-wallet payments cost 1–2% through CHIP.',
   },
   faq: {
+    label: 'FAQ',
     title: 'Asked before. Answered here.',
     items: [
       { q: 'Can I use it for myself, not a business?', a: 'Yes. Personal is free: a page with an AI that answers questions about you, your work and your rates. It stays hidden from Google unless you switch it on.' },
@@ -515,7 +517,7 @@ const EN: LandingBase = {
     ],
   },
   closing: {
-    title: 'Curious? Just ask',
+    label: 'Tanya je.',
     onePageFor: 'One page for',
     words: ['freelancers', 'home bakers', 'job seekers', 'clinics', 'coaches', 'studios'],
     button: 'Claim it, free',
@@ -748,6 +750,7 @@ const MS: LandingBase = {
     fine: 'Contoh marketplace guna yuran biasa di Malaysia pada 2026: yuran platform 5%, komisen 2–6% dan yuran transaksi 2.16%. Bayaran kad dan e-dompet dikenakan 1–2% melalui CHIP.',
   },
   faq: {
+    label: 'Soalan lazim',
     title: 'Pernah ditanya. Dijawab di sini.',
     items: [
       { q: 'Boleh guna untuk diri sendiri, bukan bisnes?', a: 'Boleh. Peribadi percuma: halaman dengan AI yang jawab soalan tentang anda, kerja anda dan harga anda. Ia tersembunyi dari Google kecuali anda hidupkan.' },
@@ -758,7 +761,7 @@ const MS: LandingBase = {
     ],
   },
   closing: {
-    title: 'Curious? Tanya je',
+    label: 'Tanya je.',
     onePageFor: 'Satu halaman untuk',
     words: ['freelancer', 'pembuat kek', 'pencari kerja', 'klinik', 'jurulatih', 'studio'],
     button: 'Ambil, percuma',

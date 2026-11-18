@@ -1,0 +1,114 @@
+/* The FAQ (Landing2 board, L2:306–317). */
+
+.faq {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 60px;
+}
+
+.pk {
+  display: block;
+  width: 124px;
+  margin-top: 36px;
+}
+
+.fq {
+  border-bottom: 1px solid var(--calm-line);
+}
+
+.fq:first-child {
+  border-top: 1px solid var(--calm-line);
+}
+
+.fq button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  padding: 24px 0;
+  border: 0;
+  background: none;
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fq button i {
+  position: relative;
+  flex: none;
+  width: 16px;
+  height: 16px;
+  transition: transform 0.35s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.fq button i::before,
+.fq button i::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: var(--r-pill);
+  background: var(--cl-faint);
+  transition: transform 0.35s;
+}
+
+.fq button i::after {
+  transform: rotate(90deg);
+}
+
+.fq[data-open] button i {
+  transform: rotate(180deg);
+}
+
+.fq[data-open] button i::after {
+  transform: rotate(0);
+}
+
+.a {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.fq[data-open] .a {
+  grid-template-rows: 1fr;
+}
+
+.a p {
+  max-width: 36em;
+  overflow: hidden;
+  color: var(--calm-muted);
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.fq[data-open] .a p {
+  padding-bottom: 24px;
+}
+
+@media (max-width: 1100px) {
+  .faq {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+  }
+
+  .head {
+    text-align: center;
+  }
+
+  .pk {
+    width: 80px;
+    margin: 16px auto 0;
+  }
+
+  .list {
+    width: 100%;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+}

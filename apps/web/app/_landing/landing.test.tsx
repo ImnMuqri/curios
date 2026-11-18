@@ -77,8 +77,9 @@ describe('motion', () => {
     expect(hero).toHaveTextContent(en.personas.aisyah.a);
     // Every zone has landed.
     expect(container.querySelector('#business')).toHaveTextContent(en.lands.service.first.title);
-    // The closing line is up, not waiting to rise.
-    expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
+    // The closing reads its first word, with nothing held for a reveal.
+    expect(screen.getByRole('heading', { name: 'One page for freelancers' })).toBeInTheDocument();
+    expect(container.querySelector('[data-rv="wait"]')).toBeNull();
   });
 
 });

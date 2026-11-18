@@ -1,0 +1,42 @@
+/* The closing card (Landing2 board, L2:319–323): 16px, the calm container corner, where the board draws 30px. */
+
+.closing {
+  position: relative;
+  margin-top: 150px;
+  padding: 80px 24px 96px;
+  overflow: hidden;
+  border-radius: var(--r-box);
+  background: var(--calm-surface);
+  box-shadow: 0 0 0 1px var(--calm-line);
+  text-align: center;
+}
+
+.closing > * {
+  position: relative;
+}
+
+.closing > .dots {
+  position: absolute;
+  top: auto;
+  bottom: 0;
+  height: 100%;
+  -webkit-mask-image: linear-gradient(transparent 30%, black);
+  mask-image: linear-gradient(transparent 30%, black);
+}
+
+.pk {
+  display: block;
+  width: 124px;
+  margin: 0 auto 14px;
+}
+
+.claim {
+  margin-top: 34px;
+}
+
+@media (max-width: 560px) {
+  .closing {
+    margin-top: 96px;
+    padding: 56px 16px 64px;
+  }
+}
