@@ -1,6 +1,6 @@
 # The web app (apps/web), at curios.my. Built here, on Linux: a Windows `next build` loses
 # the font preloads (devDocs/OPERATIONS.md), so production is never built from a Windows checkout.
-FROM node:22-bookworm-slim
+FROM node:22-bookworm-slim AS build
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends openssl ca-certificates \
@@ -22,11 +22,30 @@ ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
     NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN \
-    NEXT_TELEMETRY_DISABLED=1
+    NEXT_TELEMETRY_DISABLED=1 \
+    NEXT_STANDALONE=1
 
 RUN pnpm --filter @curios/web build
 
-ENV NODE_ENV=production
+# What runs: the standalone server and only the files it needs (next.config.ts), not the whole
+# workspace's node_modules. Static assets and public/ are not part of the traced output, so they
+# are copied beside it, where server.js looks for them.
+FROM node:22-bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /app/apps/web/.next/standalone ./
+COPY --from=build /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build /app/apps/web/public ./apps/web/public
+
+# HOSTNAME: server.js binds to it, and Docker sets it to the container's id, which would leave the
+# server unreachable from outside the container. PORT is Railway's.
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=0.0.0.0
 WORKDIR /app/apps/web
-# `next start` listens on $PORT, which Railway sets.
-CMD ["node", "node_modules/next/dist/bin/next", "start"]
+# node itself as the container's process, so a deploy's SIGTERM reaches the server.
+CMD ["node", "server.js"]
