@@ -1,0 +1,323 @@
+/*
+ * Peek, alive (Landing2 board, L2:46–72 and L2:536–545). The loops (bob,
+ * blink, whistle, wave, happy) run only for visitors who have not asked for
+ * less motion; a one-shot habit is a short animation on a mood class.
+ */
+
+.pk {
+  display: block;
+  flex: none;
+  height: auto;
+  overflow: visible;
+}
+
+.j,
+.sh,
+.hl,
+.hr,
+.e {
+  transform-box: fill-box;
+}
+
+.j {
+  transform-origin: 50% 100%;
+}
+
+.e {
+  transform-origin: 50% 50%;
+}
+
+.p {
+  transition: transform 0.25s ease-out;
+}
+
+.hl,
+.hr {
+  transform-origin: 50% 50%;
+  transition: transform 0.45s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.o,
+.n {
+  opacity: 0;
+}
+
+.m {
+  transition: opacity 0.2s;
+}
+
+/* Whistling: the o mouth, a hand down, notes rising. */
+.whistle .m {
+  opacity: 0;
+}
+
+.whistle .o {
+  opacity: 1;
+}
+
+.whistle .hr {
+  transform: translate(0, 44px);
+}
+
+.wave .hr,
+.wave2 .hr {
+  transform-origin: -55px 30px;
+}
+
+.happy .hl {
+  transform: translate(2px, -52px);
+}
+
+.happy .hr {
+  transform: translate(0, -12px);
+}
+
+.happy .p {
+  transform: translate(0, -5px) !important;
+}
+
+.happy .sh {
+  transform-origin: center;
+}
+
+/* One-shot habits and moods. */
+.hop .j {
+  animation: pkHop 0.5s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.tilt .j {
+  animation: pkTilt 1.5s ease-in-out;
+}
+
+.squish .j {
+  animation: pkSquish 0.8s cubic-bezier(0.3, 0.7, 0.4, 1);
+}
+
+.blink2 .e {
+  animation: pkBlink2 0.7s;
+}
+
+.wave2 .hr {
+  animation: pkWave2 1.7s ease-in-out;
+}
+
+.hands .hl {
+  animation: pkHandL 0.8s ease-in-out;
+}
+
+.hands .hr {
+  animation: pkHandR 0.8s ease-in-out 0.1s;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .j {
+    animation: pkBob 3s ease-in-out infinite;
+  }
+
+  .e {
+    animation: pkBlink 5.2s infinite;
+  }
+
+  .wave .hr {
+    animation: pkWave 3.6s ease-in-out infinite;
+  }
+
+  .whistle .n {
+    animation: pkNote 2.4s ease-out infinite;
+  }
+
+  .whistle .n2 {
+    animation-delay: 1.2s;
+  }
+
+  .whistle .j {
+    animation: pkSway 3.2s ease-in-out infinite;
+  }
+
+  .happy .j {
+    animation: pkJump 1s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+  }
+
+  .happy .sh {
+    animation: pkShd 1s cubic-bezier(0.3, 0.7, 0.4, 1) infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pk,
+  .pk * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+@keyframes pkBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes pkBlink {
+  0%,
+  45%,
+  49%,
+  100% {
+    transform: scaleY(1);
+  }
+  47% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes pkWave {
+  0%,
+  50%,
+  100% {
+    transform: rotate(0);
+  }
+  58% {
+    transform: rotate(-16deg);
+  }
+  66% {
+    transform: rotate(12deg);
+  }
+  74% {
+    transform: rotate(-12deg);
+  }
+  82% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes pkNote {
+  0% {
+    opacity: 0;
+    transform: translate(-6px, 8px);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(8px, -16px);
+  }
+}
+
+@keyframes pkSway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes pkJump {
+  0% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+  12% {
+    transform: translateY(0) scale(0.94, 1.06);
+  }
+  45% {
+    transform: translateY(-30px) scale(0.98, 1.02);
+  }
+  75% {
+    transform: translateY(0) scale(1, 1);
+  }
+  86%,
+  100% {
+    transform: translateY(0) scale(1.08, 0.9);
+  }
+}
+
+@keyframes pkShd {
+  0%,
+  12%,
+  75%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  45% {
+    transform: scale(0.6);
+    opacity: 0.5;
+  }
+}
+
+@keyframes pkHop {
+  0% {
+    transform: translateY(0) scale(1.06, 0.92);
+  }
+  40% {
+    transform: translateY(-14px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+@keyframes pkTilt {
+  25%,
+  70% {
+    transform: rotate(-9deg);
+  }
+}
+
+@keyframes pkSquish {
+  30% {
+    transform: scale(1.1, 0.86);
+  }
+  60% {
+    transform: scale(0.94, 1.07);
+  }
+}
+
+@keyframes pkBlink2 {
+  0%,
+  35%,
+  75%,
+  100% {
+    transform: none;
+  }
+  15%,
+  55% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes pkWave2 {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  20% {
+    transform: rotate(-18deg);
+  }
+  40% {
+    transform: rotate(12deg);
+  }
+  60% {
+    transform: rotate(-14deg);
+  }
+  80% {
+    transform: rotate(6deg);
+  }
+}
+
+@keyframes pkHandL {
+  40% {
+    transform: translate(4px, -26px);
+  }
+}
+
+@keyframes pkHandR {
+  40% {
+    transform: translate(-4px, -14px);
+  }
+}
