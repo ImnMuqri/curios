@@ -10,21 +10,21 @@ export function PeekBody({ clipId, look, mouth }: { clipId: string; look?: { x: 
       </g>
       <ellipse cx="55" cy="54" rx="9" ry="5" fill="var(--peek-shine)" transform="rotate(-30 55 54)" />
       {mouth === 'happy' ? (
-        <path d="M55 86q11-13 22 0M84 86q11-13 22 0" fill="none" stroke="var(--card)" strokeWidth="5.5" strokeLinecap="round" />
+        <path d="M55 86q11-13 22 0M84 86q11-13 22 0" fill="none" stroke="white" strokeWidth="5.5" strokeLinecap="round" />
       ) : look ? (
         <g className={styles.eyes}>
-          <ellipse cx="66" cy="82" rx="11.5" ry="13.5" fill="var(--card)" />
-          <ellipse cx="95" cy="82" rx="11.5" ry="13.5" fill="var(--card)" />
-          <circle cx={look.x} cy={look.y} r="6.6" fill="var(--ink)" />
-          <circle cx={look.x + 29} cy={look.y} r="6.6" fill="var(--ink)" />
-          <circle cx={look.x + 2.2} cy={look.y - 3} r="2.1" fill="var(--card)" />
-          <circle cx={look.x + 31.2} cy={look.y - 3} r="2.1" fill="var(--card)" />
+          <ellipse cx="66" cy="82" rx="11.5" ry="13.5" fill="white" />
+          <ellipse cx="95" cy="82" rx="11.5" ry="13.5" fill="white" />
+          <circle cx={look.x} cy={look.y} r="6.6" fill="var(--light-ink)" />
+          <circle cx={look.x + 29} cy={look.y} r="6.6" fill="var(--light-ink)" />
+          <circle cx={look.x + 2.2} cy={look.y - 3} r="2.1" fill="white" />
+          <circle cx={look.x + 31.2} cy={look.y - 3} r="2.1" fill="white" />
         </g>
       ) : null}
-      {mouth === 'smile' ? <path d="M75 104q5.5 4.5 11 0" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" /> : null}
-      {mouth === 'frown' ? <path d="M75 106q5.5-4.5 11 0" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" /> : null}
-      {mouth === 'flat' ? <path d="M76 105h9" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" /> : null}
-      {mouth === 'happy' ? <path d="M72 102q8.5 9 17 0z" fill="var(--ink)" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round" /> : null}
+      {mouth === 'smile' ? <path d="M75 104q5.5 4.5 11 0" fill="none" stroke="var(--light-ink)" strokeWidth="3" strokeLinecap="round" /> : null}
+      {mouth === 'frown' ? <path d="M75 106q5.5-4.5 11 0" fill="none" stroke="var(--light-ink)" strokeWidth="3" strokeLinecap="round" /> : null}
+      {mouth === 'flat' ? <path d="M76 105h9" fill="none" stroke="var(--light-ink)" strokeWidth="3" strokeLinecap="round" /> : null}
+      {mouth === 'happy' ? <path d="M72 102q8.5 9 17 0z" fill="var(--light-ink)" stroke="var(--light-ink)" strokeWidth="2" strokeLinejoin="round" /> : null}
     </g>
   );
 }

@@ -149,7 +149,7 @@
   text-align: center;
 }
 
-/* Peek's body bobs by itself (PeekBody, _ui/peek.module.css). */
+/* The board's live Peek (LivePeek): eyes follow the pointer, and he bobs and blinks by himself. */
 .panel .peek {
   width: 104px;
   height: auto;

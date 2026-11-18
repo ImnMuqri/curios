@@ -221,7 +221,7 @@ a.headLink {
   width: 100%;
   padding: 20px 12px 7px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-box);
   background: var(--card);
   color: var(--ink);
   font: inherit;
@@ -281,7 +281,7 @@ a.headLink {
   height: 38px;
   padding: 0 12px;
   border: 1px solid var(--edge);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-box);
   background: var(--card);
   color: var(--ink);
   font: inherit;

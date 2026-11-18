@@ -1,10 +1,10 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { HELP_SCREEN_NAMES, HELP_SUGGESTIONS, helpScreenFor, searchGuide, type PublicHelpEntry, type PublicHelpSection } from '@curios/core/help';
 import { ApiError, apiFetch } from '../../../lib/api.js';
-import { PeekBody } from '../_ui/peek.js';
+import { LivePeek } from '../../_peek/LivePeek.js';
 import { SUPPORT_MAILTO } from './help-context.js';
 import styles from './help.module.css';
 
@@ -98,25 +98,6 @@ const Check = () => (
 function openLabel(path: string): string {
   const name = HELP_SCREEN_NAMES[helpScreenFor(path)];
   return `Open ${name.replace(/^the /, '')}`;
-}
-
-function PeekWaving() {
-  const clip = `hp-${useId().replace(/:/g, '')}`;
-  return (
-    <svg className={styles.peek} viewBox="0 0 160 150" aria-hidden="true">
-      <defs>
-        <clipPath id={clip}>
-          <ellipse cx="80" cy="84" rx="54" ry="49" />
-        </clipPath>
-      </defs>
-      <ellipse cx="80" cy="143" rx="40" ry="4" fill="var(--line)" />
-      <ellipse cx="63" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
-      <ellipse cx="97" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
-      <circle cx="19" cy="100" r="10" fill="var(--peek-hand)" />
-      <circle cx="139" cy="60" r="10" fill="var(--peek-hand)" />
-      <PeekBody clipId={clip} look={{ x: 67, y: 85 }} mouth="smile" />
-    </svg>
-  );
 }
 
 export function HelpPanel({
@@ -383,7 +364,7 @@ export function HelpPanel({
           ) : empty ? (
             <>
               <div className={styles.empty}>
-                <PeekWaving />
+                <LivePeek width={104} follow className={styles.peek} />
                 <h3>{firstName ? `Hi ${firstName}. What can I help with?` : 'What can I help with?'}</h3>
                 <p>I answer from the Curios help guide. If something isn’t in it, I’ll say so and you can ask our team.</p>
               </div>
