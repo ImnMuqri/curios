@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { defaultSettings } from '@curios/core/settings';
 import { raisedSettings } from '@curios/core/test-settings';
@@ -9,9 +9,7 @@ import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, landingCopy } from './copy.js';
 import { structuredData } from './structured-data.js';
 import { BRAND } from './brand-colors.js';
-import { STEP_MS, STEP_STARTS, advance, scene, stepProgress } from './order-scene.js';
 import { payback } from './Pricing.js';
-import { play } from './WhatLands.js';
 
 const LOCALES = ['en', 'ms'] as const;
 /** The prices and allowances in force: the defaults, as a database with no rows gives. */
@@ -81,8 +79,8 @@ describe('motion', () => {
     // The hero's front page is answered, with no cursor and no caret.
     const hero = container.querySelector('section')!;
     expect(hero).toHaveTextContent(en.personas.aisyah.a);
-    // The order has landed and been confirmed.
-    expect(container.querySelector('#business')).toHaveTextContent(en.business.done);
+    // Every zone has landed.
+    expect(container.querySelector('#business')).toHaveTextContent(en.lands.service.first.title);
     // The closing line is up, not waiting to rise.
     expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
   });
@@ -167,354 +165,6 @@ describe('pricing, at the prices the admin set', () => {
   it('puts the prices in force in the structured data', () => {
     const offers = structuredData(landingCopy('en', RAISED), 'https://curios.my', RAISED.prices)['@graph'].flatMap((node) => ('offers' in node ? node.offers : []));
     expect(offers.map((o) => o?.price)).toEqual(['0', '59', '490']);
-  });
-});
-
-describe('the order, played out', () => {
-  it('starts empty and ends completed, with the basket and the sheet in between', () => {
-    expect(scene(0)).toMatchObject({ basketCount: 0, sheet: 0, view: 'form', completed: false });
-    expect(scene(0.2)).toMatchObject({ basketCount: 2, basketTotal: 190, step: 0 });
-    expect(scene(0.23)).toMatchObject({ basketCount: 3, basketTotal: 235, step: 0 });
-    expect(scene(0.23).rows.map((r) => r.qty)).toEqual([2, 1, 0, 0]);
-    expect(scene(0.4)).toMatchObject({ view: 'form', step: 1 });
-    expect(scene(0.4).sheet).toBe(100);
-    expect(scene(1)).toMatchObject({ completed: true, step: 4, success: 1 });
-  });
-
-  it('picks FPX, then Maybank2u, and pays through CHIP without a QR or a receipt', () => {
-    expect(scene(0.52)).toMatchObject({ view: 'pay', wayPicked: false, bankPicked: false, chip: false });
-    expect(scene(0.54)).toMatchObject({ wayPicked: true, bankPicked: false });
-    expect(scene(0.55)).toMatchObject({ bankPicked: true, chip: false });
-    expect(scene(0.6)).toMatchObject({ chip: true, approved: false });
-    expect(scene(0.62)).toMatchObject({ chip: true, approved: true, step: 2 });
-    expect(scene(0.7)).toMatchObject({ step: 3 });
-    expect(scene(0.6)).not.toHaveProperty('receipt');
-    expect(scene(0.6)).not.toHaveProperty('uploading');
-  });
-
-  it('lands in Orders already paid, then completed', () => {
-    expect(scene(0.7)).toMatchObject({ today: 480, paidCount: 3, completed: false, card: { isNew: false } });
-    expect(scene(0.85)).toMatchObject({ paidCount: 4, completed: false, card: { isNew: true } });
-    expect(scene(0.88).today).toBe(715);
-    expect(scene(0.95)).toMatchObject({ completed: true, paidCount: 3 });
-  });
-
-  it('gives each step its own duration', () => {
-    expect(STEP_MS).toEqual([5800, 4600, 4800, 2600, 4000]);
-    expect(STEP_STARTS).toEqual([0, 0.24, 0.5, 0.64, 0.76, 1]);
-    expect(advance(0, 5800)).toBeCloseTo(0.24);
-    expect(advance(0.24, 4600)).toBeCloseTo(0.5);
-    expect(advance(0.64, 2600)).toBeCloseTo(0.76);
-    expect(stepProgress(0.37, 1)).toBeCloseTo(50);
-    expect(stepProgress(0.1, 3)).toBe(0);
-  });
-});
-
-describe('the order, from the link in bio', () => {
-  it('starts on Kek Lina’s link in bio, with nothing in the basket', () => {
-    expect(scene(0)).toMatchObject({ lib: { x: 0, pressed: false }, basketCount: 0, step: 0 });
-    // The cursor comes up from below to the Shop link, the first link.
-    expect(scene(0).cursor).toMatchObject({ x: 200, y: 550, o: 0 });
-    expect(scene(0.04).cursor).toMatchObject({ x: 128, y: 348, o: 1, pressed: false });
-  });
-
-  it('taps the Shop link, the page slides away and the shop opens', () => {
-    expect(scene(0.05)).toMatchObject({ lib: { x: 0, pressed: true } });
-    expect(scene(0.05).cursor.pressed).toBe(true);
-    expect(scene(0.058).lib.pressed).toBe(false);
-    expect(scene(0.0725).lib.x).toBeLessThan(0);
-    expect(scene(0.0725).lib.x).toBeGreaterThan(-100);
-    expect(scene(0.085).lib.x).toBe(-100);
-    expect(scene(0.5).lib.x).toBe(-100);
-    expect(scene(1).lib.x).toBe(-100);
-  });
-
-  it('the name she types is the name your Orders shows', () => {
-    expect(scene(0.315).name).toBe('');
-    expect(scene(0.34).name.length).toBeGreaterThan(0);
-    expect(scene(0.365).name).toBe(en.business.mira);
-    expect(ms.business.mira).toBe(en.business.mira);
-    // Typed before the field lets go, at about the phone number's pace.
-    expect(scene(0.3619).nameFocused).toBe(true);
-  });
-
-  it('shows the shop untouched until the link has been tapped, then plays the old first step', () => {
-    expect(scene(0.085)).toMatchObject({ basketCount: 0, sheet: 0, step: 0 });
-    expect(scene(0.085).cursor).toMatchObject({ x: 128, y: 348 });
-    // The tap on the first cake lands once the shop is open: 0.09 of the old film.
-    expect(scene(0.085 + 0.155 * (0.095 / 0.24)).rows[0]!.qty).toBe(1);
-    expect(scene(0.24)).toMatchObject({ step: 1, basketCount: 3 });
-  });
-
-  it('draws the link in bio as the board does, the Shop link first', async () => {
-    reduceMotion();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    const biz = container.querySelector('#business') as HTMLElement;
-    await userEvent.click(within(biz).getByRole('button', { name: new RegExp(en.business.caps[0]!.title) }));
-    const lib = biz.querySelector('[class*="csLib"]') as HTMLElement;
-    expect(lib).not.toBeNull();
-    expect(lib.style.transform).toBe('translateX(0%)');
-    expect(lib).toHaveTextContent('curios.my/keklina');
-    expect(lib).toHaveTextContent('Kek Lina');
-    expect(lib).toHaveTextContent(en.business.lib.bio);
-    expect(lib).toHaveTextContent(en.hero.linksTab);
-    expect(lib).toHaveTextContent(en.hero.askTab);
-    const links = [...lib.querySelectorAll('[class*="lbShop"], [class*="lbL"]')].map((l) => l.textContent);
-    expect(links[0]).toContain(en.business.lib.shop);
-    expect(links[0]).toContain(en.business.lib.shopSub);
-    expect(links.slice(1)).toEqual(en.business.lib.links);
-    // Three overlapping thumbnails on the Shop link.
-    expect(lib.querySelectorAll('[class*="lbTh"] > i')).toHaveLength(3);
-    expect(lib).toHaveTextContent(en.business.lib.foot);
-    // The stage says it starts there, for assistive tech.
-    expect(biz.querySelector('[role="img"]')).toHaveAccessibleName(/link in bio/);
-    expect(ms.business.lib.shop).not.toBe('');
-  });
-
-  it('draws them as the real pages do: the address under the name, ringed links, and the shop front on its blurred cover', () => {
-    reduceMotion();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    const biz = container.querySelector('#business') as HTMLElement;
-    const lib = biz.querySelector('[class*="csLib"]') as HTMLElement;
-    // No address bar across the top of the link in bio; the address follows the name.
-    expect(lib.querySelector('[class*="csTop"]')).toBeNull();
-    // Kek Lina's cover across the top, in place of a round initial.
-    expect(lib.querySelector('[class*="lbCover"] img')?.getAttribute('src')).toBe('/landing/hero-baker.webp');
-    expect(lib.querySelector('[class*="lbAv"]')).toBeNull();
-    expect(lib.firstElementChild).toBe(lib.querySelector('[class*="lbCover"]'));
-    const name = [...lib.querySelectorAll('p')].find((p) => p.textContent === 'Kek Lina')!;
-    expect(name.nextElementSibling).toHaveTextContent(/^curios\.my\/keklina$/);
-    // With a shop open, the first link after it wears the accent, and only that one.
-    const links = lib.querySelectorAll('[class*="lbL"]');
-    expect(links[0]).toHaveAttribute('data-first');
-    expect([...links].slice(1).every((l) => !l.hasAttribute('data-first'))).toBe(true);
-    // The shop front behind it wears Kek Lina's cover, blurred, under a fade (TanyaJe .cs-cov).
-    const cover = biz.querySelector('[class*="csCover"]') as HTMLElement;
-    expect(cover).toHaveAttribute('aria-hidden', 'true');
-    expect(cover.querySelector('img')?.getAttribute('src')).toBe('/landing/hero-baker.webp');
-    const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
-    expect(css.match(/\n\.csCover img \{([^}]*)\}/)?.[1]).toMatch(/filter:\s*blur\(22px\)/);
-    expect(css.match(/\n\.lbL \{([^}]*)\}/)?.[1]).toMatch(/border:\s*4px solid/);
-  });
-});
-
-describe('For business, the steps', () => {
-  const business = (c: HTMLElement) => c.querySelector('#business') as HTMLElement;
-
-  it('a step can be clicked to jump to it', async () => {
-    reduceMotion();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    expect(business(container)).toHaveTextContent(en.business.done);
-    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[2]!.title) }));
-    expect(business(container).querySelector('[data-state="now"]')).toHaveTextContent(en.business.caps[2]!.title);
-    expect(business(container)).toHaveTextContent(en.business.howPay);
-    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[1]!.title) }));
-    expect(business(container)).toHaveTextContent(en.business.continueToPay);
-    expect(business(container)).not.toHaveTextContent(en.business.howPay);
-    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[0]!.title) }));
-    expect(business(container)).toHaveTextContent(en.business.basketEmpty);
-  });
-
-  it('each step has its own duration and a progress line', async () => {
-    reduceMotion();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[1]!.title) }));
-    const bar = business(container).querySelector('[data-state="now"] [data-bar] i') as HTMLElement;
-    expect(parseFloat(bar.style.width)).toBeGreaterThanOrEqual(0);
-    expect(parseFloat(bar.style.width)).toBeLessThan(1);
-    expect(business(container).querySelectorAll('[data-bar]')).toHaveLength(5);
-  });
-
-  it('keeps playing while a phone is hovered', () => {
-    const frames: FrameRequestCallback[] = [];
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
-    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
-    );
-    const watchers: IntersectionObserverCallback[] = [];
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        constructor(cb: IntersectionObserverCallback) {
-          watchers.push(cb);
-        }
-        observe() {}
-        disconnect() {}
-      },
-    );
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    act(() => watchers.forEach((w) => w([{ intersectionRatio: 0.5 } as IntersectionObserverEntry], {} as IntersectionObserver)));
-    const bar = () => parseFloat((business(container).querySelector('[data-state="now"] [data-bar] i') as HTMLElement).style.width);
-    const tick = (now: number) => act(() => frames.splice(0).forEach((f) => f(now)));
-    tick(1000);
-    tick(1050);
-    tick(1100);
-    const before = bar();
-    expect(before).toBeGreaterThan(0);
-    const phones = business(container).querySelectorAll('[data-phone]');
-    expect(phones).toHaveLength(2);
-    fireEvent.mouseEnter(phones[0]!);
-    tick(1150);
-    tick(1200);
-    expect(bar()).toBeGreaterThan(before);
-    vi.unstubAllGlobals();
-  });
-});
-
-describe('what lands in your hands', () => {
-  const section = (c: HTMLElement) => c.querySelector('#what-lands') as HTMLElement;
-  const tall = (c: HTMLElement) => section(c).querySelector('[data-stage]') as HTMLElement;
-  const rowsIn = (c: HTMLElement) => tall(c).querySelectorAll('[data-in]').length;
-
-  /** Motion allowed, and an observer the test moves in and out of view. */
-  function watchable() {
-    vi.spyOn(window, 'matchMedia').mockImplementation(
-      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
-    );
-    const watchers: IntersectionObserverCallback[] = [];
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        constructor(cb: IntersectionObserverCallback) {
-          watchers.push(cb);
-        }
-        observe() {}
-        disconnect() {}
-      },
-    );
-    return (ratio: number) =>
-      act(() => watchers.forEach((w) => w([{ intersectionRatio: ratio, isIntersecting: ratio > 0 } as IntersectionObserverEntry], {} as IntersectionObserver)));
-  }
-  const advance = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
-
-  afterEach(() => vi.unstubAllGlobals());
-
-  it.each(LOCALES)('%s: opens For business, under its label, and the order follows in the same section', (locale) => {
-    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
-    const ids = [...container.querySelectorAll('main > section[id]')].map((s) => s.id);
-    expect(ids[ids.indexOf('how') + 1]).toBe('business');
-    const business = container.querySelector('#business')!;
-    expect(business.firstElementChild).toBe(section(container));
-    expect(section(container).querySelector('[class*="eyebrow"]')).toHaveTextContent(COPY[locale].business.eyebrow);
-    expect(business.querySelectorAll('[class*="eyebrow"]')).toHaveLength(1);
-    const headings = within(business as HTMLElement).getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(headings).toEqual([COPY[locale].whatLands.title, COPY[locale].business.title]);
-  });
-
-  it('For business sits on the page’s own ground, not pink', () => {
-    const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
-    const biz = css.match(/\n\.biz \{([^}]*)\}/)?.[1] ?? '';
-    const wl = css.match(/\n\.wl \{([^}]*)\}/)?.[1] ?? '';
-    expect(biz).not.toMatch(/background/);
-    expect(wl).not.toMatch(/background/);
-  });
-
-  it.each(LOCALES)('%s: with reduced motion every tile is on its finished frame', (locale) => {
-    reduceMotion();
-    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
-    const p = COPY[locale].whatLands.service;
-    const card = p.card as Extract<typeof p.card, { kind: 'lead' }>;
-    expect(tall(container)).toHaveAttribute('data-stage', 'landed');
-    expect(section(container)).toHaveTextContent(card.phone);
-    expect(section(container)).toHaveTextContent(card.button);
-    expect(section(container)).toHaveTextContent(p.tags.landed);
-    // Both alerts, the pick tapped, the bars full and the missing one tagged.
-    expect(section(container)).toHaveTextContent(p.alerts[0]!.text);
-    expect(section(container)).toHaveTextContent(p.alerts[1]!.text);
-    expect(section(container)).toHaveTextContent(p.chat.done);
-    expect(section(container).querySelector('[data-flagged]')).toHaveTextContent(p.missing);
-    expect([...section(container).querySelectorAll('em')].map((e) => e.textContent)).toEqual(expect.arrayContaining(p.asked.map((a) => String(a.n))));
-    // Screen readers get the landed caption, not the inbox one under it.
-    expect(screen.getByText(p.captions.landed.title).closest('[aria-hidden]')).toBeNull();
-    expect(screen.getByText(p.captions.replying.title).closest('[aria-hidden]')).not.toBeNull();
-  });
-
-  it('switches to products, and says which side is on', () => {
-    reduceMotion();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    const { service, products } = en.whatLands;
-    const group = within(section(container)).getByRole('group', { name: en.whatLands.switchLabel });
-    expect(within(group).getByRole('button', { name: service.label })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(within(group).getByRole('button', { name: products.label }));
-    expect(within(group).getByRole('button', { name: products.label })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(group).getByRole('button', { name: service.label })).toHaveAttribute('aria-pressed', 'false');
-    expect(section(container)).toHaveTextContent('RM103');
-    expect(section(container)).toHaveTextContent(products.chat.done);
-    expect(section(container)).toHaveTextContent(products.missing);
-    expect(section(container)).not.toHaveTextContent(service.missing);
-  });
-
-  it('holds its first frame until in view, plays the big tile’s round, and starts over when it leaves', async () => {
-    vi.useFakeTimers();
-    const view = watchable();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    expect(tall(container)).toHaveAttribute('data-stage', 'inbox');
-    await advance(3000);
-    expect(rowsIn(container)).toBe(0);
-
-    view(0.5);
-    await advance(500 + 8 * 230);
-    expect(rowsIn(container)).toBe(8);
-    expect(section(container)).toHaveTextContent(en.whatLands.service.tags.inbox);
-    // The page answers at 5.14 s, Peek sorts at 7.23 s, the leads land at 10.83 s.
-    await advance(5140 - 2340 + 10);
-    expect(tall(container)).toHaveAttribute('data-stage', 'replying');
-    await advance(7230 - 5150 + 10);
-    expect(tall(container)).toHaveAttribute('data-stage', 'sorting');
-    await advance(10830 - 7240 + 10);
-    expect(tall(container)).toHaveAttribute('data-stage', 'landed');
-    expect(tall(container).querySelectorAll('[data-sort="keep"]')).toHaveLength(2);
-
-    view(0);
-    expect(tall(container)).toHaveAttribute('data-stage', 'inbox');
-    expect(rowsIn(container)).toBe(0);
-  });
-
-  it('switching side restarts every tile', async () => {
-    vi.useFakeTimers();
-    const view = watchable();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    view(0.5);
-    await advance(11000);
-    expect(tall(container)).toHaveAttribute('data-stage', 'landed');
-    fireEvent.click(within(section(container)).getByRole('button', { name: en.whatLands.products.label }));
-    expect(tall(container)).toHaveAttribute('data-stage', 'inbox');
-    expect(rowsIn(container)).toBe(0);
-    await advance(500 + 8 * 230);
-    expect(section(container)).toHaveTextContent(en.whatLands.products.tags.inbox);
-    expect(section(container)).toHaveTextContent(en.whatLands.products.chats[0]!.text);
-  });
-
-  it('a stopped scene runs nothing after its pending wait', async () => {
-    vi.useFakeTimers();
-    const seen: number[] = [];
-    const stop = play(async (wait) => {
-      seen.push(1);
-      await wait(100);
-      seen.push(2);
-    });
-    await vi.advanceTimersByTimeAsync(150);
-    expect(seen).toEqual([1, 2, 1]);
-    stop();
-    await vi.advanceTimersByTimeAsync(1000);
-    expect(seen).toEqual([1, 2, 1]);
-  });
-
-  it('carries the handoff’s Malay word for word', () => {
-    const { whatLands } = ms;
-    expect(whatLands.title).toBe('Apa yang anda dapat.');
-    expect(whatLands.lede).toBe('Setiap chat di page anda berakhir dengan salah satu daripada ini.');
-    expect([whatLands.service.label, whatLands.products.label]).toEqual(['Saya beri servis', 'Saya jual produk']);
-    expect(whatLands.service.tags.inbox).toBe('Inbox anda · 47 belum dibaca');
-    expect(whatLands.service.tags.replying).toBe('Dengan Curios · page anda membalas');
-    expect(whatLands.service.captions.landed).toEqual({ title: 'Lead yang sudah ditapis', body: 'Page anda dah tanya bajet, kawasan dan masa. Telefon je.' });
-    expect(whatLands.products.captions.landed).toEqual({ title: 'Pesanan yang sudah dibayar', body: 'Terus dari chat. Tiada “transfer dulu ya”.' });
-    expect([whatLands.service.answered, whatLands.service.kept, whatLands.products.kept]).toEqual(['Dijawab ✓', 'Lead ✓', 'Dibayar ✓']);
-    expect(whatLands.service.told.title).toBe('Dimaklumkan bila penting');
-    // The visitors' own words are the same in both languages.
-    expect(ms.whatLands.service.chats).toEqual(en.whatLands.service.chats);
-    expect(ms.whatLands.products.asked).toEqual(en.whatLands.products.asked);
   });
 });
 
@@ -689,7 +339,7 @@ describe('copy', () => {
   });
 
   it('carries no slice 18 markers: checkout, QR payment and Orders are built', () => {
-    for (const file of ['copy.ts', 'order-scene.ts', 'Business.tsx']) {
+    for (const file of ['copy.ts', 'lands-script.ts', 'Lands.tsx']) {
       expect(readFileSync(join(import.meta.dirname, file), 'utf8')).not.toMatch(/SLICE 18/);
     }
   });
@@ -715,10 +365,6 @@ describe('brand colours', () => {
 
 describe('less template', () => {
   const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-  const rule = (selector: string) => {
-    const escaped = selector.replace(/[.[\]]/g, (c) => `\\${c}`);
-    return css.match(new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`))?.[1] ?? '';
-  };
 
   it.each(LOCALES)('%s: no curved marquee between the sections', (locale) => {
     const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
@@ -726,19 +372,6 @@ describe('less template', () => {
     expect(container.querySelector('textPath[href^="#loop"]')).toBeNull();
     expect(COPY[locale]).not.toHaveProperty('loop');
     expect(css).not.toMatch(/\.loop\b/);
-  });
-
-  it('sets section labels in plain sentence case, Inter 15px semibold', () => {
-    const eyebrow = rule('.eyebrow');
-    expect(eyebrow).toMatch(/font-family:\s*var\(--font-inter\)/);
-    expect(eyebrow).toMatch(/font-size:\s*15px/);
-    expect(eyebrow).toMatch(/font-weight:\s*600/);
-    expect(eyebrow).not.toMatch(/text-transform|letter-spacing|var\(--m\)/);
-    for (const copy of [en, ms]) {
-      for (const label of [copy.who.eyebrow, copy.how.eyebrow, copy.business.eyebrow, copy.pricing.eyebrow]) {
-        expect(label).not.toBe(label.toUpperCase());
-      }
-    }
   });
 
   it.each(LOCALES)('%s: no label above the hero headline', (locale) => {

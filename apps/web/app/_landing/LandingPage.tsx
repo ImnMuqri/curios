@@ -7,7 +7,7 @@ import { Hero } from './Hero.js';
 import { AskStrip } from './AskStrip.js';
 import { Who } from './Who.js';
 import { How } from './How.js';
-import { Business } from './Business.js';
+import { Lands } from './Lands.js';
 import { NoCut } from './NoCut.js';
 import { Pricing } from './Pricing.js';
 import { Faq } from './Faq.js';
@@ -78,7 +78,14 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
         <AskStrip locale={locale} />
         <Who locale={locale} />
         <How locale={locale} />
-        <Business locale={locale} />
+        <section className={calm.sec} id="business" aria-labelledby="business-label">
+          <div className={calm.wrap}>
+            <p id="business-label" className={`${calm.lbl} ${calm.rv}`} data-rv="">
+              {copy.lands.eyebrow}
+            </p>
+            <Lands locale={locale} />
+          </div>
+        </section>
         <NoCut locale={locale} monthly={copy.pricing.monthlyText} />
         <Pricing locale={locale} terms={{ prices: terms.prices, freeLeads: terms.freeLeads, freeOrders: terms.freeOrders }} />
         <Faq copy={copy.faq} />
