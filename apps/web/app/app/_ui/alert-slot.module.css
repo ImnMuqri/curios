@@ -1,7 +1,10 @@
 /*
- * The dashboard's stop states, from the design handoff's Alerts board: a
- * banner under a screen's header. Blue says what is coming, amber that
- * something has stopped, red that the plan has ended.
+ * The plan banners (the calm Dash board, .ban): one slot under a screen's title, 16px corners, an
+ * icon badge, a title, one line, one button and a ×. Blue says what is coming, amber that something
+ * has stopped, red that the plan or the shop has stopped.
+ *
+ * The tones are built from the status tags (--tag-*), which the frame's dark scopes swap for their
+ * lighter-ink twins (and a preview island takes back), so the banner follows dark mode on its own.
  */
 
 @keyframes fadeUp {
@@ -17,65 +20,67 @@
 }
 
 .ban {
-  --ban-bg: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
-  --ban-edge: color-mix(in srgb, var(--biru-muda) 60%, var(--blob-blue));
-  --ban-ink: color-mix(in srgb, var(--biru) 70%, var(--ink));
-  --ban-icon-bg: var(--biru-muda);
-  --ban-icon: var(--biru);
+  --ban-new: var(--tag-new);
+  --ban-new-ink: var(--tag-new-ink);
+  --ban-wait: var(--tag-wait);
+  --ban-wait-ink: var(--tag-wait-ink);
+  --ban-red: var(--tag-red);
+  --ban-red-ink: var(--tag-red-ink);
+  --ban-bg: var(--card);
+  --ban-edge: var(--edge);
+  --ban-badge: var(--ban-new);
+  --ban-badge-ink: var(--ban-new-ink);
   --ban-btn-bg: var(--card);
-  --ban-btn: var(--ban-ink);
-  --ban-on: var(--biru);
-  --ban-off: color-mix(in srgb, var(--biru-muda) 60%, var(--blob-blue));
+  --ban-btn: var(--ink);
+  --ban-btn-edge: var(--edge);
   display: flex;
   align-items: center;
   gap: 14px;
   max-width: 764px;
-  padding: 16px 16px 16px 18px;
-  border-radius: 10px;
+  padding: 14px 14px 14px 16px;
+  border-radius: var(--r-box);
   background: var(--ban-bg);
   box-shadow: inset 0 0 0 1px var(--ban-edge);
   animation: fadeUp 300ms ease both;
 }
 
 .ban[data-tone='warn'] {
-  --ban-bg: color-mix(in srgb, var(--amber-muda) 45%, var(--card));
-  --ban-edge: color-mix(in srgb, var(--amber-muda) 60%, var(--kuning));
-  --ban-ink: color-mix(in srgb, var(--amber-ink) 70%, var(--ink));
-  --ban-icon-bg: var(--amber-muda);
-  --ban-icon: var(--amber-ink);
-  --ban-btn-bg: var(--ink);
-  --ban-btn: var(--card);
-  --ban-on: var(--kuning);
-  --ban-off: var(--amber-muda);
+  --ban-bg: color-mix(in srgb, var(--ban-wait) 45%, var(--card));
+  --ban-edge: color-mix(in srgb, var(--ban-wait) 80%, var(--ban-wait-ink) 20%);
+  --ban-badge: color-mix(in srgb, var(--ban-wait) 85%, var(--ban-wait-ink) 15%);
+  --ban-badge-ink: var(--ban-wait-ink);
+  --ban-btn-bg: var(--action);
+  --ban-btn: var(--action-fg);
+  --ban-btn-edge: transparent;
 }
 
 .ban[data-tone='stop'] {
-  --ban-bg: color-mix(in srgb, var(--merah-muda) 45%, var(--card));
-  --ban-edge: color-mix(in srgb, var(--merah) 25%, var(--merah-muda));
-  --ban-ink: var(--merah-deep);
-  --ban-icon-bg: var(--merah-muda);
-  --ban-icon: var(--merah);
-  --ban-btn-bg: var(--merah);
-  --ban-btn: var(--card);
-  --ban-on: var(--merah);
-  --ban-off: var(--merah-muda);
+  --ban-bg: color-mix(in srgb, var(--ban-red) 45%, var(--card));
+  --ban-edge: color-mix(in srgb, var(--ban-red) 85%, var(--ban-red-ink) 15%);
+  --ban-badge: var(--ban-red);
+  --ban-badge-ink: var(--ban-red-ink);
+  --ban-btn-bg: var(--action);
+  --ban-btn: var(--action-fg);
+  --ban-btn-edge: transparent;
 }
 
 .bi {
   display: grid;
   place-items: center;
-  align-self: flex-start;
-  width: 36px;
-  height: 36px;
+  height: 40px;
+  min-width: 40px;
+  padding: 0 6px;
   flex: none;
-  border-radius: 8px;
-  background: var(--ban-icon-bg);
-  color: var(--ban-icon);
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  font-weight: 700;
+  background: var(--ban-badge);
+  color: var(--ban-badge-ink);
 }
 
 .bi svg {
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.9;
@@ -92,40 +97,21 @@
   display: block;
   font-size: 15px;
   font-weight: 600;
-  color: var(--ban-ink);
 }
 
 .bt > span {
   display: block;
   margin-top: 2px;
   font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-}
-
-.bt > .bm {
-  display: flex;
-  gap: 4px;
-  max-width: 220px;
-  margin-top: 10px;
-}
-
-.bm i {
-  flex: 1;
-  height: 5px;
-  border-radius: 3px;
-  background: var(--ban-off);
-}
-
-.bm i[data-on] {
-  background: var(--ban-on);
+  line-height: 1.4;
+  color: var(--muted);
 }
 
 .acts {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
 
 .btn {
@@ -133,16 +119,14 @@
   align-items: center;
   height: 36px;
   padding: 0 16px;
-  border-radius: 8px;
+  border-radius: var(--r-pill);
   background: var(--ban-btn-bg);
   color: var(--ban-btn);
+  box-shadow: inset 0 0 0 1px var(--ban-btn-edge);
+  font-size: 13.5px;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
-}
-
-.ban[data-tone='info'] .btn {
-  box-shadow: 0 1px 2px rgb(25 31 44 / 8%);
 }
 
 .btn:hover {
@@ -156,14 +140,15 @@
   width: 32px;
   height: 32px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 50%;
   background: transparent;
-  color: var(--ink-soft);
+  color: var(--faint);
   cursor: pointer;
 }
 
 .x:hover {
   background: color-mix(in srgb, var(--ink) 6%, transparent);
+  color: var(--ink);
 }
 
 .x svg {
@@ -189,7 +174,7 @@
   }
 
   .acts {
-    margin-left: 50px;
+    margin-left: 54px;
   }
 }
 

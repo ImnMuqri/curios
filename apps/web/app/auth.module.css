@@ -5,16 +5,42 @@
  *
  * From the design handoff's SignIn and SignUp boards: the form on paper
  * beside a Peek panel (_auth/scene.module.css), Bricolage 800 for the title,
- * IBM Plex Sans for everything else, white fields with a soft edge, a biru
+ * Inter for everything else (the calm redesign), white pill fields with a soft edge, a black
  * pill to submit. The product's Field, Button and Callout keep their
  * behaviour; only their look is restyled inside .content.
  */
 .auth {
+  /* The calm scope (light): the base tokens take the calm values on the screens outside the dashboard. */
+  --paper: var(--calm-bg);
+  --card: var(--calm-surface);
+  --surface: var(--calm-soft);
+  --ink: var(--calm-ink);
+  --muted: var(--calm-muted);
+  /* The old blue-grey text steps, on the calm greys, as on the dashboard's frame: --faint stays a step fainter than muted. */
+  --ink-soft: var(--calm-muted);
+  --hint: var(--calm-muted);
+  --faint: var(--calm-faint);
+  --line: var(--calm-line);
+  --edge: var(--calm-ring);
+  --ground: var(--calm-bg);
+  --nav-on: var(--calm-surface);
+  --action: var(--calm-ink);
+  --action-fg: var(--calm-surface);
+  --action-hover: var(--calm-ink-deep);
+  --font-body: var(--font-inter), system-ui, sans-serif;
+  /* The shared Button and Field in the calm voice: pills to click and type into, a box for prose. */
+  --button-radius: var(--r-pill);
+  --button-primary-hover: var(--action-hover);
+  --button-primary-active: var(--action-hover);
+  --field-radius: var(--r-pill);
+  --field-area-radius: var(--r-box);
+  --field-reveal-radius: 50%;
+  --callout-radius: var(--r-box);
   display: flex;
   min-height: 100dvh;
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.55;
 }
@@ -93,8 +119,8 @@
   width: 26px;
   height: 26px;
   border-radius: 50%;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
   font-size: 13px;
   font-style: normal;
 }
@@ -121,12 +147,12 @@
   color: var(--ink);
 }
 
-/* "Last used": a biru pill, on the Google button's top edge or after "or with email". */
+/* "Last used": the t-new tag, on the Google button's top edge or after "or with email". */
 .lastUsed {
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--tag-new);
+  color: var(--tag-new-ink);
   font-size: 11px;
   font-weight: 600;
   line-height: 16px;
@@ -177,7 +203,7 @@
   min-height: 52px;
   padding: 0 16px;
   border: 0;
-  border-radius: 14px;
+  border-radius: var(--r-pill);
   background: var(--card);
   box-shadow: inset 0 0 0 1.5px var(--edge);
   font-family: inherit;
@@ -224,23 +250,19 @@
   font-weight: 500;
 }
 
-/* The submit: a biru pill, full width. */
+/* The submit: the black action pill, full width. Its hover is the Button hook's (--button-primary-hover), so a busy, disabled submit keeps its fill. */
 .content button[type='submit'] {
   width: 100%;
   min-height: 54px;
   margin-top: 8px;
   border: 0;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--action);
+  color: var(--action-fg);
   font-family: inherit;
   font-size: 16px;
   font-weight: 600;
   transition: background-color 160ms ease;
-}
-
-.content button[type='submit']:hover {
-  background: var(--l-biru-700);
 }
 
 .switch {
@@ -279,7 +301,7 @@
   width: 84px;
   height: 84px;
   margin-bottom: 22px;
-  border-radius: 24px;
+  border-radius: var(--r-box);
   background: var(--biru-muda);
 }
 
@@ -294,7 +316,7 @@
 .sentTo {
   margin: 18px 0 0;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: var(--r-box);
   background: var(--surface);
   font-size: 14.5px;
 }

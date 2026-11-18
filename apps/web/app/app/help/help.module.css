@@ -1,39 +1,68 @@
 /*
- * The Help panel, from the Help board (design/boards/Help.dc.html, "App · Help"): a 420px panel on
- * the right under the top bar, with the sheet's 16px top-left corner; a light scrim behind it under
- * 1100px; the whole screen on a phone. Colours are the dashboard's tokens, so it follows dark mode.
+ * The Help panel (the calm Dash board's .hp2 and .hscrim): a 420px card floating 12px in from the right,
+ * top and bottom, with the 16px corner, over a dimmed page; under 1100px (the frame's own breakpoint) a
+ * bottom sheet. The scrim covers the whole screen and the card sits over the top bar, so nothing depends
+ * on the bar's height and no strip is left between them. Colours are the dashboard's tokens, so it
+ * follows dark mode; Peek keeps his own.
  */
 
+/* The page behind, dimmed; a tap on it closes the panel and goes no further. */
 .scrim {
-  display: none;
-}
-
-.panel {
   position: fixed;
-  top: 64px;
-  right: 0;
-  bottom: 0;
-  z-index: 45;
-  display: flex;
-  flex-direction: column;
-  width: 420px;
-  max-width: 100%;
-  overflow: hidden;
-  border-radius: 16px 0 0 0;
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), -24px 0 48px -24px rgb(25 31 44 / 18%);
-  animation: panelIn 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  inset: 0;
+  z-index: 44;
+  display: block;
+  padding: 0;
+  border: 0;
+  background: var(--calm-scrim);
+  cursor: pointer;
+  animation: scrimIn 300ms ease-out both;
 }
 
-@keyframes panelIn {
+@keyframes scrimIn {
   from {
-    transform: translateX(24px);
     opacity: 0;
   }
 
   to {
-    transform: none;
     opacity: 1;
+  }
+}
+
+.panel {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  bottom: 12px;
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  width: 420px;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgb(40 30 10 / 50%);
+  animation: panelIn 500ms cubic-bezier(0.3, 1.15, 0.4, 1) both;
+}
+
+@keyframes panelIn {
+  from {
+    transform: translateX(calc(100% + 24px));
+  }
+
+  to {
+    transform: none;
+  }
+}
+
+@keyframes panelUp {
+  from {
+    transform: translateY(calc(100% + 24px));
+  }
+
+  to {
+    transform: none;
   }
 }
 
@@ -51,15 +80,10 @@
 .head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   flex: none;
-  height: 64px;
-  padding: 0 12px 0 20px;
+  padding: 18px 18px 14px;
   border-bottom: 1px solid var(--line);
-}
-
-.head > .iconButton:first-child {
-  margin-left: -8px;
 }
 
 .title {
@@ -69,28 +93,32 @@
 
 .title h2 {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
   color: var(--ink);
 }
 
 .title p {
   margin: 1px 0 0;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
+/* The head's pills (the board's .ic3): Topics, back, and the close circle. */
 .iconButton {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
+  min-width: 34px;
+  height: 34px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   background: transparent;
-  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -98,10 +126,20 @@
   background: var(--surface);
 }
 
+.iconButton:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.iconButton.round {
+  padding: 0;
+  border-radius: 50%;
+}
+
 .body {
   flex: 1;
   overflow: auto;
-  padding: 20px;
+  padding: 22px 18px;
 }
 
 /* ---- Start ---- */
@@ -120,9 +158,9 @@
 
 .empty h3 {
   margin: 10px 0 6px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
@@ -135,10 +173,10 @@
 }
 
 .label {
-  margin: 22px 0 8px;
+  margin: 22px 0 8px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--hint);
 }
 
 .suggestions {
@@ -152,16 +190,29 @@
   align-items: center;
   gap: 10px;
   min-height: 44px;
-  padding: 10px 12px 10px 14px;
+  padding: 12px 16px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   background: var(--surface);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 500;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
+  animation: fadeUp 450ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+}
+
+.suggestions button:nth-child(2) {
+  animation-delay: 50ms;
+}
+
+.suggestions button:nth-child(3) {
+  animation-delay: 100ms;
+}
+
+.suggestions button:nth-child(4) {
+  animation-delay: 150ms;
 }
 
 .suggestions button span {
@@ -175,26 +226,33 @@
 }
 
 .suggestions button:hover {
-  background: var(--biru-muda);
+  background: var(--line);
 }
 
 .allTopics {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 8px;
   width: 100%;
-  height: 42px;
-  margin-top: 12px;
+  min-height: 44px;
+  margin-top: 6px;
+  padding: 12px 16px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--edge);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14.5px;
   font-weight: 600;
-  color: var(--biru);
+  color: var(--ink);
   cursor: pointer;
+}
+
+.allTopics svg {
+  width: 16px;
+  height: 16px;
+  color: var(--hint);
 }
 
 /* ---- The conversation ---- */
@@ -213,14 +271,14 @@
 
 .question {
   align-self: flex-end;
-  max-width: 85%;
+  max-width: 80%;
   margin: 0;
   padding: 10px 14px;
-  border-radius: 14px 14px 4px;
-  background: var(--surface);
-  font-size: 14px;
+  border-radius: 18px 18px 4px;
+  background: var(--action);
+  font-size: 14.5px;
   line-height: 1.45;
-  color: var(--ink);
+  color: var(--action-fg);
   overflow-wrap: anywhere;
 }
 
@@ -228,10 +286,10 @@
   display: flex;
   align-items: center;
   gap: 7px;
-  margin: 0 0 6px;
+  margin: 0 0 4px;
   font-size: 12px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--hint);
 }
 
 .mark {
@@ -254,7 +312,7 @@
 
 .text {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.55;
   color: var(--ink);
   overflow-wrap: anywhere;
@@ -305,14 +363,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
+  margin-top: 14px;
+  padding: 10px 10px 10px 14px;
+  border-radius: var(--r-box);
   background: var(--surface);
 }
 
 .source span {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
@@ -321,16 +379,16 @@
   align-items: center;
   gap: 4px;
   flex: none;
-  height: 32px;
-  padding: 0 10px 0 12px;
+  height: 34px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-pill);
   background: var(--card);
   box-shadow: inset 0 0 0 1px var(--edge);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--biru);
+  color: var(--ink);
   text-decoration: none;
   cursor: pointer;
 }
@@ -343,30 +401,30 @@
 .feedback {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 12px;
-  font-size: 12.5px;
+  gap: 8px;
+  margin-top: 14px;
+  font-size: 13.5px;
   color: var(--muted);
 }
 
 .feedback span {
-  margin-right: 4px;
+  flex: 1;
 }
 
 .feedback button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  height: 30px;
-  padding: 0 11px;
+  height: 34px;
+  padding: 0 14px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-pill);
   background: transparent;
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--edge);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--ink);
   cursor: pointer;
 }
 
@@ -383,8 +441,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 12px 0 0;
-  font-size: 12.5px;
+  margin: 14px 0 0;
+  font-size: 13px;
   font-weight: 600;
   color: var(--hijau-ink);
 }
@@ -397,10 +455,11 @@
 /* ---- Still stuck? ---- */
 
 .support {
+  margin-top: 2px;
   padding: 16px;
-  border-radius: 12px;
-  background: var(--biru-muda);
-  box-shadow: inset 0 0 0 1px var(--biru-ring);
+  border-radius: var(--r-box);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--edge);
   animation: fadeUp 260ms ease both;
 }
 
@@ -421,16 +480,16 @@
   align-items: center;
   gap: 8px;
   margin: 0 0 6px;
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--biru-ink);
+  color: var(--ink);
 }
 
 .supportText {
   margin: 0 0 12px;
   font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-soft);
+  line-height: 1.45;
+  color: var(--muted);
 }
 
 .supportText b {
@@ -442,42 +501,47 @@
 .note {
   display: block;
   width: 100%;
-  height: 74px;
-  padding: 10px 12px;
+  height: 48px;
+  padding: 13px 18px;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-pill);
   background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--biru-ring);
+  box-shadow: inset 0 0 0 1px var(--edge);
   font: inherit;
-  font-size: 13.5px;
-  line-height: 1.45;
+  font-size: 14px;
+  line-height: 1.4;
   color: var(--ink);
   resize: none;
 }
 
+.note:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .supportButtons {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
   margin-top: 12px;
 }
 
 .send {
-  height: 40px;
+  height: 44px;
   padding: 0 16px;
   border: 0;
-  border-radius: 10px;
-  background: var(--biru);
+  border-radius: var(--r-pill);
+  background: var(--action);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--card);
+  color: var(--action-fg);
   cursor: pointer;
 }
 
 .send:hover:not(:disabled) {
-  background: var(--biru-deep);
+  background: var(--action-hover);
 }
 
 .send:disabled {
@@ -486,15 +550,16 @@
 }
 
 .mailto {
-  font-size: 12.5px;
-  font-weight: 500;
-  color: var(--biru);
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
   text-decoration: none;
 }
 
 .sent {
+  margin-top: 2px;
   padding: 16px;
-  border-radius: 12px;
+  border-radius: var(--r-box);
   background: var(--hijau-muda);
   box-shadow: inset 0 0 0 1px var(--hijau-line);
   animation: fadeUp 260ms ease both;
@@ -517,7 +582,7 @@
 /* Under Topics, where there is no composer to hold it. */
 .topicsError {
   flex: none;
-  padding: 0 20px 16px;
+  padding: 0 18px 16px;
 }
 
 /* ---- Topics ---- */
@@ -526,9 +591,9 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 42px;
-  padding: 0 12px;
-  border-radius: 10px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
   background: var(--surface);
   color: var(--muted);
 }
@@ -539,7 +604,7 @@
   border: 0;
   background: transparent;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--ink);
   outline: none;
 }
@@ -568,7 +633,7 @@
 
 .sectionHead b {
   flex: 1;
-  font-size: 14px;
+  font-size: 14.5px;
   font-weight: 600;
   color: var(--ink);
 }
@@ -596,12 +661,12 @@
 }
 
 .entries button {
-  padding: 9px 10px;
+  padding: 9px 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-pill);
   background: none;
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   color: var(--ink-soft);
   text-align: left;
   cursor: pointer;
@@ -609,7 +674,7 @@
 
 .entries button:hover {
   background: var(--surface);
-  color: var(--biru);
+  color: var(--ink);
 }
 
 .none {
@@ -631,16 +696,17 @@
   background: none;
   font: inherit;
   font-weight: 600;
-  color: var(--biru);
+  color: var(--ink);
+  text-decoration: underline;
   cursor: pointer;
 }
 
-/* ---- Composer ---- */
+/* ---- Composer (the board's .hpin: one pill, the send button a circle inside it) ---- */
 
 .composer {
   flex: none;
   margin: 0;
-  padding: 12px 16px 16px;
+  padding: 12px;
   border-top: 1px solid var(--line);
 }
 
@@ -648,59 +714,65 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 52px;
+  padding: 0 6px 0 20px;
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.composerRow:focus-within {
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 .composer input {
   flex: 1;
   min-width: 0;
-  height: 46px;
-  padding: 0 14px;
+  height: 100%;
+  padding: 0;
   border: 0;
-  border-radius: 12px;
-  background: var(--surface);
+  background: transparent;
   font: inherit;
-  font-size: 14px;
+  font-size: 14.5px;
   color: var(--ink);
   outline: none;
-}
-
-.composer input:focus {
-  background: var(--card);
-  box-shadow: inset 0 0 0 2px var(--biru);
 }
 
 .composer button {
   display: grid;
   place-items: center;
   flex: none;
-  width: 46px;
-  height: 46px;
+  width: 40px;
+  height: 40px;
   padding: 0;
   border: 0;
-  border-radius: 12px;
-  background: var(--biru);
-  color: var(--card);
+  border-radius: 50%;
+  background: var(--action);
+  color: var(--action-fg);
   cursor: pointer;
 }
 
 .composer button:disabled {
-  opacity: 0.5;
   cursor: default;
 }
 
 .resting {
-  margin: 0 0 10px;
+  margin: 0 8px 10px;
   font-size: 12.5px;
   color: var(--muted);
 }
 
 .resting button {
+  display: inline;
+  width: auto;
+  height: auto;
   padding: 0;
   border: 0;
+  border-radius: 0;
   background: none;
   font: inherit;
   font-weight: 600;
-  color: var(--biru);
+  color: var(--ink);
+  text-decoration: underline;
   cursor: pointer;
 }
 
@@ -715,61 +787,33 @@
   border: 0;
 }
 
+/* The frame's breakpoint: the sidebar goes and the phone's top bar and menu take over, and Help is a sheet. */
 @media (max-width: 1100px) {
-  .scrim {
-    position: fixed;
-    inset: 64px 0 0;
-    z-index: 44;
-    display: block;
-    padding: 0;
-    border: 0;
-    background: var(--scrim);
-    cursor: pointer;
-  }
-}
-
-@media (max-width: 760px) {
-  .scrim {
-    display: none;
-  }
-
   .panel {
-    top: 0;
-    left: 0;
-    z-index: 70;
+    top: auto;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 8px;
     width: auto;
-    border-radius: 0;
+    max-width: none;
+    height: min(640px, calc(100vh - 40px));
+    height: min(640px, calc(100dvh - 40px));
     animation-name: panelUp;
   }
 
-  @keyframes panelUp {
-    from {
-      transform: translateY(24px);
-      opacity: 0;
-    }
-
-    to {
-      transform: none;
-      opacity: 1;
-    }
-  }
-
   .head {
-    height: 56px;
-    padding-left: 16px;
+    padding: 16px 16px 12px;
   }
 
   .body {
-    padding: 16px;
-  }
-
-  .composer {
-    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+    padding: 20px 16px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .panel,
+  .scrim,
+  .suggestions button,
   .support,
   .sent,
   .typing i {

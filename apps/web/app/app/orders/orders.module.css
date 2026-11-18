@@ -301,7 +301,7 @@
   height: 3px;
   margin-bottom: 10px;
   border-radius: 2px;
-  background: var(--biru);
+  background: var(--action);
   transition: background-color 300ms ease;
 }
 
