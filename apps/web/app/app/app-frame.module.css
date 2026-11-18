@@ -386,16 +386,23 @@
   cursor: pointer;
 }
 
+/* Help: a text pill (the board's .hlpb). */
 .help {
-  padding: 0 10px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
   color: var(--soft);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   text-decoration: none;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
+/* The bell: a 36px circle (the board's .mtop .ib). */
 .iconButton {
   width: 36px;
+  border-radius: 50%;
+  transition: background 0.2s, box-shadow 0.2s;
 }
 
 .help:hover,
@@ -403,43 +410,48 @@
 .account:hover,
 .iconButton[aria-expanded='true'],
 .account[aria-expanded='true'] {
-  background: color-mix(in srgb, var(--card) 75%, transparent);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 /* Help shows as pressed while its panel is open (the Help board). */
 .help[aria-expanded='true'] {
   background: var(--card);
-  color: var(--biru);
-  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .help:focus-visible,
 .iconButton:focus-visible,
-.account:focus-visible,
+.account:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .dockTab:focus-visible {
   outline: 2px solid var(--biru);
   outline-offset: 2px;
 }
 
 .topIcon {
-  width: 17px;
-  height: 17px;
+  width: 19px;
+  height: 19px;
   fill: none;
   stroke: var(--soft);
-  stroke-width: 1.8;
+  stroke-width: 1.7;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* How many things need the owner, on the bell; the frame's alerts and the nav's counts. */
+/* How much is new under the bell (the board's .bellb): the nav's counts and the frame's alerts, 99+ past 99. */
 .unread {
   position: absolute;
-  top: 2px;
-  right: 0;
+  top: 1px;
+  right: 1px;
   min-width: 17px;
   height: 17px;
   padding: 0 5px;
-  border-radius: 9px;
+  border-radius: var(--r-pill);
   background: var(--calm-badge);
   box-shadow: 0 0 0 2px var(--ground);
   color: var(--calm-surface);
@@ -448,6 +460,14 @@
   line-height: 17px;
   text-align: center;
   text-decoration: none;
+  transform-origin: 30% 70%;
+  animation: unreadIn 0.3s cubic-bezier(0.3, 1.6, 0.5, 1) both;
+}
+
+@keyframes unreadIn {
+  from {
+    transform: scale(0);
+  }
 }
 
 /* The account menu's opener on a phone, where the sidebar's card is gone: the page's avatar. Shown at 760px and under. */
@@ -494,79 +514,243 @@
   pointer-events: none;
 }
 
-/* ---- The top bar's menus (Popover) ---- */
+/* ---- Notifications (the calm Dash board, .nfp): the bell's popover ---- */
 
-.menuItem,
-.menuAlert {
-  display: block;
-  padding: 8px 10px;
-  border-radius: 7px;
-  color: var(--ink);
-  font-size: 13.5px;
-  text-decoration: none;
+/*
+ * The status tags' tints for the row icons, and the amber of a Heads up row. Local to the panel, so
+ * nothing else in the frame (or the owner's preview) picks them up; the dark scopes below swap them.
+ */
+.top .notifications {
+  --nf-wait: var(--tag-wait);
+  --nf-wait-ink: var(--tag-wait-ink);
+  --nf-new: var(--tag-new);
+  --nf-new-ink: var(--tag-new-ink);
+  --nf-red: var(--tag-red);
+  --nf-red-ink: var(--tag-red-ink);
+  --nf-ok: var(--tag-ok);
+  --nf-ok-ink: var(--tag-ok-ink);
+  --nf-alert: color-mix(in srgb, var(--tag-wait) 60%, var(--card));
+  --nf-alert-hover: var(--tag-wait);
+  --nf-alert-icon: color-mix(in srgb, var(--tag-wait) 88%, var(--tag-wait-ink));
+  width: 384px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 90px);
+  overflow: auto;
+  padding: 8px;
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px var(--soft-shadow, rgb(40 30 10 / 45%));
+  transform-origin: 90% 0;
 }
 
-a.menuItem:hover,
-a.menuAlert:hover {
-  background: var(--surface);
+.nfHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 46px;
+  padding: 6px 12px 4px;
 }
 
-.menuAlert {
-  margin: 0;
-}
-
-.menuAlert b {
-  display: block;
+.nfHead b {
+  font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-.menuAlert span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.menuAlert[data-tone='stop'] b {
-  color: var(--merah-deep);
-}
-
-/* "Mark all as read": a quiet text button at the panel's top, on the right. */
-.menuRead {
-  display: block;
-  margin: 0 0 4px auto;
-  padding: 4px 10px;
+/* "Mark all as read": a quiet pill at the head, on the right; gone once everything is read. */
+.nfRead {
+  padding: 5px 10px;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--r-pill);
   background: none;
-  color: var(--biru);
+  color: var(--soft);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
-.menuRead:hover {
+.nfRead:hover {
   background: var(--surface);
 }
 
-/* A new item: a biru dot before it. Read ones stay listed, without it, until the work is done. */
-.menuItem[data-new]::before,
-.menuAlert[data-new] b::before {
-  content: '';
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 7px;
-  border-radius: 50%;
-  background: var(--tag-new-ink);
-  vertical-align: 1px;
+.nfRead:focus-visible,
+.nfRow:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
 }
 
-.menuEmpty {
+.nfGroup {
+  margin: 8px 12px 4px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--faint);
+}
+
+.nfRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0;
-  padding: 8px 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: var(--ink);
+  font-size: 14.5px;
+  text-decoration: none;
+  animation: nfIn 0.32s cubic-bezier(0.3, 1.3, 0.5, 1) both;
+  animation-delay: calc(var(--i, 0) * 35ms);
+}
+
+a.nfRow:hover {
+  background: color-mix(in srgb, var(--surface) 60%, var(--card));
+}
+
+@keyframes nfIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* A new row: a badge-red dot at its left edge. Read rows stay listed, without it, until the work is done. */
+.nfRow[data-new]::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--calm-badge);
+}
+
+.nfIcon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.nfIcon[data-tag='wait'] {
+  background: var(--nf-wait);
+  color: var(--nf-wait-ink);
+}
+
+.nfIcon[data-tag='new'] {
+  background: var(--nf-new);
+  color: var(--nf-new-ink);
+}
+
+.nfIcon[data-tag='red'] {
+  background: var(--nf-red);
+  color: var(--nf-red-ink);
+}
+
+.nfIcon[data-tag='ok'] {
+  background: var(--nf-ok);
+  color: var(--nf-ok-ink);
+}
+
+.nfGlyph {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nfText {
+  flex: 1;
+  min-width: 0;
+}
+
+.nfText b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nfText small {
+  display: block;
+  margin-top: 1px;
   font-size: 13px;
+  line-height: 1.4;
   color: var(--muted);
+}
+
+.nfChevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Heads up: the plan's alerts, on amber, with "!" in the icon. */
+.nfAlert {
+  align-items: flex-start;
+  background: var(--nf-alert);
+}
+
+a.nfAlert:hover {
+  background: var(--nf-alert-hover);
+}
+
+.nfAlert .nfIcon {
+  background: var(--nf-alert-icon);
+  color: var(--nf-wait-ink);
+}
+
+.nfFoot {
+  margin: 6px 0 0;
+  padding: 10px 12px 6px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+.nfEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 18px 20px 22px;
+  text-align: center;
+}
+
+.nfPeek {
+  width: 86px;
+}
+
+.nfEmpty b {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.nfEmpty small {
+  margin-top: 4px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nfRow {
+    animation: none;
+  }
+
+  .unread {
+    animation: none;
+  }
 }
 
 /* ---- The account menu (the calm Dash board: .accp, .ah, .ag, .am) ---- */
@@ -841,9 +1025,13 @@ a.menuAlert:hover {
     text-decoration: none;
   }
 
-  .crumb,
-  .help {
+  /* The board's phone top bar: the logo, then Help and the bell (and, until Task 6c, the avatar). */
+  .crumb {
     display: none;
+  }
+
+  .help {
+    padding: 0 10px;
   }
 
   .phoneAccount {
@@ -1294,4 +1482,86 @@ a.menuAlert:hover {
 
 .frame[data-theme='dark'] .menuOut {
   color: var(--calm-dark-tag-red-ink);
+}
+
+/* ---- Notifications on a phone: the same panel as a bottom sheet (the board's .nfp under its phone width) ---- */
+@media (max-width: 760px) {
+  .top .notifications {
+    position: fixed;
+    top: auto;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 8px;
+    width: auto;
+    max-width: none;
+    max-height: 80vh;
+    padding: 8px 8px 14px;
+    /* The page behind dims, as the board's scrim does; a tap on it closes the sheet (Popover). */
+    box-shadow: 0 0 0 1px var(--line), 0 0 0 100vmax color-mix(in srgb, var(--calm-ink) 25%, transparent);
+    transform-origin: 50% 100%;
+  }
+
+  .top .notifications:not([hidden]) {
+    animation-name: nfSheetIn;
+  }
+
+  /* The grab handle. */
+  .top .notifications::before {
+    content: '';
+    display: block;
+    width: 38px;
+    height: 4px;
+    margin: 2px auto 6px;
+    border-radius: 2px;
+    background: var(--edge);
+  }
+
+  /* Over the floating menu while the sheet is open. */
+  .top:has(.notifications:not([hidden])) {
+    z-index: 50;
+  }
+}
+
+@keyframes nfSheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+}
+
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .top .notifications:not([hidden]) {
+    animation: none;
+  }
+}
+
+/* Notifications in dark: the tags keep their hue on dark fills, and Heads up takes a dark amber. */
+@media (prefers-color-scheme: dark) {
+  .frame:not([data-theme='light']) .notifications {
+    --nf-wait: var(--calm-dark-tag-wait);
+    --nf-wait-ink: var(--calm-dark-tag-wait-ink);
+    --nf-new: var(--calm-dark-tag-new);
+    --nf-new-ink: var(--calm-dark-tag-new-ink);
+    --nf-red: var(--calm-dark-tag-red);
+    --nf-red-ink: var(--calm-dark-tag-red-ink);
+    --nf-ok: var(--calm-dark-tag-ok);
+    --nf-ok-ink: var(--calm-dark-tag-ok-ink);
+    --nf-alert: color-mix(in srgb, var(--calm-dark-tag-wait) 60%, var(--card));
+    --nf-alert-hover: var(--calm-dark-tag-wait);
+    --nf-alert-icon: color-mix(in srgb, var(--calm-dark-tag-wait) 80%, var(--calm-dark-tag-wait-ink));
+  }
+}
+
+.frame[data-theme='dark'] .notifications {
+  --nf-wait: var(--calm-dark-tag-wait);
+  --nf-wait-ink: var(--calm-dark-tag-wait-ink);
+  --nf-new: var(--calm-dark-tag-new);
+  --nf-new-ink: var(--calm-dark-tag-new-ink);
+  --nf-red: var(--calm-dark-tag-red);
+  --nf-red-ink: var(--calm-dark-tag-red-ink);
+  --nf-ok: var(--calm-dark-tag-ok);
+  --nf-ok-ink: var(--calm-dark-tag-ok-ink);
+  --nf-alert: color-mix(in srgb, var(--calm-dark-tag-wait) 60%, var(--card));
+  --nf-alert-hover: var(--calm-dark-tag-wait);
+  --nf-alert-icon: color-mix(in srgb, var(--calm-dark-tag-wait) 80%, var(--calm-dark-tag-wait-ink));
 }

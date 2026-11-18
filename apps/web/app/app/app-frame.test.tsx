@@ -289,23 +289,81 @@ describe('the top bar', () => {
   const bell = () => screen.getByRole('button', { name: /^Notifications/ });
   const alert: Alert = { id: 'trial', tone: 'stop', where: '/app/leads', icon: 'lead', title: 'Your free leads are used up', text: 'Upgrade to keep them coming.', action: { href: '/app/billing', label: 'Upgrade' } };
 
-  it('lists what is waiting and the alerts under the bell, with the count in its name', () => {
+  it('opens notifications from the bell, in two sections, each row a link', () => {
     frame({ mode: 'BUSINESS', badges: { review: 1, questions: 0, leads: 2, orders: 3 }, alerts: [alert] });
-    expect(bell()).toHaveAccessibleName('Notifications, 4 new');
-    expect(bell()).toHaveTextContent('4');
+    // The badge counts what is new: 3 receipts, 2 leads, 1 fact and the alert.
+    expect(bell()).toHaveAccessibleName('Notifications, 7 new');
+    expect(bell()).toHaveTextContent('7');
+    expect(panelOf(bell())).not.toBeVisible();
     fireEvent.click(bell());
-    expect(screen.getByRole('link', { name: '3 receipts to check' })).toHaveAttribute('href', '/app/orders');
-    expect(screen.getByRole('link', { name: '2 new leads' })).toHaveAttribute('href', '/app/leads');
-    expect(screen.getByRole('link', { name: '1 fact to review' })).toHaveAttribute('href', '/app/review');
-    expect(screen.getByRole('link', { name: /Your free leads are used up/ })).toHaveAttribute('href', '/app/billing');
+    expect(bell()).toHaveAttribute('aria-expanded', 'true');
+    const panel = panelOf(bell());
+    expect(panel).toBeVisible();
+    expect(within(panel).getByText('Notifications')).toBeInTheDocument();
+    const waiting = within(within(panel).getByRole('group', { name: 'Waiting on you' }));
+    const heads = within(within(panel).getByRole('group', { name: 'Heads up' }));
+    expect(waiting.getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/app/orders', '/app/leads', '/app/review']);
+    expect(waiting.getByRole('link', { name: /^3 receipts to check/ })).toHaveTextContent('Check each one and mark it paid.');
+    expect(waiting.getByRole('link', { name: /^2 new leads/ })).toHaveTextContent('Reply within the day, leads go cold.');
+    expect(waiting.getByRole('link', { name: /^1 fact to review/ })).toHaveAttribute('href', '/app/review');
+    // The "!" in its icon is decoration: the row's name starts with the alert's title.
+    expect(heads.getByRole('link', { name: /^Your free leads are used up/ })).toHaveAttribute('href', '/app/billing');
+    expect(heads.getByRole('link', { name: /Your free leads are used up/ })).toHaveTextContent('Upgrade to keep them coming.');
+    expect(panel).toHaveTextContent('Things stay here until they’re done. Mark all as read only clears the badge.');
   });
 
-  it('says nothing needs the owner when nothing does, with no count on the bell', () => {
+  it('lists new questions under Waiting on you, and leaves out a section with nothing in it', () => {
+    frame({ badges: { review: 0, questions: 2, leads: 0, orders: 0 } });
+    fireEvent.click(bell());
+    const panel = panelOf(bell());
+    expect(within(panel).getByRole('link', { name: /^2 new questions/ })).toHaveAttribute('href', '/app/questions');
+    expect(within(panel).queryByRole('group', { name: 'Heads up' })).toBeNull();
+  });
+
+  it('says Nothing needs you right now when empty', () => {
     frame({ badges: { review: 0, questions: 0, leads: 0, orders: 0 } });
     expect(bell()).toHaveAccessibleName('Notifications');
     expect(bell()).toHaveTextContent('');
     fireEvent.click(bell());
-    expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
+    const panel = within(panelOf(bell()));
+    expect(panel.getByText('Nothing needs you right now.')).toBeInTheDocument();
+    expect(panel.queryByRole('group')).toBeNull();
+    expect(panel.queryByRole('link')).toBeNull();
+    expect(panel.queryByRole('button', { name: 'Mark all as read' })).toBeNull();
+  });
+
+  it('closes notifications on Escape and returns focus to the bell', () => {
+    frame({ badges: { review: 2, questions: 0, leads: 0, orders: 0 } });
+    fireEvent.click(bell());
+    within(panelOf(bell())).getByRole('link', { name: /^2 facts to review/ }).focus();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(bell()).toHaveAttribute('aria-expanded', 'false');
+    expect(panelOf(bell())).not.toBeVisible();
+    expect(bell()).toHaveFocus();
+  });
+
+  it('shows 99+ on the bell for 150 new things', () => {
+    frame({ mode: 'BUSINESS', badges: { review: 0, questions: 0, leads: 0, orders: 150 } });
+    expect(bell()).toHaveTextContent('99+');
+    expect(bell()).toHaveAccessibleName('Notifications, 99+ new');
+  });
+
+  it("names the phone's account button after the page, as the sidebar card is named", () => {
+    frame();
+    const accounts = screen.getAllByRole('button', { name: 'Account, Iman Muqri' });
+    // The sidebar's card and the phone top bar's avatar.
+    expect(accounts).toHaveLength(2);
+  });
+
+  it('draws the top bar in ink: an ink focus ring, and the bell as a sheet on a phone', () => {
+    const css = readFileSync(path.join(import.meta.dirname, 'app-frame.module.css'), 'utf8');
+    const focus = css.match(/\.account:focus-visible[^{]*\{([^}]*)\}/)?.[1] ?? '';
+    expect(focus).toContain('var(--ink)');
+    expect(focus).not.toContain('biru');
+    const phone = css.slice(css.indexOf('/* ---- Notifications on a phone'));
+    expect(phone).toMatch(/@media \(max-width: 760px\)\s*\{\s*\.top \.notifications\s*\{[^}]*position: fixed;[^}]*bottom: /);
+    // The rows' stagger and the badge's pop are motion: off under reduced motion.
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{[^@]*\.nfRow[^{]*\{\s*animation: none;/);
   });
 
   const business = (badges: NavBadges, bellSeen?: BellSeen, alerts: Alert[] = [alert]) =>
@@ -315,13 +373,18 @@ describe('the top bar', () => {
       </AppFrame>,
     );
 
-  it('marks everything read: the count goes, the work stays listed, and the cookie remembers it', () => {
+  it('marks all as read without removing the rows', () => {
     const cookie = vi.spyOn(document, 'cookie', 'set');
     business({ review: 1, questions: 0, leads: 2, orders: 0 });
     fireEvent.click(bell());
+    expect(screen.getByRole('link', { name: /^2 new leads/ })).toHaveAttribute('data-new');
     fireEvent.click(screen.getByRole('button', { name: 'Mark all as read' }));
     expect(bell()).toHaveAccessibleName('Notifications');
-    expect(screen.getByRole('link', { name: '2 new leads' })).not.toHaveAttribute('data-new');
+    expect(bell()).toHaveTextContent('');
+    // Read clears only the badge: the panel stays open and every row is still there, without its dot.
+    expect(bell()).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('link', { name: /^2 new leads/ })).not.toHaveAttribute('data-new');
+    expect(screen.getByRole('link', { name: /^1 fact to review/ })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Your free leads are used up/ })).not.toHaveAttribute('data-new');
     expect(screen.queryByRole('button', { name: 'Mark all as read' })).not.toBeInTheDocument();
     expect(cookie).toHaveBeenLastCalledWith('curios_bell=leads:2.review:1|trial; Path=/app; Max-Age=31536000; SameSite=Lax');
@@ -333,8 +396,8 @@ describe('the top bar', () => {
     business({ review: 1, questions: 0, leads: 3, orders: 0 }, { counts: { leads: 2, review: 1 }, alerts: ['trial'] }, [alert, fresh]);
     expect(bell()).toHaveAccessibleName('Notifications, 2 new');
     fireEvent.click(bell());
-    expect(screen.getByRole('link', { name: '3 new leads' })).toHaveAttribute('data-new');
-    expect(screen.getByRole('link', { name: '1 fact to review' })).not.toHaveAttribute('data-new');
+    expect(screen.getByRole('link', { name: /^3 new leads/ })).toHaveAttribute('data-new');
+    expect(screen.getByRole('link', { name: /^1 fact to review/ })).not.toHaveAttribute('data-new');
     expect(screen.getByText('Orders are paused').closest('[data-new]')).not.toBeNull();
   });
 

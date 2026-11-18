@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
@@ -10,6 +10,7 @@ import { BANNER_ALERT_ID } from './alert-ids.js';
 import { BELL_COOKIE, bellAlertKey, formatBellSeen, heldTo, type BellSeen } from './bell-seen.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
+import { PeekBody } from './_ui/peek.js';
 import { Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
@@ -73,13 +74,36 @@ const ICON = {
   more: 'M5 12h.01M12 12h.01M19 12h.01',
 } as const;
 
-/** What the bell lists for each count in the nav: the module's waiting work, in a line. */
-const WAITING: { key: keyof NavBadges; href: string; say: (n: number) => string; business?: true }[] = [
-  { key: 'orders', href: '/app/orders', say: (n) => `${n} ${n === 1 ? 'receipt' : 'receipts'} to check`, business: true },
-  { key: 'questions', href: '/app/questions', say: (n) => `${n} new ${n === 1 ? 'question' : 'questions'}` },
-  { key: 'leads', href: '/app/leads', say: (n) => `${n} new ${n === 1 ? 'lead' : 'leads'}` },
-  { key: 'review', href: '/app/review', say: (n) => `${n} ${n === 1 ? 'fact' : 'facts'} to review` },
+/**
+ * What the bell lists under "Waiting on you" for each count in the nav (the calm Dash board's
+ * notifications): the module's waiting work in a line, what to do about it under that, and its
+ * icon on the status tag's tint (`tag`: receipts amber, questions blue, leads red, facts green).
+ */
+const WAITING: { key: keyof NavBadges; href: string; say: (n: number) => string; note: string; icon: string; tag: 'wait' | 'new' | 'red' | 'ok'; business?: true }[] = [
+  {
+    key: 'orders',
+    href: '/app/orders',
+    say: (n) => `${n} ${n === 1 ? 'receipt' : 'receipts'} to check`,
+    note: 'Check each one and mark it paid.',
+    icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4',
+    tag: 'wait',
+    business: true,
+  },
+  {
+    key: 'questions',
+    href: '/app/questions',
+    say: (n) => `${n} new ${n === 1 ? 'question' : 'questions'}`,
+    note: 'Answer once, the page uses it every time.',
+    icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01',
+    tag: 'new',
+  },
+  { key: 'leads', href: '/app/leads', say: (n) => `${n} new ${n === 1 ? 'lead' : 'leads'}`, note: 'Reply within the day, leads go cold.', icon: 'M4 6h16v10H8l-4 4z', tag: 'red' },
+  // The board's "Found in your menu page." names one source; the count covers them all (DEVIATIONS 315).
+  { key: 'review', href: '/app/review', say: (n) => `${n} ${n === 1 ? 'fact' : 'facts'} to review`, note: 'Found in your sources. Nothing reaches customers until you accept it.', icon: PATH.review, tag: 'ok' },
 ];
+
+/** The chevron at the end of a notification row. */
+const CHEVRON = 'M9 6l6 6-6 6';
 
 /** The three inboxes: one tab on a phone's bottom menu, a row of their own at the top of each. */
 const INBOX = ['/app/orders', '/app/questions', '/app/leads'];
@@ -93,6 +117,23 @@ export type PlanBlock = { name: string; note: string; fill: number | null; glanc
 /** A count as a chip shows it: past 99 it reads "99+" (the calm boards, everywhere a count sits). */
 export function countLabel(count: number): string {
   return count > 99 ? '99+' : String(count);
+}
+
+/** The notifications' empty state: Peek, happy (the board's .nfe). */
+function NotificationsPeek() {
+  return (
+    <svg className={styles.nfPeek} viewBox="0 0 160 150" aria-hidden="true">
+      <defs>
+        <clipPath id="nf-peek">
+          <ellipse cx="80" cy="84" rx="54" ry="49" />
+        </clipPath>
+      </defs>
+      <ellipse cx="80" cy="143" rx="40" ry="4" fill="var(--line)" />
+      <ellipse cx="63" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
+      <ellipse cx="97" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
+      <PeekBody clipId="nf-peek" mouth="happy" />
+    </svg>
+  );
 }
 
 /** A year, and only for the dashboard, as the theme's cookie. */
@@ -247,11 +288,14 @@ export function AppFrame({
     alerts: alerts.map((alert) => bellAlertKey(alert, BANNER_ALERT_ID)),
   };
   const read = heldTo(bellSeen, bellNow);
+  // How much of each count came after the read: 3 leads read and 5 waiting is 2 new.
+  const newIn = (w: (typeof WAITING)[number]) => Math.max(0, badges[w.key] - (read.counts[w.key] ?? 0));
   const isNew = {
-    waiting: (w: (typeof WAITING)[number]) => badges[w.key] > (read.counts[w.key] ?? 0),
+    waiting: (w: (typeof WAITING)[number]) => newIn(w) > 0,
     alert: (alert: Alert) => !read.alerts.includes(bellAlertKey(alert, BANNER_ALERT_ID)),
   };
-  const news = waiting.filter(isNew.waiting).length + alerts.filter(isNew.alert).length;
+  // The badge counts the new things themselves, so it can pass 99 and read "99+" as the nav's counts do.
+  const news = waiting.reduce((sum, w) => sum + newIn(w), 0) + alerts.filter(isNew.alert).length;
   const readCookie = formatBellSeen(read);
   // Keep the cookie held to what is there, so a count that went down and comes back up is news.
   useEffect(() => {
@@ -313,6 +357,89 @@ export function AppFrame({
         </button>
         <DarkModeRow />
         <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} />
+      </>
+    );
+  };
+  // The notifications (the calm Dash board, .nfp): a head with Mark all as read, "Waiting on you"
+  // (the nav's counts) and "Heads up" (the frame's alerts), each row a link to its screen with a dot
+  // while it is new, and a line saying read is only the badge. A popover here; a sheet on a phone.
+  const notifications = () => {
+    // Each row's place in the list, for the stagger as the panel opens.
+    let row = 0;
+    const order = () => ({ '--i': row++ }) as CSSProperties;
+    const rowIcon = (content: ReactNode, tag?: string) => (
+      <i className={styles.nfIcon} data-tag={tag} aria-hidden="true">
+        {content}
+      </i>
+    );
+    const chevron = svg(CHEVRON, styles.nfChevron);
+    const alertBody = (alert: Alert) => (
+      <>
+        {rowIcon('!')}
+        <span className={styles.nfText}>
+          <b>{alert.title}</b>
+          <small>{alert.text}</small>
+        </span>
+      </>
+    );
+    return (
+      <>
+        <div className={styles.nfHead}>
+          <b>Notifications</b>
+          {/* Read is only the badge: what still needs the owner stays listed until it is done. */}
+          {news > 0 ? (
+            <button type="button" className={styles.nfRead} onClick={markRead}>
+              Mark all as read
+            </button>
+          ) : null}
+        </div>
+        {waiting.length + alerts.length === 0 ? (
+          <div className={styles.nfEmpty}>
+            <NotificationsPeek />
+            <b>Nothing needs you right now.</b>
+            <small>{mode === 'BUSINESS' ? 'New orders, questions and leads show up here.' : 'New questions and leads show up here.'}</small>
+          </div>
+        ) : (
+          <>
+            {waiting.length > 0 ? (
+              <div role="group" aria-labelledby="nf-waiting">
+                <p id="nf-waiting" className={styles.nfGroup}>
+                  Waiting on you
+                </p>
+                {waiting.map((w) => (
+                  <Link key={w.key} href={w.href} className={styles.nfRow} style={order()} data-new={isNew.waiting(w) ? '' : undefined}>
+                    {rowIcon(svg(w.icon, styles.nfGlyph), w.tag)}
+                    <span className={styles.nfText}>
+                      <b>{w.say(badges[w.key])}</b>
+                      <small>{w.note}</small>
+                    </span>
+                    {chevron}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+            {alerts.length > 0 ? (
+              <div role="group" aria-labelledby="nf-heads">
+                <p id="nf-heads" className={styles.nfGroup}>
+                  Heads up
+                </p>
+                {alerts.map((alert) =>
+                  alert.action ? (
+                    <Link key={alert.id} href={alert.action.href} className={`${styles.nfRow} ${styles.nfAlert}`} style={order()} data-new={isNew.alert(alert) ? '' : undefined}>
+                      {alertBody(alert)}
+                    </Link>
+                  ) : (
+                    // The Curios team's banner has nowhere to go, so it is the one row that is not a link.
+                    <p key={alert.id} className={`${styles.nfRow} ${styles.nfAlert}`} style={order()} data-new={isNew.alert(alert) ? '' : undefined}>
+                      {alertBody(alert)}
+                    </p>
+                  ),
+                )}
+              </div>
+            ) : null}
+            <p className={styles.nfFoot}>Things stay here until they’re done. Mark all as read only clears the badge.</p>
+          </>
+        )}
       </>
     );
   };
@@ -415,48 +542,25 @@ export function AppFrame({
               Help
             </button>
             <Popover
-              label={news > 0 ? `Notifications, ${news} new` : 'Notifications'}
+              label={news > 0 ? `Notifications, ${countLabel(news)} new` : 'Notifications'}
               buttonClassName={styles.iconButton}
+              panelClassName={styles.notifications}
               button={
                 <>
                   {svg(ICON.bell, styles.topIcon)}
                   {news > 0 ? (
                     <u className={styles.unread} aria-hidden="true">
-                      {news}
+                      {countLabel(news)}
                     </u>
                   ) : null}
                 </>
               }
             >
-              {waiting.length + alerts.length === 0 ? <p className={styles.menuEmpty}>Nothing needs you right now.</p> : null}
-              {/* Read is only the badge: what still needs the owner stays listed until it is done. */}
-              {news > 0 ? (
-                <button type="button" className={styles.menuRead} onClick={markRead}>
-                  Mark all as read
-                </button>
-              ) : null}
-              {waiting.map((w) => (
-                <Link key={w.key} href={w.href} className={styles.menuItem} data-new={isNew.waiting(w) ? '' : undefined}>
-                  {w.say(badges[w.key])}
-                </Link>
-              ))}
-              {alerts.map((alert) =>
-                alert.action ? (
-                  <Link key={alert.id} href={alert.action.href} className={styles.menuAlert} data-tone={alert.tone} data-new={isNew.alert(alert) ? '' : undefined}>
-                    <b>{alert.title}</b>
-                    <span>{alert.text}</span>
-                  </Link>
-                ) : (
-                  <p key={alert.id} className={styles.menuAlert} data-tone={alert.tone} data-new={isNew.alert(alert) ? '' : undefined}>
-                    <b>{alert.title}</b>
-                    <span>{alert.text}</span>
-                  </p>
-                ),
-              )}
+              {notifications()}
             </Popover>
             {/* A phone has no sidebar, so no card: the account menu opens from the avatar here (shown at 760px and under). */}
             <div className={styles.phoneAccount}>
-              <Popover label="Account" buttonClassName={styles.account} panelClassName={styles.phonePanel} button={avatar}>
+              <Popover label={`Account, ${displayName}`} buttonClassName={styles.account} panelClassName={styles.phonePanel} button={avatar}>
                 {account()}
               </Popover>
             </div>
