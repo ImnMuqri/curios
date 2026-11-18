@@ -10,7 +10,9 @@ import { BANNER_ALERT_ID } from './alert-ids.js';
 import { BELL_COOKIE, bellAlertKey, formatBellSeen, heldTo, type BellSeen } from './bell-seen.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
+import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
+import { PhoneMenu } from './_ui/phone-menu.js';
 import { Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
@@ -28,7 +30,7 @@ const svg = (d: string, className: string | undefined = styles.icon) => (
   </svg>
 );
 
-/** The nav's icons, shared with a phone's bottom menu. */
+/** The nav's icons (a phone's menu draws the same items). */
 const PATH = {
   page: 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6',
   store: 'M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z',
@@ -67,26 +69,12 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-const ICON = {
-  bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4',
-  ...PATH,
-  inbox: 'M4 13l2.5-8h11L20 13M4 13v6h16v-6M4 13h4.5l1 2.5h5l1-2.5H20',
-  more: 'M5 12h.01M12 12h.01M19 12h.01',
-} as const;
-
-/** The three inboxes: one tab on a phone's bottom menu, a row of their own at the top of each. */
-const INBOX = ['/app/orders', '/app/questions', '/app/leads'];
-
-/** What a phone's More sheet holds: the modules the bottom menu has no tab for. */
-const MORE = ['/app/knowledge', '/app/billing', '/app/settings'];
+const BELL = 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4';
 
 /** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
 export type PlanBlock = { name: string; note: string; fill: number | null; glance: string };
 
-/** A count as a chip shows it: past 99 it reads "99+" (the calm boards, everywhere a count sits). */
-export function countLabel(count: number): string {
-  return count > 99 ? '99+' : String(count);
-}
+export { countLabel };
 
 /** A year, and only for the dashboard, as the theme's cookie. */
 function writeBellSeen(value: string) {
@@ -99,9 +87,8 @@ function writeBellSeen(value: string) {
  * what is waiting in each, and the plan at its foot -- a 64px top bar on the same ground (Help, and
  * the bell with what needs you), and the screen on one sheet. Each screen draws its own header (PageHead).
  *
- * The sidebar narrows to an icon rail under 1100px (the card shows only its picture); on a phone
- * it goes, and the account menu opens from the avatar at the end of the top bar instead. The
- * labels stay in the DOM, so a screen reader still hears every link by name.
+ * Under 1100px the sidebar goes: the top bar starts with the logo, the account menu opens from the
+ * avatar at its end (DEVIATIONS 313), and a phone's menu floats at the foot (PhoneMenu).
  *
  * The bell lists what the nav counts and the frame's alerts; there are no other notifications.
  *
@@ -153,7 +140,6 @@ export function AppFrame({
 }) {
   const pathname = usePathname() ?? '';
   const [theme, setTheme] = useState(savedTheme);
-  const [more, setMore] = useState(false);
   const [bellSeen, setBellSeen] = useState(savedBellSeen);
   const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
   // Help (design/help/help-chat-design.md): the top bar's Help and the account menu's Help & support
@@ -173,17 +159,6 @@ export function AppFrame({
         ? `${THEME_COOKIE}=; Path=/app; Max-Age=0; SameSite=Lax`
         : `${THEME_COOKIE}=${next}; Path=/app; Max-Age=31536000; SameSite=Lax`;
   };
-
-  // The More sheet closes on Escape and whenever the screen changes (a page picked in it).
-  useEffect(() => {
-    if (!more) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMore(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [more]);
-  useEffect(() => setMore(false), [pathname]);
 
   // The document behind the frame, in the frame's own ground. A phone shows the document wherever the
   // frame does not reach -- the status bar's strip on a home-screen app, past either end of a scroll --
@@ -253,12 +228,6 @@ export function AppFrame({
     items: group.items.filter(business),
   })).filter((group) => group.items.length > 0);
   const items = GROUPS.flatMap((group) => group.items).filter(business);
-  const inboxes = items.filter((item) => INBOX.includes(item.href));
-  const inInbox = inboxes.some((item) => pathname.startsWith(item.href));
-  const inboxCount = inboxes.reduce((sum, item) => sum + (item.count ? badges[item.count] : 0), 0);
-  const moreItems = items.filter((item) => MORE.includes(item.href));
-  const inMore = moreItems.some((item) => pathname.startsWith(item.href));
-  const tab = (href: string) => items.find((item) => item.href === href);
   // The page's picture, or its initial on a soft rose disc (the board's "K").
   const avatar = avatarUrl ? (
     <img className={styles.avatar} src={avatarUrl} alt="" width={34} height={34} />
@@ -410,7 +379,7 @@ export function AppFrame({
               scrimClassName={styles.notifyScrim}
               button={
                 <>
-                  {svg(ICON.bell, styles.topIcon)}
+                  {svg(BELL, styles.topIcon)}
                   {news > 0 ? (
                     <u className={styles.unread} aria-hidden="true">
                       {countLabel(news)}
@@ -421,7 +390,7 @@ export function AppFrame({
             >
               <Notifications waiting={waiting} alerts={alerts} badges={badges} isNew={isNew} news={news} markRead={markRead} business={mode === 'BUSINESS'} />
             </Popover>
-            {/* A phone has no sidebar, so no card: the account menu opens from the avatar here (shown at 760px and under). */}
+            {/* Under 1100px there is no sidebar, so no card: the account menu opens from the avatar here (DEVIATIONS 313). */}
             <div className={styles.phoneAccount}>
               <Popover label={`Account, ${displayName}`} buttonClassName={styles.account} panelClassName={styles.phonePanel} button={avatar}>
                 {account()}
@@ -429,84 +398,13 @@ export function AppFrame({
             </div>
           </header>
           <main className={styles.sheet}>
-            {/* On a phone the three inboxes share one tab below, so each starts with a row to switch between them. */}
-            {inInbox ? (
-              <nav aria-label="Inbox" className={styles.inboxTabs}>
-                {inboxes.map((item) => {
-                  const count = item.count ? badges[item.count] : 0;
-                  return (
-                    <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined}>
-                      {item.label}
-                      {count > 0 ? <em>{count}</em> : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : null}
             <NavProgressProvider>
               <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
             </NavProgressProvider>
           </main>
         </div>
 
-        {/* A phone's menu (29 Oct 2026 boards): a pill floating at the foot, five tabs, and More's sheet above it. */}
-        <nav aria-label="Main navigation" className={styles.dock} data-more={more || undefined}>
-          {more ? <button type="button" className={styles.scrim} aria-label="Close" tabIndex={-1} onClick={() => setMore(false)} /> : null}
-          <Link href="/app/curios" className={styles.dockTab} aria-current={pathname.startsWith('/app/curios') ? 'page' : undefined}>
-            {svg(ICON.page, styles.dockIcon)}
-            <span>Page</span>
-          </Link>
-          {tab('/app/store') ? (
-            <Link href="/app/store" className={styles.dockTab} aria-current={pathname.startsWith('/app/store') ? 'page' : undefined}>
-              {svg(ICON.store, styles.dockIcon)}
-              <span>Store</span>
-            </Link>
-          ) : null}
-          <Link href={inboxes[0]!.href} className={styles.dockTab} aria-current={inInbox ? 'page' : undefined}>
-            {svg(ICON.inbox, styles.dockIcon)}
-            <span>Inbox</span>
-            {inboxCount > 0 ? <u className={styles.dockCount}>{inboxCount}</u> : null}
-          </Link>
-          <Link href="/app/review" className={styles.dockTab} aria-current={pathname.startsWith('/app/review') ? 'page' : undefined}>
-            {svg(ICON.review, styles.dockIcon)}
-            <span>Review</span>
-            {badges.review > 0 ? <u className={styles.dockCount}>{badges.review}</u> : null}
-          </Link>
-          <button
-            type="button"
-            className={styles.dockTab}
-            aria-expanded={more}
-            aria-controls="dock-more"
-            data-on={inMore || more || undefined}
-            onClick={() => setMore((was) => !was)}
-          >
-            {svg(ICON.more, styles.dockIcon)}
-            <span>More</span>
-            {billingDot ? <i className={styles.dockDot} aria-hidden="true" /> : null}
-          </button>
-          <div id="dock-more" className={styles.moreSheet} hidden={!more}>
-            <span className={styles.grab} aria-hidden="true" />
-            {['Knowledge', 'Account'].map((title) => {
-              const rows = moreItems.filter((item) => GROUPS.find((group) => group.title === title)!.items.includes(item));
-              return rows.length > 0 ? (
-                <div key={title}>
-                  <p>{title}</p>
-                  {rows.map((item) => (
-                    <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined} onClick={() => setMore(false)}>
-                      {item.icon}
-                      {item.label}
-                      {billingDot && item.href === '/app/billing' ? (
-                        <span className={styles.dot}>
-                          <span className={styles.srOnly}>, needs you</span>
-                        </span>
-                      ) : null}
-                    </Link>
-                  ))}
-                </div>
-              ) : null;
-            })}
-          </div>
-        </nav>
+        <PhoneMenu pathname={pathname} items={items} badges={badges} billingDot={billingDot} className={styles.phoneMenu} />
         {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}
       </div>
      </HelpContext.Provider>

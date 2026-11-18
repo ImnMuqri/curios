@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { NavBadges } from '@curios/db-read';
 import type { Alert } from './alerts.js';
 import { parseTheme, THEME_COOKIE, type Theme } from './theme.js';
@@ -10,7 +10,12 @@ import type { BellSeen } from './bell-seen.js';
 const PLAN = { name: 'Business plan', note: '18 days left, until 14 Nov', fill: 0.6, glance: 'Business · paid until 14 Nov' };
 
 const push = vi.fn();
-vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios', useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push }) }));
+/** The page the frame is on; a test may move it, and it goes back to My Curios after each. */
+const at = vi.hoisted(() => ({ pathname: '/app/curios' }));
+vi.mock('next/navigation', () => ({ usePathname: () => at.pathname, useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push }) }));
+afterEach(() => {
+  at.pathname = '/app/curios';
+});
 // The Help panel reads its guide when it opens.
 const apiFetch = vi.fn(async () => ({ sections: [], chat: true }));
 vi.mock('../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
@@ -379,7 +384,7 @@ describe('the top bar', () => {
     expect(focus).toContain('var(--ink)');
     expect(focus).not.toContain('biru');
     const phone = css.slice(css.indexOf('/* ---- Notifications on a phone'));
-    expect(phone).toMatch(/@media \(max-width: 760px\)\s*\{\s*\.top \.notifications\s*\{[^}]*position: fixed;[^}]*bottom: /);
+    expect(phone).toMatch(/@media \(max-width: 1100px\)\s*\{\s*\.top \.notifications\s*\{[^}]*position: fixed;[^}]*bottom: /);
     // The scrim is a real element that takes the tap on a phone, and is not drawn on a desktop.
     expect(css).toMatch(/\.top \.notifyScrim\s*\{[^}]*display: none;/);
     expect(phone).toMatch(/\.top \.notifyScrim:not\(\[hidden\]\)\s*\{[^}]*display: block;[^}]*position: fixed;[^}]*inset: 0;/);
@@ -536,57 +541,144 @@ describe('the account menu', () => {
   });
 });
 
-describe("a phone's bottom menu", () => {
-  const dock = () => within(screen.getByRole('navigation', { name: 'Main navigation' }));
+describe("a phone's menu", () => {
+  const dock = () => within(screen.getByRole('navigation', { name: 'Menu' }));
+  const more = () => dock().getByRole('button', { name: 'More' });
+  const scrollTo = (y: number) => {
+    Object.defineProperty(window, 'scrollY', { value: y, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event('scroll'));
+    });
+  };
+  afterEach(() => {
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+  });
 
-  it('has Page, Store, Inbox, Review and More for a business page, and no Store for a personal one', () => {
+  it('has Page, Store, Orders, Questions and More for a business page, and no Store or Orders for a personal one', () => {
     frame({ mode: 'BUSINESS' });
-    expect(dock().getAllByRole('link').map((a) => a.textContent)).toEqual(['Page', 'Store', 'Inbox', 'Review3']);
-    expect(dock().getByRole('button', { name: 'More' })).toBeInTheDocument();
+    expect(dock().getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/app/curios', '/app/store', '/app/orders', '/app/questions']);
+    expect(dock().getAllByRole('link').map((a) => a.textContent)).toEqual(['Page', 'Store', 'Orders', 'Questions']);
+    expect(more()).toBeInTheDocument();
     cleanup();
     frame({ mode: 'PERSONAL' });
-    expect(dock().getAllByRole('link').map((a) => a.textContent)).toEqual(['Page', 'Inbox', 'Review3']);
+    expect(dock().getAllByRole('link').map((a) => a.textContent)).toEqual(['Page', 'Questions']);
   });
 
-  it('counts the three inboxes together on Inbox, and the facts to check on Review', () => {
-    frame({ mode: 'BUSINESS', badges: { review: 3, questions: 1, leads: 4, orders: 2 } });
-    expect(dock().getByRole('link', { name: /^Inbox/ })).toHaveTextContent('Inbox7');
-    expect(dock().getByRole('link', { name: /^Review/ })).toHaveTextContent('Review3');
-  });
-
-  it('sends Inbox to Orders on a business page, and to Questions on a personal one', () => {
+  it('shows only the active tab label in the phone menu', () => {
+    at.pathname = '/app/orders/abc';
     frame({ mode: 'BUSINESS' });
-    expect(dock().getByRole('link', { name: /^Inbox/ })).toHaveAttribute('href', '/app/orders');
-    cleanup();
-    frame({ mode: 'PERSONAL' });
-    expect(dock().getByRole('link', { name: /^Inbox/ })).toHaveAttribute('href', '/app/questions');
+    const tabs = dock().getAllByRole('link');
+    // Every tab keeps its name for a screen reader; only the one you are on is current and shows its label.
+    expect(tabs.map((a) => a.getAttribute('aria-current'))).toEqual([null, null, 'page', null]);
+    expect(tabs.map((a) => a.hasAttribute('data-on'))).toEqual([false, false, true, false]);
+    expect(dock().getByRole('link', { name: 'Page' })).toBeInTheDocument();
+    expect(more()).not.toHaveAttribute('data-on');
+    // The label is clipped to nothing and faded on every other tab, and opens on the one you are on.
+    const css = readFileSync(path.join(import.meta.dirname, '_ui/phone-menu.module.css'), 'utf8');
+    expect(css).toMatch(/\n\.clip\s*\{[^}]*grid-template-columns: 0fr;[^}]*overflow: hidden;/);
+    expect(css).toMatch(/\.tab\[data-on\] \.clip\s*\{[^}]*grid-template-columns: 1fr;/);
+    expect(css).toMatch(/\n\.label\s*\{[^}]*opacity: 0;/);
+    expect(css).toMatch(/\.tab\[data-on\] \.label\s*\{[^}]*opacity: 1;/);
   });
 
-  it('marks the tab you are on', () => {
-    frame();
-    expect(dock().getByRole('link', { name: 'Page' })).toHaveAttribute('aria-current', 'page');
-    expect(dock().getByRole('link', { name: /^Review/ })).not.toHaveAttribute('aria-current');
+  it('puts the pill on More on a page the menu has no tab for', () => {
+    at.pathname = '/app/leads';
+    frame({ mode: 'BUSINESS' });
+    expect(dock().getAllByRole('link').every((a) => !a.hasAttribute('aria-current'))).toBe(true);
+    expect(more()).toHaveAttribute('data-on');
   });
 
-  it('opens More as a sheet of Facts & sources, Billing and Settings, and Escape closes it', () => {
-    frame({ billingDot: true });
-    const more = dock().getByRole('button', { name: 'More' });
-    const sheet = document.getElementById(more.getAttribute('aria-controls')!)!;
+  it('springs the pill and the tabs, the leading edge first, and stills it all under reduced motion', () => {
+    const css = readFileSync(path.join(import.meta.dirname, '_ui/phone-menu.module.css'), 'utf8');
+    expect(css).toContain('cubic-bezier(0.3, 1.7, 0.5, 1)');
+    // Moving right the right edge leads, moving left the left edge does.
+    const right = css.match(/\.dock\[data-dir='right'\] \.pill\s*\{([^}]*)\}/)?.[1] ?? '';
+    const left = css.match(/\.dock\[data-dir='left'\] \.pill\s*\{([^}]*)\}/)?.[1] ?? '';
+    const secs = (rule: string, prop: string) => Number(rule.match(new RegExp(`${prop} ([0-9.]+)s`))?.[1]);
+    expect(secs(right, '--pill-r')).toBeLessThan(secs(right, '--pill-l'));
+    expect(secs(left, '--pill-l')).toBeLessThan(secs(left, '--pill-r'));
+    // The icon gives under a press.
+    expect(css).toMatch(/\.tab:active \.icon\s*\{[^}]*scale\(0\.84\)/);
+    const still = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(still).toMatch(/transition: none/);
+    expect(still).toMatch(/animation: none/);
+    // Shown only under 1100px, where the sidebar goes.
+    expect(css).toMatch(/\n\.dock\s*\{[^}]*display: none;/);
+    expect(css).toMatch(/@media \(max-width: 1100px\)\s*\{\s*\.dock\s*\{[^}]*display: flex;/);
+  });
+
+  it('reads 99+ on a tab past 99', () => {
+    frame({ mode: 'BUSINESS', badges: { review: 0, questions: 4, leads: 0, orders: 150 } });
+    expect(dock().getByRole('link', { name: 'Orders, 99+' })).toHaveTextContent('99+');
+    expect(dock().getByRole('link', { name: 'Questions, 4' })).toBeInTheDocument();
+  });
+
+  it('opens More as a sheet of Leads, Review, Facts & sources, Billing and Settings, and Escape closes it', () => {
+    frame({ mode: 'BUSINESS', billingDot: true, badges: { review: 3, questions: 0, leads: 2, orders: 0 } });
+    const sheet = document.getElementById(more().getAttribute('aria-controls')!)!;
+    expect(more()).toHaveAttribute('aria-expanded', 'false');
     expect(sheet).not.toBeVisible();
-    fireEvent.click(more);
-    expect(more).toHaveAttribute('aria-expanded', 'true');
-    expect(within(sheet).getAllByRole('link').map((a) => a.textContent)).toEqual(['Facts & sources', 'Billing, needs you', 'Settings']);
-    expect(within(sheet).getByText('Knowledge')).toBeInTheDocument();
-    expect(within(sheet).getByText('Account')).toBeInTheDocument();
+    fireEvent.click(more());
+    expect(more()).toHaveAttribute('aria-expanded', 'true');
+    expect(sheet).toBeVisible();
+    expect(within(sheet).getAllByRole('link').map((a) => a.getAttribute('href'))).toEqual(['/app/leads', '/app/review', '/app/knowledge', '/app/billing', '/app/settings']);
+    expect(within(sheet).getByRole('link', { name: 'Leads, 2' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('link', { name: 'Review, 3' })).toBeInTheDocument();
+    expect(within(sheet).getByRole('link', { name: 'Billing, needs you' })).toBeInTheDocument();
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(more).toHaveAttribute('aria-expanded', 'false');
+    expect(more()).toHaveAttribute('aria-expanded', 'false');
+    expect(more()).toHaveFocus();
   });
 
-  it('closes the sheet when the page behind it is tapped', () => {
+  it('marks the page you are on in the More sheet', () => {
+    at.pathname = '/app/settings';
     frame();
-    fireEvent.click(dock().getByRole('button', { name: 'More' }));
-    fireEvent.click(dock().getByRole('button', { name: 'Close' }));
-    expect(dock().getByRole('button', { name: 'More' })).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(more());
+    const sheet = document.getElementById(more().getAttribute('aria-controls')!)!;
+    expect(within(sheet).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'page');
+    expect(within(sheet).getByRole('link', { name: 'Billing' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('closes the sheet when the page behind it is tapped, and the tap goes no further', () => {
+    const markPaid = vi.fn();
+    render(
+      <AppFrame displayName="Kek Lina" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
+        <button type="button" onClick={markPaid}>
+          Mark paid
+        </button>
+      </AppFrame>,
+    );
+    fireEvent.click(more());
+    const scrim = screen.getByRole('navigation', { name: 'Menu' }).querySelector('[data-scrim]') as HTMLElement;
+    expect(scrim).not.toBeNull();
+    fireEvent.pointerDown(scrim);
+    fireEvent.click(scrim);
+    expect(markPaid).not.toHaveBeenCalled();
+    expect(more()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('hides the phone menu on scroll down and shows it on scroll up', () => {
+    frame();
+    const nav = screen.getByRole('navigation', { name: 'Menu' });
+    expect(nav).not.toHaveAttribute('data-away');
+    scrollTo(200);
+    scrollTo(400);
+    expect(nav).toHaveAttribute('data-away');
+    // A jitter of a few pixels back up does not bring it back.
+    scrollTo(397);
+    expect(nav).toHaveAttribute('data-away');
+    scrollTo(300);
+    expect(nav).not.toHaveAttribute('data-away');
+  });
+
+  it('stays while More is open, and near the top of the page', () => {
+    frame();
+    const nav = screen.getByRole('navigation', { name: 'Menu' });
+    scrollTo(40);
+    expect(nav).not.toHaveAttribute('data-away');
+    fireEvent.click(more());
+    scrollTo(400);
+    expect(nav).not.toHaveAttribute('data-away');
   });
 });
 

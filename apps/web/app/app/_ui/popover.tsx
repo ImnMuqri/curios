@@ -3,6 +3,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import styles from './popover.module.css';
 
+/** Data attributes for the button, for a menu that marks it as its own (the phone menu's More tab). */
+type ButtonData = { [key: `data-${string}`]: string | true | undefined };
+
 /**
  * A button that opens a small panel under it: the bell's notifications and the account menu.
  * A disclosure (aria-expanded): its contents are announced as what they are -- links, buttons, the
@@ -13,6 +16,7 @@ export function Popover({
   label,
   button,
   buttonClassName,
+  buttonData,
   panelClassName,
   scrimClassName,
   align = 'end',
@@ -22,6 +26,8 @@ export function Popover({
   label: string;
   button: ReactNode;
   buttonClassName: string | undefined;
+  /** Data attributes on the button (the phone menu's More tab: data-tab, data-on). */
+  buttonData?: ButtonData;
   /** Added to the panel's own look (the account menu is wider). */
   panelClassName?: string | undefined;
   /**
@@ -60,6 +66,7 @@ export function Popover({
   return (
     <div className={styles.root} ref={root}>
       <button
+        {...buttonData}
         ref={trigger}
         type="button"
         className={buttonClassName}

@@ -5,9 +5,8 @@
  * where you act or where you are. The public page keeps its own fonts.
  *
  * Corners follow the calm rule (--r-pill to click or type into, --r-box for containers) on the shared pieces; the frame's own still read 10px until its restyle. Under
- * 1100px the sidebar is an icon rail; on a phone it is a row of icons across the top and the top
- * bar goes. The screens inside follow the width of their own column (container queries), not the
- * window, because the sidebar takes space.
+ * 1100px the sidebar goes and the phone's menu floats at the foot (_ui/phone-menu). The screens inside
+ * follow the width of their own column (container queries), not the window, because the sidebar takes space.
  */
 .frame {
   /* The calm scope (light): the base tokens take the calm values here, and nowhere a customer sees. A preview island takes the owner's own back, below. */
@@ -407,11 +406,6 @@
   outline-offset: 2px;
 }
 
-.dockTab:focus-visible {
-  outline: 2px solid var(--biru);
-  outline-offset: 2px;
-}
-
 .topIcon {
   width: 19px;
   height: 19px;
@@ -441,7 +435,7 @@
   text-decoration: none;
 }
 
-/* The account menu's opener on a phone, where the sidebar's card is gone: the page's avatar. Shown at 760px and under. */
+/* The account menu's opener under 1100px, where the sidebar's card is gone: the page's avatar (DEVIATIONS 313). */
 .phoneAccount {
   display: none;
 }
@@ -653,105 +647,19 @@
   opacity: 0.6;
 }
 
-/* ---- Icon rail ---- */
+/* ---- Under 1100px: no sidebar, and the bits drawn on every screen that show only there ---- */
 
-@media (max-width: 1100px) {
-  .side {
-    width: 72px;
-    padding: 18px 10px 14px;
-  }
-
-  .brand {
-    --l-wordmark: 16px;
-    align-self: center;
-    margin: 4px 0 18px;
-  }
-
-  .plan {
-    display: none;
-  }
-
-  /* The card keeps only its picture; the menu still opens beside the rail. */
-  .card {
-    justify-content: center;
-    padding: 6px 0;
-  }
-
-  .cardText {
-    display: none;
-  }
-
-  .groupTitle {
-    height: 1px;
-    margin: 10px 8px;
-    overflow: hidden;
-    font-size: 0;
-    background: var(--line);
-  }
-
-  .group:first-child .groupTitle {
-    display: none;
-  }
-
-  .item {
-    justify-content: center;
-    gap: 0;
-    padding: 0;
-  }
-
-  .label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-
-  .count {
-    position: absolute;
-    top: 3px;
-    right: 5px;
-    display: grid;
-    place-items: center;
-    min-width: 15px;
-    height: 15px;
-    margin: 0;
-    padding: 0 4px;
-    border-radius: 8px;
-    background: var(--calm-badge);
-    color: var(--calm-surface);
-    font-size: 9.5px;
-  }
-
-  .dot {
-    position: absolute;
-    top: 6px;
-    right: 8px;
-    margin: 0;
-  }
-
-  .top {
-    padding: 0 16px 0 24px;
-  }
-}
-
-/* ---- A phone, and the bits of it that are drawn on every screen and shown only there ---- */
-
-/* Shown at 760px and under. */
-.topBrand,
-.inboxTabs,
-.dock {
+/* Shown under 1100px. */
+.topBrand {
   display: none;
 }
 
 /*
- * A phone (29 Oct 2026 boards): no sidebar. A 56px top bar on the grey -- the logo, the bell and the
- * avatar -- and a white pill floating at the foot with Page, Store, Inbox, Review and More, More
- * opening a sheet of the rest above it. The three inboxes share the Inbox tab, so each starts with a
- * row of tabs to switch between them. The sheet keeps 96px clear at its foot for the pill.
+ * Under 1100px (the calm Dash board's phone): the sidebar goes. A 56px top bar on the ground -- the
+ * logo, Help, the bell and the avatar -- and the phone's menu floating at the foot (PhoneMenu), so the
+ * sheet keeps 96px clear at its foot for it.
  */
-@media (max-width: 760px) {
+@media (max-width: 1100px) {
   .frame {
     flex-direction: column;
   }
@@ -784,7 +692,7 @@
     text-decoration: none;
   }
 
-  /* The board's phone top bar: the logo, then Help and the bell (and, until Task 6c, the avatar). */
+  /* The board's phone top bar: the logo, then Help and the bell (and the avatar, DEVIATIONS 313). */
   .help {
     padding: 0 10px;
   }
@@ -805,209 +713,6 @@
 
   .sheet::before {
     content: none;
-  }
-
-  /* The inboxes' own row, underlined as the boards draw it. */
-  .inboxTabs {
-    display: flex;
-    gap: 20px;
-    margin: 0 16px;
-    padding-top: 14px;
-    overflow-x: auto;
-    border-bottom: 1px solid var(--line);
-    scrollbar-width: none;
-  }
-
-  .inboxTabs a {
-    flex: none;
-    padding: 0 0 10px;
-    color: var(--muted);
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-  }
-
-  .inboxTabs a[aria-current='page'] {
-    color: var(--ink);
-    font-weight: 600;
-    box-shadow: inset 0 -2px 0 var(--biru);
-  }
-
-  .inboxTabs em {
-    margin-left: 4px;
-    color: var(--biru);
-    font-size: 11px;
-    font-style: normal;
-    font-weight: 700;
-  }
-
-  .dock {
-    position: fixed;
-    right: 12px;
-    bottom: calc(14px + env(safe-area-inset-bottom));
-    left: 12px;
-    z-index: 40;
-    display: flex;
-    height: 64px;
-    padding: 6px;
-    border-radius: 32px;
-    background: var(--card);
-    box-shadow: 0 0 0 1px var(--line), 0 10px 30px -8px rgb(25 31 44 / 25%);
-  }
-
-  .dockTab {
-    position: relative;
-    z-index: 1;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    height: 100%;
-    padding: 0;
-    border: 0;
-    border-radius: 26px;
-    background: transparent;
-    color: var(--muted);
-    font: inherit;
-    font-size: 11px;
-    font-weight: 500;
-    text-decoration: none;
-    cursor: pointer;
-  }
-
-  /* The tab you are on is blue, and nothing more. */
-  .dockTab[aria-current='page'],
-  .dockTab[data-on] {
-    color: var(--biru);
-    font-weight: 600;
-  }
-
-  .dockIcon {
-    width: 20px;
-    height: 20px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.8;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .dockCount {
-    position: absolute;
-    top: 5px;
-    left: calc(50% + 4px);
-    min-width: 16px;
-    height: 16px;
-    padding: 0 4px;
-    border-radius: 8px;
-    background: var(--calm-badge);
-    box-shadow: 0 0 0 2px var(--card);
-    color: var(--calm-surface);
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 16px;
-    text-align: center;
-    text-decoration: none;
-  }
-
-  .dockDot {
-    position: absolute;
-    top: 8px;
-    left: calc(50% + 8px);
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--merah);
-    box-shadow: 0 0 0 2px var(--card);
-  }
-
-  /* Everything behind the open sheet, dimmed; a tap on it closes the sheet. */
-  .scrim {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    padding: 0;
-    border: 0;
-    background: rgb(25 31 44 / 35%);
-    cursor: default;
-  }
-
-  .moreSheet {
-    position: absolute;
-    right: -4px;
-    bottom: calc(100% + 14px);
-    left: -4px;
-    z-index: 1;
-    padding: 8px 8px 10px;
-    border-radius: 20px;
-    background: var(--card);
-    box-shadow: 0 12px 30px -8px rgb(25 31 44 / 30%);
-    animation: sheetIn 160ms ease both;
-  }
-
-  .moreSheet[hidden] {
-    display: none;
-  }
-
-  .grab {
-    display: block;
-    width: 36px;
-    height: 4px;
-    margin: 2px auto 6px;
-    border-radius: 2px;
-    background: var(--edge);
-  }
-
-  .moreSheet p {
-    margin: 0;
-    padding: 8px 10px 4px;
-    color: var(--faint);
-    font-size: 11.5px;
-    font-weight: 600;
-  }
-
-  .moreSheet a {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    height: 44px;
-    padding: 0 10px;
-    border-radius: 10px;
-    color: var(--ink);
-    font-size: 14px;
-    font-weight: 500;
-    text-decoration: none;
-  }
-
-  .moreSheet a .icon {
-    width: 20px;
-    height: 20px;
-    color: var(--soft);
-  }
-
-  .moreSheet a[aria-current='page'],
-  .moreSheet a[aria-current='page'] .icon {
-    color: var(--biru);
-    font-weight: 600;
-  }
-}
-
-@keyframes sheetIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
-  .moreSheet {
-    animation: none;
   }
 }
 
@@ -1221,9 +926,9 @@
   color: var(--light-ink);
 }
 
-/* On a phone Help takes the whole screen, so the floating menu pill hides while it is open. */
-@media (max-width: 760px) {
-  .frame[data-help-open] .dock {
+/* Under 1100px Help takes the screen, so the phone's menu hides while it is open. */
+@media (max-width: 1100px) {
+  .frame[data-help-open] .phoneMenu {
     display: none;
   }
 }
@@ -1244,8 +949,8 @@
   display: none;
 }
 
-/* ---- Notifications on a phone: the same panel as a bottom sheet (the board's .nfp under its phone width) ---- */
-@media (max-width: 760px) {
+/* ---- Notifications on a phone: the same panel as a bottom sheet (the board's .nfp under 1100px, where the phone's menu shows) ---- */
+@media (max-width: 1100px) {
   .top .notifications {
     position: fixed;
     top: auto;
@@ -1304,7 +1009,7 @@
   }
 }
 
-@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+@media (max-width: 1100px) and (prefers-reduced-motion: reduce) {
   .top .notifications:not([hidden]),
   .top .notifyScrim:not([hidden]) {
     animation: none;
