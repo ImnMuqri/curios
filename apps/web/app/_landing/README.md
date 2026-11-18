@@ -60,7 +60,9 @@ The auth screens keep `_peek/Peek.tsx`.
 **Photos.** In `public/landing/personas/` (WebP, supplied by the owner on
 2026-10-16; not from Unsplash, so the footer note does not credit it), with
 smaller copies listed in `photos.ts`. `/landing/*` is cached for 30 days, so a
-redrawn photo takes a new file name.
+redrawn photo takes a new file name. Daniel's and Farah's photos are not shown
+anywhere now (Who draws an initial for every page), though they stay in
+`public/` and `photos.ts`.
 
 **Claims to make true, or soften** (DEVIATIONS 249 still applies). What lands
 in your hands shows the Hot tag on a lead, the ping on the owner's phone, and
@@ -74,13 +76,16 @@ description naming Malay or English and approved facts. Malay versions are under
 the same limits. Tests enforce them.
 
 **Structured data:** Organization, WebSite, SoftwareApplication (three MYR offers,
-priced from `PLAN_PRICES_CENTS`), and FAQPage from the list the page shows.
+priced from the prices in force, which `structuredData` takes as an argument),
+and FAQPage from the list the page shows.
 Nothing claims ratings or reviews.
 
 ## Before launch
 
-1. ~~**A native speaker reads the Malay** in `copy.ts`.~~ Done: the owner read
-   it on 2026-10-22 (DEVIATIONS 10).
+1. **A native speaker reads the Malay** in `copy.ts`. The owner read the
+   earlier landing's Malay on 2026-10-22 (DEVIATIONS 10), but the calm
+   sections (Who, How, What lands, No cut, Pricing, the closing) are drafted
+   by an AI and still need that read (DEVIATIONS 313).
 2. ~~**Font preloading is broken app-wide**~~ Resolved 2026-10-26: only a Windows
    build loses it; a Linux build preloads (`devDocs/deferred-findings.md`).
 3. ~~**The sitemap lists only the landing page** and the Terms, Privacy and
