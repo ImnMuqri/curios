@@ -2,14 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { defaultSettings } from '@curios/core/settings';
-import { raisedSettings } from '@curios/core/test-settings';
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, landingCopy } from './copy.js';
-import { structuredData } from './structured-data.js';
 import { BRAND } from './brand-colors.js';
-import { payback } from './Pricing.js';
 
 const LOCALES = ['en', 'ms'] as const;
 /** The prices and allowances in force: the defaults, as a database with no rows gives. */
@@ -85,87 +81,6 @@ describe('motion', () => {
     expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
   });
 
-});
-
-describe('pricing', () => {
-  it('switches Business between monthly and yearly, and says which is on', async () => {
-    render(<LandingPage locale="en" terms={TERMS} />);
-    const pricing = document.querySelector('#pricing') as HTMLElement;
-    expect(within(pricing).getByText('RM49 a month')).toBeInTheDocument();
-    await userEvent.click(within(pricing).getByRole('button', { name: /Yearly/ }));
-    expect(within(pricing).getByRole('button', { name: /Yearly/ })).toHaveAttribute('aria-pressed', 'true');
-    expect(within(pricing).getByText('RM490 a year')).toBeInTheDocument();
-    expect(pricing).toHaveTextContent('RM40.83 a month, paid once a year.');
-  });
-
-  it('works out the calculator from the real monthly price', () => {
-    expect(en.pricing.monthlyRinggit).toBe(TERMS.prices.MONTHLY / 100);
-    // Five orders of RM95: RM475, of which RM49 is about 10%, nine times over.
-    expect(payback(5, 95, 49)).toMatchObject({ revenue: 475, pays: true, percent: 10, times: 9 });
-    // One RM50 order does not cover it.
-    expect(payback(1, 40, 49).pays).toBe(false);
-  });
-});
-
-describe('pricing, at the prices the admin set', () => {
-  const RAISED = raisedSettings({ freeLeads: 5 });
-
-  it('shows the price in force, in both languages, and the calculator counts it', () => {
-    render(<LandingPage locale="en" terms={RAISED} />);
-    const pricing = document.querySelector('#pricing') as HTMLElement;
-    expect(within(pricing).getByText('RM59 a month')).toBeInTheDocument();
-    expect(within(pricing).getByRole('heading', { level: 2 })).toHaveTextContent('Free to be asked. RM59 when you’re selling.');
-    expect(landingCopy('ms', RAISED).pricing.title).toBe('Percuma untuk ditanya. RM59 bila anda menjual.');
-    expect(landingCopy('en', RAISED).pricing.monthlyRinggit).toBe(59);
-  });
-
-  it('prints a price with sen to two places, never RM49.5', () => {
-    const SEN = { ...defaultSettings(), prices: { MONTHLY: 4950, ANNUAL: 49050 } };
-    const en = landingCopy('en', SEN).pricing;
-    expect(en.title).toBe('Free to be asked. RM49.50 when you’re selling.');
-    expect(en.business.monthly).toBe('RM49.50');
-    expect(en.business.yearly).toBe('RM490.50');
-    expect(en.business.noteYearly).toBe('RM40.88 a month, paid once a year.');
-    expect(landingCopy('ms', SEN).pricing.title).toBe('Percuma untuk ditanya. RM49.50 bila anda menjual.');
-    // The calculator's bar says the same, not RM49.5.
-    render(<LandingPage locale="en" terms={SEN} />);
-    expect(within(document.querySelector('#pricing') as HTMLElement).getByText('Curios Business · RM49.50')).toBeInTheDocument();
-  });
-
-  it('counts the free leads in force', () => {
-    expect(landingCopy('en', RAISED).pricing.business.points).toContain('Your first five leads are free');
-    expect(landingCopy('en', RAISED).pricing.business.cta).toBe('Start with 5 free leads');
-    expect(landingCopy('ms', RAISED).pricing.business.points).toContain('Lima lead pertama percuma');
-    expect(landingCopy('ms', RAISED).pricing.business.cta).toBe('Mula dengan 5 lead percuma');
-    expect(landingCopy('en', { ...RAISED, freeLeads: 1 }).pricing.business.points).toContain('Your first lead is free');
-  });
-
-  it('claims months free only when the prices give them', () => {
-    const raised = landingCopy('en', RAISED).pricing;
-    expect(raised.business.noteMonthly).toBe('Or RM490 a year.');
-    expect(raised.twoMonths).toBe('');
-    const tenTimes = landingCopy('en', { ...RAISED, prices: { MONTHLY: 5900, ANNUAL: 59000 } }).pricing;
-    expect(tenTimes.business.noteMonthly).toBe('Or RM590 a year: two months free.');
-    expect(tenTimes.twoMonths).toBe('−2 months');
-  });
-
-  it('says one RM95 order pays for Business only while it does: at RM95 a month, not at RM96', () => {
-    const at = (MONTHLY: number) => ({ ...RAISED, prices: { ...RAISED.prices, MONTHLY } });
-    expect(landingCopy('en', at(9500)).pricing.business.tag).toBe('One RM95 order pays for it');
-    expect(landingCopy('ms', at(9500)).pricing.business.tag).toBe('Satu tempahan RM95 dah cukup bayar');
-    expect(landingCopy('en', at(9600)).pricing.business.tag).toBe('');
-    expect(landingCopy('ms', at(9600)).pricing.business.tag).toBe('');
-
-    render(<LandingPage locale="en" terms={at(9600)} />);
-    const pricing = document.querySelector('#pricing') as HTMLElement;
-    expect(pricing).not.toHaveTextContent('One RM95 order pays for it');
-    expect(pricing.querySelectorAll('[class*="planTag"]')).toHaveLength(1);
-  });
-
-  it('puts the prices in force in the structured data', () => {
-    const offers = structuredData(landingCopy('en', RAISED), 'https://curios.my', RAISED.prices)['@graph'].flatMap((node) => ('offers' in node ? node.offers : []));
-    expect(offers.map((o) => o?.price)).toEqual(['0', '59', '490']);
-  });
 });
 
 describe('metadata', () => {

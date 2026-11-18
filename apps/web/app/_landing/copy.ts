@@ -202,7 +202,8 @@ export interface LandingCopy {
   };
   pricing: {
     eyebrow: string;
-    title: string;
+    /** Two lines: "Free to be asked." and the price in force "when you’re selling". */
+    title: [string, string];
     billing: string;
     monthly: string;
     yearly: string;
@@ -231,13 +232,17 @@ export interface LandingCopy {
       yours: string;
       /** `amount` is written already: RM49, RM40.83. */
       cost: (amount: string) => string;
+      /** `times` is what the orders take in over what Business costs, unrounded. */
       pays: (percent: number, times: number) => string;
-      under: string;
+      /** Below cost; `oneMoreCovers` when one more typical order would pay for Business (plan, Open decision 8). */
+      under: (oneMoreCovers: boolean) => string;
       typicalLabel: string;
     };
     /** How Business is paid. Billing shows this line too. */
     payment: string;
     disclaimer: string;
+    /** The line under the calculator. */
+    fine: string;
     /** Numbers the calculator needs, from the prices in force. */
     monthlyRinggit: number;
     annualAMonth: string;
@@ -777,7 +782,7 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
   const f = figures(terms);
   return {
     eyebrow: 'Pricing',
-    title: `Free to be asked. ${f.monthlyText} when you’re selling.`,
+    title: ['Free to be asked.', `${f.monthlyText} when you’re selling`],
     billing: 'Business billing',
     monthly: 'Monthly',
     yearly: 'Yearly',
@@ -800,7 +805,10 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
       perMonth: 'a month',
       perYear: 'a year',
       noteMonthly: f.months === null ? `Or ${f.annualText} a year.` : `Or ${f.annualText} a year: ${inWords(f.months, EN_NUMBERS)} ${f.months === 1 ? 'month' : 'months'} free.`,
-      noteYearly: `${f.annualAMonthText} a month, paid once a year.`,
+      noteYearly:
+        f.months === null
+          ? `${f.annualAMonthText} a month, paid once a year.`
+          : `${capital(inWords(f.months, EN_NUMBERS))} ${f.months === 1 ? 'month' : 'months'} free. That’s ${f.annualAMonthText} a month.`,
       plus: 'Everything in Personal, plus',
       points: [
         'A shop paid by FPX, e-wallet, card or your own QR',
@@ -820,11 +828,12 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
       takeIn: 'You’d take in',
       yours: 'Your orders',
       cost: (amount) => `Curios Business · ${amount}`,
-      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself ${times >= 2 ? `${times} times over.` : 'once.'}`,
-      under: 'That’s less than Business costs. Stay on Personal until orders pick up.',
+      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself${times >= 1.5 ? ` ${Math.floor(times)} times over` : ''}.`,
+      under: (oneMore) => (oneMore ? 'One more order and it pays for itself.' : 'That’s less than Business costs. Stay on Personal until orders pick up.'),
     },
     payment: 'Pay by FPX, card or e-wallet. Nothing renews unless you turn on auto-renew by card.',
     disclaimer: 'The calculator is an illustration, not a forecast.',
+    fine: 'Business is paid by FPX, e-wallet or card, through CHIP. The calculator is an illustration, not a forecast.',
     monthlyRinggit: f.monthly,
     annualAMonth: f.annualAMonth,
     monthlyText: f.monthlyText,
@@ -836,7 +845,7 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
   const f = figures(terms);
   return {
     eyebrow: 'Harga',
-    title: `Percuma untuk ditanya. ${f.monthlyText} bila anda menjual.`,
+    title: ['Percuma untuk ditanya.', `${f.monthlyText} bila anda menjual`],
     billing: 'Bayaran bisnes',
     monthly: 'Bulanan',
     yearly: 'Tahunan',
@@ -858,7 +867,10 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
       perMonth: 'sebulan',
       perYear: 'setahun',
       noteMonthly: f.months === null ? `Atau ${f.annualText} setahun.` : `Atau ${f.annualText} setahun: percuma ${inWords(f.months, MS_NUMBERS)} bulan.`,
-      noteYearly: `${f.annualAMonthText} sebulan, bayar sekali setahun.`,
+      noteYearly:
+        f.months === null
+          ? `${f.annualAMonthText} sebulan, bayar sekali setahun.`
+          : `Percuma ${inWords(f.months, MS_NUMBERS)} bulan. Itu ${f.annualAMonthText} sebulan.`,
       plus: 'Semua dalam Peribadi, dan',
       points: [
         'Kedai yang dibayar melalui FPX, e-dompet, kad atau QR anda sendiri',
@@ -878,11 +890,13 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
       takeIn: 'Anda akan terima',
       yours: 'Tempahan anda',
       cost: (amount) => `Curios Bisnes · ${amount}`,
-      pays: (percent, times) => `Bisnes kosnya kira-kira ${percent}% daripada itu. Ia bayar balik ${times >= 2 ? `${times} kali ganda.` : 'sekali.'}`,
-      under: 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.',
+      pays: (percent, times) =>
+        `Bisnes kosnya kira-kira ${percent}% daripada itu. ${times >= 1.5 ? `Ia bayar balik ${Math.floor(times)} kali ganda.` : 'Ia bayar balik sendiri.'}`,
+      under: (oneMore) => (oneMore ? 'Satu tempahan lagi dan ia bayar balik sendiri.' : 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.'),
     },
     payment: 'Bayar dengan FPX, kad atau e-dompet. Tiada pembaharuan automatik melainkan anda hidupkan auto-renew dengan kad.',
     disclaimer: 'Kalkulator ini contoh, bukan ramalan.',
+    fine: 'Bisnes dibayar dengan FPX, e-dompet atau kad, melalui CHIP. Kalkulator ini contoh, bukan ramalan.',
     monthlyRinggit: f.monthly,
     annualAMonth: f.annualAMonth,
     monthlyText: f.monthlyText,
