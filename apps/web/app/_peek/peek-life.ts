@@ -65,39 +65,70 @@ interface Entry {
   follow: boolean;
   next: number;
   looking: boolean;
+  /** The look-around's pending steps, cleared when the Peek leaves. */
+  timers: Set<number>;
 }
 
 const entries = new Set<Entry>();
 let lastMove = -Infinity;
 let tick: number | undefined;
+/** The last pointer position not yet acted on, and the frame that will. */
+let pointer: { x: number; y: number } | null = null;
+let frame: number | undefined;
 
-function near(el: Element, margin: number): boolean {
-  const r = el.getBoundingClientRect();
+/** Whether `r` is on screen, give or take `margin`. A Peek with no box (display: none) never is. */
+function near(r: DOMRect, margin: number): boolean {
+  if (!r.width && !r.height) return false;
   return r.bottom > -margin && r.top < window.innerHeight + margin;
+}
+
+/** Turns every following Peek's eyes to the pointer: one box read per Peek, once a frame. */
+function followPointer() {
+  frame = undefined;
+  const at = pointer;
+  pointer = null;
+  if (!at) return;
+  for (const entry of entries) {
+    if (!entry.follow || entry.looking) continue;
+    const el = entry.peek.el();
+    if (!el) continue;
+    const r = el.getBoundingClientRect();
+    if (!near(r, 200)) continue;
+    entry.peek.look(pupilOffset(at.x - (r.left + r.width / 2), at.y - (r.top + r.height * 0.55)));
+  }
 }
 
 function onMove(e: PointerEvent | MouseEvent) {
   lastMove = Date.now();
-  for (const entry of entries) {
-    if (!entry.follow || entry.looking) continue;
-    const el = entry.peek.el();
-    if (!el || !near(el, 200)) continue;
-    const r = el.getBoundingClientRect();
-    entry.peek.look(pupilOffset(e.clientX - (r.left + r.width / 2), e.clientY - (r.top + r.height * 0.55)));
-  }
+  pointer = { x: e.clientX, y: e.clientY };
+  if (frame !== undefined) return;
+  if (typeof window.requestAnimationFrame === 'function') frame = window.requestAnimationFrame(followPointer);
+  else followPointer();
+}
+
+function later(entry: Entry, run: () => void, ms: number) {
+  const id = window.setTimeout(() => {
+    entry.timers.delete(id);
+    run();
+  }, ms);
+  entry.timers.add(id);
 }
 
 function lookAround(entry: Entry) {
   entry.looking = true;
   let at = 0;
   for (const [x, y, ms] of LOOK_AROUND) {
-    window.setTimeout(() => entry.peek.look({ x, y }), at);
+    later(entry, () => entry.peek.look({ x, y }), at);
     at += ms;
   }
-  window.setTimeout(() => {
-    entry.peek.look(null);
-    entry.looking = false;
-  }, at);
+  later(
+    entry,
+    () => {
+      entry.peek.look(null);
+      entry.looking = false;
+    },
+    at,
+  );
 }
 
 function onTick() {
@@ -105,13 +136,29 @@ function onTick() {
   for (const entry of entries) {
     if (now < entry.next) continue;
     const el = entry.peek.el();
-    if (!el || entry.looking || entry.peek.busy() || !near(el, 0)) continue;
+    if (!el || entry.looking || entry.peek.busy() || !near(el.getBoundingClientRect(), 0)) continue;
     entry.next = nextHabitAt(now, Math.random(), false);
     const habit = pickHabit(Math.random(), entry.peek.pose());
     if (habit === 'look') {
       if (now - lastMove >= 1500) lookAround(entry);
     } else entry.peek.mood(habit);
   }
+}
+
+/** The habit clock runs only while some Peek is enlisted and the tab is showing. */
+function startClock() {
+  if (tick === undefined && entries.size > 0 && !document.hidden) tick = window.setInterval(onTick, 400);
+}
+
+function stopClock() {
+  if (tick === undefined) return;
+  window.clearInterval(tick);
+  tick = undefined;
+}
+
+function onVisibility() {
+  if (document.hidden) stopClock();
+  else startClock();
 }
 
 function reduced(): boolean {
@@ -121,18 +168,24 @@ function reduced(): boolean {
 /** Brings `peek` to life; returns the leave. Nothing is added under reduced motion. */
 export function enlist(peek: PeekLife, follow = false): () => void {
   if (reduced()) return () => {};
-  const entry: Entry = { peek, follow, next: nextHabitAt(Date.now(), Math.random(), true), looking: false };
+  const entry: Entry = { peek, follow, next: nextHabitAt(Date.now(), Math.random(), true), looking: false, timers: new Set() };
   entries.add(entry);
   if (entries.size === 1) {
     window.addEventListener('pointermove', onMove, { passive: true });
-    tick = window.setInterval(onTick, 400);
+    document.addEventListener('visibilitychange', onVisibility);
+    startClock();
   }
   return () => {
     if (!entries.delete(entry)) return;
+    for (const id of entry.timers) clearTimeout(id);
+    entry.timers.clear();
     if (entries.size === 0) {
       window.removeEventListener('pointermove', onMove);
-      window.clearInterval(tick);
-      tick = undefined;
+      document.removeEventListener('visibilitychange', onVisibility);
+      stopClock();
+      if (frame !== undefined) window.cancelAnimationFrame(frame);
+      frame = undefined;
+      pointer = null;
     }
   };
 }

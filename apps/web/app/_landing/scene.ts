@@ -46,15 +46,17 @@ export interface Scene<S, P> {
 }
 
 /**
- * A scene's state, played while `ref`'s element is in view. Reduced motion,
- * or a browser without IntersectionObserver, gets the finished frame and no
- * timer. Leaving the view stops the run and resets to `start`; a changed
- * `key` stops the run and starts again.
+ * A scene's state, played while `ref`'s element is in view and the tab is
+ * showing. Reduced motion, or a browser without IntersectionObserver, gets
+ * the finished frame and no timer. Leaving the view, or hiding the tab, stops
+ * the run and resets to `start`; a changed `key` stops the run and starts
+ * again.
  */
 export function useScene<S, P>(scene: Scene<S, P>, p: P, ref: RefObject<Element | null>, key?: unknown): S {
   const reduced = useReducedMotion();
   const [canWatch, setCanWatch] = useState(true);
   const [inView, setInView] = useState(false);
+  const [shown, setShown] = useState(true);
   const [state, set] = useState<S>(() => scene.still(p));
   const pRef = useRef(p);
   pRef.current = p;
@@ -72,7 +74,13 @@ export function useScene<S, P>(scene: Scene<S, P>, p: P, ref: RefObject<Element 
       if (entry) setInView(entry.isIntersecting);
     });
     io.observe(el);
-    return () => io.disconnect();
+    const onVisibility = () => setShown(!document.hidden);
+    onVisibility();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      io.disconnect();
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [reduced, ref]);
 
   useEffect(() => {
@@ -81,9 +89,9 @@ export function useScene<S, P>(scene: Scene<S, P>, p: P, ref: RefObject<Element 
       return;
     }
     set(scene.start(pRef.current));
-    if (!inView) return;
+    if (!inView || !shown) return;
     return play((wait) => scene.run(pRef.current, set, wait));
-  }, [scene, still, inView, key]);
+  }, [scene, still, inView, shown, key]);
 
   return state;
 }

@@ -2,10 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { AskStrip, ASK_WORD_MS } from './AskStrip.js';
 import { COPY } from './copy.js';
-import { LOCALES, advance, reduceMotion } from './test-kit.js';
+import { LOCALES, advance, reduceMotion, watchViews } from './test-kit.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
   vi.useRealTimers();
 });
 
@@ -15,7 +16,9 @@ describe('the ask strip', () => {
   it('lights one word at a time, every 1.7s', async () => {
     vi.useFakeTimers();
     expect(ASK_WORD_MS).toBe(1700);
+    const view = watchViews();
     const { container } = render(<AskStrip locale="en" />);
+    view.show(true);
     expect(lit(container)).toEqual(['rates,']);
     await advance(1699);
     expect(lit(container)).toEqual(['rates,']);
@@ -23,9 +26,24 @@ describe('the ask strip', () => {
     expect(lit(container)).toEqual(['services,']);
   });
 
+  it('runs no timer while off-screen', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const { container } = render(<AskStrip locale="en" />);
+    await advance(5000);
+    expect(lit(container)).toEqual(['rates,']);
+    expect(vi.getTimerCount()).toBe(0);
+    view.show(true);
+    await advance(1700);
+    expect(lit(container)).toEqual(['services,']);
+    view.show(false);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('lights only the first word, with no timer, under reduced motion', async () => {
     vi.useFakeTimers();
     reduceMotion();
+    watchViews().show(true);
     const { container } = render(<AskStrip locale="en" />);
     await advance(5000);
     expect(lit(container)).toEqual(['rates,']);

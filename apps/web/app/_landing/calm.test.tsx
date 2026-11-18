@@ -3,11 +3,12 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
+import { useRef } from 'react';
 import { findHexLiterals, findOffRuleRadii, findOffScaleFontSizes } from '../../../../packages/ui/src/design-rules.js';
 import { LandingPage } from './LandingPage.js';
 import { RevealWatcher } from './Reveal.js';
-import { play } from './scene.js';
-import { TERMS, read, reduceMotion, rule } from './test-kit.js';
+import { play, useScene, type Scene } from './scene.js';
+import { TERMS, advance, read, reduceMotion, rule, watchViews } from './test-kit.js';
 
 /** Every calm landing stylesheet, relative to this folder. Each section task appends its own. */
 const CALM_MODULES = ['calm.module.css', 'nav.module.css', 'footer.module.css', 'hero.module.css', 'page-card.module.css', 'claim.module.css', 'ask.module.css', 'who.module.css', 'how.module.css', 'lands.module.css', 'nocut.module.css', 'pricing.module.css', 'faq.module.css', 'closing.module.css'];
@@ -137,6 +138,74 @@ describe('the scene runner', () => {
     stop();
     await vi.advanceTimersByTimeAsync(1000);
     expect(seen).toEqual([1, 2, 1]);
+  });
+
+  /** Counts up every 100ms from 0; its still frame is -1. */
+  const counter: Scene<number, null> = {
+    still: () => -1,
+    start: () => 0,
+    async run(_p, set, wait) {
+      await wait(100);
+      set((n) => n + 1);
+    },
+  };
+  function Counter() {
+    const ref = useRef<HTMLDivElement>(null);
+    const n = useScene(counter, null, ref);
+    return <div ref={ref} data-n={n} />;
+  }
+  const shown = (c: HTMLElement) => c.querySelector('[data-n]')!.getAttribute('data-n');
+
+  it('stops a scene that leaves the view and resets it to its start', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const { container } = render(<Counter />);
+    view.show(true);
+    await advance(350);
+    expect(shown(container)).toBe('3');
+    view.show(false);
+    expect(shown(container)).toBe('0');
+    expect(vi.getTimerCount()).toBe(0);
+    await advance(1000);
+    expect(shown(container)).toBe('0');
+  });
+
+  it('pauses a scene while the tab is hidden', async () => {
+    vi.useFakeTimers();
+    let hidden = false;
+    Object.defineProperty(document, 'hidden', { configurable: true, get: () => hidden });
+    try {
+      const view = watchViews();
+      const { container } = render(<Counter />);
+      view.show(true);
+      await advance(250);
+      expect(shown(container)).toBe('2');
+      hidden = true;
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      expect(vi.getTimerCount()).toBe(0);
+      await advance(1000);
+      expect(shown(container)).toBe('0');
+      hidden = false;
+      act(() => {
+        document.dispatchEvent(new Event('visibilitychange'));
+      });
+      await advance(100);
+      expect(shown(container)).toBe('1');
+    } finally {
+      delete (document as { hidden?: boolean }).hidden;
+    }
+  });
+
+  it('leaves no timer once unmounted', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const { unmount } = render(<Counter />);
+    view.show(true);
+    await advance(150);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
 
