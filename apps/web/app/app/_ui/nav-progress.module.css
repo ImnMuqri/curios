@@ -13,7 +13,7 @@
   right: var(--head-x, 0px);
   bottom: 8px;
   height: 2px;
-  background: var(--biru);
+  background: var(--action);
   border-radius: 2px;
   transform: scaleX(0);
   transform-origin: left center;

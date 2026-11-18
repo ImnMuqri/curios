@@ -57,7 +57,7 @@ describe('HelpPanel: start', () => {
   it('greets the owner, suggests four questions for the screen they are on, and offers every topic', async () => {
     show();
     expect(screen.getByRole('heading', { name: 'Hi Lina. What can I help with?' })).toBeInTheDocument();
-    expect(await screen.findByText('People on Settings often ask')).toBeInTheDocument();
+    expect(await screen.findByText('People often ask')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /How do I change which emails I get\?/ })).toBeInTheDocument();
     expect(screen.getByText('Why isn’t my page on Google?')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Browse all topics' })).toBeInTheDocument();
@@ -204,5 +204,97 @@ describe('HelpPanel: the thread', () => {
     show();
     await waitFor(() => expect(screen.getByText('From the guide · How do I give a discount?')).toBeInTheDocument());
     expect(within(screen.getByRole('dialog')).queryByText('Hi Lina. What can I help with?')).toBeNull();
+  });
+});
+
+describe('HelpPanel: a modal dialog', () => {
+  it('is modal, and moves focus into the panel when it opens', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    show();
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    opener.remove();
+  });
+
+  it('keeps Tab inside the panel, from the last control to the first and back', () => {
+    show();
+    const dialog = screen.getByRole('dialog');
+    const controls = () => [...dialog.querySelectorAll<HTMLElement>('button, input, textarea, a[href]')].filter((el) => !(el as HTMLButtonElement).disabled);
+    const last = controls().at(-1)!;
+    last.focus();
+    fireEvent.keyDown(last, { key: 'Tab' });
+    expect(document.activeElement).toBe(controls()[0]);
+    fireEvent.keyDown(controls()[0]!, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(controls().at(-1));
+  });
+
+  it('closes on Escape and gives focus back to what opened it', () => {
+    const opener = document.createElement('button');
+    document.body.append(opener);
+    opener.focus();
+    const view = show();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+    view.unmount();
+    expect(document.activeElement).toBe(opener);
+    opener.remove();
+  });
+
+  it('closes when the dimmed page is clicked', () => {
+    show();
+    const scrim = screen.getAllByRole('button', { name: 'Close help' }).find((b) => !b.closest('[role="dialog"]'))!;
+    expect(scrim).toHaveAttribute('tabindex', '-1');
+    fireEvent.click(scrim);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives focus back to the account menu’s card when its Help & support row is hidden by then', () => {
+    const card = document.createElement('button');
+    card.setAttribute('aria-label', 'Account, Lina');
+    const row = document.createElement('button');
+    row.focus = () => {}; // a row inside a hidden popover takes no focus
+    document.body.append(card, row);
+    Object.defineProperty(document, 'activeElement', { configurable: true, get: () => row });
+    const view = show();
+    delete (document as { activeElement?: unknown }).activeElement;
+    view.unmount();
+    expect(document.activeElement).toBe(card);
+    card.remove();
+    row.remove();
+  });
+
+  it('gives focus to the phone avatar when the sidebar card is hidden and takes none', () => {
+    // Under 1100px the sidebar's card comes first in the document but is display: none.
+    const sideCard = document.createElement('button');
+    sideCard.setAttribute('aria-label', 'Account, Lina, Lina · Business');
+    sideCard.focus = () => {};
+    const avatar = document.createElement('button');
+    avatar.setAttribute('aria-label', 'Account, Lina');
+    const row = document.createElement('button');
+    row.focus = () => {};
+    document.body.append(sideCard, avatar, row);
+    Object.defineProperty(document, 'activeElement', { configurable: true, get: () => row });
+    const view = show();
+    delete (document as { activeElement?: unknown }).activeElement;
+    view.unmount();
+    expect(document.activeElement).toBe(avatar);
+    sideCard.remove();
+    avatar.remove();
+    row.remove();
+  });
+
+  it('wraps Shift+Tab to the last control, and Tab to the first, when focus rests on the panel itself', () => {
+    show();
+    const dialog = screen.getByRole('dialog');
+    const stops = [...dialog.querySelectorAll<HTMLElement>('button, input, textarea, a[href]')].filter((el) => !(el as HTMLButtonElement).disabled);
+    dialog.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(stops.at(-1));
+    dialog.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
   });
 });

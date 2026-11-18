@@ -218,7 +218,7 @@
 }
 
 .tsegPaid {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .tsegAdd {
@@ -309,7 +309,7 @@
   width: 11px;
   height: 11px;
   fill: none;
-  stroke: var(--card);
+  stroke: var(--action-fg);
   stroke-width: 3.2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -317,7 +317,7 @@
 }
 
 .opt[aria-checked='true'] .on {
-  background: var(--biru);
+  background: var(--action);
   box-shadow: none;
 }
 
@@ -425,8 +425,8 @@
   padding: 0 22px;
   border: 0;
   border-radius: 10px;
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -434,7 +434,7 @@
 }
 
 .go:hover {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  background: var(--action-hover);
 }
 
 .go:active {
@@ -501,15 +501,15 @@
   padding: 0 16px;
   border: 0;
   border-radius: 10px;
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   font: inherit;
   font-weight: 500;
   cursor: pointer;
 }
 
 .prim:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  background: var(--action-hover);
 }
 
 .btn2 {
@@ -602,7 +602,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 4px;
-  background: var(--biru);
+  background: var(--action);
   transition: width 1000ms cubic-bezier(0.22, 1, 0.36, 1);
   animation: grow 1000ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
 }
@@ -852,8 +852,8 @@
   width: 46px;
   height: 46px;
   border-radius: 10px;
-  background: var(--biru);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
   box-shadow: 0 12px 24px -12px rgb(25 31 44 / 60%);
   transform: rotate(8deg);
   animation: bob 3.6s ease-in-out infinite;

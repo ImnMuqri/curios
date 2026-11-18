@@ -88,12 +88,6 @@ const Arrow = () => (
   </svg>
 );
 
-const BookIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z" />
-  </svg>
-);
-
 const Check = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -152,6 +146,47 @@ export function HelpPanel({
   const [openSection, setOpenSection] = useState<number | null>(null);
   const body = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLElement>(null);
+
+  // A modal dialog: focus moves in on open and goes back to whatever opened it on close.
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    panel.current?.querySelector<HTMLElement>('input, button')?.focus();
+    return () => {
+      // The opener may sit in a popover that is closed by now (Help & support in the account menu) and
+      // take no focus. Then the button that opened that popover (the sidebar's card, or the phone's
+      // avatar); then the first account button that takes focus (on a phone the card comes first but is
+      // display: none); then the top bar's Help.
+      const closed = opener?.closest<HTMLElement>('[hidden]') ?? null;
+      const owner = closed?.id ? [...document.querySelectorAll<HTMLElement>('[aria-controls]')].find((el) => el.getAttribute('aria-controls') === closed.id) : undefined;
+      const accounts = [...document.querySelectorAll<HTMLElement>('button[aria-label^="Account,"]')];
+      for (const target of [closed ? null : opener, owner, ...accounts, document.querySelector<HTMLElement>('button[data-help-opener]')]) {
+        target?.focus();
+        if (target && document.activeElement === target) return;
+      }
+    };
+  }, []);
+
+  // Tab stays inside the panel while the page behind is dimmed.
+  useEffect(() => {
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !panel.current) return;
+      const stops = [...panel.current.querySelectorAll<HTMLElement>('button, input, textarea, a[href]')].filter((el) => !(el as HTMLButtonElement).disabled);
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      if (!first || !last) return;
+      const here = document.activeElement;
+      if (!panel.current.contains(here) || here === panel.current || (event.shiftKey && here === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (!event.shiftKey && here === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, []);
 
   useEffect(() => {
     setState(load());
@@ -258,8 +293,8 @@ export function HelpPanel({
 
   function open(href: string) {
     go(href);
-    // On a phone the panel covers the screen it just opened.
-    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches) onClose();
+    // Under 1100px the panel is a sheet over the screen it just opened.
+    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1100px)').matches) onClose();
   }
 
   const searched = query.trim() ? searchGuide(guide ?? [], query) : null;
@@ -269,8 +304,8 @@ export function HelpPanel({
 
   return (
     <>
-      <button type="button" className={styles.scrim} aria-label="Close help" onClick={onClose} />
-      <aside className={styles.panel} role="dialog" aria-modal="false" aria-labelledby="help-title">
+      <button type="button" className={styles.scrim} tabIndex={-1} aria-label="Close help" onClick={onClose} />
+      <aside ref={panel} className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="help-title" tabIndex={-1}>
         <div className={styles.head}>
           {topics ? (
             <button type="button" className={styles.iconButton} aria-label="Back to the chat" onClick={() => setState((s) => ({ ...s, view: 'chat' }))}>
@@ -285,10 +320,10 @@ export function HelpPanel({
           </div>
           {topics ? null : (
             <button type="button" className={styles.iconButton} aria-label="Browse topics" title="Browse topics" onClick={() => setState((s) => ({ ...s, view: 'topics' }))}>
-              <BookIcon />
+              Topics
             </button>
           )}
-          <button type="button" className={styles.iconButton} aria-label="Close help" onClick={onClose}>
+          <button type="button" className={`${styles.iconButton} ${styles.round}`} aria-label="Close help" onClick={onClose}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
@@ -354,7 +389,7 @@ export function HelpPanel({
               </div>
               {suggestions.length > 0 ? (
                 <>
-                  <p className={styles.label}>People on {HELP_SCREEN_NAMES[screen]} often ask</p>
+                  <p className={styles.label}>People often ask</p>
                   <div className={styles.suggestions}>
                     {suggestions.map((e) => (
                       <button key={e.id} type="button" onClick={() => void pickTopic(e)}>
@@ -366,8 +401,8 @@ export function HelpPanel({
                 </>
               ) : null}
               <button type="button" className={styles.allTopics} onClick={() => setState((s) => ({ ...s, view: 'topics' }))}>
-                <BookIcon />
                 Browse all topics
+                <Arrow />
               </button>
             </>
           ) : (
@@ -456,7 +491,7 @@ export function HelpPanel({
               <input ref={input} aria-label="Ask about Curios" placeholder="Ask about Curios…" value={draft} maxLength={500} disabled={resting} onChange={(e) => setDraft(e.target.value)} />
               <button type="submit" aria-label="Ask" disabled={resting || !draft.trim()}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
+                  <path d="M12 19V5M6 11l6-6 6 6" />
                 </svg>
               </button>
             </div>
@@ -527,7 +562,7 @@ function SupportCard({ email, sent, needsNote, send }: { email: string | null; s
       <textarea
         className={styles.note}
         aria-label={needsNote ? 'What you need help with' : 'Anything to add'}
-        placeholder={needsNote ? 'What do you need help with?' : 'Anything to add? What you tried, what you expected…'}
+        placeholder={needsNote ? 'What do you need help with?' : 'Anything to add? (optional)'}
         maxLength={2000}
         value={note}
         onChange={(e) => setNote(e.target.value)}

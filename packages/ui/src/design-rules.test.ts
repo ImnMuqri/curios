@@ -139,4 +139,111 @@ describe('findOffRuleRadii, longhand and multi-value', () => {
   it('flags a multi-value shorthand', () => {
     expect(findOffRuleRadii('a{border-radius:16px 16px 0 0}')).toEqual(['16px 16px 0 0']);
   });
+
+  it('accepts a radius hook with a fallback, which is how a shared piece keeps its look outside the calm scope', () => {
+    // Button reads var(--button-radius, 10px): the calm scope sets the hook, a customer page keeps 10px.
+    expect(findOffRuleRadii('a{border-radius:var(--button-radius, 10px)}')).toEqual([]);
+  });
+
+  it('still flags a non-radius custom property with a literal fallback', () => {
+    expect(findOffRuleRadii('a{border-radius:var(--gap, 10px)}')).toEqual(['var(--gap, 10px)']);
+  });
+});
+
+describe('the font scale', () => {
+  it("has the board's 48px page title (Dash.html .pg h1)", () => {
+    expect(findOffScaleFontSizes('.a { font-size: 48px; }')).toEqual([]);
+  });
+});
+
+/**
+ * The calm redesign's shared pieces (Task 3 of the calm foundation plan): the buttons, fields and
+ * dashboard parts every screen is built from. Page modules join the corner check one by one as each
+ * page is restyled; these are on it from now.
+ */
+describe('the calm rules on the shared pieces', () => {
+  const repo = join(import.meta.dirname, '..', '..', '..');
+  const shared = [
+    'packages/ui/src/button/Button.module.css',
+    'packages/ui/src/field/Field.module.css',
+    ...['pill-tabs', 'popover', 'toast', 'alert-slot', 'page-head', 'empty-state', 'inbox', 'editor'].map(
+      (name) => `apps/web/app/app/_ui/${name}.module.css`,
+    ),
+    'apps/web/app/app/panel.module.css',
+    'apps/web/app/auth.module.css',
+    'apps/web/app/_auth/scene.module.css',
+  ];
+
+  function walk(dir: string, keep: (name: string) => boolean): string[] {
+    return readdirSync(join(repo, dir)).flatMap((entry) => {
+      const path = `${dir}/${entry}`;
+      if (statSync(join(repo, path)).isDirectory()) return walk(path, keep);
+      return keep(entry) ? [path] : [];
+    });
+  }
+
+  /** The rule a declaration sits in, comments dropped and whitespace folded: `.planBar i`. */
+  function selectorAt(css: string, at: number): string {
+    const open = css.lastIndexOf('{', at);
+    const start = Math.max(css.lastIndexOf('}', open - 1), css.lastIndexOf('{', open - 1), css.lastIndexOf(';', open - 1));
+    return css.slice(start + 1, open).replace(/\s+/g, ' ').trim();
+  }
+
+  /*
+   * Brand marks keep the brand's blue: they are Curios itself, not an action. Each is named by file
+   * and selector, so a new biru fill has to be argued for here, not slipped in.
+   */
+  const brandMarks = [
+    // Peek's face on Help's answers: two eyes on a biru disc.
+    'apps/web/app/app/help/help.module.css: .mark',
+    // Happy Peek's art panel on the paid page, drawn on his biru-muda.
+    "apps/web/app/app/billing/result.module.css: .art[data-tone='ok']",
+  ];
+
+  /**
+   * A biru fill in any spelling: the token, its deep step, the landing's --l-biru-* ramp and every
+   * --light-biru* alias (a light-locked page is still in the calm look). The theme-following
+   * --biru-muda tint is not matched; it is no action.
+   */
+  const BIRU_FILL = /background(?:-color)?:\s*var\(--(?:biru|biru-deep|l-biru-[\w-]+|light-biru[\w-]*)\)/g;
+
+  it('paints primary actions with --action, not --biru, in the app and auth', () => {
+    const files = [
+      ...new Set([
+        ...shared,
+        ...walk('apps/web/app/app', (name) => name.endsWith('.module.css')),
+        ...walk('apps/web/app/_auth', (name) => name.endsWith('.css')),
+        // The system shell (.sy: forgot, reset, verify, 404, error) is a calm scope too.
+        ...walk('apps/web/app/_system', (name) => name.endsWith('.module.css')),
+      ]),
+    ];
+    expect(files.length).toBeGreaterThan(30);
+    const found = files.flatMap((file) => {
+      const css = readFileSync(join(repo, file), 'utf8').replace(/\/\*[\s\S]*?\*\//g, (c) => ' '.repeat(c.length));
+      return [...css.matchAll(BIRU_FILL)].map((m) => `${file}: ${selectorAt(css, m.index)}`);
+    });
+    expect(found.filter((at) => !brandMarks.includes(at))).toEqual([]);
+    // Every allowed mark still exists: a stale entry would let the next biru fill through unseen.
+    for (const mark of brandMarks) expect(found).toContain(mark);
+  });
+
+  it('keeps the shared pieces on the calm corner rule', () => {
+    const offenders = shared.flatMap((file) =>
+      findOffRuleRadii(readFileSync(join(repo, file), 'utf8')).map((radius) => `${file}: ${radius}`),
+    );
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('the button style tiles', () => {
+  it('keeps the four button style tiles on the calm corner rule', () => {
+    const css = readFileSync(join(import.meta.dirname, '../../../apps/web/app/app/curios/curios.module.css'), 'utf8');
+    // The tile, its mini preview and the preview's bars as the editor draws them. The Chunky and
+    // Outline bars (`[data-style]`) are the owner's page in small, so they keep that page's own corners.
+    const rules = [...css.matchAll(/(^|\n)(\.style(?:Tiles|Tile|Mini)[^{}]*)\{([^}]*)\}/g)]
+      .filter((m) => !m[2]!.includes('[data-style'))
+      .map((m) => `${m[2]}{${m[3]}}`);
+    expect(rules.length).toBeGreaterThanOrEqual(3);
+    expect(findOffRuleRadii(rules.join('\n'))).toEqual([]);
+  });
 });

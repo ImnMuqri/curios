@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
 import type { Alert } from './alerts.js';
@@ -10,8 +10,11 @@ import { BANNER_ALERT_ID } from './alert-ids.js';
 import { BELL_COOKIE, bellAlertKey, formatBellSeen, heldTo, type BellSeen } from './bell-seen.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
-import { Popover } from './_ui/popover.js';
-import { ThemeContext, ThemeSwitch } from './_ui/theme-switch.js';
+import { countLabel } from './_ui/count-label.js';
+import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
+import { PhoneMenu } from './_ui/phone-menu.js';
+import { announceOverlay, Popover } from './_ui/popover.js';
+import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
 import { SignOutButton } from './sign-out-button.js';
 import { HelpContext, type HelpControl } from './help/help-context.js';
@@ -27,7 +30,7 @@ const svg = (d: string, className: string | undefined = styles.icon) => (
   </svg>
 );
 
-/** The nav's icons, shared with a phone's bottom menu. */
+/** The nav's icons (a phone's menu draws the same items). */
 const PATH = {
   page: 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6',
   store: 'M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z',
@@ -66,34 +69,12 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-const ICON = {
-  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
-  bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4',
-  chevron: 'M7 10l5 5 5-5',
-  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1',
-  help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01',
-  signOut: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
-  ...PATH,
-  inbox: 'M4 13l2.5-8h11L20 13M4 13v6h16v-6M4 13h4.5l1 2.5h5l1-2.5H20',
-  more: 'M5 12h.01M12 12h.01M19 12h.01',
-} as const;
-
-/** What the bell lists for each count in the nav: the module's waiting work, in a line. */
-const WAITING: { key: keyof NavBadges; href: string; say: (n: number) => string; business?: true }[] = [
-  { key: 'orders', href: '/app/orders', say: (n) => `${n} ${n === 1 ? 'receipt' : 'receipts'} to check`, business: true },
-  { key: 'questions', href: '/app/questions', say: (n) => `${n} new ${n === 1 ? 'question' : 'questions'}` },
-  { key: 'leads', href: '/app/leads', say: (n) => `${n} new ${n === 1 ? 'lead' : 'leads'}` },
-  { key: 'review', href: '/app/review', say: (n) => `${n} ${n === 1 ? 'fact' : 'facts'} to review` },
-];
-
-/** The three inboxes: one tab on a phone's bottom menu, a row of their own at the top of each. */
-const INBOX = ['/app/orders', '/app/questions', '/app/leads'];
-
-/** What a phone's More sheet holds: the modules the bottom menu has no tab for. */
-const MORE = ['/app/knowledge', '/app/billing', '/app/settings'];
+const BELL = 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4';
 
 /** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
 export type PlanBlock = { name: string; note: string; fill: number | null; glance: string };
+
+export { countLabel };
 
 /** A year, and only for the dashboard, as the theme's cookie. */
 function writeBellSeen(value: string) {
@@ -101,21 +82,18 @@ function writeBellSeen(value: string) {
 }
 
 /**
- * The dashboard's frame (Dashboard v2, 29 Oct 2026): a sidebar on a grey ground -- search, the
- * grouped modules with what is waiting in each, and the plan -- a 64px top bar on the same grey
- * (where you are, the theme's three choices, what needs you, the account), and the screen on one white sheet
- * whose top-left corner alone is rounded. Each screen draws its own header (PageHead).
+ * The dashboard's frame (the calm Dash board, 14 Nov 2026): a sidebar on the warm ground -- the
+ * wordmark, the account card that opens the account menu, the grouped modules as pill links with
+ * what is waiting in each, and the plan at its foot -- a 64px top bar on the same ground (Help, and
+ * the bell with what needs you), and the screen on one sheet. Each screen draws its own header (PageHead).
  *
- * The sidebar narrows to an icon rail under 1100px and becomes a scrolling row of icons across
- * the top on a phone, where the top bar goes and the account menu (with the theme in it) ends
- * that row. The labels stay in the DOM, so a screen reader still hears every link by name.
+ * Under 1100px the sidebar goes: the top bar starts with the logo, the account menu opens from the
+ * avatar at its end (DEVIATIONS 313), and a phone's menu floats at the foot (PhoneMenu).
  *
- * Search filters the modules by name and Enter opens the first one left; `/` jumps to it from
- * anywhere that is not a field (owner decision 2026-10-29: no search across the inboxes yet).
  * The bell lists what the nav counts and the frame's alerts; there are no other notifications.
  *
  * A client component because it reads the pathname to mark the current module. The layout (a
- * Server Component) passes plain values. IBM Plex Sans comes from the root layout (lib/fonts.ts):
+ * Server Component) passes plain values. Inter comes from the root layout (lib/fonts.ts):
  * next/font read inside a client component names its class differently on the server and in the browser.
  */
 export function AppFrame({
@@ -134,9 +112,9 @@ export function AppFrame({
   bellSeen: savedBellSeen = { counts: {}, alerts: [] },
   children,
 }: {
-  /** The page's name: the breadcrumb starts with it. */
+  /** The page's name: on the sidebar card, and in the account buttons' names. */
   displayName: string;
-  /** The owner's own name, on the account button (the boards' "Lina binti Kamal"); the page's name when the account has none. */
+  /** The owner's own name, at the head of the account menu (the boards' "Lina binti Kamal"), its first word on the card; the page's name when the account has none. */
   ownerName?: string | null;
   /** The sign-in email, under the name in the account menu. */
   ownerEmail?: string;
@@ -154,24 +132,24 @@ export function AppFrame({
   billingDot?: boolean;
   /** No page yet: no frame, only the screen. */
   bare?: boolean;
-  /** The owner's choice from the top bar's theme menu (theme.ts); the layout reads it from the cookie. */
+  /** The owner's choice from the account menu's Dark mode (theme.ts); the layout reads it from the cookie. */
   theme?: Theme;
   /** What the bell held when it was last marked read (bell-seen.ts); the layout reads it from the cookie. */
   bellSeen?: BellSeen;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
-  const router = useRouter();
   const [theme, setTheme] = useState(savedTheme);
-  const [query, setQuery] = useState('');
-  const [more, setMore] = useState(false);
-  const search = useRef<HTMLInputElement>(null);
   const [bellSeen, setBellSeen] = useState(savedBellSeen);
   const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
   // Help (design/help/help-chat-design.md): the top bar's Help and the account menu's Help & support
   // open the panel over the current screen, which stays underneath.
   const [helpOpen, setHelpOpen] = useState(false);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
+  // Help is an overlay too: any open popover (the bell's sheet, the account menu, More) closes as it opens.
+  useEffect(() => {
+    if (helpOpen) announceOverlay('help');
+  }, [helpOpen]);
   const help = useMemo<HelpControl>(
     () => ({ open: helpOpen, show: () => setHelpOpen(true), close: () => setHelpOpen(false), toggle: () => setHelpOpen((was) => !was) }),
     [helpOpen],
@@ -185,30 +163,6 @@ export function AppFrame({
         ? `${THEME_COOKIE}=; Path=/app; Max-Age=0; SameSite=Lax`
         : `${THEME_COOKIE}=${next}; Path=/app; Max-Age=31536000; SameSite=Lax`;
   };
-
-  // `/` puts the cursor in search, unless the owner is typing somewhere already.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key !== '/' || event.metaKey || event.ctrlKey || event.altKey) return;
-      const target = event.target as HTMLElement | null;
-      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
-      event.preventDefault();
-      search.current?.focus();
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-
-  // The More sheet closes on Escape and whenever the screen changes (a page picked in it).
-  useEffect(() => {
-    if (!more) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setMore(false);
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [more]);
-  useEffect(() => setMore(false), [pathname]);
 
   // The document behind the frame, in the frame's own ground. A phone shows the document wherever the
   // frame does not reach -- the status bar's strip on a home-screen app, past either end of a scroll --
@@ -233,83 +187,73 @@ export function AppFrame({
     };
   }, [theme]);
 
-  // Onboarding is its own full screen, as the design handoff's Onboarding
-  // board draws it, before and after the page exists. Both of those return
-  // the screen in the same place, so claiming the page mid-onboarding does
-  // not remount it and lose where the owner is.
-  if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
-  const who = ownerName?.trim() || displayName;
-  const initials = who.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
-  // Under the name on the account button: "Kek Lina · Business". When the page is named after its
-  // owner (or the account has no name of its own) the page would only repeat the line above, so the
-  // plan stands alone in full: "Business plan".
-  const pageIsWho = displayName.trim().toLowerCase() === who.toLowerCase();
-  const accountLine = pageIsWho ? plan.name : `${displayName} · ${plan.name.replace(/ (plan|page)$/, '')}`;
+  // The bell, worked out before the frameless return below so its hook runs on every render.
+  const framed = !bare && !pathname.startsWith('/app/onboarding');
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
-  const needle = query.trim().toLowerCase();
-  const groups = GROUPS.map((group) => ({
-    title: group.title,
-    items: group.items.filter((item) => business(item) && (!needle || item.label.toLowerCase().includes(needle))),
-  })).filter((group) => group.items.length > 0);
-  const here = GROUPS.flatMap((group) => group.items).find((item) => pathname.startsWith(item.href));
   const waiting = WAITING.filter((w) => business(w) && badges[w.key] > 0);
-  const items = GROUPS.flatMap((group) => group.items).filter(business);
-  const inboxes = items.filter((item) => INBOX.includes(item.href));
-  const inInbox = inboxes.some((item) => pathname.startsWith(item.href));
-  const inboxCount = inboxes.reduce((sum, item) => sum + (item.count ? badges[item.count] : 0), 0);
-  const moreItems = items.filter((item) => MORE.includes(item.href));
-  const inMore = moreItems.some((item) => pathname.startsWith(item.href));
-  const tab = (href: string) => items.find((item) => item.href === href);
   // What the bell holds now, and what of it is new: a count above what was read, an alert not read.
   const bellNow: BellSeen = {
     counts: Object.fromEntries(waiting.map((w) => [w.key, badges[w.key]])),
     alerts: alerts.map((alert) => bellAlertKey(alert, BANNER_ALERT_ID)),
   };
   const read = heldTo(bellSeen, bellNow);
+  // How much of each count came after the read: 3 leads read and 5 waiting is 2 new.
+  const newIn = (w: Waiting) => Math.max(0, badges[w.key] - (read.counts[w.key] ?? 0));
   const isNew = {
-    waiting: (w: (typeof WAITING)[number]) => badges[w.key] > (read.counts[w.key] ?? 0),
+    waiting: (w: Waiting) => newIn(w) > 0,
     alert: (alert: Alert) => !read.alerts.includes(bellAlertKey(alert, BANNER_ALERT_ID)),
   };
-  const news = waiting.filter(isNew.waiting).length + alerts.filter(isNew.alert).length;
+  // The badge counts the new things themselves, so it can pass 99 and read "99+" as the nav's counts do.
+  const news = waiting.reduce((sum, w) => sum + newIn(w), 0) + alerts.filter(isNew.alert).length;
   const readCookie = formatBellSeen(read);
   // Keep the cookie held to what is there, so a count that went down and comes back up is news.
   useEffect(() => {
-    if (readCookie !== formatBellSeen(bellSeen)) writeBellSeen(readCookie);
-  }, [readCookie, bellSeen]);
+    if (framed && readCookie !== formatBellSeen(bellSeen)) writeBellSeen(readCookie);
+  }, [framed, readCookie, bellSeen]);
   const markRead = () => {
     setBellSeen(bellNow);
     writeBellSeen(formatBellSeen(bellNow));
   };
+
+  // Onboarding is its own full screen, as the design handoff's Onboarding
+  // board draws it, before and after the page exists. Both of those return
+  // the screen in the same place, so claiming the page mid-onboarding does
+  // not remount it and lose where the owner is.
+  if (!framed) return <>{children}</>;
+  const who = ownerName?.trim() || displayName;
+  const initial = (name: string) => (name.trim()[0] ?? '').toUpperCase();
+  // The card is the page's ("Kek Lina"); under it the owner's first name and the plan, short:
+  // "Lina · Business". With no name of its own on the account, the plan stands alone in full.
+  const firstName = ownerName?.trim().split(/\s+/)[0] ?? '';
+  const planShort = plan.name.replace(/ (plan|page)$/, '');
+  const cardLine = firstName ? `${firstName} · ${planShort}` : plan.name;
+  const groups = GROUPS.map((group) => ({
+    title: group.title,
+    items: group.items.filter(business),
+  })).filter((group) => group.items.length > 0);
+  const items = GROUPS.flatMap((group) => group.items).filter(business);
+  // The page's picture, or its initial on a soft rose disc (the board's "K").
   const avatar = avatarUrl ? (
-    <img className={styles.avatar} src={avatarUrl} alt="" width={28} height={28} />
+    <img className={styles.avatar} src={avatarUrl} alt="" width={34} height={34} />
   ) : (
     <span className={styles.avatar} aria-hidden="true">
-      {initials}
+      {initial(displayName)}
     </span>
   );
-  // The account menu, "plan at a glance" (29 Oct 2026 boards): who you are, this month's
-  // conversations and how the plan stands (Manage goes to Billing, so Billing is no row of its own),
-  // then Settings, Help & support and Sign out. On a phone, where the top bar has no room for it,
-  // the theme switch sits under who you are.
+  // The account menu (the calm Dash board): who you are, this month's conversations and how the
+  // plan stands (Manage goes to Billing, so Billing is no row of its own), then Settings, Help &
+  // support, Dark mode and Sign out. A disclosure, not an ARIA menu: Dark mode is a switch.
   const account = () => {
-    const item = { role: 'menuitem' } as const;
     return (
       <>
         <div className={styles.menuHead}>
-          {avatarUrl ? (
-            <img className={styles.menuAvatar} src={avatarUrl} alt="" width={38} height={38} />
-          ) : (
-            <span className={styles.menuAvatar} aria-hidden="true">
-              {initials}
-            </span>
-          )}
+          <span className={styles.menuAvatar} aria-hidden="true">
+            {initial(who)}
+          </span>
           <span className={styles.menuText}>
             <b>{who}</b>
             {ownerEmail ? <small>{ownerEmail}</small> : null}
           </span>
-        </div>
-        <div className={styles.menuPhoneTheme}>
-          <ThemeSwitch />
         </div>
         <div className={styles.menuPlan}>
           {usage ? (
@@ -327,21 +271,19 @@ export function AppFrame({
           ) : null}
           <p>
             <span>{plan.glance}</span>
-            <Link href="/app/billing" className={styles.menuManage} {...item}>
+            <Link href="/app/billing" className={styles.menuManage}>
               Manage
             </Link>
           </p>
         </div>
-        <Link href="/app/settings" className={styles.menuRow} {...item}>
-          {svg(ICON.settings, styles.menuIcon)}
+        <Link href="/app/settings" className={styles.menuRow}>
           Settings
         </Link>
-        <button type="button" className={styles.menuRow} data-closes onClick={help.show} {...item}>
-          {svg(ICON.help, styles.menuIcon)}
+        <button type="button" className={styles.menuRow} data-closes onClick={help.show}>
           Help &amp; support
         </button>
-        <span className={styles.menuRule} aria-hidden="true" />
-        <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} icon={svg(ICON.signOut, styles.menuIcon)} {...item} />
+        <DarkModeRow />
+        <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} />
       </>
     );
   };
@@ -355,27 +297,27 @@ export function AppFrame({
             <Wordmark />
             <span className={styles.srOnly}>Curios dashboard</span>
           </Link>
-          <label className={styles.search}>
-            {svg(ICON.search, styles.searchIcon)}
-            <input
-              ref={search}
-              type="search"
-              placeholder="Search"
-              aria-label="Search the dashboard"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Escape') setQuery('');
-                if (event.key !== 'Enter') return;
-                const first = groups[0]?.items[0];
-                if (!first) return;
-                event.preventDefault();
-                setQuery('');
-                router.push(first.href);
-              }}
-            />
-            <kbd aria-hidden="true">/</kbd>
-          </label>
+          {/* The account card: the page, and whose and on what plan; it opens the account menu. */}
+          <div className={styles.cardSlot}>
+            <Popover
+              // Its name says all the card shows, the line under the name too (WCAG 2.5.3, label in name).
+              label={`Account, ${displayName}, ${cardLine}`}
+              align="start"
+              buttonClassName={styles.card}
+              panelClassName={styles.accountPanel}
+              button={
+                <>
+                  {avatar}
+                  <span className={styles.cardText}>
+                    <b>{displayName}</b>
+                    <small>{cardLine}</small>
+                  </span>
+                </>
+              }
+            >
+              {account()}
+            </Popover>
+          </div>
           <nav aria-label="Dashboard" className={styles.nav}>
             {groups.map((group) => (
               <div key={group.title} className={styles.group}>
@@ -402,7 +344,7 @@ export function AppFrame({
                     >
                       {item.icon}
                       <span className={styles.label}>{item.label}</span>
-                      {count > 0 ? <span className={styles.count}>{count}</span> : null}
+                      {count > 0 ? <span className={styles.count}>{countLabel(count)}</span> : null}
                       {billingDot && item.href === '/app/billing' ? (
                         <span className={styles.dot}>
                           <span className={styles.srOnly}>, needs you</span>
@@ -413,10 +355,9 @@ export function AppFrame({
                 })}
               </div>
             ))}
-            {groups.length === 0 ? <p className={styles.noMatch}>Nothing called that</p> : null}
           </nav>
           <Link href="/app/billing" className={styles.plan}>
-            <b>{plan.name}</b>
+            <b>{plan.name.replace(/ plan$/, '')}</b>
             <span>{plan.note}</span>
             {plan.fill !== null ? (
               <span className={styles.planBar} aria-hidden="true">
@@ -433,158 +374,42 @@ export function AppFrame({
               <Wordmark />
               <span className={styles.srOnly}>Curios dashboard</span>
             </Link>
-            <p className={styles.crumb}>
-              {displayName}
-              {here ? (
-                <>
-                  <i aria-hidden="true">/</i>
-                  <b>{here.label}</b>
-                </>
-              ) : null}
-            </p>
-            <button type="button" className={styles.help} aria-expanded={helpOpen} onClick={help.toggle}>
+            <button type="button" className={styles.help} data-help-opener aria-expanded={helpOpen} onClick={help.toggle}>
               Help
             </button>
-            <ThemeSwitch className={styles.topTheme} />
             <Popover
-              label={news > 0 ? `Notifications, ${news} new` : 'Notifications'}
+              label={news > 0 ? `Notifications, ${countLabel(news)} new` : 'Notifications'}
               buttonClassName={styles.iconButton}
+              panelClassName={styles.notifications}
+              scrimClassName={styles.notifyScrim}
               button={
                 <>
-                  {svg(ICON.bell, styles.topIcon)}
+                  {svg(BELL, styles.topIcon)}
                   {news > 0 ? (
                     <u className={styles.unread} aria-hidden="true">
-                      {news}
+                      {countLabel(news)}
                     </u>
                   ) : null}
                 </>
               }
             >
-              {waiting.length + alerts.length === 0 ? <p className={styles.menuEmpty}>Nothing needs you right now.</p> : null}
-              {/* Read is only the badge: what still needs the owner stays listed until it is done. */}
-              {news > 0 ? (
-                <button type="button" className={styles.menuRead} onClick={markRead}>
-                  Mark all as read
-                </button>
-              ) : null}
-              {waiting.map((w) => (
-                <Link key={w.key} href={w.href} className={styles.menuItem} data-new={isNew.waiting(w) ? '' : undefined}>
-                  {w.say(badges[w.key])}
-                </Link>
-              ))}
-              {alerts.map((alert) =>
-                alert.action ? (
-                  <Link key={alert.id} href={alert.action.href} className={styles.menuAlert} data-tone={alert.tone} data-new={isNew.alert(alert) ? '' : undefined}>
-                    <b>{alert.title}</b>
-                    <span>{alert.text}</span>
-                  </Link>
-                ) : (
-                  <p key={alert.id} className={styles.menuAlert} data-tone={alert.tone} data-new={isNew.alert(alert) ? '' : undefined}>
-                    <b>{alert.title}</b>
-                    <span>{alert.text}</span>
-                  </p>
-                ),
-              )}
+              <Notifications waiting={waiting} alerts={alerts} badges={badges} isNew={isNew} news={news} markRead={markRead} business={mode === 'BUSINESS'} />
             </Popover>
-            <span className={styles.divider} aria-hidden="true" />
-            <Popover
-              label="Account"
-              menu
-              buttonClassName={styles.account}
-              panelClassName={styles.accountPanel}
-              button={
-                <>
-                  {avatar}
-                  <span className={styles.accountWho}>
-                    <b>{who}</b>
-                    <small>{accountLine}</small>
-                  </span>
-                  {svg(ICON.chevron, styles.chevron)}
-                </>
-              }
-            >
-              {account()}
-            </Popover>
+            {/* Under 1100px there is no sidebar, so no card: the account menu opens from the avatar here (DEVIATIONS 313). */}
+            <div className={styles.phoneAccount}>
+              <Popover label={`Account, ${displayName}`} buttonClassName={styles.account} panelClassName={styles.phonePanel} button={avatar}>
+                {account()}
+              </Popover>
+            </div>
           </header>
           <main className={styles.sheet}>
-            {/* On a phone the three inboxes share one tab below, so each starts with a row to switch between them. */}
-            {inInbox ? (
-              <nav aria-label="Inbox" className={styles.inboxTabs}>
-                {inboxes.map((item) => {
-                  const count = item.count ? badges[item.count] : 0;
-                  return (
-                    <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined}>
-                      {item.label}
-                      {count > 0 ? <em>{count}</em> : null}
-                    </Link>
-                  );
-                })}
-              </nav>
-            ) : null}
             <NavProgressProvider>
               <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
             </NavProgressProvider>
           </main>
         </div>
 
-        {/* A phone's menu (29 Oct 2026 boards): a pill floating at the foot, five tabs, and More's sheet above it. */}
-        <nav aria-label="Main navigation" className={styles.dock} data-more={more || undefined}>
-          {more ? <button type="button" className={styles.scrim} aria-label="Close" tabIndex={-1} onClick={() => setMore(false)} /> : null}
-          <Link href="/app/curios" className={styles.dockTab} aria-current={pathname.startsWith('/app/curios') ? 'page' : undefined}>
-            {svg(ICON.page, styles.dockIcon)}
-            <span>Page</span>
-          </Link>
-          {tab('/app/store') ? (
-            <Link href="/app/store" className={styles.dockTab} aria-current={pathname.startsWith('/app/store') ? 'page' : undefined}>
-              {svg(ICON.store, styles.dockIcon)}
-              <span>Store</span>
-            </Link>
-          ) : null}
-          <Link href={inboxes[0]!.href} className={styles.dockTab} aria-current={inInbox ? 'page' : undefined}>
-            {svg(ICON.inbox, styles.dockIcon)}
-            <span>Inbox</span>
-            {inboxCount > 0 ? <u className={styles.dockCount}>{inboxCount}</u> : null}
-          </Link>
-          <Link href="/app/review" className={styles.dockTab} aria-current={pathname.startsWith('/app/review') ? 'page' : undefined}>
-            {svg(ICON.review, styles.dockIcon)}
-            <span>Review</span>
-            {badges.review > 0 ? <u className={styles.dockCount}>{badges.review}</u> : null}
-          </Link>
-          <button
-            type="button"
-            className={styles.dockTab}
-            aria-expanded={more}
-            aria-controls="dock-more"
-            data-on={inMore || more || undefined}
-            onClick={() => setMore((was) => !was)}
-          >
-            {svg(ICON.more, styles.dockIcon)}
-            <span>More</span>
-            {billingDot ? <i className={styles.dockDot} aria-hidden="true" /> : null}
-          </button>
-          <div id="dock-more" className={styles.moreSheet} hidden={!more}>
-            <span className={styles.grab} aria-hidden="true" />
-            {['Knowledge', 'Account'].map((title) => {
-              const rows = moreItems.filter((item) => GROUPS.find((group) => group.title === title)!.items.includes(item));
-              return rows.length > 0 ? (
-                <div key={title}>
-                  <p>{title}</p>
-                  {rows.map((item) => (
-                    <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined} onClick={() => setMore(false)}>
-                      {item.icon}
-                      {item.label}
-                      {billingDot && item.href === '/app/billing' ? (
-                        <span className={styles.dot}>
-                          <span className={styles.srOnly}>, needs you</span>
-                        </span>
-                      ) : null}
-                    </Link>
-                  ))}
-                </div>
-              ) : null;
-            })}
-          </div>
-        </nav>
+        <PhoneMenu pathname={pathname} items={items} badges={badges} billingDot={billingDot} className={styles.phoneMenu} />
         {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}
       </div>
      </HelpContext.Provider>

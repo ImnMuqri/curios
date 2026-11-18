@@ -178,9 +178,6 @@
 :root {
   --dark-field: #1a202c;
   --dark-soft-page: #12161f;
-  --dark-ink-soft: #c2c7d2;
-  --dark-faint: #6f7685;
-  --dark-hint: #7c8392;
   --dark-phone-edge: #2b3242;
   --dark-biru: #4f6cf0;
   --dark-biru-muda: #1c2650;
@@ -293,6 +290,8 @@
   --calm-ink: #1d1d1b;
   --calm-ink-deep: #000000;
   --calm-muted: #6f6d68;
+  /* Fainter than muted: group titles and placeholders (the board's #a19e97). */
+  --calm-faint: #a19e97;
   --calm-line: #ece9e3;
   --calm-soft: #f4f2ed;
   --calm-ring: #e2ded6;
@@ -303,6 +302,7 @@
   --calm-dark-ink: #f2f0ea;
   --calm-dark-ink-deep: #ffffff;
   --calm-dark-muted: #a3a09a;
+  --calm-dark-faint: #75736d;
   --calm-dark-line: #2e2d2a;
   --calm-dark-soft: #262624;
   --calm-dark-ring: #3a3936;
@@ -325,6 +325,26 @@
   --calm-dark-tag-new-ink: #a8baff;
   --calm-dark-tag-red: #451f28;
   --calm-dark-tag-red-ink: #f2a0b5;
+
+  /*
+   * The frame swaps the tags and the badge in dark; a preview island takes these back (the owner's
+   * light values), as it does every token the dark scopes swap.
+   */
+  --light-tag-ok: var(--tag-ok);
+  --light-tag-ok-ink: var(--tag-ok-ink);
+  --light-tag-wait: var(--tag-wait);
+  --light-tag-wait-ink: var(--tag-wait-ink);
+  --light-tag-new: var(--tag-new);
+  --light-tag-new-ink: var(--tag-new-ink);
+  --light-tag-red: var(--tag-red);
+  --light-tag-red-ink: var(--tag-red-ink);
+  --light-badge: var(--badge);
+
+  /* The page behind an open sheet or panel (More, the bell on a phone, Help): one dim, the board's More scrim. */
+  --calm-scrim: color-mix(in srgb, var(--calm-ink) 22%, transparent);
+
+  /* The badge red as a role: counts, the account's initial disc and Sign out read it; the frame's dark scopes swap it. */
+  --badge: var(--calm-badge);
 
   --action: var(--biru);
   --action-fg: var(--paper);

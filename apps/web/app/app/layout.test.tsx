@@ -30,8 +30,13 @@ vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges, getConversatio
 const resolveOwner = vi.fn();
 vi.mock('./session.js', () => ({ resolveOwner }));
 
+// The theme cookie is the only one that varies; every other name reads as the session value.
+let themeCookie: string | undefined;
 vi.mock('next/headers', () => ({
-  cookies: () => Promise.resolve({ get: () => ({ value: 'a-session-value' }) }),
+  cookies: () =>
+    Promise.resolve({
+      get: (name: string) => (name === 'curios_theme' ? (themeCookie === undefined ? undefined : { value: themeCookie }) : { value: 'a-session-value' }),
+    }),
 }));
 
 // Throws, because the real `redirect` throws NEXT_REDIRECT. Same reasoning as
@@ -68,6 +73,7 @@ const page: OwnerPage = {
 describe('the dashboard layout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    themeCookie = undefined;
     getConversationUsage.mockResolvedValue({ used: 0, cap: 200, period: '2026-10' });
   });
 
@@ -92,6 +98,25 @@ describe('the dashboard layout', () => {
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
     expect(screen.getByRole('navigation', { name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  it('renders data-theme="system" with no cookie and the stored choice with one', async () => {
+    const frameTheme = async () => {
+      resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+      getOwnerPage.mockResolvedValueOnce(page);
+      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+      const { container, unmount } = render(await AppLayout({ children: <p>x</p> }));
+      const theme = container.querySelector('[data-theme]')?.getAttribute('data-theme');
+      unmount();
+      return theme;
+    };
+    expect(await frameTheme()).toBe('system');
+    themeCookie = 'dark';
+    expect(await frameTheme()).toBe('dark');
+    themeCookie = 'light';
+    expect(await frameTheme()).toBe('light');
+    themeCookie = 'nonsense';
+    expect(await frameTheme()).toBe('system');
   });
 
   it("names the owner's plan under their name", async () => {

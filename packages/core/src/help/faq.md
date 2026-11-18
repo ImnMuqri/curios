@@ -346,7 +346,7 @@ Open: none
 Source: apps/web/public/sw.js (no offline cache, on purpose)
 
 ### acc-dark · Is there a dark mode?
-Yes. The theme switch in the top bar (in the account menu on a phone) has Match device, Light and Dark. It follows your device until you pick one.
+Yes. Open the account menu (the card at the top of the sidebar, or your picture in the top bar on a phone) and turn on Dark mode. Until you switch it, the dashboard follows your device.
 Open: none
 Source: apps/web/app/app/_ui/theme-switch.tsx; app-frame.tsx
 

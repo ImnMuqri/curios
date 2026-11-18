@@ -20,7 +20,7 @@ describe('RootLayout', () => {
     expect(html).toContain('font-bricolage');
     expect(html).toContain('font-inter');
     expect(html).toContain('font-plex-mono');
-    // IBM Plex Sans is every screen's reading face (the design handoff), so the root binds it once.
+    // IBM Plex Sans still reads the landing and the legal pages (the app and auth moved to Inter), so the root binds it once.
     expect(html).toContain('font-plex-sans');
   });
 });

@@ -44,7 +44,7 @@
   height: 7px;
   flex: none;
   border-radius: 50%;
-  background: var(--biru);
+  background: var(--tag-new-ink);
   box-shadow: 0 0 0 3px color-mix(in oklch, var(--biru-muda) 70%, var(--biru));
 }
 
