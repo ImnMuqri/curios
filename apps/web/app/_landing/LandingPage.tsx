@@ -86,7 +86,7 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
             <Lands locale={locale} />
           </div>
         </section>
-        <NoCut locale={locale} monthly={copy.pricing.monthlyText} />
+        <NoCut locale={locale} />
         <Pricing locale={locale} terms={{ prices: terms.prices, freeLeads: terms.freeLeads, freeOrders: terms.freeOrders }} />
         <Faq copy={copy.faq} />
       </main>

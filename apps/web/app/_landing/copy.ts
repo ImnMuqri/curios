@@ -192,19 +192,12 @@ export interface LandingCopy {
   /** No cut, ever: what a RM100 order leaves you, and what the plan already covers. */
   noCut: {
     eyebrow: string;
-    /** The heading around its highlighted figure: before, the figure, after. */
-    title: [string, string, string];
-    /** `monthly` is the plan's price in force, written: RM49. */
-    sub: (monthly: string) => string;
-    /** What a screen reader hears for the two bars. */
-    chartLabel: string;
-    pays: string;
-    amount: string;
-    market: { label: string; note: string; keep: string; cut: string };
-    curios: { label: string; note: string; keep: string };
-    site: { title: string; handle: string; body: string };
-    payments: { title: string; ways: string[]; body: string };
-    google: { title: string; url: string; result: string; body: string };
+    title: string;
+    sub: string;
+    /** Two sample receipts for the same RM100 cake: fixed figures, not prices from PlanTerms. */
+    market: { title: string; ref: string; line: [string, number]; fees: [string, number][]; keep: string };
+    curios: { title: string; ref: string; line: [string, number]; commission: string; bank: [string, number]; keep: string; stamp: string };
+    incl: { kicker: string; title: string; body: string }[];
     fine: string;
   };
   pricing: {
@@ -481,16 +474,29 @@ const EN: LandingBase = {
   },
   noCut: {
     eyebrow: 'No cut, ever',
-    title: ['Every sale is yours. We take ', '0%', '.'],
-    sub: (monthly) => `${monthly} a month is all you pay us. However big the order.`,
-    chartLabel: 'On a RM100 order, you keep about RM89 on a marketplace and RM99 on Curios',
-    pays: 'A customer pays',
-    amount: 'RM100',
-    market: { label: 'On a marketplace', note: 'platform fee, commission, transaction fee', keep: 'You keep about RM89', cut: '~RM11' },
-    curios: { label: 'On Curios', note: 'only the bank’s RM1 FPX fee', keep: 'You keep RM99' },
-    site: { title: 'Website and hosting', handle: 'keklina', body: 'No designer, no domain to renew. Usually RM2,000+ to build and about RM420 a year to host.' },
-    payments: { title: 'Payments', ways: ['FPX', 'TNG', 'GrabPay', 'Visa'], body: 'Ready on day one through CHIP. No gateway forms, no setup fee.' },
-    google: { title: 'Found on Google', url: 'curios.my › keklina', result: 'Kek Lina · Homemade cakes in Shah Alam', body: 'Titles, previews and a sitemap, set up for you.' },
+    title: 'Every sale is yours',
+    sub: 'The same RM100 cake, sold two ways. Read the receipts.',
+    market: {
+      title: 'On a marketplace',
+      ref: 'Order #A-55210 · 1 item',
+      line: ['Kek coklat · 1kg', 100],
+      fees: [['Platform fee 5%', 5], ['Commission ~4%', 4], ['Transaction fee 2.16%', 2.16]],
+      keep: 'You keep',
+    },
+    curios: {
+      title: 'On Curios',
+      ref: 'Order #16 · keklina · 1 item',
+      line: ['Kek coklat · 1kg', 100],
+      commission: 'Curios commission',
+      bank: ['Bank fee (FPX, by CHIP)', 1],
+      keep: 'You keep',
+      stamp: '0%',
+    },
+    incl: [
+      { kicker: 'Instead of a website', title: 'RM2,000+ to build', body: 'Plus about RM420 a year to host. Your page is the website.' },
+      { kicker: 'Instead of a gateway form', title: 'Your own CHIP or QR', body: 'Connect CHIP for FPX, e-wallet and card. Or take DuitNow QR.' },
+      { kicker: 'Instead of an SEO person', title: 'Found on Google', body: 'Titles, previews and a sitemap, done for you.' },
+    ],
     fine: 'Marketplace example uses typical 2026 Malaysian fees: 5% platform fee, 2–6% commission and a 2.16% transaction fee. Card and e-wallet payments cost 1–2% through CHIP.',
   },
   faq: {
@@ -711,16 +717,29 @@ const MS: LandingBase = {
   },
   noCut: {
     eyebrow: 'Tiada potongan, selamanya',
-    title: ['Setiap jualan milik anda. Kami ambil ', '0%', '.'],
-    sub: (monthly) => `${monthly} sebulan saja yang anda bayar kepada kami. Tak kira berapa besar tempahan.`,
-    chartLabel: 'Untuk tempahan RM100, anda dapat kira-kira RM89 di marketplace dan RM99 di Curios',
-    pays: 'Pelanggan bayar',
-    amount: 'RM100',
-    market: { label: 'Di marketplace', note: 'yuran platform, komisen, yuran transaksi', keep: 'Anda dapat kira-kira RM89', cut: '~RM11' },
-    curios: { label: 'Di Curios', note: 'hanya yuran FPX RM1 dari bank', keep: 'Anda dapat RM99' },
-    site: { title: 'Laman web dan hosting', handle: 'keklina', body: 'Tak perlu pereka, tiada domain untuk diperbaharui. Biasanya RM2,000+ untuk bina dan kira-kira RM420 setahun untuk hosting.' },
-    payments: { title: 'Bayaran', ways: ['FPX', 'TNG', 'GrabPay', 'Visa'], body: 'Sedia dari hari pertama melalui CHIP. Tiada borang gateway, tiada yuran pemasangan.' },
-    google: { title: 'Dijumpai di Google', url: 'curios.my › keklina', result: 'Kek Lina · Kek buatan sendiri di Shah Alam', body: 'Tajuk, pratonton dan peta laman, disediakan untuk anda.' },
+    title: 'Setiap jualan milik anda',
+    sub: 'Kek RM100 yang sama, dijual dua cara. Baca resitnya.',
+    market: {
+      title: 'Di marketplace',
+      ref: 'Pesanan #A-55210 · 1 barang',
+      line: ['Kek coklat · 1kg', 100],
+      fees: [['Yuran platform 5%', 5], ['Komisen ~4%', 4], ['Yuran transaksi 2.16%', 2.16]],
+      keep: 'Anda dapat',
+    },
+    curios: {
+      title: 'Di Curios',
+      ref: 'Pesanan #16 · keklina · 1 barang',
+      line: ['Kek coklat · 1kg', 100],
+      commission: 'Komisen Curios',
+      bank: ['Yuran bank (FPX, oleh CHIP)', 1],
+      keep: 'Anda dapat',
+      stamp: '0%',
+    },
+    incl: [
+      { kicker: 'Ganti laman web', title: 'RM2,000+ untuk bina', body: 'Tambah lebih kurang RM420 setahun untuk hosting. Halaman anda ialah laman webnya.' },
+      { kicker: 'Ganti borang gateway', title: 'CHIP atau QR anda sendiri', body: 'Sambung CHIP untuk FPX, e-dompet dan kad. Atau terima DuitNow QR.' },
+      { kicker: 'Ganti orang SEO', title: 'Dijumpai di Google', body: 'Tajuk, pratonton dan peta laman, disediakan untuk anda.' },
+    ],
     fine: 'Contoh marketplace guna yuran biasa di Malaysia pada 2026: yuran platform 5%, komisen 2–6% dan yuran transaksi 2.16%. Bayaran kad dan e-dompet dikenakan 1–2% melalui CHIP.',
   },
   faq: {
