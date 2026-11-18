@@ -329,7 +329,7 @@ export function AppFrame({
           {/* The account card: the page, and whose and on what plan; it opens the account menu. */}
           <div className={styles.cardSlot}>
             <Popover
-              label="Account"
+              label={`Account, ${displayName}`}
               align="start"
               buttonClassName={styles.card}
               panelClassName={styles.accountPanel}

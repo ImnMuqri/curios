@@ -1284,3 +1284,14 @@ a.menuAlert:hover {
     display: none;
   }
 }
+
+/* Sign out in dark: the board's badge red reads about 2.7:1 on the dark surface, so it takes the dark red tag ink (DEVIATIONS row 314). */
+@media (prefers-color-scheme: dark) {
+  .frame:not([data-theme='light']) .menuOut {
+    color: var(--calm-dark-tag-red-ink);
+  }
+}
+
+.frame[data-theme='dark'] .menuOut {
+  color: var(--calm-dark-tag-red-ink);
+}

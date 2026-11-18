@@ -35,7 +35,7 @@ const sideNav = () => within(screen.getByRole('navigation', { name: 'Dashboard' 
 const links = () => sideNav().getAllByRole('link');
 /** The sidebar, and the account card at its top: the button that opens the account menu. */
 const sideCol = () => within(screen.getByRole('complementary'));
-const card = () => sideCol().getByRole('button', { name: 'Account' });
+const card = () => sideCol().getByRole('button', { name: /^Account, / });
 /** The panel a popover button opens. */
 const panelOf = (button: HTMLElement) => document.getElementById(button.getAttribute('aria-controls')!)!;
 
@@ -141,6 +141,8 @@ describe('AppFrame', () => {
       </AppFrame>,
     );
     expect(card()).toHaveTextContent(/^KKek LinaLina · Business$/);
+    // Its name carries the page's name it shows (WCAG 2.5.3, label in name).
+    expect(card()).toHaveAccessibleName('Account, Kek Lina');
   });
 
   it('shows the plan alone under the page name when the account has no name of its own', () => {
