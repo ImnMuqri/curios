@@ -1,30 +1,48 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import type { LandingCopy } from './copy.js';
 import { Wordmark } from './Wordmark.js';
-import styles from './tanya.module.css';
+import calm from './calm.module.css';
+import styles from './nav.module.css';
 
-/** A pill floating over the top of the page: the sections, the other language, sign in, and the one call to action. */
-export function Nav({ copy, home }: { copy: LandingCopy; home: string }) {
-  const { nav } = copy;
+/**
+ * The calm nav (Landing2 board): sticky, clear over the hero, frosted once the
+ * page has scrolled. The sections, the other language, sign in, and the one
+ * call to action.
+ */
+export function Nav({ nav, home }: { nav: LandingCopy['nav']; home: string }) {
+  const [stuck, setStuck] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setStuck(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   return (
-    <header className={styles.navwrap}>
-      <div className={styles.navpill}>
+    <header className={styles.nav} data-stuck={stuck ? '' : undefined}>
+      <div className={styles.inner}>
         <a href={home} className={styles.brand}>
           <Wordmark />
-          <span className={styles.srOnly}>Curios</span>
+          <span className={calm.srOnly}>Curios</span>
         </a>
-        <nav className={styles.navlinks} aria-label={nav.sections}>
+        <nav className={styles.links} aria-label={nav.sections}>
           <a href="#who">{nav.who}</a>
           <a href="#how">{nav.how}</a>
           <a href="#business">{nav.business}</a>
           <a href="#pricing">{nav.pricing}</a>
           <a href="#faq">{nav.faq}</a>
         </nav>
-        <div className={styles.navright}>
-          <a href={nav.other.href} hrefLang={nav.other.lang} lang={nav.other.lang} className={styles.lang} aria-label={nav.other.name}>
+        <div className={styles.right}>
+          <a href={nav.other.href} hrefLang={nav.other.lang} lang={nav.other.lang} className={styles.quiet} aria-label={nav.other.name}>
             {nav.other.short}
           </a>
-          <a href="/signin">{nav.signIn}</a>
-          <a href="/signup" className={styles.navcta}>
+          <a href="/signin" className={styles.quiet}>
+            {nav.signIn}
+          </a>
+          <a href="/signup" className={`${calm.btn} ${calm.dark} ${calm.sm}`}>
             {nav.cta}
           </a>
         </div>

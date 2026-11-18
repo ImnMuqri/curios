@@ -1,0 +1,68 @@
+/* The calm footer (Landing2 board, L2:324–326), with the legal links and operator line kept below the note. */
+
+.foot {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 40px;
+  padding: 56px 0 70px;
+}
+
+.brand {
+  --l-wordmark: 28px;
+  color: var(--calm-ink);
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 26px;
+  color: var(--cl-text-2);
+  font-size: 14.5px;
+}
+
+.links a:hover,
+.legalLinks a:hover,
+.co a:hover {
+  color: var(--calm-ink);
+}
+
+.note {
+  grid-column: 1 / -1;
+  color: var(--cl-faint);
+  font-size: 13px;
+}
+
+.legal {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px 26px;
+  margin-top: -24px;
+  color: var(--cl-faint);
+  font-size: 13px;
+}
+
+.legalLinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+
+.co {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+}
+
+@media (max-width: 900px) {
+  .foot {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+
+  .legal {
+    margin-top: 0;
+  }
+}

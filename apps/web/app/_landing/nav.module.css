@@ -1,0 +1,90 @@
+/* The calm nav (Landing2 board, L2:28–45). */
+
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  transition:
+    background 0.3s,
+    box-shadow 0.3s;
+}
+
+/* The one frosted surface on the page, and only once the page has scrolled. */
+.nav[data-stuck] {
+  background: color-mix(in srgb, var(--calm-bg) 86%, transparent);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 1px 0 var(--calm-line);
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1248px;
+  height: 72px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.brand {
+  --l-wordmark: 28px;
+  color: var(--calm-ink);
+}
+
+.links {
+  display: flex;
+  gap: 30px;
+  color: var(--cl-text-2);
+  font-size: 15px;
+}
+
+.links a {
+  position: relative;
+  padding: 6px 0;
+}
+
+.links a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1.5px;
+  background: var(--calm-ink);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.links a:hover {
+  color: var(--calm-ink);
+}
+
+.links a:hover::after {
+  transform: scaleX(1);
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  color: var(--cl-text-2);
+  font-size: 15px;
+}
+
+.quiet:hover {
+  color: var(--calm-ink);
+}
+
+@media (max-width: 900px) {
+  .links {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .quiet {
+    display: none;
+  }
+}

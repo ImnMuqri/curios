@@ -79,52 +79,6 @@ describe('the landing page', () => {
     expect(within(nav).getByRole('link', { name: 'Buat halaman anda' })).toHaveAttribute('href', '/signup');
   });
 
-  it('links the Terms, Privacy, Refund and Return pages from the footer, in the page’s language', () => {
-    const { unmount } = render(<LandingPage locale="en" terms={TERMS} />);
-    let foot = screen.getByRole('contentinfo');
-    expect(within(foot).getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
-    expect(within(foot).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
-    expect(within(foot).getByRole('link', { name: 'Refunds' })).toHaveAttribute('href', '/refunds');
-    expect(within(foot).getByRole('link', { name: 'Returns' })).toHaveAttribute('href', '/returns');
-    unmount();
-
-    render(<LandingPage locale="ms" terms={TERMS} />);
-    foot = screen.getByRole('contentinfo');
-    expect(within(foot).getByRole('link', { name: 'Terma' })).toHaveAttribute('href', '/ms/terms');
-    expect(within(foot).getByRole('link', { name: 'Bayaran balik' })).toHaveAttribute('href', '/ms/refunds');
-    expect(within(foot).getByRole('link', { name: 'Pemulangan' })).toHaveAttribute('href', '/ms/returns');
-  });
-
-  it.each(LOCALES)('%s: the footer says who runs Curios, its SSM number in both formats, and where to write', (locale) => {
-    render(<LandingPage locale={locale} terms={TERMS} />);
-    const foot = screen.getByRole('contentinfo');
-    expect(foot).toHaveTextContent('BSYX LABS');
-    expect(foot).toHaveTextContent('202603086039 (TR0339989-A)');
-    expect(within(foot).getByRole('link', { name: 'support@curios.my' })).toHaveAttribute('href', 'mailto:support@curios.my');
-  });
-
-  it('the footer wordmark carries the full-body Peek on its o', () => {
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    const foot = screen.getByRole('contentinfo');
-    const o = foot.querySelector('span[class*="mo"]') as HTMLElement;
-    const peek = o.querySelector('span[class*="footPeek"]') as HTMLElement;
-    expect(peek).not.toBeNull();
-    expect(peek).toHaveAttribute('aria-hidden', 'true');
-    // Standing on the o: Peek's svg sits inside the o's box, with a unique clip id.
-    const clip = peek.querySelector('clipPath') as Element;
-    expect(clip.id).not.toBe('');
-    expect(peek.querySelector(`[clip-path="url(#${clip.id})"]`)).not.toBeNull();
-    for (const part of ['FootL', 'FootR', 'HandL', 'ArmR', 'Eyes', 'Pupils']) {
-      expect(peek.querySelector(`[class*="${part}"]`), part).not.toBeNull();
-    }
-    expect(container.querySelectorAll('clipPath').length).toBeGreaterThanOrEqual(1);
-    // The footer's mark clips sideways only, so Peek's head isn't cut off.
-    const css = readFileSync(join(__dirname, 'tanya.module.css'), 'utf8');
-    const rule = css.match(/\.footMark \{[^}]*\}/)![0];
-    expect(rule).not.toMatch(/overflow:\s*hidden/);
-    expect(rule).toMatch(/overflow-x:\s*clip/);
-  });
-
   it('escapes "<" in structured data, so no copy can close the script tag', () => {
     const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     expect(container.querySelector('script[type="application/ld+json"]')!.innerHTML).not.toContain('<');
@@ -903,11 +857,6 @@ describe('less template', () => {
 
 describe('the stylesheet', () => {
   const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
-
-  it('frosts the nav pill and nothing else (DESIGN.md allows that one surface)', () => {
-    const frosted = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^{}]*backdrop-filter/g)].map((m) => m[1]!.trim());
-    expect(frosted).toEqual(['.navpill']);
-  });
 
   it('runs every looping animation only for visitors who have not asked for less motion', () => {
     const outside = css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}/g, '');

@@ -72,7 +72,7 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
       <a href="#main" className={styles.skip}>
         {copy.skip}
       </a>
-      <Nav copy={copy} home={HOME[locale]} />
+      <Nav nav={copy.nav} home={HOME[locale]} />
       <main id="main">
         <Hero locale={locale} />
         <AskStrip locale={locale} />
