@@ -200,3 +200,36 @@ describe('the stylesheet', () => {
     expect(outside).not.toMatch(/animation:[^;]*infinite/);
   });
 });
+
+describe('the Malay landing', () => {
+  /** Every string in a copy object with its path, functions called with sample arguments. */
+  function strings(value: unknown, path = ''): [string, string][] {
+    if (typeof value === 'string') return [[path, value]];
+    if (typeof value === 'function') return strings((value as (...a: unknown[]) => unknown)('Kek Lina', 2, 3), path);
+    if (Array.isArray(value)) return value.flatMap((v, i) => strings(v, `${path}.${i}`));
+    if (value && typeof value === 'object') return Object.entries(value).flatMap(([k, v]) => strings(v, path ? `${path}.${k}` : k));
+    return [];
+  }
+  /** Lines a visitor or a page types, which are Malay or mixed on both landings, as on the board. */
+  const SPOKEN = [/^lands\.(service|products)\.(chat|asked)\./, /^who\.answers\.\w+\.3$/, /^who\.questions\.3$/, /^personas\./];
+
+  it('carries no English sentence on /ms outside the chat lines and brand words', () => {
+    // The walk reaches every section, and the check bites: the English copy fails it.
+    expect(strings(ms).length).toBeGreaterThan(300);
+    expect(strings(en).filter(([p, t]) => !SPOKEN.some((re) => re.test(p)) && /\b(the|your|and|with|you)\b/i.test(t)).length).toBeGreaterThan(20);
+    const english = strings(ms)
+      .filter(([path]) => !SPOKEN.some((re) => re.test(path)))
+      .filter(([, text]) => /\b(the|your|and|with|you)\b/i.test(text));
+    expect(english).toEqual([]);
+  });
+
+  it('every new Malay heading matches the appendix', () => {
+    expect(ms.who.title).toEqual(['Soalan sama. Jawapan ', 'mereka sendiri', '.']);
+    expect(ms.how.title).toBe('Sepuluh minit dari kosong ke link bio');
+    expect(ms.how.steps.map((s) => s.title)).toEqual(['Beritahu tentang anda', 'Luluskan yang betul', 'Letak link dalam bio']);
+    expect([ms.lands.title, ms.lands.lede]).toEqual(['Apa yang anda dapat', 'Satu chat di halaman anda. Empat perkara yang anda boleh guna.']);
+    expect([ms.noCut.title, ms.noCut.sub]).toEqual(['Setiap jualan milik anda', 'Kek RM100 yang sama, dijual dua cara. Baca resitnya.']);
+    expect(ms.pricing.title).toEqual(['Percuma untuk ditanya.', 'RM49 bila anda menjual']);
+    expect(ms.closing.label).toBe('Tanya je.');
+  });
+});

@@ -368,4 +368,10 @@
   .calc {
     padding: 22px;
   }
+
+  /* Keep Peek clear of a long Malay chip that wraps to two lines. */
+  .pk {
+    top: -56px;
+    width: 64px;
+  }
 }
