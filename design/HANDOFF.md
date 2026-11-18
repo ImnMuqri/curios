@@ -14,7 +14,7 @@ The whole product was redesigned in a calmer style, and **these four boards repl
 |---|---|---|
 | `Landing2` | `Main`, `TanyaJe` | `Calm-Landing.*.jpg` |
 | `Site` (sign in, sign up, check your email, verify, forgot, reset, bad link, 404, error, unavailable, report, terms) | `SignIn`, `SignUp`, `System` | `Calm-Site-<screen>.*.jpg` |
-| `Dash` (every app page, plus help, account menu, notifications, plan banners, payment notice, phone menu, dark mode) | `MyCurios`, `Store`, `Orders`, `Questions`, `Leads`, `Review`, `Knowledge`, `Billing`, `Settings`, `Help`, `Alerts`, the 2 Nov payment result pages | `Calm-Dash-<page>[-dark].*.jpg` |
+| `Dash` (every app page with all its tabs, editors and sheets, plus help, account menu, notifications, plan banners, payment notice, phone menu, dark mode) | `MyCurios`, `Store`, `Orders`, `Questions`, `Leads`, `Review`, `Knowledge`, `Billing`, `Settings`, `Help`, `Alerts`, the 2 Nov payment result pages | `Calm-Dash-<page>[-dark].*.jpg` |
 | `More` (onboarding, customer pages, all ten emails) | `Onboarding`, `Public`, `Emails` | `Calm-More-<screen>.*.jpg` |
 
 `Admin` is unchanged. The old boards stay in `boards/` for reference only. On the canvas they sit lower down, titled "Old ·".
@@ -97,6 +97,44 @@ These four boards are plain HTML with the behaviour in vanilla JS inside `boot()
   - It hides itself after 7 seconds.
   - This replaces the subscription half of "Payment result pages (2 Nov 2026)".
 - **Billing usage boxes** take only the height they need. They do not stretch to match the plan card.
+
+### Sub pages inside the app (added 18 Nov)
+
+Every tab, editor, detail view and sheet of the real app is now on `Dash`. Screenshots are `Calm-Dash-<name>.desktop.jpg` and `.phone.jpg`, and a few also have `-dark`.
+
+- **Store tabs** (Items, Payment, Pickup & delivery, Discounts) switch in place under the page title.
+  - **Items** opens with "Shop open" and a three-step checklist: an item switched on, a way to pay, and a way to get it to them. Each step links to its tab. "About your shop" and the Halal switch sit under the items.
+  - **Payment** has three rows: Online payments, DuitNow QR and Bank account.
+    - Online payments shows CHIP connected (Test with RM1, Disconnect) or, when it isn't connected, the five connect steps with Brand ID and Live key.
+    - DuitNow QR shows the QR with Change and Remove.
+    - Bank account is three grouped fields, each showing "Saved".
+  - **Pickup & delivery** has three rows: Pickup, Delivery and Notice.
+    - Pickup: an Allow pickup switch and the list of places. "Edit" and "+ Add a pickup place" open a side sheet with name, address, map link, note, then Any time or Set times (day, from, to, limit).
+    - Delivery: No delivery, Flat fee or Rider, plus the fee and a delivery note.
+    - Notice: a days stepper and the closed days.
+  - **Discounts** lists the vouchers. "+ Add voucher" or tapping a voucher opens a side sheet: Automatic or Code, Percent or Amount, applies to, minimum spend, last day, uses.
+- **Item editor** (`item`, `itemd`) is its own screen, opened from any item card or "+ Add item". It has a "‹ All items" back link, and Store stays highlighted.
+  - Each row is a heading and note on the left with the fields on the right. A live preview sits on the right from 1250px up.
+  - A physical item has photos, name and about, category and code, how they order, price, and the in-your-shop switch. Choosing "Ask for a price" shows the starting price. Price can be one price or options.
+  - A digital item starts with "What it is": Files, A link, Codes or A session. Each shows its own fields. A session has length, seats, online or in person, the meeting link, and times with a seats bar.
+  - Tapping the cover photo opens **Adjust photo**: drag or use the arrow keys to move, a zoom slider, Remove photo, Replace picture, Use photo.
+- **Order detail:** each order in the list opens its own detail with a 4-step progress bar (Placed, Paid, Ready, Done).
+  - The states shown are: receipt to check (digital, "Sent by email" when marked paid), paid online (Mark completed), awaiting payment (Mark paid), completed, and refund owed (Mark refunded).
+- **Question topic** (`topic`) opens from a topic title in Questions. It shows how people ask (each wording can be split or deleted on hover), your answer, how the chat replies now, and merge into another topic or delete.
+- **Facts & sources tabs:**
+  - **Facts** has a one-line add field.
+  - **Sources** has an "Add a source" card (a link, pasted text or a file) above the list of sources.
+  - **Pinned answers** and **Never say** are the other two tabs.
+  - "Try your page" opens the **Ask your page** side sheet, where each answer shows where it came from.
+- **Billing:**
+  - "Pay RM49" opens **Add a month**: the plan and the new date, a "Renew automatically by card" tick, and Continue to CHIP. Paying with the box ticked turns auto-renew on.
+  - Auto-renew on shows "Auto-renew is on. We’ll charge Visa ending 4242 RM49 on …", with an in-place confirm to turn it off.
+  - A failed renewal shows "Your last renewal didn’t go through" with Pay another way.
+  - A personal page gets "Make this a business page", confirmed in two steps: "Yes, switch. This can’t be undone" or "Keep it personal".
+- **Settings:** "Add password" opens its field in place.
+- **Side sheets:** 460px from the right on desktop, or a bottom sheet under 1100px, over a dim scrim. The footer holds one black pill and a red text action. Small confirms such as Add a month and Adjust photo are centred dialogs.
+- **Choice cards:** a radio dot, a bold label and one line, 16px corners, and the selected one gets a 1.5px ink ring. Two-way switches like Online or In person use a pill segment.
+- **The "Plan state" picker** on the board now also previews auto-renew on, renewal failed and personal page. It's a canvas-only switcher. **Do not build it.**
 
 ### Onboarding, customer pages, emails (`More`)
 
