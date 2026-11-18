@@ -139,3 +139,22 @@ describe('the scene runner', () => {
     expect(seen).toEqual([1, 2, 1]);
   });
 });
+
+describe('contrast', () => {
+  it('draws text people read, and everything they click, in --calm-muted or darker, never --cl-faint', () => {
+    const readable: [string, string][] = [
+      ['calm.module.css', '.lbl'],
+      ['footer.module.css', '.note'],
+      ['footer.module.css', '.legal'],
+      ['who.module.css', '.sw button'],
+      ['pricing.module.css', '.k0'],
+      ['nocut.module.css', '.incl small'],
+      ['lands.module.css', '.lsteps span'],
+    ];
+    for (const [file, selector] of readable) {
+      const decls = rule(read(file), selector);
+      expect(decls, `${file} ${selector}`).toMatch(/color:/);
+      expect(decls, `${file} ${selector}`).not.toMatch(/--cl-faint/);
+    }
+  });
+});

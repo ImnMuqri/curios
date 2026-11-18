@@ -396,6 +396,7 @@ function Chat({
   sentName,
   capture,
   basket,
+  transcript,
   children,
 }: {
   s: LandsState;
@@ -404,6 +405,7 @@ function Chat({
   sentName: string;
   capture: (typeof COPY)['en']['lands']['capture'];
   basket: { text: string; go: string };
+  transcript: { label: string; visitor: string };
   children?: ReactNode;
 }) {
   const owner = OWNER[side];
@@ -411,14 +413,29 @@ function Chat({
     <div className={styles.chat}>
       <div className={styles.lch}>
         {owner.face || owner.photo ? (
-          <img className={styles.av} {...photo(owner.face ?? owner.photo!.src, 80)} alt={owner.name} style={{ objectPosition: owner.photo?.focus }} />
+          <img
+            className={styles.av}
+            {...photo(owner.face ?? owner.photo!.src, 80)}
+            alt={owner.name}
+            style={{ objectPosition: owner.photo?.focus }}
+            loading="lazy"
+            decoding="async"
+          />
         ) : null}
         <div>
           <b style={{ fontFamily: owner.font }}>{owner.name}</b>
           <small>curios.my/{owner.handle}</small>
         </div>
       </div>
-      <div className={styles.lcm} aria-live="polite">
+      {/* Read once, finished: the playing chat rewrites its last line every few ms. */}
+      <ol className={calm.srOnly} aria-label={transcript.label}>
+        {finished(side, d).msgs.map((m) => (
+          <li key={m.id}>
+            {m.r === 'v' ? transcript.visitor : d.who}: {m.text}
+          </li>
+        ))}
+      </ol>
+      <div className={styles.lcm} aria-hidden="true">
         {s.msgs.map((m) =>
           m.r === 'v' ? (
             <div key={m.id} className={`${styles.lm} ${styles.v}`}>
@@ -527,7 +544,7 @@ export function Lands({ locale }: { locale: Locale }) {
   const tog = useRef<HTMLDivElement>(null);
   const [thumb, setThumb] = useState<CSSProperties>({});
   useLayoutEffect(() => {
-    const on = tog.current?.querySelector<HTMLButtonElement>('[aria-selected="true"]');
+    const on = tog.current?.querySelector<HTMLButtonElement>('[aria-pressed="true"]');
     if (on) setThumb({ width: on.offsetWidth, transform: `translateX(${on.offsetLeft - 4}px)` });
   }, [side, locale]);
 
@@ -596,10 +613,10 @@ export function Lands({ locale }: { locale: Locale }) {
         {copy.lede}
       </p>
       <div className={calm.rv} data-rv="" style={{ '--d': '160ms' } as CSSProperties}>
-        <div ref={tog} className={styles.tog} role="tablist" aria-label={copy.switchLabel}>
+        <div ref={tog} className={styles.tog} role="group" aria-label={copy.switchLabel}>
           <span className={styles.th} style={thumb} aria-hidden="true" />
           {(['service', 'products'] as const).map((x) => (
-            <button key={x} type="button" role="tab" aria-selected={side === x} onClick={() => pick(x)}>
+            <button key={x} type="button" aria-pressed={side === x} onClick={() => pick(x)}>
               {sides[x].label}
             </button>
           ))}
@@ -652,6 +669,7 @@ export function Lands({ locale }: { locale: Locale }) {
               sentName={owner.name}
               capture={copy.capture}
               basket={{ text: shop.barText(1, copy.checkout.price), go: shop.checkout }}
+              transcript={{ label: copy.transcript, visitor: copy.visitor }}
             >
               {side === 'products' ? <LandsCheckout shop={shop} copy={copy.checkout} state={s.ck} owner={owner.name} /> : null}
             </Chat>

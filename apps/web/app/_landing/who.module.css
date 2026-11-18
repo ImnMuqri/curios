@@ -84,7 +84,7 @@
   border: 0;
   border-radius: var(--r-pill);
   background: transparent;
-  color: var(--cl-faint);
+  color: var(--calm-muted);
   font: inherit;
   font-size: 13.5px;
   cursor: pointer;

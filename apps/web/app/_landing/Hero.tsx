@@ -26,35 +26,59 @@ export interface HeroState {
 }
 
 interface HeroProps {
-  /** Which page is in front; the run moves it on, and a click sets it. */
-  cursor: { front: number };
+  /**
+   * Which page is in front, and whether it is already answered; the run moves
+   * it on, and a click sets it. The page opens on Aisyah answered, as the
+   * server draws her.
+   */
+  cursor: { front: number; answered: boolean };
   answers: string[];
 }
 
-/** The hero deck's turn (Landing2 board, L2:982–989): ask the front page, type its answer, move on. */
+/** The front page, asked and fully answered. */
+const answeredFrame = (p: HeroProps): HeroState => ({
+  front: p.cursor.front,
+  asking: true,
+  q: true,
+  dots: false,
+  answer: p.answers[p.cursor.front] ?? '',
+  typing: false,
+  cheer: 0,
+});
+
+/**
+ * The hero deck's turn (Landing2 board, L2:982–989): ask the front page, type
+ * its answer, move on. The first turn starts on the server's frame (Aisyah
+ * answered) and only holds it, so hydrating changes nothing on screen.
+ */
 export const heroScene: Scene<HeroState, HeroProps> = {
-  still: (p) => ({ front: 0, asking: true, q: true, dots: false, answer: p.answers[0] ?? '', typing: false, cheer: 0 }),
-  start: (p) => ({ front: p.cursor.front, asking: false, q: false, dots: false, answer: '', typing: false, cheer: 0 }),
+  still: answeredFrame,
+  start: (p) =>
+    p.cursor.answered ? answeredFrame(p) : { front: p.cursor.front, asking: false, q: false, dots: false, answer: '', typing: false, cheer: 0 },
   async run(p, set, wait) {
     const front = p.cursor.front;
-    const text = p.answers[front] ?? '';
-    await wait(1700);
-    set((s) => ({ ...s, front, asking: true }));
-    await wait(450);
-    set((s) => ({ ...s, q: true }));
-    await wait(650);
-    set((s) => ({ ...s, dots: true }));
-    await wait(900);
-    for (let i = 1; i <= text.length; i++) {
-      const answer = text.slice(0, i);
-      set((s) => ({ ...s, dots: false, typing: true, answer }));
-      await wait(22);
+    if (!p.cursor.answered) {
+      const text = p.answers[front] ?? '';
+      await wait(1700);
+      set((s) => ({ ...s, front, asking: true }));
+      await wait(450);
+      set((s) => ({ ...s, q: true }));
+      await wait(650);
+      set((s) => ({ ...s, dots: true }));
+      await wait(900);
+      for (let i = 1; i <= text.length; i++) {
+        const answer = text.slice(0, i);
+        set((s) => ({ ...s, dots: false, typing: true, answer }));
+        await wait(22);
+      }
+      await wait(500);
+      p.cursor.answered = true;
+      set((s) => ({ ...s, typing: false, cheer: s.cheer + 1 }));
     }
-    await wait(500);
-    set((s) => ({ ...s, typing: false, cheer: s.cheer + 1 }));
     await wait(2300);
     const next = (front + 1) % N;
     p.cursor.front = next;
+    p.cursor.answered = false;
     set((s) => ({ ...s, front: next, asking: false, q: false, dots: false, answer: '', typing: false }));
     await wait(500);
   },
@@ -76,13 +100,13 @@ const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLa
  * the front page of the deck, in that owner's colours. Each turn the front
  * page is asked and its answer types out, then the next page comes forward.
  * A click on a side page brings it to the front. The server, and reduced
- * motion, draw Aisyah in front, asked and answered.
+ * motion, draw the front page asked and answered (Aisyah, until a click).
  */
 export function Hero({ locale }: { locale: Locale }) {
   const copy = COPY[locale];
   const [jump, setJump] = useState(0);
   const deck = useRef<HTMLDivElement>(null);
-  const cursor = useRef({ front: 0 });
+  const cursor = useRef({ front: 0, answered: true });
   const answers = PEOPLE.map((p) => copy.personas[p.key].a);
   const s = useScene(heroScene, { cursor: cursor.current, answers }, deck, jump);
   const peek = useRef<LivePeekHandle>(null);
@@ -180,6 +204,7 @@ export function Hero({ locale }: { locale: Locale }) {
                     ? undefined
                     : () => {
                         cursor.current.front = i;
+                        cursor.current.answered = false;
                         setJump((n) => n + 1);
                       }
                 }

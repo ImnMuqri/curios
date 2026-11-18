@@ -69,14 +69,22 @@
   transform: rotate(0);
 }
 
+/* A closed answer stays in the page for crawlers, but hidden once folded, so screen readers skip it. */
 .a {
   display: grid;
   grid-template-rows: 0fr;
-  transition: grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1);
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s linear 0.45s;
 }
 
 .fq[data-open] .a {
   grid-template-rows: 1fr;
+  visibility: visible;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s;
 }
 
 .a p {

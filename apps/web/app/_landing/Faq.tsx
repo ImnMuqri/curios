@@ -15,7 +15,10 @@ import styles from './faq.module.css';
 export function Faq({ copy }: { copy: LandingCopy['faq'] }) {
   const [open, setOpen] = useState<number | null>(0);
   const peek = useRef<LivePeekHandle>(null);
-  const [first, ...rest] = copy.title.split(/(?<=\.)\s/);
+  // Broken after the first sentence. No regex lookbehind: Safari before 16.4 cannot parse one.
+  const cut = copy.title.indexOf('. ');
+  const first = cut < 0 ? copy.title : copy.title.slice(0, cut + 1);
+  const rest = cut < 0 ? '' : copy.title.slice(cut + 2);
 
   const toggle = (i: number) => {
     setOpen((o) => (o === i ? null : i));
@@ -29,10 +32,10 @@ export function Faq({ copy }: { copy: LandingCopy['faq'] }) {
           <p className={`${calm.lbl} ${calm.left} ${styles.head}`}>{copy.label}</p>
           <h2 id="faq-title" className={`${calm.h2} ${calm.left} ${styles.head}`}>
             {first}
-            {rest.length ? (
+            {rest ? (
               <>
                 <br />
-                {rest.join(' ')}
+                {rest}
               </>
             ) : null}
           </h2>

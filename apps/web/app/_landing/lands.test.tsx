@@ -13,7 +13,8 @@ afterEach(() => {
 });
 
 const zoneIn = (c: HTMLElement) => [0, 1, 2, 3].map((i) => c.querySelector(`[class*="z${i}"]`)!.hasAttribute('data-in'));
-const chat = (c: HTMLElement) => c.querySelector('[aria-live="polite"]') as HTMLElement;
+/** The chat as it plays, hidden from screen readers. */
+const chat = (c: HTMLElement) => c.querySelector('[class*="lcm"]') as HTMLElement;
 
 /** Records the order zones land in while time runs. */
 async function landOrder(c: HTMLElement, ms: number) {
@@ -34,16 +35,47 @@ describe('what lands in your hands', () => {
     expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent(copy.title);
     expect(zoneIn(container)).toEqual([true, true, true, true]);
     for (const key of copy.service.keys) expect(container).toHaveTextContent(key);
-    expect(screen.getByRole('tab', { name: copy.service.label })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: copy.service.label })).toHaveAttribute('aria-pressed', 'true');
     expect(chat(container)).toHaveTextContent(copy.service.chat[0]!.r === 'v' ? copy.service.chat[0]!.t : '');
+  });
+
+  it.each(LOCALES)('%s: reads the finished chat once, never the playing one', (locale) => {
+    const copy = COPY[locale].lands;
+    const { container } = render(<Lands locale={locale} />);
+    expect(container.querySelector('[aria-live]')).toBeNull();
+    expect(chat(container)).toHaveAttribute('aria-hidden', 'true');
+    const lines = (side: 'service' | 'products') => copy[side].chat.flatMap((m) => (m.r === 'v' || m.r === 'p' ? [m.t] : []));
+    const transcript = () => screen.getByRole('list', { name: copy.transcript });
+    expect(transcript().querySelectorAll('li')).toHaveLength(lines('service').length);
+    for (const t of lines('service')) expect(transcript()).toHaveTextContent(t);
+    expect(transcript()).toHaveTextContent(copy.service.who);
+    expect(transcript()).toHaveTextContent(copy.visitor);
+    fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
+    expect(transcript().querySelectorAll('li')).toHaveLength(lines('products').length);
+    for (const t of lines('products')) expect(transcript()).toHaveTextContent(t);
+  });
+
+  it('switches side with pressed buttons, not tabs', () => {
+    const copy = COPY.en.lands;
+    render(<Lands locale="en" />);
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByRole('tab')).toBeNull();
+    expect(screen.getByRole('group', { name: copy.switchLabel })).toBeInTheDocument();
+  });
+
+  it('loads the owner’s face in the chat lazily', () => {
+    const { container } = render(<Lands locale="en" />);
+    const img = container.querySelector('img')!;
+    expect(img).toHaveAttribute('loading', 'lazy');
+    expect(img).toHaveAttribute('decoding', 'async');
   });
 
   it('says which side is on', () => {
     const copy = COPY.en.lands;
     render(<Lands locale="en" />);
-    fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
-    expect(screen.getByRole('tab', { name: copy.products.label })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: copy.service.label })).toHaveAttribute('aria-selected', 'false');
+    fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
+    expect(screen.getByRole('button', { name: copy.products.label })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: copy.service.label })).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('draws the finished frame with no timer under reduced motion', async () => {
@@ -111,7 +143,7 @@ describe('what lands in your hands', () => {
     await advance(TIMING.start + 10 * TIMING.typeChar);
     expect(container.querySelector('[data-ty]')).not.toBeNull();
     act(() => {
-      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+      fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
     });
     await advance(20000);
     const text = chat(container).textContent ?? '';
@@ -148,7 +180,7 @@ describe('what lands in your hands', () => {
     const { container, run } = await products(() => false);
     view.show(true);
     act(() => {
-      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+      fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
     });
     expect(await run((c) => (c.textContent ?? '').includes('In your basket'))).toBe(true);
     expect(await run((c) => (c.textContent ?? '').includes('1 item · RM95'))).toBe(true);
@@ -163,7 +195,7 @@ describe('what lands in your hands', () => {
     const { container, run } = await products(() => false);
     view.show(true);
     act(() => {
-      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+      fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
     });
     expect(await run((c) => (c.querySelector('[data-field="name"]')?.textContent ?? '') === 'Aida')).toBe(true);
     expect(container.querySelector('[data-pick="pickup"][data-sel]')).not.toBeNull();
@@ -181,7 +213,7 @@ describe('what lands in your hands', () => {
     const { container, run } = await products(() => false);
     view.show(true);
     act(() => {
-      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+      fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
     });
     expect(await run((c) => c.querySelector('[data-screen="paid"]') !== null)).toBe(true);
     expect(container.querySelector('[data-screen="paid"]')).toHaveTextContent('Paid. Order placed');
@@ -199,11 +231,11 @@ describe('what lands in your hands', () => {
     const { container, run } = await products(() => false);
     view.show(true);
     act(() => {
-      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+      fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
     });
     expect(await run((c) => c.querySelector('[data-screen="checkout"]') !== null)).toBe(true);
     act(() => {
-      fireEvent.click(screen.getByRole('tab', { name: copy.service.label }));
+      fireEvent.click(screen.getByRole('button', { name: copy.service.label }));
     });
     await advance(10);
     expect(container.querySelector('[data-screen]')).toBeNull();
@@ -217,7 +249,7 @@ describe('what lands in your hands', () => {
     reduceMotion();
     const copy = COPY.en.lands;
     const { container } = render(<Lands locale="en" />);
-    fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+    fireEvent.click(screen.getByRole('button', { name: copy.products.label }));
     await advance(0);
     expect(zoneIn(container)).toEqual([true, true, true, true]);
     expect(container.querySelector('[class*="z0"]')).toHaveTextContent('Order #16 · Aida');

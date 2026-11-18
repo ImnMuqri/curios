@@ -181,6 +181,9 @@ export interface LandingCopy {
     lede: string;
     /** The switch's name, for screen readers. */
     switchLabel: string;
+    /** The finished chat, read to screen readers in place of the playing one: its name, and who asks. */
+    transcript: string;
+    visitor: string;
     /** An empty zone, before anything lands. */
     empty: string;
     service: LandsSideCopy;
@@ -407,6 +410,8 @@ const EN: LandingBase = {
     title: 'What lands in your hands',
     lede: 'One chat on your page. Four things you can use.',
     switchLabel: 'Show it for',
+    transcript: 'The chat, in full',
+    visitor: 'Customer',
     empty: 'Waiting for a chat',
     service: {
       label: 'I offer a service',
@@ -650,6 +655,8 @@ const MS: LandingBase = {
     title: 'Apa yang anda dapat',
     lede: 'Satu chat di halaman anda. Empat perkara yang anda boleh guna.',
     switchLabel: 'Tunjuk untuk',
+    transcript: 'Chat penuh',
+    visitor: 'Pelanggan',
     empty: 'Menunggu chat',
     service: {
       label: 'Saya beri servis',

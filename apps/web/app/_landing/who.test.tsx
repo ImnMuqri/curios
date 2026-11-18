@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Who, SQ_HOLD_MS, SQ_USER_HOLD_MS } from './Who.js';
 import { COPY } from './copy.js';
 import { WHO } from './personas.js';
@@ -22,7 +22,15 @@ describe('who it’s for', () => {
     expect(WHO).toEqual(['aisyah', 'daniel', 'farah', 'lina', 'hana']);
     expect(container.querySelectorAll('article')).toHaveLength(5);
     for (const key of WHO) expect(card(container, key)).toHaveTextContent(copy.answers[key][0]);
-    expect(screen.getAllByRole('tab')).toHaveLength(4);
+    const chips = within(screen.getByRole('group', { name: copy.questionsLabel })).getAllByRole('button');
+    expect(chips).toHaveLength(4);
+    expect(chips.map((c) => c.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
+    expect(screen.queryByRole('tablist')).toBeNull();
+  });
+
+  it('announces nothing by itself: the answers are not a live region', () => {
+    const { container } = render(<Who locale="en" />);
+    expect(container.querySelector('[aria-live]')).toBeNull();
   });
 
   it('highlights only "Their own"', () => {
@@ -58,9 +66,9 @@ describe('who it’s for', () => {
     const copy = COPY.en.who;
     const { container } = render(<Who locale="en" />);
     view.show(true);
-    fireEvent.click(screen.getByRole('tab', { name: copy.questions[2] }));
+    fireEvent.click(screen.getByRole('button', { name: copy.questions[2] }));
     await advance(RUN(copy.questions[2]) + 50);
-    expect(screen.getByRole('tab', { name: copy.questions[2] })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: copy.questions[2] })).toHaveAttribute('aria-pressed', 'true');
     for (const key of WHO) expect(card(container, key)).toHaveTextContent(copy.answers[key][2]);
   });
 
@@ -71,11 +79,11 @@ describe('who it’s for', () => {
     const copy = COPY.en.who;
     render(<Who locale="en" />);
     view.show(true);
-    fireEvent.click(screen.getByRole('tab', { name: copy.questions[1] }));
+    fireEvent.click(screen.getByRole('button', { name: copy.questions[1] }));
     await advance(RUN(copy.questions[1]) + SQ_HOLD_MS + 500);
-    expect(screen.getByRole('tab', { name: copy.questions[1] })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: copy.questions[1] })).toHaveAttribute('aria-pressed', 'true');
     await advance(SQ_USER_HOLD_MS - SQ_HOLD_MS);
-    expect(screen.getByRole('tab', { name: copy.questions[2] })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('button', { name: copy.questions[2] })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('shows all five answers to the first question, with no timer, under reduced motion', async () => {
@@ -86,6 +94,18 @@ describe('who it’s for', () => {
     const { container } = render(<Who locale="en" />);
     await advance(0);
     for (const key of WHO) expect(card(container, key)).toHaveTextContent(copy.answers[key][0]);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('a question chip shows every page’s answer to it under reduced motion, with no timer', async () => {
+    vi.useFakeTimers();
+    reduceMotion();
+    const copy = COPY.en.who;
+    const { container } = render(<Who locale="en" />);
+    fireEvent.click(screen.getByRole('button', { name: copy.questions[2] }));
+    await advance(0);
+    expect(screen.getByRole('button', { name: copy.questions[2] })).toHaveAttribute('aria-pressed', 'true');
+    for (const key of WHO) expect(card(container, key)).toHaveTextContent(copy.answers[key][2]);
     expect(vi.getTimerCount()).toBe(0);
   });
 });

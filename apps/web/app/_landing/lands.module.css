@@ -60,7 +60,7 @@
   transition: color 0.3s;
 }
 
-.tog button[aria-selected='true'] {
+.tog button[aria-pressed='true'] {
   color: var(--calm-surface);
 }
 
@@ -858,7 +858,7 @@
   padding: 0 10px 0 6px;
   border-radius: var(--r-pill);
   background: rgba(255, 255, 255, 0.6);
-  color: var(--cl-faint);
+  color: var(--calm-muted);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;

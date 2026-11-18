@@ -34,7 +34,8 @@ interface WhoProps {
 
 /** One question to five pages (Landing2 board, L2:1010–1023). */
 export const whoScene: Scene<WhoState, WhoProps> = {
-  still: (p) => ({ q: 0, typed: p.questions[0] ?? '', pressed: false, thinking: false, ans: 0, shown: WHO.length, hop: 0 }),
+  // The question the cursor is on, all five answered: a chip picked under reduced motion shows its answers.
+  still: (p) => ({ q: p.cursor.q, typed: p.questions[p.cursor.q] ?? '', pressed: false, thinking: false, ans: p.cursor.q, shown: WHO.length, hop: 0 }),
   start: (p) => ({ q: p.cursor.q, typed: '', pressed: false, thinking: false, ans: p.cursor.ans, shown: WHO.length, hop: 0 }),
   async run(p, set, wait) {
     const q = p.cursor.q;
@@ -68,7 +69,8 @@ export const whoScene: Scene<WhoState, WhoProps> = {
  * answering in its own words. The question types into the ask bar, the
  * cards think, then answer one after another. A question chip jumps to that
  * question and holds it longer. The server, and reduced motion, show all
- * five answers to the first question.
+ * five answers to the first question (or to the chip picked). The answers
+ * are no live region: the loop would read itself aloud every few seconds.
  */
 export function Who({ locale }: { locale: Locale }) {
   const copy = COPY[locale].who;
@@ -116,14 +118,14 @@ export function Who({ locale }: { locale: Locale }) {
             <LivePeek width={82} follow ref={peek} />
           </span>
         </div>
-        <div className={`${styles.sw} ${calm.rv}`} data-rv="" style={{ '--d': '240ms' } as CSSProperties} role="tablist" aria-label={copy.questionsLabel}>
+        <div className={`${styles.sw} ${calm.rv}`} data-rv="" style={{ '--d': '240ms' } as CSSProperties} role="group" aria-label={copy.questionsLabel}>
           {copy.questions.map((q, i) => (
-            <button key={q} type="button" role="tab" aria-selected={s.q === i} data-on={s.q === i ? '' : undefined} onClick={() => pick(i)}>
+            <button key={q} type="button" aria-pressed={s.q === i} data-on={s.q === i ? '' : undefined} onClick={() => pick(i)}>
               {q}
             </button>
           ))}
         </div>
-        <div ref={five} className={`${styles.five} ${calm.rv}`} data-rv="" style={{ '--d': '300ms' } as CSSProperties} aria-live="polite">
+        <div ref={five} className={`${styles.five} ${calm.rv}`} data-rv="" style={{ '--d': '300ms' } as CSSProperties}>
           {WHO.map((key, k) => {
             const person = PERSONAS[key];
             const answered = k < s.shown;

@@ -41,26 +41,32 @@ describe('the hero', () => {
     expect(html).toContain(COPY.en.personas.aisyah.a);
   });
 
-  it('types the answer out on the front page, then moves the deck on', async () => {
+  it('starts on the server’s frame, holds it, then moves the deck on and types the next answer', async () => {
     vi.useFakeTimers();
     const view = watchViews();
     const { container } = render(<Hero locale="en" />);
-    view.show(true);
     const front = () => container.querySelector('[data-s="0"]') as HTMLElement;
-    const answer = COPY.en.personas.aisyah.a;
-    // The run starts on the links, then asks.
-    expect(front()).not.toHaveTextContent(answer);
-    await advance(1700 + 450 + 650 + 900);
-    await advance(22 * 10);
-    expect(front().textContent).toContain(answer.slice(0, 8));
-    expect(front()).not.toHaveTextContent(answer);
-    await advance(22 * answer.length + 500);
-    expect(front()).toHaveTextContent(answer);
-    await advance(2300 + 500);
+    const aisyah = COPY.en.personas.aisyah.a;
+    // The first client frame is the server's (asked and answered): no flash to an empty page.
+    expect(front()).toHaveTextContent(aisyah);
+    view.show(true);
+    await advance(0);
+    expect(front()).toHaveTextContent(aisyah);
+    await advance(2299);
+    expect(front()).toHaveAttribute('data-k', 'aisyah');
+    await advance(1);
     expect(front()).toHaveAttribute('data-k', 'lina');
+    const lina = COPY.en.personas.lina.a;
+    expect(front()).not.toHaveTextContent(lina);
+    await advance(500 + 1700 + 450 + 650 + 900);
+    await advance(22 * 10);
+    expect(front().textContent).toContain(lina.slice(0, 8));
+    expect(front()).not.toHaveTextContent(lina);
+    await advance(22 * lina.length + 500);
+    expect(front()).toHaveTextContent(lina);
   });
 
-  it('a click on a side page brings it to the front', async () => {
+  it('a click on a side page brings it to the front, then asks it', async () => {
     vi.useFakeTimers();
     const view = watchViews();
     const { container } = render(<Hero locale="en" />);
@@ -69,6 +75,34 @@ describe('the hero', () => {
     await advance(10);
     expect(slot(container, 'hana')).toBe('0');
     expect(slot(container, 'aisyah')).toBe('1');
+    const hana = COPY.en.personas.hana.a;
+    const front = () => container.querySelector('[data-s="0"]') as HTMLElement;
+    expect(front()).not.toHaveTextContent(hana);
+    await advance(1700 + 450 + 650 + 900 + 22 * hana.length + 500);
+    expect(front()).toHaveTextContent(hana);
+  });
+
+  it('a click on a side page brings it to the front, answered, under reduced motion', async () => {
+    vi.useFakeTimers();
+    reduceMotion();
+    const { container } = render(<Hero locale="en" />);
+    fireEvent.click(container.querySelector('[data-k="hana"]')!);
+    await advance(0);
+    expect(slot(container, 'hana')).toBe('0');
+    expect(container.querySelector('[data-s="0"]')).toHaveTextContent(COPY.en.personas.hana.a);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('leaves no timer and no pointer listener once unmounted', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const remove = vi.spyOn(window, 'removeEventListener');
+    const { unmount } = render(<Hero locale="en" />);
+    view.show(true);
+    await advance(3000);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    expect(remove.mock.calls.map((c) => c[0])).toContain('pointermove');
   });
 
   it('holds the finished frame and starts no timer under reduced motion', async () => {

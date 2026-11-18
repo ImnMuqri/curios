@@ -5,7 +5,7 @@ import { Faq } from './Faq.js';
 import { Closing } from './Closing.js';
 import { COPY, landingCopy } from './copy.js';
 import { structuredData } from './structured-data.js';
-import { LOCALES, TERMS, advance, reduceMotion, watchViews } from './test-kit.js';
+import { LOCALES, TERMS, advance, read, reduceMotion, rule, watchViews } from './test-kit.js';
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -38,12 +38,24 @@ describe('the FAQ', () => {
     expect(faq.mainEntity.map((q) => q.name)).toEqual(screen.getAllByRole('button').map((b) => b.textContent));
   });
 
-  it.each(LOCALES)('%s: the heading breaks after its first sentence', (locale) => {
+  it.each([
+    ['en', 'Asked before.', 'Answered here.'],
+    ['ms', 'Pernah ditanya.', 'Dijawab di sini.'],
+  ] as const)('%s: the heading breaks after its first sentence', (locale, a, b) => {
     const { container } = render(<Faq copy={COPY[locale].faq} />);
-    const [a, b] = COPY[locale].faq.title.split(/(?<=\.)\s/);
     const h2 = container.querySelector('h2')!;
-    expect(h2.querySelector('br')).not.toBeNull();
-    expect(h2).toHaveTextContent(`${a}${b}`);
+    expect([...h2.childNodes].map((n) => (n.nodeName === 'BR' ? '|' : n.textContent))).toEqual([a, '|', b]);
+  });
+
+  it('splits the heading without a regex lookbehind, which Safari before 16.4 cannot parse', () => {
+    expect(read('Faq.tsx')).not.toMatch(/\(\?<[=!]/);
+  });
+
+  it('hides a closed answer from screen readers once it has folded away', () => {
+    const css = read('faq.module.css');
+    expect(rule(css, '.a')).toMatch(/visibility:\s*hidden/);
+    expect(rule(css, '.a')).toMatch(/visibility 0s[^;,]*0\.45s/);
+    expect(rule(css, '.fq[data-open] .a')).toMatch(/visibility:\s*visible/);
   });
 });
 
