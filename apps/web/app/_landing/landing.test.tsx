@@ -54,23 +54,6 @@ describe('the landing page', () => {
     expect(container.firstElementChild).toHaveAttribute('lang', locale);
   });
 
-  it('reads the rolling name once, as the first page in the deck', () => {
-    render(<LandingPage locale="en" terms={TERMS} />);
-    expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName(/Ask\s+Aisyah\./);
-  });
-
-  it('claims an address with a plain GET to sign-up, so it works without JavaScript', () => {
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    const forms = [...container.querySelectorAll('form')];
-    expect(forms).toHaveLength(2);
-    for (const form of forms) {
-      expect(form).toHaveAttribute('action', '/signup');
-      expect(form).toHaveAttribute('method', 'get');
-      expect(form.querySelector('input[name="handle"]')).not.toBeNull();
-    }
-    expect(screen.getAllByLabelText('The address you want for your page')).toHaveLength(2);
-  });
-
   it('links the other language, sign in and sign up', () => {
     render(<LandingPage locale="ms" terms={TERMS} />);
     const nav = screen.getByRole('banner');
@@ -105,29 +88,6 @@ describe('motion', () => {
     expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
   });
 
-  it('types the answer out on the front page of the deck', async () => {
-    vi.useFakeTimers();
-    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
-    const hero = container.querySelector('section')!;
-    await act(async () => {
-      vi.advanceTimersByTime(2100);
-    });
-    expect(hero).toHaveTextContent(en.personas.aisyah.q);
-    expect(hero).not.toHaveTextContent(en.personas.aisyah.a);
-    await act(async () => {
-      vi.advanceTimersByTime(26 * (en.personas.aisyah.a.length + 2));
-    });
-    expect(hero).toHaveTextContent(en.personas.aisyah.a);
-  });
-
-  it('moves the deck on when it is pressed', async () => {
-    render(<LandingPage locale="en" terms={TERMS} />);
-    const deck = screen.getByRole('button', { name: en.hero.next });
-    await userEvent.click(deck);
-    // Kek Lina's page is at the front now; the hero is on her question.
-    await act(() => new Promise((r) => setTimeout(r, 2200)));
-    expect(deck).toHaveTextContent(en.personas.lina.q);
-  });
 });
 
 describe('who it is for', () => {

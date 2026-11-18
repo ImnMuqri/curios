@@ -31,7 +31,7 @@ const BRICOLAGE = 'var(--font-bricolage)';
 
 export const PERSONAS: Record<PersonaKey, Persona> = {
   aisyah: { key: 'aisyah', name: 'Aisyah', short: 'Aisyah', handle: 'aisyahdraws', kind: 'personal', accent: '#1d6f5f', deep: '#123b33', warm: '#d3e8e1', font: BRICOLAGE, photo: { src: '/landing/personas/aisyah.webp', focus: '50% 32%' }, face: '/landing/personas/aisyah-face.webp' },
-  lina: { key: 'lina', name: 'Kek Lina', short: 'Kek Lina', handle: 'keklina', kind: 'business', accent: '#b5294e', deep: '#3d0f1e', warm: '#f3dde3', font: 'var(--font-fraunces)', photo: { src: '/landing/hero-baker.webp', focus: '62% 22%' } },
+  lina: { key: 'lina', name: 'Kek Lina', short: 'Kek Lina', handle: 'keklina', kind: 'business', accent: '#b5294e', deep: '#3d0f1e', warm: '#f3dde3', font: 'var(--font-outfit)', photo: { src: '/landing/hero-baker.webp', focus: '62% 22%' } },
   hana: { key: 'hana', name: 'Studio Hana', short: 'Studio Hana', handle: 'studiohana', kind: 'business', accent: '#c58a12', deep: '#2b2209', warm: '#f6e7c3', font: BRICOLAGE, photo: { src: '/landing/personas/hana.webp', focus: '50% 38%' } },
   daniel: { key: 'daniel', name: 'Daniel Tan', short: 'Daniel', handle: 'danieltan', kind: 'personal', accent: '#8a5a2b', deep: '#2a1a0e', warm: '#efe0cf', font: BRICOLAGE, photo: { src: '/landing/personas/daniel.webp', focus: '50% 30%' } },
   aina: { key: 'aina', name: 'Klinik Aina', short: 'Klinik Aina', handle: 'klinikaina', kind: 'business', accent: '#2340c8', deep: '#0f1b4d', warm: '#d6e1fd', font: BRICOLAGE, photo: { src: '/landing/personas/aina.webp', focus: '50% 45%' } },
@@ -39,4 +39,4 @@ export const PERSONAS: Record<PersonaKey, Persona> = {
 };
 
 /** The hero deck's order, front card first. */
-export const DECK: PersonaKey[] = ['aisyah', 'lina', 'hana', 'daniel', 'aina'];
+export const DECK: PersonaKey[] = ['aisyah', 'lina', 'hana'];

@@ -63,10 +63,12 @@ export function Who({ locale }: { locale: Locale }) {
             <PageCard
               persona={person}
               words={words}
-              view="links"
-              icons={false}
+              kind={copy.hero.kinds[person.kind]}
               labels={{ links: copy.hero.linksTab, ask: copy.hero.askTab, askAnything: copy.hero.askAnything, reply: copy.hero.replyLabel }}
-              className={styles.whoCard}
+              ask={false}
+              q={false}
+              answer=""
+              slot={0}
             />
             <p className={`${styles.float} ${styles.floatQ}`}>{words.q}</p>
             <p className={`${styles.float} ${styles.floatA}`} style={{ '--float-dot': person.accent } as CSSProperties}>

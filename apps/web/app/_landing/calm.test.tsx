@@ -10,7 +10,7 @@ import { play } from './scene.js';
 import { TERMS, read, reduceMotion, rule } from './test-kit.js';
 
 /** Every calm landing stylesheet, relative to this folder. Each section task appends its own. */
-const CALM_MODULES = ['calm.module.css', 'nav.module.css', 'footer.module.css'];
+const CALM_MODULES = ['calm.module.css', 'nav.module.css', 'footer.module.css', 'hero.module.css', 'page-card.module.css', 'claim.module.css'];
 
 const CL_TOKENS = [
   'text-2', 'text-3', 'faint', 'hint', 'placeholder', 'ghost', 'ring-hover', 'dot', 'hl-green', 'hl-green-ink', 'hl-rose', 'hl-rose-ink',

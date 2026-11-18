@@ -124,6 +124,8 @@ export interface LandingCopy {
     note: string;
     deck: string;
     next: string;
+    /** A side page's button: "Show Kek Lina’s page". */
+    show: (name: string) => string;
     kinds: { personal: string; business: string; creator: string };
     askAnything: (name: string) => string;
     /** The label over a page's reply: "{Name}’s page". */
@@ -329,6 +331,7 @@ const EN: LandingBase = {
     note: 'Free for anyone. Business pages also get every ready buyer’s number.',
     deck: 'Curios pages answering questions',
     next: 'Show the next page',
+    show: (name) => `Show ${name}’s page`,
     kinds: { personal: 'Personal', business: 'Business', creator: 'Creator' },
     askAnything: (name) => `Ask ${name} anything`,
     replyLabel: (name) => `${name}’s page`,
@@ -679,6 +682,7 @@ const MS: LandingBase = {
     note: 'Percuma untuk semua. Halaman bisnes juga dapat nombor setiap pembeli yang sedia beli.',
     deck: 'Halaman Curios yang menjawab soalan',
     next: 'Tunjuk halaman seterusnya',
+    show: (name) => `Tunjuk halaman ${name}`,
     kinds: { personal: 'Peribadi', business: 'Bisnes', creator: 'Kreator' },
     askAnything: (name) => `Tanya ${name} apa saja`,
     replyLabel: (name) => `Halaman ${name}`,

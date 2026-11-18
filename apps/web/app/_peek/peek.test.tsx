@@ -59,14 +59,14 @@ describe('Peek', () => {
     }
   });
 
-  it('both claim fields carry Peek, and each claim input has a placeholder to detect text against', () => {
-    for (const [id, variant] of [['claim-hero', 'hero'], ['claim-end', 'end']] as const) {
+  it('the hero claim field carries a live Peek, the closing one none, and each input has a placeholder', () => {
+    for (const [id, variant, peeks] of [['claim-hero', 'hero', 1], ['claim-end', 'end', 0]] as const) {
       const { container, unmount } = render(
         <Claim id={id} label="Address" placeholder="yourname" button="Go" variant={variant} />,
       );
       const input = container.querySelector(`#${id}`) as HTMLInputElement;
       expect(input).toHaveAttribute('placeholder', 'yourname');
-      expect(input.parentElement?.querySelectorAll('[data-peek]')).toHaveLength(2);
+      expect(container.querySelectorAll('svg[viewBox="0 0 160 150"]')).toHaveLength(peeks);
       unmount();
     }
   });

@@ -1,93 +1,104 @@
 'use client';
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { Claim } from './Claim.js';
 import { PageCard } from './PageCard.js';
 import { DECK, PERSONAS } from './personas.js';
-import { useReducedMotion } from './useReducedMotion.js';
-import styles from './tanya.module.css';
+import { useScene, type Scene } from './scene.js';
+import { LivePeek, type LivePeekHandle } from '../_peek/LivePeek.js';
+import calm from './calm.module.css';
+import styles from './hero.module.css';
 
 const PEOPLE = DECK.map((key) => PERSONAS[key]);
-/** The names the chip rolls through, with the first again at the end so the roll can wrap without a jump. */
-const NAMES = [...PEOPLE.map((p) => p.short), PEOPLE[0]!.short];
+const N = PEOPLE.length;
+
+export interface HeroState {
+  front: number;
+  asking: boolean;
+  q: boolean;
+  dots: boolean;
+  /** The answer as far as it has been typed. */
+  answer: string;
+  typing: boolean;
+  /** Bumped when Peek should be happy. */
+  cheer: number;
+}
+
+interface HeroProps {
+  /** Which page is in front; the run moves it on, and a click sets it. */
+  cursor: { front: number };
+  answers: string[];
+}
+
+/** The hero deck's turn (Landing2 board, L2:982–989): ask the front page, type its answer, move on. */
+export const heroScene: Scene<HeroState, HeroProps> = {
+  still: (p) => ({ front: 0, asking: true, q: true, dots: false, answer: p.answers[0] ?? '', typing: false, cheer: 0 }),
+  start: (p) => ({ front: p.cursor.front, asking: false, q: false, dots: false, answer: '', typing: false, cheer: 0 }),
+  async run(p, set, wait) {
+    const front = p.cursor.front;
+    const text = p.answers[front] ?? '';
+    await wait(1700);
+    set((s) => ({ ...s, front, asking: true }));
+    await wait(450);
+    set((s) => ({ ...s, q: true }));
+    await wait(650);
+    set((s) => ({ ...s, dots: true }));
+    await wait(900);
+    for (let i = 1; i <= text.length; i++) {
+      const answer = text.slice(0, i);
+      set((s) => ({ ...s, dots: false, typing: true, answer }));
+      await wait(22);
+    }
+    await wait(500);
+    set((s) => ({ ...s, typing: false, cheer: s.cheer + 1 }));
+    await wait(2300);
+    const next = (front + 1) % N;
+    p.cursor.front = next;
+    set((s) => ({ ...s, front: next, asking: false, q: false, dots: false, answer: '', typing: false }));
+    await wait(500);
+  },
+};
+
+/** A card's slot in the deck, -2…2, the front at 0. */
+function slotOf(i: number, front: number): number {
+  let s = i - front;
+  if (s > N / 2) s -= N;
+  if (s < -N / 2) s += N;
+  return Math.max(-2, Math.min(2, s));
+}
 
 // useLayoutEffect warns on the server; the measuring only matters in a browser.
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /**
- * "Don't read the bio. Ask Aisyah." The name rolls to the front page of the
- * deck beside it, in that page's own colour. Each turn, a cursor taps the
- * front page's Ask tab and its answer types out; then the next page comes to
- * the front. Pressing the deck moves it on. With reduced motion it holds on
- * the first page, answered.
+ * "Don’t read the bio. Ask Aisyah." (Landing2 board): the name pill rolls to
+ * the front page of the deck, in that owner's colours. Each turn the front
+ * page is asked and its answer types out, then the next page comes forward.
+ * A click on a side page brings it to the front. The server, and reduced
+ * motion, draw Aisyah in front, asked and answered.
  */
 export function Hero({ locale }: { locale: Locale }) {
   const copy = COPY[locale];
-  const reduced = useReducedMotion();
-  const [p, setP] = useState(0);
-  const [rot, setRot] = useState({ i: 0, animate: true });
-  const [intro, setIntro] = useState(3);
-  const [typed, setTyped] = useState(Number.MAX_SAFE_INTEGER);
+  const [jump, setJump] = useState(0);
+  const deck = useRef<HTMLDivElement>(null);
+  const cursor = useRef({ front: 0 });
+  const answers = PEOPLE.map((p) => copy.personas[p.key].a);
+  const s = useScene(heroScene, { cursor: cursor.current, answers }, deck, jump);
+  const peek = useRef<LivePeekHandle>(null);
   const [widths, setWidths] = useState<number[] | null>(null);
-  const timers = useRef<number[]>([]);
   const measure = useRef<HTMLSpanElement>(null);
 
-  const clear = () => {
-    timers.current.forEach((t) => window.clearTimeout(t));
-    timers.current = [];
-  };
-  const later = (fn: () => void, ms: number) => {
-    timers.current.push(window.setTimeout(fn, ms));
-  };
-
-  const advance = useCallback(() => {
-    clear();
-    setP((current) => (current + 1) % PEOPLE.length);
-    setRot((current) => ({ i: current.i + 1, animate: true }));
-  }, []);
-
-  // The roll wraps: past the last real name it shows the first again, then snaps back without moving.
   useEffect(() => {
-    if (rot.i !== PEOPLE.length) return;
-    const t = window.setTimeout(() => setRot({ i: 0, animate: false }), 560);
-    return () => window.clearTimeout(t);
-  }, [rot.i]);
+    if (s.cheer > 0) peek.current?.mood('happy', 1900);
+  }, [s.cheer]);
 
-  // One turn of the front page: the cursor arrives, taps Ask, and the answer types out.
-  useEffect(() => {
-    if (reduced) {
-      setIntro(3);
-      setTyped(Number.MAX_SAFE_INTEGER);
-      return;
-    }
-    clear();
-    setIntro(0);
-    setTyped(0);
-    later(() => setIntro(1), 600);
-    later(() => setIntro(2), 1650);
-    later(() => {
-      setIntro(3);
-      const answer = copy.personas[PEOPLE[p]!.key].a;
-      let n = 0;
-      const tick = () => {
-        n += 1;
-        setTyped(n);
-        if (n < answer.length) later(tick, 26);
-        else later(advance, 2600);
-      };
-      later(tick, 26);
-    }, 2050);
-    return clear;
-  }, [p, reduced, advance, copy.personas]);
-
-  // The chip is as wide as the name it shows, so it is measured in the face that loaded.
+  // The pill is as wide as the name it shows, measured in the face that loaded.
   useBrowserLayoutEffect(() => {
     const read = () => {
       const box = measure.current;
       if (!box) return;
-      const size = parseFloat(getComputedStyle(box).fontSize) || 1;
-      setWidths([...box.children].map((child) => child.getBoundingClientRect().width / size + 0.02));
+      setWidths([...box.children].map((child) => Math.ceil(child.getBoundingClientRect().width + 2)));
     };
     read();
     document.fonts?.ready.then(read).catch(() => {});
@@ -95,96 +106,88 @@ export function Hero({ locale }: { locale: Locale }) {
     return () => window.removeEventListener('resize', read);
   }, []);
 
-  const front = PEOPLE[p]!;
-  const chip: CSSProperties = {
-    background: front.accent,
-    ...(widths ? { width: `${widths[Math.min(rot.i, NAMES.length - 1)]}em` } : {}),
-  };
+  const front = PEOPLE[s.front]!;
+  const pill = {
+    background: front.warm,
+    color: front.accent,
+    ...(widths?.[s.front] ? { width: `calc(${widths[s.front]}px + 0.44em)` } : {}),
+  } as CSSProperties;
   const labels = { links: copy.hero.linksTab, ask: copy.hero.askTab, askAnything: copy.hero.askAnything, reply: copy.hero.replyLabel };
 
   return (
     <section className={styles.hero}>
-      <div className={`${styles.wrap} ${styles.heroGrid}`}>
-        <div>
-          <h1 className={styles.heroTitle}>
-            {copy.hero.line}
-            <br />
-            {copy.hero.ask}{' '}
-            {/* Read once, as the first name; the roll is for the eye. */}
-            <span className={styles.srOnly}>{PEOPLE[0]!.short}.</span>
-            <span aria-hidden="true">
-              <span className={styles.nameChip} style={chip}>
-                <span
-                  className={styles.nameReel}
-                  style={{
-                    transform: `translateY(-${rot.i * 1.08}em)`,
-                    transition: rot.animate && !reduced ? 'transform 520ms cubic-bezier(0.34, 1.35, 0.64, 1)' : 'none',
-                  }}
-                >
-                  {NAMES.map((name, i) => (
-                    <span key={i}>{name}</span>
-                  ))}
-                </span>
-              </span>
-              .
-              <span ref={measure} className={styles.nameMeasure}>
-                {NAMES.map((name, i) => (
-                  <span key={i}>{name}</span>
+      <div className={calm.dotbg} aria-hidden="true" />
+      <div className={styles.hin}>
+        <h1 className={`${styles.h1} ${calm.rv}`} data-rv="">
+          {copy.hero.line}
+          <br />
+          {copy.hero.ask}{' '}
+          {/* Read once, as the first name; the roll is for the eye. */}
+          <span className={calm.srOnly}>{PEOPLE[0]!.short}.</span>
+          <span aria-hidden="true">
+            <span className={styles.rot} style={pill}>
+              <span className={styles.rotC} style={{ transform: `translateY(-${s.front * 1.14}em)` }}>
+                {PEOPLE.map((p) => (
+                  <span key={p.key}>{p.short}</span>
                 ))}
               </span>
             </span>
-          </h1>
-          <p className={styles.heroLede}>{copy.hero.lede}</p>
+            .
+          </span>
+          <span ref={measure} className={styles.measure} aria-hidden="true">
+            {PEOPLE.map((p) => (
+              <span key={p.key}>{p.short}</span>
+            ))}
+          </span>
+        </h1>
+        <p className={`${styles.sub} ${calm.rv}`} data-rv="" style={{ '--d': '120ms' } as CSSProperties}>
+          {copy.hero.lede}
+        </p>
+        <div className={calm.rv} data-rv="" style={{ '--d': '220ms' } as CSSProperties}>
           <Claim id="claim-hero" label={copy.hero.claimLabel} placeholder={copy.hero.placeholder} button={copy.hero.button} />
-          <p className={styles.claimNote}>{copy.hero.note}</p>
         </div>
-
-        <div className={styles.deckStage} role="group" aria-label={copy.hero.deck}>
-          <button type="button" className={styles.deckButton} aria-label={copy.hero.next} onClick={advance}>
-            {PEOPLE.map((person, k) => {
-              const pos = (k - p + PEOPLE.length) % PEOPLE.length;
-              const isFront = pos === 0;
-              const asking = isFront && intro >= 3;
-              const words = copy.personas[person.key];
-              return (
-                <PageCard
-                  key={person.key}
-                  persona={person}
-                  words={words}
-                  view={asking ? 'ask' : 'links'}
-                  labels={labels}
-                  answer={isFront ? words.a.slice(0, typed) : words.a}
-                  typing={isFront && asking && typed < words.a.length}
-                  kind={copy.hero.kinds[person.kind]}
-                  className={styles.deckCard}
-                  style={{
-                    transform: `translate(${pos * 30}px, ${-pos * 6}px) rotate(${pos * 4.5}deg) scale(${1 - pos * 0.05})`,
-                    zIndex: PEOPLE.length - pos,
-                    opacity: pos >= 3 ? 0 : 1,
-                  }}
-                  tabExtra={
-                    isFront && intro < 3 && !reduced ? (
-                      <>
-                        {intro === 2 ? <span className={styles.ripple} /> : null}
-                        <span
-                          className={styles.cursor}
-                          style={{
-                            transform: `translate(${intro >= 1 ? -4 : 70}px, ${intro >= 1 ? -2 : 150}px) scale(${intro === 2 ? 0.82 : 1})`,
-                            opacity: intro >= 1 ? 1 : 0,
-                          }}
-                        >
-                          <svg viewBox="0 0 24 24" width="24" height="24">
-                            <path d="M5 3l14 8-6.2 1.6L10 19z" fill="var(--ink)" stroke="var(--paper)" strokeWidth="1.6" strokeLinejoin="round" />
-                          </svg>
-                        </span>
-                      </>
-                    ) : null
-                  }
-                />
-              );
-            })}
-          </button>
+        <p className={`${calm.fine} ${calm.center} ${calm.rv}`} data-rv="" style={{ '--d': '300ms' } as CSSProperties}>
+          {copy.hero.note}
+        </p>
+      </div>
+      <div className={`${styles.stage} ${calm.rv}`} data-rv="" style={{ '--d': '380ms' } as CSSProperties}>
+        <span className={`${styles.stagePk} ${styles.left}`}>
+          <LivePeek width={132} pose="whistle" />
+        </span>
+        <div ref={deck} className={styles.deck} role="group" aria-label={copy.hero.deck}>
+          {PEOPLE.map((person, i) => {
+            const slot = slotOf(i, s.front);
+            const isFront = slot === 0;
+            const words = copy.personas[person.key];
+            return (
+              <PageCard
+                key={person.key}
+                persona={person}
+                words={words}
+                kind={copy.hero.kinds[person.kind]}
+                labels={labels}
+                ask={isFront && s.asking}
+                q={isFront && s.q}
+                dots={isFront && s.dots}
+                answer={isFront ? s.answer : ''}
+                typing={isFront && s.typing}
+                slot={slot}
+                label={isFront ? undefined : copy.hero.show(person.name)}
+                onPick={
+                  isFront
+                    ? undefined
+                    : () => {
+                        cursor.current.front = i;
+                        setJump((n) => n + 1);
+                      }
+                }
+              />
+            );
+          })}
         </div>
+        <span className={`${styles.stagePk} ${styles.right}`}>
+          <LivePeek width={132} follow ref={peek} />
+        </span>
       </div>
     </section>
   );
