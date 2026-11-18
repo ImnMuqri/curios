@@ -36,7 +36,6 @@ export const PERSONAS: Record<PersonaKey, Persona> = {
   lina: { key: 'lina', name: 'Kek Lina', short: 'Kek Lina', handle: 'keklina', kind: 'business', accent: '#b5294e', deep: '#3d0f1e', warm: '#f3dde3', tint: '#fbeef1', font: 'var(--font-outfit)', photo: { src: '/landing/hero-baker.webp', focus: '62% 22%' } },
   hana: { key: 'hana', name: 'Studio Hana', short: 'Studio Hana', handle: 'studiohana', kind: 'business', accent: '#c58a12', deep: '#2b2209', warm: '#f6e7c3', tint: '#f8f1dc', font: BRICOLAGE, photo: { src: '/landing/personas/hana.webp', focus: '50% 38%' } },
   daniel: { key: 'daniel', name: 'Daniel Tan', short: 'Daniel', handle: 'danieltan', kind: 'personal', accent: '#8a5a2b', deep: '#2a1a0e', warm: '#efe0cf', tint: '#f6efe6', font: BRICOLAGE, photo: { src: '/landing/personas/daniel.webp', focus: '50% 30%' } },
-  aina: { key: 'aina', name: 'Klinik Aina', short: 'Klinik Aina', handle: 'klinikaina', kind: 'business', accent: '#2340c8', deep: '#0f1b4d', warm: '#d6e1fd', tint: '#eef2fd', font: BRICOLAGE, photo: { src: '/landing/personas/aina.webp', focus: '50% 45%' } },
   farah: { key: 'farah', name: 'Coach Farah', short: 'Farah', handle: 'coachfarah', kind: 'creator', accent: '#c2410c', deep: '#3a1405', warm: '#f8dcc9', tint: '#fdefe6', font: BRICOLAGE, photo: { src: '/landing/personas/farah.webp', focus: '45% 30%' } },
 };
 

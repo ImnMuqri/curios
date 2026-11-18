@@ -49,7 +49,7 @@ export function Closing({ locale }: { locale: Locale }) {
   useBrowserLayoutEffect(() => {
     const read = () => {
       const box = measure.current;
-      if (box) setWidths([...box.children].map((c) => Math.ceil(c.getBoundingClientRect().width + 2)));
+      if (box) setWidths([...box.children].map((c) => c.getBoundingClientRect().width));
     };
     read();
     document.fonts?.ready.then(read).catch(() => {});
@@ -75,6 +75,7 @@ export function Closing({ locale }: { locale: Locale }) {
         <h2 id="closing-title" className={calm.h2} aria-label={`${copy.onePageFor} ${copy.words[0]}`}>
           {copy.onePageFor}{' '}
           <span className={hero.rot} style={pill} aria-hidden="true" data-word={word}>
+            <span className={hero.sizer}>{copy.words[word]}</span>
             <span className={hero.rotC} style={{ transform: `translateY(-${word * 1.14}em)` }}>
               {copy.words.map((w) => (
                 <span key={w}>{w}</span>

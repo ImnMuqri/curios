@@ -257,7 +257,7 @@ export interface LandingCopy {
   personas: Record<PersonaKey, PersonaWords>;
 }
 
-export type PersonaKey = 'aisyah' | 'lina' | 'hana' | 'daniel' | 'aina' | 'farah';
+export type PersonaKey = 'aisyah' | 'lina' | 'hana' | 'daniel' | 'farah';
 /** The five pages Who asks, in the board's order. */
 export type WhoKey = 'aisyah' | 'daniel' | 'farah' | 'lina' | 'hana';
 
@@ -529,7 +529,6 @@ const EN: LandingBase = {
     lina: { q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.', links: ['Order on WhatsApp', 'Menu & prices', 'Cake photos'] },
     hana: { q: 'What’s in your branding package?', a: 'Logo, colour and type system, and social templates. Two weeks, from RM3,800.', links: ['Case studies', 'Packages', 'Start a project'] },
     daniel: { q: 'Are you open to hybrid roles?', a: 'Yes, hybrid in KL or Petaling Jaya, or fully remote.', links: ['Resume', 'GitHub', 'LinkedIn'] },
-    aina: { q: 'Are you open on Saturday?', a: 'Yes, 9am to 1pm on Saturdays. Walk-ins welcome.', links: ['Book on WhatsApp', 'Directions', 'Panel companies'] },
     farah: { q: 'Do you do online coaching?', a: 'Yes, monthly online plans with weekly check-ins on WhatsApp.', links: ['Online plans', 'Class schedule', 'Meal guides'] },
   },
 };
@@ -773,7 +772,6 @@ const MS: LandingBase = {
     lina: { q: 'Boleh hantar ke Klang?', a: 'Boleh, hantar ke Klang RM15. Shah Alam RM10.', links: ['Tempah di WhatsApp', 'Menu & harga', 'Gambar kek'] },
     hana: { q: 'Pakej branding ada apa?', a: 'Logo, sistem warna dan fon, dan templat media sosial. Dua minggu, dari RM3,800.', links: ['Kajian kes', 'Pakej', 'Mula projek'] },
     daniel: { q: 'Terbuka untuk kerja hybrid?', a: 'Ya, hybrid di KL atau Petaling Jaya, atau remote sepenuhnya.', links: ['Resume', 'GitHub', 'LinkedIn'] },
-    aina: { q: 'Buka hari Sabtu?', a: 'Buka, 9 pagi hingga 1 tengah hari pada Sabtu. Walk-in dialu-alukan.', links: ['Tempah di WhatsApp', 'Arah ke klinik', 'Syarikat panel'] },
     farah: { q: 'Ada coaching online?', a: 'Ada, pelan online bulanan dengan semakan mingguan di WhatsApp.', links: ['Pelan online', 'Jadual kelas', 'Panduan makan'] },
   },
 };

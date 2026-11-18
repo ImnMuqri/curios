@@ -14,7 +14,6 @@ import { Faq } from './Faq.js';
 import { Closing } from './Closing.js';
 import { Footer } from './Footer.js';
 import { SITE_URL, jsonLdScript, structuredData } from './structured-data.js';
-import styles from './tanya.module.css';
 import calm from './calm.module.css';
 import { RevealWatcher } from './Reveal.js';
 
@@ -68,8 +67,8 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
   const url = `${SITE_URL}${HOME[locale] === '/' ? '' : HOME[locale]}`;
 
   return (
-    <div className={`${styles.page} ${calm.page}`} data-landing lang={locale}>
-      <a href="#main" className={styles.skip}>
+    <div className={calm.page} data-landing lang={locale}>
+      <a href="#main" className={calm.skip}>
         {copy.skip}
       </a>
       <Nav nav={copy.nav} home={HOME[locale]} />

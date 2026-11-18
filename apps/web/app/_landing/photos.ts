@@ -14,7 +14,6 @@ export const PHOTOS: Record<string, { width: number; height: number; copies: num
   '/landing/personas/aisyah.webp': { width: 700, height: 869, copies: [360] },
   '/landing/personas/hana.webp': { width: 700, height: 869, copies: [360] },
   '/landing/personas/daniel.webp': { width: 700, height: 869, copies: [360] },
-  '/landing/personas/aina.webp': { width: 700, height: 869, copies: [360] },
   '/landing/personas/farah.webp': { width: 700, height: 869, copies: [360] },
 };
 

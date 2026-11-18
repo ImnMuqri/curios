@@ -21,6 +21,7 @@
 
 /* The name pill: a column of the three short names, as wide as the one in front. */
 .rot {
+  position: relative;
   display: inline-flex;
   height: 1.14em;
   padding: 0 0.22em;
@@ -33,7 +34,15 @@
     color 0.45s;
 }
 
+.sizer {
+  visibility: hidden;
+  white-space: nowrap;
+}
+
 .rotC {
+  position: absolute;
+  top: 0;
+  left: 0.22em;
   display: flex;
   flex-direction: column;
   transition: transform 0.6s cubic-bezier(0.34, 1.2, 0.64, 1);

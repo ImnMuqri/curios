@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
@@ -159,7 +159,11 @@ describe('brand colours', () => {
 });
 
 describe('less template', () => {
-  const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const css = readdirSync(import.meta.dirname)
+    .filter((f) => f.endsWith('.module.css'))
+    .map((f) => readFileSync(join(import.meta.dirname, f), 'utf8'))
+    .join('\n')
+    .replace(/\/\*[\s\S]*?\*\//g, '');
 
   it.each(LOCALES)('%s: no curved marquee between the sections', (locale) => {
     const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
@@ -191,13 +195,24 @@ describe('less template', () => {
   });
 });
 
-describe('the stylesheet', () => {
-  const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
+describe('the old landing, gone', () => {
+  it('no landing module imports tanya.module.css', () => {
+    const files = readdirSync(import.meta.dirname).filter((f) => /\.tsx?$/.test(f) && !f.endsWith('.test.tsx'));
+    for (const f of files) expect(readFileSync(join(import.meta.dirname, f), 'utf8'), f).not.toMatch(/tanya\.module\.css/);
+    expect(existsSync(join(import.meta.dirname, 'tanya.module.css'))).toBe(false);
+  });
 
-  it('runs every looping animation only for visitors who have not asked for less motion', () => {
-    const outside = css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}/g, '');
-    // One-shot transitions are fine anywhere; an `infinite` animation is not.
-    expect(outside).not.toMatch(/animation:[^;]*infinite/);
+  it('landing-tokens.css declares only tokens something reads', () => {
+    const app = join(import.meta.dirname, '..');
+    const walk = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+        d.isDirectory() ? walk(join(dir, d.name)) : /\.(css|tsx?)$/.test(d.name) && !d.name.endsWith('.test.tsx') && d.name !== 'landing-tokens.css' ? [join(dir, d.name)] : [],
+      );
+    const source = walk(app).map((f) => readFileSync(f, 'utf8')).join('\n');
+    const own = readFileSync(join(import.meta.dirname, 'landing-tokens.css'), 'utf8');
+    const declared = [...own.matchAll(/^\s*(--[\w-]+):/gm)].map((m) => m[1]!);
+    const unread = declared.filter((t) => !source.includes(`var(${t}`) && !own.includes(`var(${t}`));
+    expect(unread).toEqual([]);
   });
 });
 

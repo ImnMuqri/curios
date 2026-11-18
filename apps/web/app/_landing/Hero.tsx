@@ -98,7 +98,7 @@ export function Hero({ locale }: { locale: Locale }) {
     const read = () => {
       const box = measure.current;
       if (!box) return;
-      setWidths([...box.children].map((child) => Math.ceil(child.getBoundingClientRect().width + 2)));
+      setWidths([...box.children].map((child) => child.getBoundingClientRect().width));
     };
     read();
     document.fonts?.ready.then(read).catch(() => {});
@@ -126,6 +126,8 @@ export function Hero({ locale }: { locale: Locale }) {
           <span className={calm.srOnly}>{PEOPLE[0]!.short}.</span>
           <span aria-hidden="true">
             <span className={styles.rot} style={pill}>
+              {/* Sizes the pill to the front name before it is measured, so the first paint does not shift. */}
+              <span className={styles.sizer}>{front.short}</span>
               <span className={styles.rotC} style={{ transform: `translateY(-${s.front * 1.14}em)` }}>
                 {PEOPLE.map((p) => (
                   <span key={p.key}>{p.short}</span>

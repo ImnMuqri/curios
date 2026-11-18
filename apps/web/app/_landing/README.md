@@ -9,69 +9,63 @@
 | `robots.txt`, `sitemap.xml` | `app/robots.ts`, `app/sitemap.ts` |
 | Favicon, home-screen icon | `app/icon.svg`, `app/apple-icon.png` |
 
-## Direction: Tanya je (2026-10-16)
+## Direction: the calm landing (2026-11-17)
 
-Rebuilt from the design handoff's TanyaJe board (`design/boards/TanyaJe.dc.html`,
-`design/screens/TanyaJe.*.jpg`), which replaced the shop-first landing: Curios is
-"a link in bio people can ask", for anyone, and a shop for those selling.
+Rebuilt from the calm `Landing2` board (`design/HANDOFF.md`, "Start here: the
+calm redesign", 14 Nov 2026; screens `Calm-Landing.desktop.jpg` and
+`.phone.jpg`), which replaced the TanyaJe board: warm neutrals, Inter, black
+pill buttons, a living Peek, and nine sections.
 
 | Section | File | What it does |
 |---|---|---|
-| Nav | `Nav.tsx` | A frosted pill over the page, as the board draws it: the one frosted surface DESIGN.md allows. Opaque where a browser cannot blur. |
-| Hero | `Hero.tsx`, `PageCard.tsx` | "Don't read the bio. Ask Aisyah." The name rolls to the front page of a deck of five sample pages; a cursor taps Ask and the answer types out. Pressing the deck moves it on. |
-| What people ask | `AskStrip.tsx` | "Ask about my rates, services…", one word in focus at a time. |
-| Who it's for | `Who.tsx` | Five kinds of owner; pointing at one slides its band in and shows its page. |
-| How it works | `How.tsx`, `HowParts.tsx` | Three rooms. Where the browser has scroll-driven animations they slide sideways as the page scrolls; elsewhere they are a row to swipe. |
-| For business | `WhatLands.tsx`, `Business.tsx`, `order-scene.ts` | One section on the page's own ground (the board's pink was dropped, 27 Oct 2026), under one "For business" label. First, what lands in an owner's hands, for a service (Hafiz) or products (Kek Lina), from `design/prototypes/what-lands.html`: a bento of four tiles, the inbox today turning into chats the page answered and the leads or paid orders left (Peek at the laptop, `design/brand/peek-laptop.svg`, while they are sorted), suggestions, alerts, and what buyers keep asking; each tile plays its own round while it is in view, and the switch restarts them all. Then the order played out between two phones, from the board's frame function, once the stage is fully in view. Both phones wear the same ink frame. The customer's starts on Kek Lina's link in bio as a real page draws it (her cover, the address under her name, ringed links, Shop and the first link in the accent), and her shop front wears the blurred cover; she types "Mira Hassan", the name your Orders then shows. |
-| No cut, ever | `NoCut.tsx` | On the board's pink (8 Nov 2026): "Every sale is yours. We take 0%." with the price in force under it, a RM100 order as two bars (about RM89 kept on a marketplace, RM99 on Curios) that grow in once, over 900ms, when the card comes into view, then three tiles (website and hosting, payments through CHIP, found on Google) and the small print behind the marketplace numbers. Recheck those numbers before launch: Shopee changes them often. Phones stack it all and drop the ~RM11 label. |
-| Pricing | `Pricing.tsx` | Personal free, Business from `PLAN_PRICES_CENTS`, monthly or yearly, and a "will it pay for itself" calculator. |
-| FAQ | `Faq.tsx` | The same items feed the FAQPage structured data. |
-| Close and footer | `Closing.tsx`, `Footer.tsx` | "Curious? Just ask" rising letter by letter, the claim field again, the wordmark at full width. Under the note, who runs Curios: BSYX LABS, its SSM number in both formats and the support address, read from `_legal/content.ts`. |
+| Page scope | `LandingPage.tsx`, `calm.module.css`, `Reveal.tsx`, `scene.ts` | `.page` maps the calm tokens onto the base ones (as the app frame does) and holds the shared pieces (`.wrap`, `.sec`, `.lbl`, `.h2`, `.s2`, `.hl`, `.btn`, `.dotbg`, `.caret`, `.tdots`, `.rv`). |
+| Nav | `Nav.tsx`, `nav.module.css` | Sticky, clear over the hero, frosted once the page has scrolled (the one frosted surface). |
+| Hero | `Hero.tsx`, `PageCard.tsx`, `Claim.tsx` (+ modules) | "Don’t read the bio. Ask Aisyah." The name pill rolls to the front page of a deck of three; the front page is asked and types its answer, then the deck moves on. A side page is a button that brings it forward. The claim field has a live Peek that ducks while you type. |
+| Ask strip | `AskStrip.tsx`, `ask.module.css` | One word lit every 1.7s. |
+| Who it's for | `Who.tsx`, `who.module.css` | One question typed into an ask bar, five pages answering in their own words; the chips jump to a question and hold it 15s. |
+| How it works | `How.tsx`, `how-scenes.tsx`, `how.module.css` | Three cards that play: the paste with its facts marked, the facts approved one by one, the link in the bio tapped and the page answering. |
+| For business | `Lands.tsx`, `LandsCheckout.tsx`, `lands-script.ts`, `lands.module.css` | What lands in your hands: one chat in the owner's own look, four zones (the lead or paid order, suggestions, the ping, what people keep asking) landing along dashed connectors. A service side (Studio Hana, with the capture card) and a products side (Kek Lina: basket, checkout and FPX payment inside the phone, in the real checkout's own words via `shopCopy`). Left alone the sides take turns; a visitor's pick stays. |
+| No cut, ever | `NoCut.tsx`, `nocut.module.css` | Two receipts for the same RM100 cake print in turn; the marketplace one loses three fees and dims, the Curios one is stamped 0%. Fixed sample figures (`keepAfter`), never PlanTerms. |
+| Pricing | `Pricing.tsx`, `pricing.module.css` | Personal free; Business at the prices in force (`pricingCopy(locale, terms)`), monthly or yearly; the calculator. "One more order and it pays for itself" shows only when it is true. |
+| FAQ | `Faq.tsx`, `faq.module.css` | One open at a time; every answer stays in the page, so FAQPage structured data matches it. |
+| Closing, footer | `Closing.tsx`, `Footer.tsx` (+ modules) | "Tanya je." over "One page for …" with a word pill rolling every 2s while in view, the claim again (no Peek). The footer keeps the legal links and the operator line (DEVIATIONS 138). |
 
-Every word is in `copy.ts`, both languages in one shape; the sample owners' looks
-are in `personas.ts`. Styles are one module, `tanya.module.css`, reading the
-product tokens and `landing-tokens.css` (the board's extra colours are at its top).
+Every word is in `copy.ts`, both languages in one shape; the sample owners'
+looks (and their product swatches) are in `personas.ts`, the one place outside
+`packages/ui/src/tokens.css` with hex. The landing's own values are the
+`--cl-*` block in `tokens.css`. Mock pages, phones, receipts and the bio keep
+the board's corners through `--mock-radius-*` properties; Curios's own
+containers are 16px and controls are pills (`findOffRuleRadii`, checked over
+every module in `calm.test.tsx`). Light only.
 
-**Motion.** The landing keeps its exemption from the dashboard's no-motion rule
-(DESIGN.md). `useReducedMotion` answers "reduced" on the server and on the first
-render, so the page is drawn with every scene on its finished frame, which is
-also what a visitor without JavaScript gets; motion starts only once the browser
-says it may. GSAP and Lenis are gone: what moves is CSS, `requestAnimationFrame`
-and native scroll-driven animations.
+**Scenes.** Every scripted scene is a `Scene` (`scene.ts`): a finished frame
+(`still`), a first frame (`start`) and a `run` that sets state between `wait`s.
+`useScene` plays it only while its element is in view, resets on leaving, and
+restarts on a changed key; `play`'s stopped waits never resolve, so a switch
+cannot leave a timer or a stale line behind. `useReducedMotion` answers
+"reduced" on the server and the first render, so the HTML is every scene's
+finished frame.
 
-**What lands in your hands, the scenes.** Each tile is a `Scene` in
-`WhatLands.tsx`: a finished frame, a first frame, and a `run` that sets the
-tile's state between `wait`s with the prototype's timings. `play` repeats a run
-until it is stopped, and a stopped run's waits never resolve, so leaving the
-view or switching side cannot leave a timer behind. The finished frame is what
-the server, reduced motion and a browser without IntersectionObserver show.
+**Reveal contract.** A revealed block carries `className={calm.rv}`,
+`data-rv=""` and an optional `--d` delay. The server never hides anything;
+`RevealWatcher` holds only blocks below the fold after mount
+(`data-rv="wait"`) and releases each as it comes into view. Reduced motion, or
+no IntersectionObserver, holds nothing.
 
-**Photos.** Each persona's card shows `photo` (in `personas.ts`) across its top
-half, fading into the owner's colour, with the name dropped below the face; a
-persona without one is drawn in the colour alone. They are in
-`public/landing/personas/` (WebP, 700 wide; supplied by the owner on
-2026-10-16), and Kek Lina uses `/landing/hero-baker.webp`. `face` is a square
-head-and-shoulders for the small round faces (How it works, the pricing chip);
-only Aisyah has one. All are made-up people, as the footer says.
+**Peek.** `_peek/LivePeek.tsx` with `_peek/peek-life.ts`: every live Peek shares
+one pointer listener (pupils follow the pointer) and one habit clock (look,
+tilt, squish, blink, wave, hands, hop). Nothing is added under reduced motion.
+The auth screens keep `_peek/Peek.tsx`.
 
-Each photo also has smaller copies beside it (`aisyah-360.webp`, `hero-baker-96.webp`),
-listed in `photos.ts`, so a 26 px chip does not download a 1024 px photo; a test
-checks they exist. `/landing/*` is cached for 30 days (next.config.ts), so a
-redrawn photo takes a new file name, and its copies are made again.
+**Photos.** In `public/landing/personas/` (WebP, supplied by the owner on
+2026-10-16; not from Unsplash, so the footer note does not credit it), with
+smaller copies listed in `photos.ts`. `/landing/*` is cached for 30 days, so a
+redrawn photo takes a new file name.
 
-**Claims slice 18 made true.** The For business section and two Business
-pricing lines show checkout, paying by the owner's QR with proof, and Orders.
-Slice 18 (orders) built them as the board draws them, so the `SLICE 18`
-markers that once flagged them are gone; a test keeps them gone.
-
-**Claims to make true, or soften** (handoff, 27 Oct 2026; DEVIATIONS 249).
-What lands in your hands shows four things the product does not do yet: lead
-temperature tags (Hot / Warm / Ready to view) on Leads; a push or email alert
-for a hot lead or a new paid order; "Demand you're missing", questions about
-something the owner does not list or sell; and a "Follow up" lead for a buyer
-who chatted but did not buy. Before launch each is built or its tile changed.
-The figures in the section are samples. Its drafted Malay waits for the
-owner's read (DEVIATIONS 247).
+**Claims to make true, or soften** (DEVIATIONS 249 still applies). What lands
+in your hands shows the Hot tag on a lead, the ping on the owner's phone, and
+"Not in your services yet" on a question the page could not answer. None is
+built yet. Before launch each is built or its zone changed.
 
 ## SEO
 
@@ -92,15 +86,19 @@ Nothing claims ratings or reviews.
 3. ~~**The sitemap lists only the landing page** and the Terms, Privacy and
    Refund pages, not business pages.~~ Done 2026-10-26: it lists every
    indexable page with its shop and FAQ entries (`getSitemapPages`).
-4. ~~**Not re-measured.**~~ Measured 2026-10-26 on a Linux production build,
-   Lighthouse 13.5.0 mobile: 84, CLS 0, LCP 4.0 s (the hero lede, held by
-   render delay), TBT 30 ms, FCP 1.5 s.
+4. Measured the calm landing 2026-11-18 on a Linux production build
+   (`Dockerfile.web`), Lighthouse 13.5.0 mobile, three runs: 83 / 85 / 87,
+   CLS 0, LCP 3.7–3.9 s, TBT 50–160 ms, FCP 1.2 s (the TanyaJe build: 84, CLS
+   0, LCP 4.0 s). The first run found CLS 0.004 from the hero's name pill
+   (sized only after measuring) and a deck card's name on the font swap; the
+   pill now sizes itself from a hidden copy of the front name, and the name box
+   is full width.
 
 ## History
 
 Built 2026-10-03 as "Tanya page ni", reworked through a band layout, a motion
 pass and the 2026-10-13 Berkira pass (pinned hero, the paid moment, GSAP and
-Lenis), then replaced on 2026-10-16 by the TanyaJe board. What survives: the
+Lenis), then replaced on 2026-10-16 by the TanyaJe board, and on 2026-11-17 by the calm Landing2 board (`tanya.module.css` and the TanyaJe sections are gone). What survives: the
 claim field's behaviour (a real GET form to `/signup` that keeps the typed handle
 for the claim screen, `apps/web/lib/wanted-handle.ts`), the wordmark, and the
 structured data. The old `Device` phone, `demo.ts` and `landing.module.css` went
