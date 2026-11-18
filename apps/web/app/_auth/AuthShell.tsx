@@ -34,7 +34,7 @@ export function AuthShell({
   children: ReactNode;
 }) {
   return (
-    <div className={styles.auth} data-landing>
+    <div className={styles.auth} data-landing data-laptop-scale>
       <main className={styles.panel}>
         <a href="/" className={styles.brand}>
           <Wordmark />

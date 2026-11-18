@@ -903,7 +903,7 @@
 
 .zoomImage {
   max-width: min(520px, 100%);
-  max-height: calc(100dvh - 48px);
+  max-height: calc(100dvh / var(--page-zoom, 1) - 48px);
   border-radius: 20px;
   background: var(--card);
   box-shadow: 0 30px 60px -20px rgb(0 0 0 / 50%);

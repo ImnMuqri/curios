@@ -255,7 +255,7 @@
   bottom: calc(88px + env(safe-area-inset-bottom));
   left: 50%;
   width: 290px;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw / var(--page-zoom, 1) - 32px);
   padding: 8px;
   border-radius: var(--r-box);
   background: var(--card);

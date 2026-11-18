@@ -9,7 +9,7 @@
   display: none;
   flex: 1 1 50%;
   min-width: 0;
-  height: calc(100dvh - 28px);
+  height: calc(100dvh / var(--page-zoom, 1) - 28px);
   margin: 14px 14px 14px 0;
   overflow: hidden;
   border-radius: var(--r-box);

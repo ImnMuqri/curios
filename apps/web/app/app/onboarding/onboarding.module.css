@@ -74,7 +74,7 @@
   --field-reveal-radius: 50%;
   --callout-radius: var(--r-box);
   display: flex;
-  min-height: 100vh;
+  min-height: calc(100vh / var(--page-zoom, 1));
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);

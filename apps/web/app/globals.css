@@ -1,5 +1,5 @@
 /*
- * App-level only, and currently empty.
+ * App-level only.
  *
  * The palette, the type scale, the element reset and every component style now
  * live in @curios/ui. This file stopped being the design system the moment
@@ -10,3 +10,36 @@
  * className="app-shell", which nothing has ever defined, here or anywhere.
  * It has styled nothing since it was written.
  */
+
+/*
+ * Laptops see everything at 90% (DEVIATIONS 345).
+ *
+ * The band: wider than the dashboard's phone and tablet breakpoint (1100px, so a
+ * phone or tablet layout never changes) and narrower than a 1920px desktop
+ * monitor, which stays at 100%. That covers 1280x720, 1280x800, 1366x768,
+ * 1440x900 and 1536x864 (a 1920x1080 laptop at 125% Windows scaling). A fine
+ * pointer that hovers keeps a 1366px iPad Pro in landscape out of it.
+ *
+ * Only Curios's own screens opt in, by carrying [data-laptop-scale] on their
+ * root: the landing and legal pages, the auth screens, the system screens and
+ * the dashboard. An owner's public page has no marker and stays at 100%.
+ *
+ * `zoom` on the root scales the layout itself (unlike `transform`), so
+ * everything reflows at 90% and pointer events, getBoundingClientRect and
+ * IntersectionObserver keep agreeing with each other. Viewport units do not
+ * follow it: 100vh on a zoomed page draws 90% of the window. Every rule that
+ * fills the window therefore divides by --page-zoom
+ * (`calc(100dvh / var(--page-zoom, 1))`), and JS that turns a measured box back
+ * into a CSS length divides by the element's currentCSSZoom (lib/css-zoom.ts).
+ *
+ * A browser without `zoom` (Firefox before 126) skips the whole block, so
+ * --page-zoom stays 1 and the page is drawn at 100%, exactly as before.
+ */
+@supports (zoom: 0.9) {
+  @media (min-width: 1101px) and (max-width: 1919px) and (hover: hover) and (pointer: fine) {
+    html:has([data-laptop-scale]) {
+      --page-zoom: 0.9;
+      zoom: 0.9;
+    }
+  }
+}

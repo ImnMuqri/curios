@@ -48,7 +48,10 @@ describe('help.module.css: where the panel sits', () => {
     expect(rule('.scrim')).toMatch(/var\(--calm-scrim\)/);
     expect(rule('.scrim')).not.toMatch(/rgb\(/);
     const sheet = media('(max-width: 1100px)');
-    expect(sheet).toMatch(/height:\s*min\(640px, calc\(100vh - 40px\)\);\s*height:\s*min\(640px, calc\(100dvh - 40px\)\)/);
+    // Divided by --page-zoom like every full-window length (laptop-scale.test.ts); always 1 under 1100px.
+    expect(sheet).toMatch(
+      /height:\s*min\(640px, calc\(100vh \/ var\(--page-zoom, 1\) - 40px\)\);\s*height:\s*min\(640px, calc\(100dvh \/ var\(--page-zoom, 1\) - 40px\)\)/,
+    );
   });
 
   it('draws the send button solid, with no fade when disabled', () => {

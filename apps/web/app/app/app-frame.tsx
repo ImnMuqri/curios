@@ -291,7 +291,7 @@ export function AppFrame({
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
      <HelpContext.Provider value={help}>
-      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined}>
+      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-laptop-scale>
         <aside className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
             <Wordmark />

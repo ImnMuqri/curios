@@ -37,7 +37,7 @@
   --field-reveal-radius: 50%;
   --callout-radius: var(--r-box);
   display: flex;
-  min-height: 100dvh;
+  min-height: calc(100dvh / var(--page-zoom, 1));
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
@@ -338,7 +338,7 @@
 
 @media (min-width: 981px) {
   .auth {
-    height: 100dvh;
+    height: calc(100dvh / var(--page-zoom, 1));
     min-height: 560px;
     overflow: hidden;
   }

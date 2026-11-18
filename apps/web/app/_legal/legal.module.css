@@ -5,8 +5,8 @@
  */
 
 .legal {
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: calc(100vh / var(--page-zoom, 1));
+  min-height: calc(100dvh / var(--page-zoom, 1));
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-plex-sans), system-ui, sans-serif;

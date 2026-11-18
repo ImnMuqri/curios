@@ -67,7 +67,7 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
   const url = `${SITE_URL}${HOME[locale] === '/' ? '' : HOME[locale]}`;
 
   return (
-    <div className={calm.page} data-landing lang={locale}>
+    <div className={calm.page} data-landing data-laptop-scale lang={locale}>
       <a href="#main" className={calm.skip}>
         {copy.skip}
       </a>

@@ -5,6 +5,7 @@ import { COPY, type Locale } from './copy.js';
 import { Claim } from './Claim.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import { LivePeek } from '../_peek/LivePeek.js';
+import { cssZoom } from '../../lib/css-zoom.js';
 import calm from './calm.module.css';
 import hero from './hero.module.css';
 import styles from './closing.module.css';
@@ -49,7 +50,8 @@ export function Closing({ locale }: { locale: Locale }) {
   useBrowserLayoutEffect(() => {
     const read = () => {
       const box = measure.current;
-      if (box) setWidths([...box.children].map((c) => c.getBoundingClientRect().width));
+      // In CSS pixels, as Hero's pill: the laptop zoom would otherwise shrink it twice.
+      if (box) setWidths([...box.children].map((c) => c.getBoundingClientRect().width / cssZoom(c)));
     };
     read();
     document.fonts?.ready.then(read).catch(() => {});

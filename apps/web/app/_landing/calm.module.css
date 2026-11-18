@@ -18,7 +18,7 @@
   --action-hover: var(--calm-ink-deep);
   --cl-mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
   position: relative;
-  min-height: 100vh;
+  min-height: calc(100vh / var(--page-zoom, 1));
   background: var(--calm-bg);
   color: var(--calm-ink);
   font-family: var(--font-inter), system-ui, sans-serif;

@@ -14,7 +14,7 @@ export { styles as systemStyles };
  */
 export function SystemShell({ children }: { children: ReactNode }) {
   return (
-    <div className={styles.sy}>
+    <div className={styles.sy} data-laptop-scale>
       <div className={styles.top}>
         <a className={styles.brand} href="/" aria-label="Curios home">
           <Wordmark />

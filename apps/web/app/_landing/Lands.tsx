@@ -10,6 +10,7 @@ import { photo } from './photos.js';
 import { useScene, type Scene, type Wait } from './scene.js';
 import { LivePeek, type LivePeekHandle } from '../_peek/LivePeek.js';
 import { pupilOffset } from '../_peek/peek-life.js';
+import { cssZoom } from '../../lib/css-zoom.js';
 import calm from './calm.module.css';
 import styles from './lands.module.css';
 
@@ -557,18 +558,20 @@ export function Lands({ locale }: { locale: Locale }) {
       const L = band.current?.getBoundingClientRect();
       const C = chatRef.current?.getBoundingClientRect();
       if (!L || !C || !L.width) return;
+      // The paths are CSS lengths (the dot's offset-path), so the window's pixels come back through the laptop zoom.
+      const zoom = cssZoom(band.current);
       const ds = zoneRefs.current.map((z, i) => {
         const b = z?.getBoundingClientRect();
         if (!b) return '';
         const left = i % 2 === 0;
-        const sx = (left ? C.left : C.right) - L.left;
-        const sy = C.top - L.top + C.height * (i < 2 ? 0.34 : 0.66);
-        const ex = (left ? b.right : b.left) - L.left;
-        const ey = b.top - L.top + b.height / 2;
+        const sx = ((left ? C.left : C.right) - L.left) / zoom;
+        const sy = (C.top - L.top + C.height * (i < 2 ? 0.34 : 0.66)) / zoom;
+        const ex = ((left ? b.right : b.left) - L.left) / zoom;
+        const ey = (b.top - L.top + b.height / 2) / zoom;
         const dx = (left ? -1 : 1) * Math.max(26, Math.abs(ex - sx) * 0.5);
         return `M${sx.toFixed(1)} ${sy.toFixed(1)} C${(sx + dx).toFixed(1)} ${sy.toFixed(1)} ${(ex - dx).toFixed(1)} ${ey.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
       });
-      setGeo({ box: `0 0 ${L.width} ${L.height}`, d: ds });
+      setGeo({ box: `0 0 ${L.width / zoom} ${L.height / zoom}`, d: ds });
     };
     measure();
     window.addEventListener('resize', measure);

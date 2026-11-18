@@ -3,6 +3,7 @@
 import { MIN_FRAME_PX, framePixels, moveFrame, zoomFrame } from '@curios/core/item-photos';
 import { useEffect, useRef, useState } from 'react';
 import styles from './store.module.css';
+import { cssZoom } from '../../../lib/css-zoom.js';
 import type { Frame } from './store-types.js';
 
 /** What the stage measures in a browser without layout (tests): the scale still has a size to work from. */
@@ -126,8 +127,10 @@ export function PhotoCropper({
       if (dist > 0) setFrame(zoomFrame(live.current.frame, (pinch.current.side * pinch.current.dist) / dist, width, height));
       return;
     }
-    // The picture follows the finger, so the frame goes the other way on the original.
-    move(-(point.x - last.x) / live.current.scale, -(point.y - last.y) / live.current.scale);
+    // The picture follows the finger, so the frame goes the other way on the original. The pointer moves in
+    // the window's pixels, the stage is laid out in CSS pixels: on a laptop's 90% zoom they differ.
+    const z = cssZoom(event.currentTarget);
+    move(-(point.x - last.x) / z / live.current.scale, -(point.y - last.y) / z / live.current.scale);
   }
 
   function onPointerEnd(event: React.PointerEvent<HTMLDivElement>) {

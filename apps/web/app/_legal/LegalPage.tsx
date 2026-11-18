@@ -53,7 +53,7 @@ export function LegalPage({ doc, locale, plan }: { doc: LegalDoc; locale: Locale
   });
 
   return (
-    <div className={styles.legal} lang={locale}>
+    <div className={styles.legal} data-laptop-scale lang={locale}>
       <header className={styles.top}>
         <a className={styles.brand} href={HOME[locale]} aria-label={chrome.home}>
           <Wordmark />

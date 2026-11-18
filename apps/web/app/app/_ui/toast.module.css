@@ -6,7 +6,7 @@
   bottom: 28px;
   z-index: 20;
   width: max-content;
-  max-width: calc(100vw - 32px);
+  max-width: calc(100vw / var(--page-zoom, 1) - 32px);
   transform: translateX(-50%);
   pointer-events: none;
 }

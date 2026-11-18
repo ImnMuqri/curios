@@ -7,6 +7,7 @@ import { PageCard } from './PageCard.js';
 import { DECK, PERSONAS } from './personas.js';
 import { useScene, type Scene } from './scene.js';
 import { LivePeek, type LivePeekHandle } from '../_peek/LivePeek.js';
+import { cssZoom } from '../../lib/css-zoom.js';
 import calm from './calm.module.css';
 import styles from './hero.module.css';
 
@@ -122,7 +123,8 @@ export function Hero({ locale }: { locale: Locale }) {
     const read = () => {
       const box = measure.current;
       if (!box) return;
-      setWidths([...box.children].map((child) => child.getBoundingClientRect().width));
+      // In CSS pixels: on a laptop the page is zoomed and the box reads 90% of the width it is set in.
+      setWidths([...box.children].map((child) => child.getBoundingClientRect().width / cssZoom(child)));
     };
     read();
     document.fonts?.ready.then(read).catch(() => {});
