@@ -369,7 +369,7 @@ export function AppFrame({
               <Wordmark />
               <span className={styles.srOnly}>Curios dashboard</span>
             </Link>
-            <button type="button" className={styles.help} aria-expanded={helpOpen} onClick={help.toggle}>
+            <button type="button" className={styles.help} data-help-opener aria-expanded={helpOpen} onClick={help.toggle}>
               Help
             </button>
             <Popover

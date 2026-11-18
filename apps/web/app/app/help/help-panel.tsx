@@ -153,7 +153,12 @@ export function HelpPanel({
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.current?.querySelector<HTMLElement>('input, button')?.focus();
     return () => {
-      if (opener?.isConnected) opener.focus();
+      // The opener may sit in a popover that is hidden by now (Help & support in the account menu) and
+      // take no focus; then the account card, then the top bar's Help.
+      for (const target of [opener, document.querySelector<HTMLElement>('button[aria-label^="Account,"]'), document.querySelector<HTMLElement>('button[data-help-opener]')]) {
+        target?.focus();
+        if (target && document.activeElement === target) return;
+      }
     };
   }, []);
 
@@ -166,7 +171,7 @@ export function HelpPanel({
       const last = stops[stops.length - 1];
       if (!first || !last) return;
       const here = document.activeElement;
-      if (!panel.current.contains(here) || (event.shiftKey && here === first)) {
+      if (!panel.current.contains(here) || here === panel.current || (event.shiftKey && here === first)) {
         event.preventDefault();
         (event.shiftKey ? last : first).focus();
       } else if (!event.shiftKey && here === last) {

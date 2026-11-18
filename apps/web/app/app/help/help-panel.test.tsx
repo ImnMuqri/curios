@@ -250,4 +250,31 @@ describe('HelpPanel: a modal dialog', () => {
     fireEvent.click(scrim);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('gives focus back to the account menu’s card when its Help & support row is hidden by then', () => {
+    const card = document.createElement('button');
+    card.setAttribute('aria-label', 'Account, Lina');
+    const row = document.createElement('button');
+    row.focus = () => {}; // a row inside a hidden popover takes no focus
+    document.body.append(card, row);
+    Object.defineProperty(document, 'activeElement', { configurable: true, get: () => row });
+    const view = show();
+    delete (document as { activeElement?: unknown }).activeElement;
+    view.unmount();
+    expect(document.activeElement).toBe(card);
+    card.remove();
+    row.remove();
+  });
+
+  it('wraps Shift+Tab to the last control, and Tab to the first, when focus rests on the panel itself', () => {
+    show();
+    const dialog = screen.getByRole('dialog');
+    const stops = [...dialog.querySelectorAll<HTMLElement>('button, input, textarea, a[href]')].filter((el) => !(el as HTMLButtonElement).disabled);
+    dialog.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(stops.at(-1));
+    dialog.focus();
+    fireEvent.keyDown(dialog, { key: 'Tab' });
+    expect(document.activeElement).toBe(stops[0]);
+  });
 });
