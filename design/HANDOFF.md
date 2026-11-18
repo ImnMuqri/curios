@@ -928,3 +928,21 @@ In short:
 - Every state leads to **Send to support**, which drops the question straight into the support inbox. The team's reply goes to the owner's email.
 
 > **Peek's ids (19 Nov):** every Peek SVG needs its own `clipPath` id. A copy whose `url(#…)` points at a clip inside a hidden screen draws his body as a square, because the clip isn't rendered. In React, generate the id per instance, for example with `useId()`.
+
+### Landing review fixes (19 Nov, from a taste-skill check)
+
+- **Muted text passes WCAG AA.** Labels, small print, handles and receipt lines use `#737069`, which is 4.7:1 on the page and 4.9:1 on white. The old `#a19e97` and `#9b9891` were about 2.6:1. The faded words in "Ask about my …" are large text and use `#928e86` (3:1). Avatar initials are the owner's colour mixed 55% toward ink.
+- **Reveals hide content only while the script is running.** `.rv` starts hidden only under a class the script adds (`.jsr` on the board). In the app, add `js` to `<html>` from an inline script in `<head>` and use `.js .rv`, so a failed script never leaves a section blank. Reduced motion still shows every finished scene.
+- **Phone**
+  - The hero's side cards show only their colour, so the names don't overlap.
+  - The chat's message list has `min-height:0`, so messages never slide under the chat header.
+  - Every tap target is at least 44px: the logo, the nav button, the footer links, the segmented toggles and the slider.
+- **Structure**
+  - The receipts are h3, not h4.
+  - Who it's for, How it works and For business each have bottom padding where the section colour changes.
+- **Copy**
+  - Only the hero keeps the "X. Y." heading.
+  - The new headings are "One question, five different answers", "Free for you, RM49 a month for business" and "Before you start".
+  - The No Cut strip labels are "Your website", "Your payments" and "Your Google listing".
+  - A "Link in bio, for Malaysia" label sits above the h1, so the first screen names what Curios is.
+- **Kept on purpose, even though taste-skill flags them:** a hero taller than one screen with the cards peeking in, sections that aren't exactly one screen tall, scroll reveals, tilted receipts, Peek sitting over panel edges, and the "curios.my/" prefix standing in for a visible field label.
