@@ -235,24 +235,33 @@ describe('the banner’s ×, role and badge', () => {
     window.localStorage.clear();
     slot([{ ...base, tone, fixed }]);
     expect(screen.getByRole(role)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Dismiss' }) !== null).toBe(x);
+    if (x) expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
+    else expect(screen.queryByRole('button', { name: 'Dismiss' })).not.toBeInTheDocument();
   });
 
-  it('shows the count on the leads and near-limit banners, and an icon elsewhere', async () => {
-    const { alertsFor } = await import('../alerts.js');
-    const NOW = new Date('2026-10-15T04:00:00.000Z');
-    const mk = (leads: number, used: number) =>
-      alertsFor({ plan: planState({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: leads, now: NOW }), usage: { used, cap: 200 }, now: NOW, freeLeads: FREE_LEADS, freeOrders: FREE_ORDERS });
+  const NOW = new Date('2026-10-15T04:00:00.000Z');
+  const mk = (leads: number, used: number) =>
+    import('../alerts.js').then(({ alertsFor }) =>
+      alertsFor({ plan: planState({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: leads, now: NOW }), usage: { used, cap: 200 }, now: NOW, freeLeads: FREE_LEADS, freeOrders: FREE_ORDERS }),
+    );
+  // The badge is the banner's first child; the × button is in the actions, so this never matches it.
+  const badge = (c: HTMLElement) => c.querySelector('[data-tone] > span[aria-hidden="true"]') as HTMLElement;
+
+  it.each([
+    { name: 'leads', path: '/app/leads', leads: 2, used: 10, text: '2/3' },
+    { name: 'near the chat limit', path: '/app/questions', leads: 0, used: 164, text: '164' },
+  ])('shows the count in the badge: $name', async ({ path, leads, used, text }) => {
+    pathname = path;
+    window.localStorage.clear();
+    const { container } = slot(await mk(leads, used));
+    expect(badge(container)).toHaveTextContent(text);
+    expect(badge(container).querySelector('svg')).not.toBeInTheDocument();
+  });
+
+  it('shows an icon where there is no count', async () => {
     pathname = '/app/leads';
-    const a = slot(mk(2, 10));
-    expect(a.container.querySelector('[data-tone]')).toHaveTextContent('2/3');
-    a.unmount();
-    pathname = '/app/questions';
-    const b = slot(mk(0, 164));
-    expect(b.container.querySelector('[data-tone]')).toHaveTextContent('164');
-    b.unmount();
-    pathname = '/app/leads';
-    const c = slot(mk(3, 10));
-    expect(c.container.querySelector('svg')).not.toBeNull();
+    window.localStorage.clear();
+    const { container } = slot(await mk(3, 10));
+    expect(badge(container).querySelector('svg')).toBeInTheDocument();
   });
 });
