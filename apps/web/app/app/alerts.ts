@@ -6,7 +6,7 @@ import { shortDate, usageResets } from './billing/billing-copy.js';
  * One of the dashboard's stop states, from the design handoff's Alerts board,
  * as plain data for the banner under a screen's header.
  *
- * - `tone`: info (blue, can be dismissed), warn (amber, stays), stop (red,
+ * - `tone`: info (blue, can be dismissed), warn (amber, stays; also near the chat limit), stop (red,
  *   stays, and puts a dot on Billing).
  * - `where`: every screen, or the one screen it is about.
  * - `id`: what a dismissal remembers. It changes when the news does (another
@@ -235,7 +235,7 @@ export function alertsFor(input: {
   } else if (usage.cap > 0 && usage.used >= usage.cap * NEAR_SHARE) {
     alerts.push({
       id: `near-${month}`,
-      tone: 'info',
+      tone: 'warn',
       where: '/app/questions',
       icon: 'chat',
       title: `${usage.used.toLocaleString('en-MY')} of ${usage.cap.toLocaleString('en-MY')} conversations used this month`,

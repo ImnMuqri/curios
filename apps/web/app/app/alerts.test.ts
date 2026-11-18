@@ -161,13 +161,13 @@ describe('alertsFor', () => {
     expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: quiet, now: NOW, ...free })).toEqual([]);
   });
 
-  it('warns near the limit, at about 80%, on Questions, in blue', () => {
+  it('warns near the limit, at about 80%, on Questions, in amber', () => {
     const alerts = alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 164, cap: 200 }, now: NOW, ...free });
 
     expect(alerts).toEqual([
       expect.objectContaining({
         id: 'near-2026-10',
-        tone: 'info',
+        tone: 'warn',
         where: '/app/questions',
         title: '164 of 200 conversations used this month',
         text: 'At 200 the chat gives a short fixed reply until 1 Nov. Your links keep working.',

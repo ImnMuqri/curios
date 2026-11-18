@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { FREE_LEADS, FREE_ORDERS, orderState, planState } from '@curios/core';
 import type { Alert } from '../alerts.js';
 
 let pathname = '/app/leads';
@@ -166,5 +167,58 @@ describe('AlertSlot', () => {
     render(<AlertSlot />);
     expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('the plan banners', () => {
+  const NOW = new Date('2026-10-15T04:00:00.000Z');
+  const BIZ = { mode: 'BUSINESS' as const, now: NOW };
+  const rows = [
+    { name: '2 of 3 free leads used', path: '/app/leads', tone: 'info', title: '2 of your 3 free leads used', button: 'See plans', input: { plan: planState({ ...BIZ, paidUntil: null, leadsCaptured: 2 }), usage: { used: 10, cap: 200 } } },
+    { name: 'free leads used', path: '/app/leads', tone: 'warn', title: 'Your 3 free leads are used', button: 'See your options', input: { plan: planState({ ...BIZ, paidUntil: null, leadsCaptured: 3 }), usage: { used: 10, cap: 200 } } },
+    { name: 'near the chat limit', path: '/app/questions', tone: 'warn', title: '164 of 200 conversations used this month', button: 'See usage', input: { plan: planState({ mode: 'PERSONAL', paidUntil: null, leadsCaptured: 0, now: NOW }), usage: { used: 164, cap: 200 } } },
+    {
+      name: 'free orders used',
+      path: '/app/orders',
+      tone: 'stop',
+      title: 'Your shop can’t take orders right now',
+      button: 'Pay to take orders',
+      input: {
+        plan: planState({ ...BIZ, paidUntil: null, leadsCaptured: 0 }),
+        usage: { used: 10, cap: 200 },
+        orders: { state: orderState({ ...BIZ, paidUntil: null, ordersPlaced: 3, ordersAtTrialReset: 0 }), storeEnabled: true },
+      },
+    },
+    { name: 'plan ended', path: '/app/billing', tone: 'stop', title: 'Your Business plan ended on 14 Oct 2026', button: 'Renew your plan', input: { plan: planState({ ...BIZ, paidUntil: new Date('2026-10-13T20:00:00.000Z'), leadsCaptured: 3 }), usage: { used: 10, cap: 200 } } },
+  ] as const;
+
+  it.each(rows)('maps each plan state to its banner tone: $name', async (row) => {
+    pathname = row.path;
+    window.localStorage.clear();
+    const { alertsFor } = await import('../alerts.js');
+    const { container } = slot(alertsFor({ now: NOW, freeLeads: FREE_LEADS, freeOrders: FREE_ORDERS, ...row.input }));
+    const banner = container.querySelector('[data-tone]');
+    expect(banner).toHaveAttribute('data-tone', row.tone);
+    expect(banner).toHaveTextContent(row.title);
+    expect(screen.getByRole('link', { name: row.button })).toHaveAttribute('href', '/app/billing');
+  });
+
+  it('puts the tone on the Curios team’s banner (info) and a suspension (stop)', () => {
+    pathname = '/app/curios';
+    const team: Alert = { id: 'banner', tone: 'info', where: 'all', icon: 'chat', title: 'From the Curios team', text: 'Hello.', fixed: true };
+    const { container, unmount } = slot([team]);
+    expect(container.querySelector('[data-tone]')).toHaveAttribute('data-tone', 'info');
+    unmount();
+    const { container: c2 } = slot([{ ...ended, id: 'suspended', icon: 'page' }]);
+    expect(c2.querySelector('[data-tone]')).toHaveAttribute('data-tone', 'stop');
+  });
+
+  it('dismisses with a named × and remembers it', async () => {
+    pathname = '/app/leads';
+    window.localStorage.clear();
+    const { container } = slot([trial]);
+    await userEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(container.querySelector('[data-tone]')).toBeNull();
+    expect(window.localStorage.getItem('curios:alert-dismissed:trial-1')).toBe('1');
   });
 });

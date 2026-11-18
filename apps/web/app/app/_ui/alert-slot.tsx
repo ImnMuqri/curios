@@ -63,13 +63,6 @@ export function AlertBanner({ alert, onDismiss }: { alert: Alert; onDismiss?: ()
       <span className={styles.bt}>
         <b>{alert.title}</b>
         <span>{alert.text}</span>
-        {alert.meter ? (
-          <span className={styles.bm} aria-hidden="true">
-            {alert.meter.map((on, i) => (
-              <i key={i} data-on={on || undefined} />
-            ))}
-          </span>
-        ) : null}
       </span>
       <span className={styles.acts}>
         {alert.action ? (
