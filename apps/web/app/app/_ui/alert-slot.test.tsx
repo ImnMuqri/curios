@@ -222,3 +222,37 @@ describe('the plan banners', () => {
     expect(window.localStorage.getItem('curios:alert-dismissed:trial-1')).toBe('1');
   });
 });
+
+describe('the banner’s ×, role and badge', () => {
+  const base: Alert = { id: 'x-1', tone: 'info', where: '/app/leads', icon: 'lead', title: 'T', text: 'L', action: { href: '/app/billing', label: 'Go' } };
+  it.each([
+    { tone: 'info', fixed: false, x: true, role: 'status' },
+    { tone: 'warn', fixed: false, x: true, role: 'status' },
+    { tone: 'stop', fixed: false, x: false, role: 'alert' },
+    { tone: 'info', fixed: true, x: false, role: 'status' },
+  ] as const)('$tone (fixed $fixed): × $x, role $role', ({ tone, fixed, x, role }) => {
+    pathname = '/app/leads';
+    window.localStorage.clear();
+    slot([{ ...base, tone, fixed }]);
+    expect(screen.getByRole(role)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Dismiss' }) !== null).toBe(x);
+  });
+
+  it('shows the count on the leads and near-limit banners, and an icon elsewhere', async () => {
+    const { alertsFor } = await import('../alerts.js');
+    const NOW = new Date('2026-10-15T04:00:00.000Z');
+    const mk = (leads: number, used: number) =>
+      alertsFor({ plan: planState({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: leads, now: NOW }), usage: { used, cap: 200 }, now: NOW, freeLeads: FREE_LEADS, freeOrders: FREE_ORDERS });
+    pathname = '/app/leads';
+    const a = slot(mk(2, 10));
+    expect(a.container.querySelector('[data-tone]')).toHaveTextContent('2/3');
+    a.unmount();
+    pathname = '/app/questions';
+    const b = slot(mk(0, 164));
+    expect(b.container.querySelector('[data-tone]')).toHaveTextContent('164');
+    b.unmount();
+    pathname = '/app/leads';
+    const c = slot(mk(3, 10));
+    expect(c.container.querySelector('svg')).not.toBeNull();
+  });
+});

@@ -89,10 +89,13 @@
 .bi {
   display: grid;
   place-items: center;
-  width: 40px;
   height: 40px;
+  min-width: 40px;
+  padding: 0 6px;
   flex: none;
   border-radius: var(--r-pill);
+  font-size: 12.5px;
+  font-weight: 700;
   background: var(--ban-badge);
   color: var(--ban-badge-ink);
 }

@@ -48,17 +48,21 @@ export function pickAlert(alerts: Alert[], pathname: string): Alert | null {
 }
 
 /**
- * The banner itself. Blue ones can be dismissed, and stay dismissed in this
- * browser until their news changes (the id carries it); amber and red ones
- * stay until the thing they are about is done.
+ * The banner itself. Blue and amber ones can be dismissed, and stay dismissed in
+ * this browser until their news changes (the id carries it); red ones stay
+ * until the thing they are about is done.
  */
 export function AlertBanner({ alert, onDismiss }: { alert: Alert; onDismiss?: () => void }) {
   return (
-    <div className={styles.ban} data-tone={alert.tone} role={alert.tone === 'info' ? 'status' : 'alert'}>
+    <div className={styles.ban} data-tone={alert.tone} role={alert.tone === 'stop' ? 'alert' : 'status'}>
       <span className={styles.bi} aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d={ICONS[alert.icon]} />
-        </svg>
+        {alert.badge ? (
+          alert.badge
+        ) : (
+          <svg viewBox="0 0 24 24">
+            <path d={ICONS[alert.icon]} />
+          </svg>
+        )}
       </span>
       <span className={styles.bt}>
         <b>{alert.title}</b>
@@ -70,7 +74,7 @@ export function AlertBanner({ alert, onDismiss }: { alert: Alert; onDismiss?: ()
             {alert.action.label}
           </a>
         ) : null}
-        {alert.tone === 'info' && !alert.fixed && onDismiss ? (
+        {alert.tone !== 'stop' && !alert.fixed && onDismiss ? (
           <button type="button" className={styles.x} aria-label="Dismiss" onClick={onDismiss}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />

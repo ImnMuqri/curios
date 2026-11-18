@@ -6,7 +6,7 @@ import { shortDate, usageResets } from './billing/billing-copy.js';
  * One of the dashboard's stop states, from the design handoff's Alerts board,
  * as plain data for the banner under a screen's header.
  *
- * - `tone`: info (blue, can be dismissed), warn (amber, stays; also near the chat limit), stop (red,
+ * - `tone`: info (blue) and warn (amber) can be dismissed, stop (red,
  *   stays, and puts a dot on Billing).
  * - `where`: every screen, or the one screen it is about.
  * - `id`: what a dismissal remembers. It changes when the news does (another
@@ -22,6 +22,8 @@ export interface Alert {
   title: string;
   text: string;
   meter?: boolean[];
+  /** The board's count in the badge ("2/3", "164"), where it draws one; absent, the icon shows. */
+  badge?: string;
   /** Absent on an alert with nowhere to go (the Curios team's banner). */
   action?: { href: string; label: string };
   /** Cannot be dismissed, whatever its tone. */
@@ -196,6 +198,7 @@ export function alertsFor(input: {
           title: `${plan.used} of your ${freeLeads} free leads used`,
           text: `After ${freeLeads}, the capture card stops appearing on your page until you subscribe.`,
           meter: Array.from({ length: freeLeads }, (_, i) => i < plan.used),
+          badge: `${plan.used}/${freeLeads}`,
           action: { href: BILLING, label: 'See plans' },
         });
       }
@@ -241,6 +244,7 @@ export function alertsFor(input: {
       title: `${usage.used.toLocaleString('en-MY')} of ${usage.cap.toLocaleString('en-MY')} conversations used this month`,
       text: `At ${usage.cap.toLocaleString('en-MY')} the chat gives a short fixed reply until ${resets}. Your links keep working.`,
       meter: fifths(usage.used, usage.cap),
+      badge: String(usage.used),
       action: { href: BILLING, label: 'See usage' },
     });
   }
