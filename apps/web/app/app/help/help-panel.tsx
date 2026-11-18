@@ -88,12 +88,6 @@ const Arrow = () => (
   </svg>
 );
 
-const BookIcon = () => (
-  <svg viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z" />
-  </svg>
-);
-
 const Check = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true">
     <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -258,8 +252,8 @@ export function HelpPanel({
 
   function open(href: string) {
     go(href);
-    // On a phone the panel covers the screen it just opened.
-    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 760px)').matches) onClose();
+    // Under 1100px the panel is a sheet over the screen it just opened.
+    if (typeof window !== 'undefined' && window.matchMedia?.('(max-width: 1100px)').matches) onClose();
   }
 
   const searched = query.trim() ? searchGuide(guide ?? [], query) : null;
@@ -285,10 +279,10 @@ export function HelpPanel({
           </div>
           {topics ? null : (
             <button type="button" className={styles.iconButton} aria-label="Browse topics" title="Browse topics" onClick={() => setState((s) => ({ ...s, view: 'topics' }))}>
-              <BookIcon />
+              Topics
             </button>
           )}
-          <button type="button" className={styles.iconButton} aria-label="Close help" onClick={onClose}>
+          <button type="button" className={`${styles.iconButton} ${styles.round}`} aria-label="Close help" onClick={onClose}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
             </svg>
@@ -366,8 +360,8 @@ export function HelpPanel({
                 </>
               ) : null}
               <button type="button" className={styles.allTopics} onClick={() => setState((s) => ({ ...s, view: 'topics' }))}>
-                <BookIcon />
                 Browse all topics
+                <Arrow />
               </button>
             </>
           ) : (
@@ -527,7 +521,7 @@ function SupportCard({ email, sent, needsNote, send }: { email: string | null; s
       <textarea
         className={styles.note}
         aria-label={needsNote ? 'What you need help with' : 'Anything to add'}
-        placeholder={needsNote ? 'What do you need help with?' : 'Anything to add? What you tried, what you expected…'}
+        placeholder={needsNote ? 'What do you need help with?' : 'Anything to add? (optional)'}
         maxLength={2000}
         value={note}
         onChange={(e) => setNote(e.target.value)}
