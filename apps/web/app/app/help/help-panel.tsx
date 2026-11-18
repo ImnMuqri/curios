@@ -146,6 +146,37 @@ export function HelpPanel({
   const [openSection, setOpenSection] = useState<number | null>(null);
   const body = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const panel = useRef<HTMLElement>(null);
+
+  // A modal dialog: focus moves in on open and goes back to whatever opened it on close.
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    panel.current?.querySelector<HTMLElement>('input, button')?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+
+  // Tab stays inside the panel while the page behind is dimmed.
+  useEffect(() => {
+    const trap = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab' || !panel.current) return;
+      const stops = [...panel.current.querySelectorAll<HTMLElement>('button, input, textarea, a[href]')].filter((el) => !(el as HTMLButtonElement).disabled);
+      const first = stops[0];
+      const last = stops[stops.length - 1];
+      if (!first || !last) return;
+      const here = document.activeElement;
+      if (!panel.current.contains(here) || (event.shiftKey && here === first)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus();
+      } else if (!event.shiftKey && here === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', trap);
+    return () => document.removeEventListener('keydown', trap);
+  }, []);
 
   useEffect(() => {
     setState(load());
@@ -263,8 +294,8 @@ export function HelpPanel({
 
   return (
     <>
-      <button type="button" className={styles.scrim} aria-label="Close help" onClick={onClose} />
-      <aside className={styles.panel} role="dialog" aria-modal="false" aria-labelledby="help-title">
+      <button type="button" className={styles.scrim} tabIndex={-1} aria-label="Close help" onClick={onClose} />
+      <aside ref={panel} className={styles.panel} role="dialog" aria-modal="true" aria-labelledby="help-title" tabIndex={-1}>
         <div className={styles.head}>
           {topics ? (
             <button type="button" className={styles.iconButton} aria-label="Back to the chat" onClick={() => setState((s) => ({ ...s, view: 'chat' }))}>
@@ -348,7 +379,7 @@ export function HelpPanel({
               </div>
               {suggestions.length > 0 ? (
                 <>
-                  <p className={styles.label}>People on {HELP_SCREEN_NAMES[screen]} often ask</p>
+                  <p className={styles.label}>People often ask</p>
                   <div className={styles.suggestions}>
                     {suggestions.map((e) => (
                       <button key={e.id} type="button" onClick={() => void pickTopic(e)}>
@@ -450,7 +481,7 @@ export function HelpPanel({
               <input ref={input} aria-label="Ask about Curios" placeholder="Ask about Curios…" value={draft} maxLength={500} disabled={resting} onChange={(e) => setDraft(e.target.value)} />
               <button type="submit" aria-label="Ask" disabled={resting || !draft.trim()}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d="M5 12h14M13 6l6 6-6 6" />
+                  <path d="M12 19V5M6 11l6-6 6 6" />
                 </svg>
               </button>
             </div>

@@ -14,7 +14,7 @@
   display: block;
   padding: 0;
   border: 0;
-  background: rgb(29 29 27 / 12%);
+  background: color-mix(in srgb, var(--scrim) 30%, transparent);
   cursor: pointer;
   animation: scrimIn 300ms ease-out both;
 }
@@ -752,7 +752,6 @@
 }
 
 .composer button:disabled {
-  opacity: 0.5;
   cursor: default;
 }
 
@@ -798,6 +797,7 @@
     width: auto;
     max-width: none;
     height: min(640px, calc(100vh - 40px));
+    height: min(640px, calc(100dvh - 40px));
     animation-name: panelUp;
   }
 

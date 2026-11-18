@@ -43,4 +43,15 @@ describe('help.module.css: where the panel sits', () => {
     for (const name of ['.panel', '.scrim']) expect(calm).toContain(name);
     expect(calm).toMatch(/animation:\s*none/);
   });
+
+  it('dims with the --scrim token so dark mode follows, and sizes the sheet with dvh behind a vh fallback', () => {
+    expect(rule('.scrim')).toMatch(/var\(--scrim\)/);
+    expect(rule('.scrim')).not.toMatch(/rgb\(/);
+    const sheet = media('(max-width: 1100px)');
+    expect(sheet).toMatch(/height:\s*min\(640px, calc\(100vh - 40px\)\);\s*height:\s*min\(640px, calc\(100dvh - 40px\)\)/);
+  });
+
+  it('draws the send button solid, with no fade when disabled', () => {
+    expect(css).not.toMatch(/\.composer button:disabled\s*\{[^}]*opacity/);
+  });
 });
