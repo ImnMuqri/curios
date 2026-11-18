@@ -50,3 +50,6 @@ Thumbs.db
 # Golden-set transcripts. One per run, and a stochastic run's transcript is
 # churn nobody reads in a diff.
 .goldens/
+
+# Claude Code agent worktrees (each is its own checkout)
+.claude/worktrees/
