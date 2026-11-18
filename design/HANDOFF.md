@@ -13,9 +13,9 @@ The whole product was redesigned in a calmer style, and **these four boards repl
 | New board | Replaces | Screens |
 |---|---|---|
 | `Landing2` | `Main`, `TanyaJe` | `Calm-Landing.*.jpg` |
-| `Site` (sign in, sign up, check your email, verify, forgot, reset, bad link, 404, error, unavailable, report, terms) | `SignIn`, `SignUp`, `System` | `Calm-Site-<screen>.*.jpg` |
+| `Site` (sign in, sign up, check your email, verify, forgot, reset, bad link, 404, error, unavailable, report, terms, privacy, refunds, returns) | `SignIn`, `SignUp`, `System` | `Calm-Site-<screen>.*.jpg` |
 | `Dash` (every app page with all its tabs, editors and sheets, plus help, account menu, notifications, plan banners, payment notice, phone menu, dark mode) | `MyCurios`, `Store`, `Orders`, `Questions`, `Leads`, `Review`, `Knowledge`, `Billing`, `Settings`, `Help`, `Alerts`, the 2 Nov payment result pages | `Calm-Dash-<page>[-dark].*.jpg` |
-| `More` (onboarding, customer pages, all ten emails) | `Onboarding`, `Public`, `Emails` | `Calm-More-<screen>.*.jpg` |
+| `More` (onboarding, customer pages, the customer's order page in every state, the FAQ index, all ten emails) | `Onboarding`, `Public`, `Emails` | `Calm-More-<screen>.*.jpg` |
 
 `Admin` is unchanged. The old boards stay in `boards/` for reference only. On the canvas they sit lower down, titled "Old ·".
 
@@ -135,6 +135,67 @@ Every tab, editor, detail view and sheet of the real app is now on `Dash`. Scree
 - **Side sheets:** 460px from the right on desktop, or a bottom sheet under 1100px, over a dim scrim. The footer holds one black pill and a red text action. Small confirms such as Add a month and Adjust photo are centred dialogs.
 - **Choice cards:** a radio dot, a bold label and one line, 16px corners, and the selected one gets a 1.5px ink ring. Two-way switches like Online or In person use a pill segment.
 - **The "Plan state" picker** on the board now also previews auto-renew on, renewal failed and personal page. It's a canvas-only switcher. **Do not build it.**
+
+### Orders, Leads, empty states and the customer's order page (added 19 Nov)
+
+- **Orders**
+  - **List**
+    - The filter chips work, and an empty filter says why: "No receipts waiting. New ones show here first.", "Nothing paid and waiting to be made." or "Nobody is waiting on a refund."
+    - Search by name or order number shows "No match" when nothing fits.
+    - Older orders sit under an "Older orders" label.
+  - **Detail states**
+    - **Receipt to check:** the receipt opens in a viewer dialog. "Not received" confirms in place with "Yes, not received".
+    - **Paid online:** "Cancel #14? You will owe Mira RM235."
+    - **Awaiting payment.**
+    - **Delivery:** "Getting it to them" with the address, the flat fee row and the customer's Note.
+    - **Paid with a voucher:** no receipt to check.
+    - **Paid twice:** shows the second receipt, with Mark refunded and "Marked the second payment refunded?".
+    - **Receipt marked not received:** shown in amber.
+    - **Cancelled.**
+    - **Completed.**
+    - **Refund owed.**
+  - **Confirms:** every confirm opens in place under its trigger, on a soft panel, with one black pill and one white pill. There is no modal.
+- **Leads**
+  - **Detail**
+    - The status picker is a 4-way pill segment: New, Contacted, Sold, Closed.
+    - A ring shows how many of the 4 details are known, labelled Start with hello, Ask a little more, Almost there or Ready to quote.
+  - **What was picked out:** a chat lead shows Wants / When / Where. A shop enquiry shows the item card ("Ask for a price · from RM450"), When / For / Budget and their message.
+  - **The conversation** is behind a "See the conversation" row and opens in a side sheet, or a bottom sheet on phone. It is not printed in the detail.
+  - **First message:** an editable WhatsApp message (`first-message.ts`), then Send on WhatsApp. A New lead becomes Contacted when you send.
+  - **Delete** confirms in place.
+- **Empty states**
+  - A centred Peek, a title, one line and the buttons.
+  - Orders: "Your first order lands here" (Copy your link, Set up your shop).
+  - Leads: "No numbers yet".
+  - Questions: "No questions yet" (Try asking your page).
+  - Review: "Nothing to review yet", plus "Your page is not public yet" with Publish.
+  - Once everything is accepted, Review shows "Nothing left to review" and "Your page is live".
+- **My Curios:** all four button styles are shown (Soft, High contrast, Outlined, Glass). Tapping the hex opens the custom colour field.
+- **Settings**
+  - Notifications on this device.
+  - Search engines, on a personal page only.
+  - Connect Google, when Google isn't connected.
+- **Phone (under 1100px)**
+  - An order or lead opens as its own view with "‹ All orders" or "‹ All leads". The list and the stats hide until you go back.
+  - Sheets and dialogs hide the floating menu while they're open.
+  - Tabs scroll sideways.
+  - Choice cards, grids and time rows stack.
+- **Customer order page** (`[handle]/order/[token]`, on `More` under "Order page"; copy from `shop/copy.ts`)
+  - **Layout:** a status pill, a 4-step bar (3 steps, Placed, Paid, Sent, for digital), the state block, then "What you ordered", WhatsApp, and "Keep this page".
+  - **States**
+    - Waiting for payment: Pay RM215 to Kek Lina directly, the QR with "Save the QR to your phone", the bank details with Copy, and Upload your receipt.
+    - Receipt sent, Kek Lina is checking: "Upload a different receipt".
+    - Paid, Kek Lina is getting it ready: the paid line with its Ref.
+    - Ready.
+    - Done.
+    - Cancelled, refund due.
+    - Digital: the files with downloads left, Join the class with Add to calendar, and the code with Copy.
+    - Payment didn't go through: the order is saved for **30 minutes**, with Pay again and Pay another way.
+  - **Pickup:** the line always has Add to calendar.
+  - **Back on the paid screen:** "See your order" opens this page.
+- **FAQ index** (`[handle]/faq`): "Questions about Kek Lina", each question with the start of its answer. The FAQ page links to it with "All questions".
+- **Legal** (`Site`): Privacy, Refunds and Returns use the real text from `_legal/content.ts`, in the Terms layout. The Terms / Privacy / Refunds / Returns pills switch between them.
+- **Canvas-only:** next to "Plan state", the board has a "With data / New account / All reviewed" picker for the empty states. **Do not build it.**
 
 ### Onboarding, customer pages, emails (`More`)
 
