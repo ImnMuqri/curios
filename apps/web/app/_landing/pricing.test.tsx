@@ -89,6 +89,25 @@ describe('pricing', () => {
     expect(near.querySelector('[aria-live="polite"] p:last-child')!.textContent).toBe('One more order and it pays for itself.');
   });
 
+  it('says "times over" only when it pays for itself at least twice, in both languages', () => {
+    const ms = landingCopy('ms', TERMS);
+    for (const times of [1, 1.5, 1.99]) {
+      expect(en.pricing.calc.pays(60, times)).toBe('Business costs about 60% of that. It pays for itself.');
+      expect(ms.pricing.calc.pays(60, times)).toBe('Bisnes kosnya kira-kira 60% daripada itu. Ia bayar balik sendiri.');
+    }
+    expect(en.pricing.calc.pays(50, 2)).toBe('Business costs about 50% of that. It pays for itself 2 times over.');
+    expect(ms.pricing.calc.pays(50, 2)).toBe('Bisnes kosnya kira-kira 50% daripada itu. Ia bayar balik 2 kali ganda.');
+    expect(en.pricing.calc.pays(30, 3.4)).toBe('Business costs about 30% of that. It pays for itself 3 times over.');
+  });
+
+  it('leaves no timer behind when it goes mid-swap', () => {
+    vi.useFakeTimers();
+    const { container, unmount } = render(<Pricing locale="en" terms={TERMS} />);
+    fireEvent.click(within(container).getByRole('button', { name: /Yearly/ }));
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
   it('Peek is happy while the Business card is hovered', () => {
     const { container } = render(<Pricing locale="en" terms={TERMS} />);
     const card = container.querySelector('[data-plan="business"]')!;

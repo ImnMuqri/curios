@@ -50,6 +50,8 @@ export function Pricing({ locale, terms }: { locale: Locale; terms: PlanTerms })
   const [aov, setAov] = useState(95);
   const [hover, setHover] = useState(false);
   const peek = useRef<LivePeekHandle>(null);
+  const swap = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(swap.current), []);
   const cost = yearly ? Number(copy.annualAMonth) : copy.monthlyRinggit;
   const sums = payback(orders, aov, cost);
   const { personal, business, calc } = copy;
@@ -64,7 +66,9 @@ export function Pricing({ locale, terms }: { locale: Locale; terms: PlanTerms })
     }
     // The price slides out and comes back as the other one (L2:1220).
     setSwapping(true);
-    window.setTimeout(() => {
+    window.clearTimeout(swap.current);
+    swap.current = window.setTimeout(() => {
+      swap.current = undefined;
       setShownYearly(y);
       setSwapping(false);
     }, 180);

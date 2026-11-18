@@ -836,7 +836,7 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
       takeIn: 'You’d take in',
       yours: 'Your orders',
       cost: (amount) => `Curios Business · ${amount}`,
-      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself${times >= 1.5 ? ` ${Math.floor(times)} times over` : ''}.`,
+      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself${Math.floor(times) >= 2 ? ` ${Math.floor(times)} times over` : ''}.`,
       under: (oneMore) => (oneMore ? 'One more order and it pays for itself.' : 'That’s less than Business costs. Stay on Personal until orders pick up.'),
     },
     payment: 'Pay by FPX, card or e-wallet. Nothing renews unless you turn on auto-renew by card.',
@@ -899,7 +899,7 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
       yours: 'Tempahan anda',
       cost: (amount) => `Curios Bisnes · ${amount}`,
       pays: (percent, times) =>
-        `Bisnes kosnya kira-kira ${percent}% daripada itu. ${times >= 1.5 ? `Ia bayar balik ${Math.floor(times)} kali ganda.` : 'Ia bayar balik sendiri.'}`,
+        `Bisnes kosnya kira-kira ${percent}% daripada itu. ${Math.floor(times) >= 2 ? `Ia bayar balik ${Math.floor(times)} kali ganda.` : 'Ia bayar balik sendiri.'}`,
       under: (oneMore) => (oneMore ? 'Satu tempahan lagi dan ia bayar balik sendiri.' : 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.'),
     },
     payment: 'Bayar dengan FPX, kad atau e-dompet. Tiada pembaharuan automatik melainkan anda hidupkan auto-renew dengan kad.',
