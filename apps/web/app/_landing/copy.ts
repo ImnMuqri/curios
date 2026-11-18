@@ -85,6 +85,26 @@ export interface LandsSideCopy {
   missTag: string;
 }
 
+/** Kek Lina's checkout in the phone: the words the real checkout does not have (it supplies the rest). */
+export interface LandsCheckoutCopy {
+  price: string;
+  item: string;
+  itemSub: string;
+  pickupWhere: string;
+  deliveryWhere: string;
+  free: string;
+  deliveryFee: string;
+  dayTitle: string;
+  dayHint: string;
+  days: [string, string, string, string];
+  dayLong: string;
+  banks: [string, string, string, string];
+  pay: (total: string) => string;
+  buyer: { name: string; phone: string };
+  code: string;
+  keep: (code: string) => string;
+}
+
 export interface LandingCopy {
   locale: Locale;
   meta: { title: string; description: string; ogAlt: string; ogLocale: string };
@@ -167,6 +187,7 @@ export interface LandingCopy {
     products: LandsSideCopy;
     /** The page's "message you back" card, as the public page words it. */
     capture: { ask: (name: string) => string; why: (name: string) => string; label: string; send: string; sent: (name: string) => string };
+    checkout: LandsCheckoutCopy;
   };
   /** No cut, ever: what a RM100 order leaves you, and what the plan already covers. */
   noCut: {
@@ -439,6 +460,24 @@ const EN: LandingBase = {
       send: 'Send my number',
       sent: (name) => `Got it. ${name} will message you on WhatsApp.`,
     },
+    checkout: {
+      price: 'RM95',
+      item: 'Kek coklat',
+      itemSub: '1kg · RM95 each',
+      pickupWhere: 'Seksyen 7, Shah Alam',
+      deliveryWhere: 'Shah Alam and Klang',
+      free: 'Free',
+      deliveryFee: 'RM10',
+      dayTitle: 'Day',
+      dayHint: '1 day’s notice · closed Monday',
+      days: ['Fri 20', 'Sat 21', 'Sun 22', 'Tue 24'],
+      dayLong: 'Sat 21 Nov',
+      banks: ['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now'],
+      pay: (total) => `Pay ${total}`,
+      buyer: { name: 'Aida', phone: '012-345 6789' },
+      code: '7Q4M',
+      keep: (code) => `Keep this code. Ask Kek Lina’s page “where is my order ${code}?” any time and it shows you the status.`,
+    },
   },
   noCut: {
     eyebrow: 'No cut, ever',
@@ -650,6 +689,24 @@ const MS: LandingBase = {
       label: 'Nombor WhatsApp anda',
       send: 'Hantar nombor saya',
       sent: (name) => `Baik. ${name} akan mesej anda di WhatsApp.`,
+    },
+    checkout: {
+      price: 'RM95',
+      item: 'Kek coklat',
+      itemSub: '1kg · RM95 seunit',
+      pickupWhere: 'Seksyen 7, Shah Alam',
+      deliveryWhere: 'Shah Alam dan Klang',
+      free: 'Percuma',
+      deliveryFee: 'RM10',
+      dayTitle: 'Hari',
+      dayHint: 'Notis 1 hari · tutup hari Isnin',
+      days: ['Jum 20', 'Sab 21', 'Ahd 22', 'Sel 24'],
+      dayLong: 'Sab 21 Nov',
+      banks: ['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now'],
+      pay: (total) => `Bayar ${total}`,
+      buyer: { name: 'Aida', phone: '012-345 6789' },
+      code: '7Q4M',
+      keep: (code) => `Simpan kod ini. Tanya halaman Kek Lina “mana pesanan saya ${code}?” bila-bila masa dan ia tunjuk statusnya.`,
     },
   },
   noCut: {

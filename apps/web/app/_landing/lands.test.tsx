@@ -131,4 +131,98 @@ describe('what lands in your hands', () => {
     const block = css.match(/@media \(max-width: 640px\) \{[\s\S]*?\n\}/)![0];
     expect(block).toMatch(/\.lsteps \{[^}]*flex-wrap: wrap/);
   });
+
+  /** Clicks "I sell products" and runs until `done` holds, or the time runs out. */
+  async function products(until: (c: HTMLElement) => boolean, ms = 40000) {
+    const { container } = render(<Lands locale="en" />);
+    return { container, run: async (more = until) => {
+      for (let t = 0; t < ms && !more(container); t += 50) await advance(50);
+      return more(container);
+    } };
+  }
+
+  it('adds the cake, shows the basket, and checks out inside the phone', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const copy = COPY.en.lands;
+    const { container, run } = await products(() => false);
+    view.show(true);
+    act(() => {
+      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+    });
+    expect(await run((c) => (c.textContent ?? '').includes('In your basket'))).toBe(true);
+    expect(await run((c) => (c.textContent ?? '').includes('1 item · RM95'))).toBe(true);
+    expect(await run((c) => c.querySelector('[data-screen="checkout"]') !== null)).toBe(true);
+    expect(container.querySelector('[data-screen="checkout"]')).toHaveTextContent('Your order');
+  });
+
+  it('picks pickup and Saturday, types Aida and her number, pays by FPX with Maybank2u', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const copy = COPY.en.lands;
+    const { container, run } = await products(() => false);
+    view.show(true);
+    act(() => {
+      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+    });
+    expect(await run((c) => (c.querySelector('[data-field="name"]')?.textContent ?? '') === 'Aida')).toBe(true);
+    expect(container.querySelector('[data-pick="pickup"][data-sel]')).not.toBeNull();
+    expect(container.querySelector('[data-day="1"][data-sel]')).not.toBeNull();
+    expect(await run((c) => (c.querySelector('[data-field="phone"]')?.textContent ?? '') === '012-345 6789')).toBe(true);
+    expect(await run((c) => (c.textContent ?? '').includes('Pay RM95 with Maybank2u'))).toBe(true);
+    expect(container.querySelector('[data-pay="fpx"][data-sel]')).not.toBeNull();
+    expect(await run((c) => (c.textContent ?? '').includes('Taking you to pay'))).toBe(true);
+  });
+
+  it('ends on the paid screen with the order code, and lands the paid order', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const copy = COPY.en.lands;
+    const { container, run } = await products(() => false);
+    view.show(true);
+    act(() => {
+      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+    });
+    expect(await run((c) => c.querySelector('[data-screen="paid"]') !== null)).toBe(true);
+    expect(container.querySelector('[data-screen="paid"]')).toHaveTextContent('Paid. Order placed');
+    expect(container.querySelector('[data-screen="paid"]')).toHaveTextContent('7Q4M');
+    expect(await run((c) => zoneIn(c)[0] === true)).toBe(true);
+    const z0 = container.querySelector('[class*="z0"]')!;
+    expect(z0).toHaveTextContent('Order #16 · Aida');
+    expect(z0).toHaveTextContent('Paid · FPX');
+  });
+
+  it('switching back to the service side mid-checkout leaves no checkout screen behind', async () => {
+    vi.useFakeTimers();
+    const view = watchViews();
+    const copy = COPY.en.lands;
+    const { container, run } = await products(() => false);
+    view.show(true);
+    act(() => {
+      fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+    });
+    expect(await run((c) => c.querySelector('[data-screen="checkout"]') !== null)).toBe(true);
+    act(() => {
+      fireEvent.click(screen.getByRole('tab', { name: copy.service.label }));
+    });
+    await advance(10);
+    expect(container.querySelector('[data-screen]')).toBeNull();
+    await advance(20000);
+    expect(container.querySelector('[data-screen]')).toBeNull();
+    expect(container).not.toHaveTextContent('Kek Lina');
+  });
+
+  it('the products side’s finished frame is the paid order in all four zones', async () => {
+    vi.useFakeTimers();
+    reduceMotion();
+    const copy = COPY.en.lands;
+    const { container } = render(<Lands locale="en" />);
+    fireEvent.click(screen.getByRole('tab', { name: copy.products.label }));
+    await advance(0);
+    expect(zoneIn(container)).toEqual([true, true, true, true]);
+    expect(container.querySelector('[class*="z0"]')).toHaveTextContent('Order #16 · Aida');
+    expect(container.querySelector('[data-screen="paid"]')).toHaveTextContent('7Q4M');
+    expect(vi.getTimerCount()).toBe(0);
+  });
 });
+

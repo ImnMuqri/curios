@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
-import { COPY, type LandsSideCopy, type Locale } from './copy.js';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { COPY, type LandsCheckoutCopy, type LandsSideCopy, type Locale } from './copy.js';
+import { shopCopy } from '../[handle]/shop/copy.js';
+import { CHECKOUT_START, LandsCheckout, type CheckoutState } from './LandsCheckout.js';
 import { nextSide, TIMING, type LandsCard, type Side } from './lands-script.js';
 import { PERSONAS, SWATCHES } from './personas.js';
 import { photo } from './photos.js';
@@ -43,7 +45,7 @@ export interface LandsState {
   bump: number;
   basket: boolean;
   basketPressed: boolean;
-  screen: 'chat' | 'checkout' | 'paid';
+  ck: CheckoutState;
   hop: number;
   cheer: number;
 }
@@ -51,6 +53,7 @@ export interface LandsState {
 export interface LandsProps {
   cursor: { side: Side; user: boolean };
   sides: Record<Side, LandsSideCopy>;
+  checkout: LandsCheckoutCopy;
 }
 
 const ALL_IN: LandsState['zones'] = [true, true, true, true];
@@ -70,7 +73,7 @@ function empty(side: Side): LandsState {
     bump: 0,
     basket: false,
     basketPressed: false,
-    screen: 'chat',
+    ck: CHECKOUT_START,
     hop: 0,
     cheer: 0,
   };
@@ -80,7 +83,9 @@ function empty(side: Side): LandsState {
 export function finished(side: Side, d: LandsSideCopy): LandsState {
   let id = 0;
   const msgs: Msg[] = d.chat.flatMap((m) => (m.r === 'v' || m.r === 'p' ? [{ id: id++, r: m.r, text: m.t }] : []));
-  return { ...empty(side), msgs, zones: ALL_IN, step: d.steps.length - 1 };
+  const done = { ...empty(side), msgs, zones: ALL_IN, step: d.steps.length - 1 };
+  // The products side ends on the paid screen, the cake bought (plan, Task 9).
+  return side === 'products' ? { ...done, ck: { ...CHECKOUT_START, screen: 'paid' } } : done;
 }
 
 type Set = (s: LandsState | ((prev: LandsState) => LandsState)) => void;
@@ -103,7 +108,81 @@ async function land(z: number, set: Set, wait: Wait) {
 }
 
 /** One side's chat, played (Landing2 board, L2:1131–1165). */
-export async function runSide(side: Side, d: LandsSideCopy, set: Set, wait: Wait) {
+const ck = (set: Set, f: (c: CheckoutState) => Partial<CheckoutState>) => set((s) => ({ ...s, ck: { ...s.ck, ...f(s.ck) } }));
+
+async function press(set: Set, wait: Wait, on: (s: LandsState, v: boolean) => LandsState, ms: number) {
+  set((s) => on(s, true));
+  await wait(ms);
+  set((s) => on(s, false));
+}
+
+/** Adds card `i` to the basket, then the basket bar rises. */
+async function add(i: number, set: Set, wait: Wait) {
+  const card = (s: LandsState, f: (c: CardState) => CardState): LandsState => {
+    let n = -1;
+    return {
+      ...s,
+      msgs: s.msgs.map((m) => (m.cards ? { ...m, cards: m.cards.map((c) => (++n === i ? f(c) : c)) } : m)),
+    };
+  };
+  await wait(TIMING.addWait);
+  await press(set, wait, (s, v) => card(s, (c) => ({ ...c, pressed: v })), TIMING.addPress);
+  set((s) => card(s, (c) => ({ ...c, done: true })));
+  await wait(TIMING.basketIn);
+  set((s) => ({ ...s, basket: true }));
+  await wait(TIMING.basketHold);
+}
+
+async function type(field: 'name' | 'phone', text: string, set: Set, wait: Wait) {
+  for (let i = 1; i <= text.length; i++) {
+    const v = text.slice(0, i);
+    ck(set, () => ({ typing: field, [field]: v }));
+    await wait(TIMING.fieldChar);
+  }
+  ck(set, () => ({ typing: null }));
+  await wait(TIMING.fieldGap);
+}
+
+async function scrollTo(at: CheckoutState['at'], set: Set, wait: Wait) {
+  ck(set, () => ({ at }));
+  await wait(TIMING.scroll);
+}
+
+/** Checkout inside the phone: pickup, Saturday, Aida and her number (L2:1171–1174). */
+async function checkout(buyer: LandsCheckoutCopy['buyer'], set: Set, wait: Wait) {
+  await press(set, wait, (s, v) => ({ ...s, basketPressed: v }), TIMING.addPress);
+  await wait(TIMING.toCheckout);
+  ck(set, () => ({ screen: 'checkout' }));
+  await wait(TIMING.sheetIn);
+  await scrollTo('get', set, wait);
+  ck(set, () => ({ pickup: true }));
+  await wait(TIMING.select);
+  await scrollTo('day', set, wait);
+  ck(set, () => ({ day: true }));
+  await wait(TIMING.select);
+  await scrollTo('you', set, wait);
+  await type('name', buyer.name, set, wait);
+  await type('phone', buyer.phone, set, wait);
+}
+
+/** Pays by FPX with Maybank2u, then the paid screen (L2:1175–1180). */
+async function pay(set: Set, wait: Wait) {
+  await scrollTo('pay', set, wait);
+  ck(set, () => ({ fpx: true }));
+  await wait(TIMING.banksIn);
+  ck(set, () => ({ bank: true }));
+  await wait(TIMING.select);
+  await scrollTo('sum', set, wait);
+  await wait(300);
+  ck(set, () => ({ pressed: true }));
+  await wait(TIMING.payPress);
+  ck(set, () => ({ pressed: false, paying: true }));
+  await wait(TIMING.paying);
+  ck(set, () => ({ screen: 'paid' }));
+  await wait(TIMING.paidHold);
+}
+
+export async function runSide(side: Side, d: LandsSideCopy, set: Set, wait: Wait, buyer: LandsCheckoutCopy['buyer']) {
   let id = 0;
   await wait(TIMING.start);
   for (const m of d.chat) {
@@ -162,6 +241,12 @@ export async function runSide(side: Side, d: LandsSideCopy, set: Set, wait: Wait
         await wait(TIMING.captureSent);
       }
       await wait(TIMING.afterPage);
+    } else if (m.r === 'add') {
+      await add(m.i, set, wait);
+    } else if (m.r === 'checkout') {
+      await checkout(buyer, set, wait);
+    } else if (m.r === 'pay') {
+      await pay(set, wait);
     }
     if ('land' in m && m.land) {
       for (const z of m.land) {
@@ -179,14 +264,8 @@ export const landsScene: Scene<LandsState, LandsProps> = {
   start: (p) => empty(p.cursor.side),
   async run(p, set, wait) {
     const side = p.cursor.side;
-    if (side === 'products') {
-      // The products run comes with the checkout (plan, Task 9); until then it shows its finished frame.
-      set(finished(side, p.sides[side]));
-      await wait(TIMING.hold);
-    } else {
-      set(empty(side));
-      await runSide(side, p.sides[side], set, wait);
-    }
+    set(empty(side));
+    await runSide(side, p.sides[side], set, wait, p.checkout.buyer);
     const next = nextSide(side, p.cursor.user);
     p.cursor.side = next;
     set((s) => ({ ...s, side: next }));
@@ -310,7 +389,23 @@ function Zone3({ d, bump }: { d: LandsSideCopy; bump: number }) {
 
 /* ---------- the chat ---------- */
 
-function Chat({ s, d, side, sentName, capture }: { s: LandsState; d: LandsSideCopy; side: Side; sentName: string; capture: (typeof COPY)['en']['lands']['capture'] }) {
+function Chat({
+  s,
+  d,
+  side,
+  sentName,
+  capture,
+  basket,
+  children,
+}: {
+  s: LandsState;
+  d: LandsSideCopy;
+  side: Side;
+  sentName: string;
+  capture: (typeof COPY)['en']['lands']['capture'];
+  basket: { text: string; go: string };
+  children?: ReactNode;
+}) {
   const owner = OWNER[side];
   return (
     <div className={styles.chat}>
@@ -373,6 +468,15 @@ function Chat({ s, d, side, sentName, capture }: { s: LandsState; d: LandsSideCo
           ),
         )}
       </div>
+      <div className={styles.lbask} data-in={s.basket ? '' : undefined} aria-hidden={!s.basket || undefined}>
+        <span>
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5 8h14l-1.4 11H6.4zM9 8a3 3 0 0 1 6 0" />
+          </svg>
+          <b>{basket.text}</b>
+        </span>
+        <em data-press={s.basketPressed ? '' : undefined}>{basket.go}</em>
+      </div>
       <div className={styles.lcIn} data-ty={s.input !== null ? '' : undefined}>
         <span>{s.input ?? d.placeholder}</span>
         <i data-press={s.sendPressed ? '' : undefined}>
@@ -381,6 +485,7 @@ function Chat({ s, d, side, sentName, capture }: { s: LandsState; d: LandsSideCo
           </svg>
         </i>
       </div>
+      {children}
     </div>
   );
 }
@@ -395,12 +500,13 @@ function Chat({ s, d, side, sentName, capture }: { s: LandsState; d: LandsSideCo
  */
 export function Lands({ locale }: { locale: Locale }) {
   const copy = COPY[locale].lands;
+  const shop = shopCopy(locale);
   const sides = { service: copy.service, products: copy.products };
   const cursor = useRef<LandsProps['cursor']>({ side: 'service', user: false });
   const [jump, setJump] = useState(0);
   const band = useRef<HTMLDivElement>(null);
   const [sideKey, setSideKey] = useState<Side>('service');
-  const s = useScene(landsScene, { cursor: cursor.current, sides }, band, `${jump}-${sideKey}`);
+  const s = useScene(landsScene, { cursor: cursor.current, sides, checkout: copy.checkout }, band, `${jump}-${sideKey}`);
   const side = s.side;
   const d = sides[side];
   const owner = OWNER[side];
@@ -539,7 +645,16 @@ export function Lands({ locale }: { locale: Locale }) {
             <LivePeek width={82} ref={peek} />
           </span>
           <div ref={chatRef}>
-            <Chat s={s} d={d} side={side} sentName={owner.name} capture={copy.capture} />
+            <Chat
+              s={s}
+              d={d}
+              side={side}
+              sentName={owner.name}
+              capture={copy.capture}
+              basket={{ text: shop.barText(1, copy.checkout.price), go: shop.checkout }}
+            >
+              {side === 'products' ? <LandsCheckout shop={shop} copy={copy.checkout} state={s.ck} owner={owner.name} /> : null}
+            </Chat>
           </div>
           <div className={styles.lsteps}>
             {d.steps.map((step, i) => (

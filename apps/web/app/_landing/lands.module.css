@@ -1009,3 +1009,509 @@
     transform: none;
   }
 }
+
+/* The basket bar, and Kek Lina's checkout inside the phone (Landing2 board, L2:459–511). */
+.lbask {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 0;
+  margin: 0 14px 8px;
+  padding: 0 6px 0 14px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--light-paper) 14%, transparent);
+  font-size: 12.5px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    height 0.4s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s,
+    transform 0.4s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.lbask[data-in] {
+  height: 42px;
+  opacity: 1;
+  transform: none;
+}
+
+.lbask span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lbask svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.lbask em {
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  background: var(--light-paper);
+  color: var(--light-ink);
+  font-style: normal;
+  font-weight: 700;
+  transition: transform 0.15s;
+}
+
+.lbask em[data-press] {
+  transform: scale(0.9);
+}
+
+/* The screens slide over the chat: in from the right, the old one off to the left. */
+.scr {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  background: var(--pd);
+  opacity: 0;
+  transform: translateX(24px);
+  visibility: hidden;
+  transition:
+    opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    visibility 0s 0.5s;
+}
+
+.scr[data-on] {
+  opacity: 1;
+  transform: none;
+  visibility: visible;
+  transition:
+    opacity 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.scr[data-was] {
+  transform: translateX(-24px);
+}
+
+.lckTop {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 16px 16px 0;
+  color: color-mix(in srgb, var(--light-paper) 85%, transparent);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.lckTop i {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--light-paper) 14%, transparent);
+  font-size: 16px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.lckT {
+  margin: 12px 16px;
+  color: var(--light-paper);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.lckSh {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  border-radius: var(--mock-radius-sheet);
+  background: white;
+  color: var(--light-ink);
+}
+
+.lckSh::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 70px;
+  background: linear-gradient(rgba(255, 255, 255, 0), white 55%);
+  pointer-events: none;
+}
+
+.lckIn {
+  padding: 4px 14px 70px;
+  transition: transform 0.7s cubic-bezier(0.45, 0, 0.2, 1);
+}
+
+.lckIn section {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--cl-mock-hair);
+}
+
+.lckIn section.lsum {
+  border: 0;
+}
+
+.lh {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.lh b {
+  font-size: 13.5px;
+}
+
+.lh a,
+.lh small {
+  color: var(--light-muted);
+  font-size: 11px;
+}
+
+.lh a {
+  color: var(--la);
+  font-weight: 600;
+}
+
+.lline {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 12px;
+}
+
+.lth {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--mock-radius-s);
+}
+
+.lw {
+  flex: 1;
+  min-width: 0;
+}
+
+.lw b {
+  display: block;
+  font-size: 12.5px;
+}
+
+.lw small {
+  color: var(--light-muted);
+  font-size: 11px;
+}
+
+.lstp {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px;
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1px var(--cl-mock-line);
+}
+
+.lstp i {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: var(--light-muted);
+  font-style: normal;
+}
+
+.lstp b {
+  font-size: 12px;
+}
+
+.lline em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.lmt,
+.lpw {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 6px;
+  padding: 9px 10px;
+  border-radius: var(--mock-radius-m);
+  box-shadow: inset 0 0 0 1px var(--cl-mock-line);
+  font-size: 12px;
+  transition:
+    box-shadow 0.3s,
+    background 0.3s;
+}
+
+.lmt i,
+.lpw i {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--cl-mock-radio);
+  transition: box-shadow 0.25s;
+}
+
+.lmt span,
+.lpw span {
+  flex: 1;
+  min-width: 0;
+}
+
+.lmt b,
+.lpw b {
+  display: block;
+  font-size: 12.5px;
+}
+
+.lmt small,
+.lpw small {
+  display: block;
+  color: var(--light-muted);
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+
+.lmt em {
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.lmt[data-sel],
+.lpw[data-sel] {
+  background: color-mix(in srgb, var(--la) 5%, white);
+  box-shadow: inset 0 0 0 1.5px var(--la);
+}
+
+.lmt[data-sel] i,
+.lpw[data-sel] i {
+  box-shadow: inset 0 0 0 4.5px var(--la);
+}
+
+.ldays {
+  display: flex;
+  gap: 6px;
+}
+
+.ldays span {
+  padding: 7px 10px;
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1px var(--cl-mock-line);
+  font-size: 11.5px;
+  font-weight: 600;
+  transition:
+    background 0.3s,
+    color 0.3s,
+    box-shadow 0.3s;
+}
+
+.ldays span[data-sel] {
+  background: var(--la);
+  box-shadow: none;
+  color: white;
+}
+
+.lckIn label {
+  display: block;
+  margin: 6px 0 4px;
+  color: var(--light-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.lfi {
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: var(--r-pill);
+  box-shadow: inset 0 0 0 1px var(--cl-mock-line);
+  font-size: 12.5px;
+  transition: box-shadow 0.2s;
+}
+
+.lfi[data-ty] {
+  box-shadow: inset 0 0 0 2px var(--la);
+}
+
+.lbanks {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.lbanks > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 0 2px;
+  overflow: hidden;
+}
+
+.lbanks[data-in] {
+  grid-template-rows: 1fr;
+}
+
+.lbanks[data-in] > div {
+  padding: 7px 2px 2px;
+}
+
+.lbanks span {
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+  background: var(--cl-mock-soft);
+  font-size: 11px;
+  font-weight: 600;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+.lbanks span[data-sel] {
+  background: var(--la);
+  color: white;
+}
+
+.lsum div {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  color: var(--cl-mock-text-2);
+  font-size: 12px;
+}
+
+.lsum .ltot {
+  margin-top: 4px;
+  color: var(--light-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.lgo {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  left: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  border-radius: var(--r-pill);
+  background: var(--la);
+  box-shadow: 0 8px 18px -10px rgba(0, 0, 0, 0.5);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  transition:
+    transform 0.15s,
+    opacity 0.3s;
+}
+
+.lgo[data-off] {
+  background: color-mix(in srgb, var(--la) 38%, white);
+}
+
+.lgo[data-press] {
+  transform: scale(0.95);
+}
+
+.spin {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: white;
+  border-radius: 50%;
+}
+
+.lplSh {
+  position: relative;
+  flex: 1;
+  margin-top: 14px;
+  padding: 22px 16px 70px;
+  border-radius: var(--mock-radius-sheet);
+  background: white;
+  color: var(--light-ink);
+  text-align: center;
+}
+
+.okb {
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 6px auto 14px;
+  border-radius: 50%;
+  background: var(--cl-sys);
+  color: var(--cl-hl-green-ink);
+}
+
+.okb svg {
+  width: 30px;
+  height: 30px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.4;
+}
+
+.rcT {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.rcS {
+  color: var(--light-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.lcode {
+  margin: 16px auto 10px;
+  padding: 10px;
+  border-radius: var(--mock-radius-l);
+  background: var(--cl-mock-soft);
+}
+
+.lcode small {
+  display: block;
+  color: var(--light-muted);
+  font-size: 11px;
+}
+
+.lcode b {
+  font: 700 24px var(--cl-mono);
+  letter-spacing: 0.12em;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spin {
+    animation: spin 0.7s linear infinite;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
