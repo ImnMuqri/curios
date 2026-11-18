@@ -926,3 +926,5 @@ In short:
 - Help (top bar) and "Help & support" (account popover) open a 420px panel instead of `mailto:`.
 - It answers only from the guide: the whole file, cached, sent to Haiku. Each answer comes with a button to the screen it talks about.
 - Every state leads to **Send to support**, which drops the question straight into the support inbox. The team's reply goes to the owner's email.
+
+> **Peek's ids (19 Nov):** every Peek SVG needs its own `clipPath` id. A copy whose `url(#…)` points at a clip inside a hidden screen draws his body as a square, because the clip isn't rendered. In React, generate the id per instance, for example with `useId()`.
