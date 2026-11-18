@@ -13,7 +13,7 @@ import { NavProgressProvider } from './_ui/nav-progress.js';
 import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
-import { Popover } from './_ui/popover.js';
+import { announceOverlay, Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
 import { SignOutButton } from './sign-out-button.js';
@@ -146,6 +146,10 @@ export function AppFrame({
   // open the panel over the current screen, which stays underneath.
   const [helpOpen, setHelpOpen] = useState(false);
   const closeHelp = useCallback(() => setHelpOpen(false), []);
+  // Help is an overlay too: any open popover (the bell's sheet, the account menu, More) closes as it opens.
+  useEffect(() => {
+    if (helpOpen) announceOverlay('help');
+  }, [helpOpen]);
   const help = useMemo<HelpControl>(
     () => ({ open: helpOpen, show: () => setHelpOpen(true), close: () => setHelpOpen(false), toggle: () => setHelpOpen((was) => !was) }),
     [helpOpen],
@@ -296,7 +300,8 @@ export function AppFrame({
           {/* The account card: the page, and whose and on what plan; it opens the account menu. */}
           <div className={styles.cardSlot}>
             <Popover
-              label={`Account, ${displayName}`}
+              // Its name says all the card shows, the line under the name too (WCAG 2.5.3, label in name).
+              label={`Account, ${displayName}, ${cardLine}`}
               align="start"
               buttonClassName={styles.card}
               panelClassName={styles.accountPanel}

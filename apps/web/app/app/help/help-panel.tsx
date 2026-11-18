@@ -153,9 +153,14 @@ export function HelpPanel({
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     panel.current?.querySelector<HTMLElement>('input, button')?.focus();
     return () => {
-      // The opener may sit in a popover that is hidden by now (Help & support in the account menu) and
-      // take no focus; then the account card, then the top bar's Help.
-      for (const target of [opener, document.querySelector<HTMLElement>('button[aria-label^="Account,"]'), document.querySelector<HTMLElement>('button[data-help-opener]')]) {
+      // The opener may sit in a popover that is closed by now (Help & support in the account menu) and
+      // take no focus. Then the button that opened that popover (the sidebar's card, or the phone's
+      // avatar); then the first account button that takes focus (on a phone the card comes first but is
+      // display: none); then the top bar's Help.
+      const closed = opener?.closest<HTMLElement>('[hidden]') ?? null;
+      const owner = closed?.id ? [...document.querySelectorAll<HTMLElement>('[aria-controls]')].find((el) => el.getAttribute('aria-controls') === closed.id) : undefined;
+      const accounts = [...document.querySelectorAll<HTMLElement>('button[aria-label^="Account,"]')];
+      for (const target of [closed ? null : opener, owner, ...accounts, document.querySelector<HTMLElement>('button[data-help-opener]')]) {
         target?.focus();
         if (target && document.activeElement === target) return;
       }

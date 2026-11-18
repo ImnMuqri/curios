@@ -251,7 +251,7 @@ describe('HelpPanel: a modal dialog', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('gives focus back to the account menu�s card when its Help & support row is hidden by then', () => {
+  it('gives focus back to the account menu’s card when its Help & support row is hidden by then', () => {
     const card = document.createElement('button');
     card.setAttribute('aria-label', 'Account, Lina');
     const row = document.createElement('button');
@@ -263,6 +263,26 @@ describe('HelpPanel: a modal dialog', () => {
     view.unmount();
     expect(document.activeElement).toBe(card);
     card.remove();
+    row.remove();
+  });
+
+  it('gives focus to the phone avatar when the sidebar card is hidden and takes none', () => {
+    // Under 1100px the sidebar's card comes first in the document but is display: none.
+    const sideCard = document.createElement('button');
+    sideCard.setAttribute('aria-label', 'Account, Lina, Lina · Business');
+    sideCard.focus = () => {};
+    const avatar = document.createElement('button');
+    avatar.setAttribute('aria-label', 'Account, Lina');
+    const row = document.createElement('button');
+    row.focus = () => {};
+    document.body.append(sideCard, avatar, row);
+    Object.defineProperty(document, 'activeElement', { configurable: true, get: () => row });
+    const view = show();
+    delete (document as { activeElement?: unknown }).activeElement;
+    view.unmount();
+    expect(document.activeElement).toBe(avatar);
+    sideCard.remove();
+    avatar.remove();
     row.remove();
   });
 

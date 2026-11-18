@@ -56,7 +56,7 @@ export function PhoneMenu({
   /** The modules this page has, in the sidebar's order (a personal page has no Store or Orders). */
   items: MenuItem[];
   badges: NavBadges;
-  /** Billing needs you: a red dot on its row in the sheet. */
+  /** Billing needs you: a red dot on its row in the sheet, and so on More. */
   billingDot: boolean;
   /** The frame's hook on the menu (it hides while Help fills a phone). */
   className?: string | undefined;
@@ -66,6 +66,9 @@ export function PhoneMenu({
   const on = tabs.findIndex((item) => at(pathname, item.href));
   // A page with no tab of its own is one of More's (the board puts the pill there).
   const moreOn = on < 0;
+  // Something inside More needs the owner: a count on one of its rows, or Billing's dot. A dot on More, never a
+  // summed count (owner decision 2026-11-18, DEVIATIONS row 322).
+  const moreNeedsYou = rest.some((item) => (item.count ? badges[item.count] > 0 : false) || (billingDot && item.href === '/app/billing'));
 
   const nav = useRef<HTMLElement>(null);
   const [pill, setPill] = useState<{ l: number; r: number; dir: 'left' | 'right' } | null>(null);
@@ -170,14 +173,17 @@ export function PhoneMenu({
         );
       })}
       <Popover
-        label="More"
+        label={moreNeedsYou ? 'More, new items' : 'More'}
         buttonClassName={`${styles.tab} ${styles.more}`}
         buttonData={{ 'data-tab': '', 'data-on': moreOn ? '' : undefined }}
         panelClassName={styles.sheet}
         scrimClassName={styles.scrim}
         button={
           <>
-            <span className={styles.icon}>{dots}</span>
+            <span className={styles.icon}>
+              {dots}
+              {moreNeedsYou ? <span className={styles.moreDot} data-more-dot aria-hidden="true" /> : null}
+            </span>
             <span className={styles.clip}>
               <span className={styles.label}>
                 <span data-label className={styles.text}>

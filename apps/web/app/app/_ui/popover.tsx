@@ -7,10 +7,22 @@ import styles from './popover.module.css';
 type ButtonData = { [key: `data-${string}`]: string | true | undefined };
 
 /**
- * A button that opens a small panel under it: the bell's notifications and the account menu.
+ * Sent on the document when an overlay opens (a Popover, or Help), with its id as the detail: any
+ * other open Popover closes, so one layer is open at a time and one Escape closes only it.
+ */
+export const OVERLAY_OPENS = 'curios:overlay-opens';
+
+export function announceOverlay(id: string) {
+  document.dispatchEvent(new CustomEvent<string>(OVERLAY_OPENS, { detail: id }));
+}
+
+/**
+ * A button that opens a small panel under it: the bell's notifications, the account menu (the
+ * sidebar's card and the phone's avatar) and the phone menu's More sheet.
  * A disclosure (aria-expanded): its contents are announced as what they are -- links, buttons, the
  * account menu's Dark mode switch. Escape, a click outside (or on its scrim), or a link followed (or
  * a [data-closes] button pressed) inside closes it, and Escape or the scrim puts focus back on the button.
+ * Another overlay opening (OVERLAY_OPENS: another Popover, or Help) closes it too, focus left where it is.
  */
 export function Popover({
   label,
@@ -55,13 +67,19 @@ export function Popover({
       setOpen(false);
       trigger.current?.focus();
     };
+    const other = (event: Event) => {
+      if ((event as CustomEvent<string>).detail !== id) setOpen(false);
+    };
+    announceOverlay(id);
     document.addEventListener('pointerdown', away);
     document.addEventListener('keydown', key);
+    document.addEventListener(OVERLAY_OPENS, other);
     return () => {
       document.removeEventListener('pointerdown', away);
       document.removeEventListener('keydown', key);
+      document.removeEventListener(OVERLAY_OPENS, other);
     };
-  }, [open]);
+  }, [open, id]);
 
   return (
     <div className={styles.root} ref={root}>
