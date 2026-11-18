@@ -11,7 +11,6 @@ import { structuredData } from './structured-data.js';
 import { BRAND } from './brand-colors.js';
 import { STEP_MS, STEP_STARTS, advance, scene, stepProgress } from './order-scene.js';
 import { payback } from './Pricing.js';
-import { howAt } from './How.js';
 import { play } from './WhatLands.js';
 
 const LOCALES = ['en', 'ms'] as const;
@@ -640,19 +639,6 @@ describe('no cut, ever', () => {
   });
 });
 
-describe('how it works, pinned', () => {
-  it('holds each room, slides to the next, and marks the dot of the room in view', () => {
-    expect(howAt(0)).toEqual({ at: 0, step: 0 });
-    expect(howAt(0.1)).toEqual({ at: 0, step: 0 });
-    expect(howAt(0.5)).toEqual({ at: 1, step: 1 });
-    expect(howAt(1)).toEqual({ at: 2, step: 2 });
-    // The dot only moves on once the next room is mostly in.
-    expect(howAt(0.29).at).toBeGreaterThan(0.5);
-    expect(howAt(0.29).step).toBe(0);
-    expect(howAt(0.31).step).toBe(1);
-  });
-});
-
 describe('metadata', () => {
   it.each(LOCALES)('%s: title and description fit in a search result', (locale) => {
     const meta = landingMetadata(locale);
@@ -733,12 +719,6 @@ describe('less template', () => {
     const escaped = selector.replace(/[.[\]]/g, (c) => `\\${c}`);
     return css.match(new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`))?.[1] ?? '';
   };
-
-  it.each(LOCALES)('%s: no 01/02/03 watermark numbers in How it works', (locale) => {
-    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
-    expect(container.querySelector('[class*="roomN"]')).toBeNull();
-    expect(css).not.toMatch(/roomN/);
-  });
 
   it.each(LOCALES)('%s: no curved marquee between the sections', (locale) => {
     const { container } = render(<LandingPage locale={locale} terms={TERMS} />);

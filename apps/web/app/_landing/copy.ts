@@ -149,12 +149,11 @@ export interface LandingCopy {
   how: {
     eyebrow: string;
     title: string;
-    keep: string;
     steps: { title: string; body: string }[];
     pasted: string;
     /** What the illustrator pasted, with the four facts it finds marked. */
     pastedText: (string | { fact: number; text: string })[];
-    found: string;
+    found: (n: number) => string;
     facts: { text: string; topic: string }[];
     approved: (n: number) => string;
     factOf: (n: number, total: number) => string;
@@ -162,9 +161,11 @@ export interface LandingCopy {
     usedFor: (topic: string) => string;
     fix: string;
     approve: string;
-    approvedStamp: string;
-    ring: string;
-    card: { name: string; role: string; bio: string };
+    allApproved: { title: string; body: string };
+    /** The Instagram bio the third card taps. */
+    bio: { handle: string; role: string; text: string; link: string; posts: [string, string]; followers: [string, string] };
+    /** Aisyah's page, asked from the bio. */
+    chat: { name: string; q: string; a: string; placeholder: string; time: string };
   };
   whatLands: {
     title: string;
@@ -370,12 +371,11 @@ const EN: LandingBase = {
   },
   how: {
     eyebrow: 'How it works',
-    title: 'Ten minutes from blank to bio link.',
-    keep: 'Keep scrolling →',
+    title: 'Ten minutes from blank to bio link',
     steps: [
-      { title: 'Tell it about you.', body: 'Paste your website, your Linktree, or just a few honest paragraphs. It reads them and pulls out the facts.' },
-      { title: 'Approve what’s right.', body: 'Each fact comes up as a card. Keep the right ones, fix the rest. It never says anything you didn’t approve.' },
-      { title: 'Put the link in your bio.', body: 'Share curios.my/yourname on Instagram, TikTok or WhatsApp. Anyone who taps it can ask, day or night.' },
+      { title: 'Tell it about you', body: 'Paste your website, your Linktree, or just a few honest paragraphs. It reads them and pulls out the facts.' },
+      { title: 'Approve what’s right', body: 'Each fact comes up as a card. Keep the right ones, fix the rest. It never says anything you didn’t approve.' },
+      { title: 'Put the link in your bio', body: 'Share curios.my/yourname on Instagram, TikTok or WhatsApp. Anyone who taps it can ask, day or night.' },
     ],
     pasted: 'You pasted',
     pastedText: [
@@ -389,7 +389,7 @@ const EN: LandingBase = {
       { fact: 3, text: 'reply within two days' },
       '.',
     ],
-    found: 'It found',
+    found: (n) => `${n} facts found`,
     facts: [
       { text: 'Portraits from RM250', topic: 'portrait prices' },
       { text: 'Book covers from RM900', topic: 'book covers' },
@@ -400,11 +400,24 @@ const EN: LandingBase = {
     factOf: (n, total) => `Fact ${n} of ${total}`,
     from: 'from aisyahdraws.com',
     usedFor: (topic) => `Used when someone asks about ${topic}.`,
-    fix: '← Fix it',
-    approve: 'Approve →',
-    approvedStamp: 'Approved',
-    ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? JUST ASK · ',
-    card: { name: 'aisyahdraws', role: 'Illustrator · Ipoh', bio: 'Portraits, book covers, editorial. Commissions open for November.' },
+    fix: 'Fix it',
+    approve: 'Approve',
+    allApproved: { title: 'All four approved', body: 'Your page answers from these, and nothing else.' },
+    bio: {
+      handle: 'aisyahdraws',
+      role: 'Illustrator · Ipoh',
+      text: 'Portraits, book covers, editorial. Commissions open for November.',
+      link: 'curios.my/aisyahdraws',
+      posts: ['128', 'posts'],
+      followers: ['4.2k', 'followers'],
+    },
+    chat: {
+      name: 'Aisyah',
+      q: 'Taking commissions in November?',
+      a: 'Yes, two slots left for November. Portraits start at RM250.',
+      placeholder: 'Ask Aisyah anything',
+      time: '2:14 am',
+    },
   },
   whatLands: {
     title: 'What lands in your hands.',
@@ -725,12 +738,11 @@ const MS: LandingBase = {
   },
   how: {
     eyebrow: 'Cara ia berfungsi',
-    title: 'Sepuluh minit dari kosong ke link bio.',
-    keep: 'Terus skrol →',
+    title: 'Sepuluh minit dari kosong ke link bio',
     steps: [
-      { title: 'Ceritakan tentang anda.', body: 'Tampal laman web anda, Linktree anda, atau beberapa perenggan jujur. Ia baca dan keluarkan faktanya.' },
-      { title: 'Luluskan yang betul.', body: 'Setiap fakta keluar sebagai kad. Simpan yang betul, betulkan yang lain. Ia tak cakap apa yang anda tak luluskan.' },
-      { title: 'Letak link dalam bio.', body: 'Kongsi curios.my/namaanda di Instagram, TikTok atau WhatsApp. Sesiapa yang tekan boleh tanya, siang atau malam.' },
+      { title: 'Beritahu tentang anda', body: 'Tampal laman web anda, Linktree anda, atau beberapa perenggan jujur. Ia baca dan keluarkan faktanya.' },
+      { title: 'Luluskan yang betul', body: 'Setiap fakta keluar sebagai kad. Simpan yang betul, betulkan yang lain. Ia tak cakap apa yang anda tak luluskan.' },
+      { title: 'Letak link dalam bio', body: 'Kongsi curios.my/namaanda di Instagram, TikTok atau WhatsApp. Sesiapa yang tekan boleh tanya, siang atau malam.' },
     ],
     pasted: 'Anda tampal',
     pastedText: [
@@ -744,7 +756,7 @@ const MS: LandingBase = {
       { fact: 3, text: 'balas dalam dua hari' },
       '.',
     ],
-    found: 'Ia jumpa',
+    found: (n) => `Jumpa ${n} fakta`,
     facts: [
       { text: 'Potret dari RM250', topic: 'harga potret' },
       { text: 'Kulit buku dari RM900', topic: 'kulit buku' },
@@ -755,11 +767,24 @@ const MS: LandingBase = {
     factOf: (n, total) => `Fakta ${n} daripada ${total}`,
     from: 'dari aisyahdraws.com',
     usedFor: (topic) => `Digunakan bila orang tanya pasal ${topic}.`,
-    fix: '← Betulkan',
-    approve: 'Luluskan →',
-    approvedStamp: 'Lulus',
-    ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? TANYA JE · ',
-    card: { name: 'aisyahdraws', role: 'Ilustrator · Ipoh', bio: 'Potret, kulit buku, editorial. Tempahan dibuka untuk November.' },
+    fix: 'Betulkan',
+    approve: 'Luluskan',
+    allApproved: { title: 'Keempat-empat diluluskan', body: 'Halaman anda jawab dari fakta ini, dan tiada yang lain.' },
+    bio: {
+      handle: 'aisyahdraws',
+      role: 'Ilustrator · Ipoh',
+      text: 'Potret, kulit buku, editorial. Tempahan dibuka untuk November.',
+      link: 'curios.my/aisyahdraws',
+      posts: ['128', 'hantaran'],
+      followers: ['4.2k', 'pengikut'],
+    },
+    chat: {
+      name: 'Aisyah',
+      q: 'Ambil tempahan November?',
+      a: 'Ya, tinggal dua slot untuk November. Potret dari RM250.',
+      placeholder: 'Tanya Aisyah apa saja',
+      time: '2:14 pagi',
+    },
   },
   whatLands: {
     title: 'Apa yang anda dapat.',
