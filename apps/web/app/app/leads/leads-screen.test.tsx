@@ -36,7 +36,7 @@ function show(list = leads,calls?: Partial<LeadActions>, paging?: { older: strin
     <LeadsScreen
       leads={list}
       paging={paging}
-      stats={{ waiting: 1, thisWeek: 3, sold: 1 }}
+      stats={{ waiting: 1, thisWeek: 3, sold: 1, lastWeek: 2, days: [0, 0, 1, 0, 1, 1, 0], soldThisWeek: 1 }}
       handle="keklina"
       displayName="Kek Lina"
       language="en"

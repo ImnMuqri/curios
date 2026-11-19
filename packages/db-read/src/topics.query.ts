@@ -1,4 +1,5 @@
 import type { Prisma } from '@prisma/client';
+import { malaysiaToday } from '@curios/core/orders';
 import { prismaRead } from './client.js';
 
 export interface OwnerWording {
@@ -35,6 +36,8 @@ const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 100;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+/** Malaysia is UTC+8 all year. */
+const MALAYSIA_OFFSET_MS = 8 * 3_600_000;
 
 /**
  * Which topics a list shows: all; those needing the owner (no answer and the
@@ -189,7 +192,7 @@ export async function getTopicChoices(accountId: string): Promise<TopicChoice[]>
   });
 }
 
-/** How many of the last thirty days' asks the chat could answer, of those whose outcome was recorded. */
+/** How many of the last `days` days' asks the chat could answer, of those whose outcome was recorded. */
 export interface AnswerRate {
   answered: number;
   recorded: number;
@@ -200,8 +203,8 @@ export interface AnswerRate {
  * owner's answer or the facts, against every ask whose outcome was recorded
  * (the chat marks each; the month's fixed reply is neither and is left out).
  */
-export async function getAnswerRate(accountId: string, now = new Date()): Promise<AnswerRate> {
-  const where = { askedAt: { gt: new Date(now.getTime() - 30 * DAY_MS), lte: now }, question: { page: { accountId } } };
+export async function getAnswerRate(accountId: string, now = new Date(), days = 30): Promise<AnswerRate> {
+  const where = { askedAt: { gt: new Date(now.getTime() - days * DAY_MS), lte: now }, question: { page: { accountId } } };
   const [answered, recorded] = await Promise.all([
     prismaRead.questionAsk.count({ where: { ...where, answered: true } }),
     prismaRead.questionAsk.count({ where: { ...where, answered: { not: null } } }),
@@ -214,4 +217,37 @@ export async function countQuestionsThisWeek(accountId: string, now = new Date()
   return prismaRead.message.count({
     where: { role: 'USER', createdAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now }, conversation: { page: { accountId } } },
   });
+}
+
+/** Visitor questions by week: this and last 7 Malaysian days, and the day-by-day bar of this one. */
+export interface QuestionWeek {
+  /** USER messages over the last 7 Malaysian days, today included. */
+  thisWeek: number;
+  /** USER messages over the 7 Malaysian days before those. */
+  lastWeek: number;
+  /** USER messages per Malaysian day, 7 slots, oldest first, today last (the week bar). */
+  days: number[];
+}
+
+/** One grouped query over 14 Malaysian days, bucketed by the Malaysian date of each visitor turn. */
+export async function getQuestionWeek(accountId: string, now = new Date()): Promise<QuestionWeek> {
+  const today = Date.parse(`${malaysiaToday(now)}T00:00:00Z`);
+  const first = today - 6 * DAY_MS;
+  const from = new Date(first - 7 * DAY_MS - MALAYSIA_OFFSET_MS);
+  const to = new Date(today + DAY_MS - MALAYSIA_OFFSET_MS);
+  const rows = await prismaRead.$queryRaw<{ day: string; n: number }[]>`
+    SELECT to_char(m."createdAt" + interval '8 hours', 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+    FROM "Message" m
+    JOIN "Conversation" c ON c."id" = m."conversationId"
+    JOIN "Page" p ON p."id" = c."pageId"
+    WHERE p."accountId" = ${accountId} AND m."role" = 'USER' AND m."createdAt" >= ${from} AND m."createdAt" < ${to}
+    GROUP BY 1`;
+  const days = [0, 0, 0, 0, 0, 0, 0];
+  let lastWeek = 0;
+  for (const row of rows) {
+    const slot = Math.round((Date.parse(`${row.day}T00:00:00Z`) - first) / DAY_MS);
+    if (slot >= 0 && slot < 7) days[slot] = (days[slot] ?? 0) + row.n;
+    else if (slot >= -7 && slot < 0) lastWeek += row.n;
+  }
+  return { thisWeek: days.reduce((sum, n) => sum + n, 0), lastWeek, days };
 }

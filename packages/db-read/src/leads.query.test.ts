@@ -1,12 +1,14 @@
 import { randomUUID } from 'node:crypto';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { countNavBadges } from './my-curios.query.js';
 import { getLeadStats, getLeads, TRANSCRIPT_LIMIT } from './leads.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 let mine = '';
 let theirs = '';
+const accountIds: string[] = [];
 
 async function anOwnerWithAPage(): Promise<{ accountId: string; pageId: string }> {
   const slug = randomUUID().slice(0, 8);
@@ -17,6 +19,7 @@ async function anOwnerWithAPage(): Promise<{ accountId: string; pageId: string }
     },
     select: { id: true, pages: { select: { id: true } } },
   });
+  accountIds.push(account.id);
   return { accountId: account.id, pageId: account.pages[0]?.id ?? '' };
 }
 
@@ -176,6 +179,12 @@ describe('getLeads', () => {
   });
 });
 
+afterAll(async () => {
+  // Leads, conversations and messages go with their page, pages with their account.
+  await write.account.deleteMany({ where: { id: { in: accountIds } } });
+  await write.$disconnect();
+});
+
 describe('getLeadStats', () => {
   it('counts what is waiting, what became a sale, and the last seven days', async () => {
     const now = new Date('2026-10-17T12:00:00Z');
@@ -190,6 +199,51 @@ describe('getLeadStats', () => {
     await aLead(other.pageId, '+60120000006', { createdAt: ago(1) });
 
     // Closed is not sold: an enquiry can end without a sale.
-    expect(await getLeadStats(owner.accountId, now)).toEqual({ waiting: 2, thisWeek: 4, sold: 1 });
+    expect(await getLeadStats(owner.accountId, now)).toMatchObject({ waiting: 2, thisWeek: 4, sold: 1 });
+  });
+
+  it('gives the week bar, last week and the sold of this week, by Malaysian day', async () => {
+    // Sunday 2026-10-18, 23:30 in Malaysia.
+    const now = new Date('2026-10-18T15:30:00Z');
+    const owner = await anOwnerWithAPage();
+    const other = await anOwnerWithAPage();
+    const lead = (phone: string, at: string, extra: Record<string, unknown> = {}) =>
+      aLead(owner.pageId, phone, { createdAt: new Date(at), ...extra });
+    // Today (18th MYT) starts at 17th 16:00Z; yesterday's last second is 15:59:59Z.
+    await lead('+60120000011', '2026-10-17T16:00:00Z', { status: 'SOLD' });
+    await lead('+60120000012', '2026-10-17T15:59:59Z');
+    // The first slot (12th MYT) starts 11th 16:00Z; a second earlier is last week's final day.
+    await lead('+60120000013', '2026-10-11T16:00:00Z', { status: 'SOLD' });
+    await lead('+60120000014', '2026-10-11T15:59:59Z', { status: 'SOLD' });
+    // Last week's first day (5th MYT) starts 4th 16:00Z; before it is out of both.
+    await lead('+60120000015', '2026-10-04T16:00:00Z');
+    await lead('+60120000016', '2026-10-04T15:59:59Z');
+    // After today's midnight: not yet counted.
+    await lead('+60120000017', '2026-10-18T16:00:00Z');
+    await aLead(other.pageId, '+60120000018', { createdAt: new Date('2026-10-18T10:00:00Z'), status: 'SOLD' });
+
+    const stats = await getLeadStats(owner.accountId, now);
+    expect(stats.days).toEqual([1, 0, 0, 0, 0, 1, 1]);
+    expect(stats.days).toHaveLength(7);
+    expect(stats.thisWeek).toBe(3);
+    expect(stats.lastWeek).toBe(2);
+    expect(stats.soldThisWeek).toBe(2);
+    expect(stats.sold).toBe(3);
+  });
+
+  it('is all zeros for an owner with no leads, and waiting matches the sidebar badge', async () => {
+    const now = new Date('2026-10-18T15:30:00Z');
+    const quiet = await anOwnerWithAPage();
+    expect(await getLeadStats(quiet.accountId, now)).toEqual({
+      waiting: 0, thisWeek: 0, sold: 0, lastWeek: 0, days: [0, 0, 0, 0, 0, 0, 0], soldThisWeek: 0,
+    });
+
+    const owner = await anOwnerWithAPage();
+    await aLead(owner.pageId, '+60120000021', { createdAt: now });
+    await aLead(owner.pageId, '+60120000022', { createdAt: now, status: 'CONTACTED' });
+    await aLead(owner.pageId, '+60120000023', { createdAt: new Date('2026-01-01T00:00:00Z') });
+    const stats = await getLeadStats(owner.accountId, now);
+    expect(stats.waiting).toBe(2);
+    expect((await countNavBadges(owner.accountId)).leads).toBe(stats.waiting);
   });
 });

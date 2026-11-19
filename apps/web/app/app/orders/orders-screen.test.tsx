@@ -62,7 +62,7 @@ const orders: OrderRow[] = [
   { ...base, id: 'o8', number: 8, customerName: 'Siti Nur', day: '2026-10-13', totalCents: 5000, status: 'COMPLETED', paidAt: new Date('2026-10-11T09:10:00Z'), completedAt: new Date('2026-10-13T03:30:00Z') },
 ];
 
-const stats: OrderStats = { toCheck: 1, toMake: 2, paidThisWeekCents: 17000 };
+const stats: OrderStats = { toCheck: 1, toMake: 2, paidThisWeekCents: 17000, paidDaysCents: [0, 0, 0, 0, 0, 0, 17000], paidTodayCents: 17000 };
 
 function show(list = orders, extra: { selected?: string | null; stats?: OrderStats; paging?: { older: string | null; paged: boolean } } = {}) {
   const move = vi.fn(async () => undefined);
@@ -210,7 +210,7 @@ describe('OrdersScreen, the list', () => {
 
 describe('OrdersScreen, before the first order', () => {
   it('says where the first order lands, with the link to share and the shop to set up', () => {
-    show([], { stats: { toCheck: 0, toMake: 0, paidThisWeekCents: 0 } });
+    show([], { stats: { toCheck: 0, toMake: 0, paidThisWeekCents: 0, paidDaysCents: [0, 0, 0, 0, 0, 0, 0], paidTodayCents: 0 } });
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Your first order lands here' })).toBeInTheDocument();
     expect(screen.getByText('When someone checks out in your shop, the order shows up here with their receipt. You check it, mark it paid, and make it.')).toBeInTheDocument();

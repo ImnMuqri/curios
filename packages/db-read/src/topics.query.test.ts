@@ -1,13 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { countQuestionsThisWeek, countTopicsNeedingOwner, getAnswerRate, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
+import { countQuestionsThisWeek, countTopicsNeedingOwner, getAnswerRate, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 let ownerA = '';
 let ownerB = '';
 let ownerBig = '';
+const accountIds: string[] = [];
 
 async function anOwnerWithAPage() {
   const slug = randomUUID().slice(0, 8);
@@ -15,6 +16,7 @@ async function anOwnerWithAPage() {
     data: { email: `tq-${randomUUID()}@example.com`, pages: { create: { handle: `tq-${slug}`, skeleton: `tq-${slug}`, displayName: 'T' } } },
     select: { id: true, pages: { select: { id: true } } },
   });
+  accountIds.push(account.id);
   return { accountId: account.id, pageId: account.pages[0]?.id ?? '' };
 }
 
@@ -74,6 +76,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await write.account.deleteMany({ where: { id: { in: accountIds } } });
   await write.$disconnect();
 });
 
@@ -193,6 +196,56 @@ describe('getAnswerRate', () => {
 
     // Two answered of three recorded; the unrecorded one and the old one are left out.
     expect(await getAnswerRate(accountId, now)).toEqual({ answered: 2, recorded: 3 });
+  });
+
+  it('takes a window in days: seven days leaves out the asks from before them', async () => {
+    const now = new Date('2026-10-18T12:00:00Z');
+    const day = (n: number) => new Date(now.getTime() - n * 24 * 3600 * 1000);
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const t = await topic(pageId, 'Delivery?', 5, '2026-10-17T00:00:00Z');
+    const q = await wording(pageId, t.id, `delivery ${randomUUID().slice(0, 6)}`, 5, '2026-10-01T00:00:00Z');
+    for (const [ago, answered] of [[1, true], [6, false], [10, true], [20, true]] as const) {
+      await write.questionAsk.create({ data: { questionId: q.id, askedAt: day(ago), answered } });
+    }
+    expect(await getAnswerRate(accountId, now, 7)).toEqual({ answered: 1, recorded: 2 });
+    expect(await getAnswerRate(accountId, now)).toEqual({ answered: 3, recorded: 4 });
+  });
+});
+
+describe('getQuestionWeek', () => {
+  async function ask(pageId: string, at: string, role: 'USER' | 'ASSISTANT' = 'USER') {
+    const conversation = await write.conversation.create({ data: { pageId } });
+    await write.message.create({ data: { conversationId: conversation.id, role, content: 'x', createdAt: new Date(at) } });
+  }
+
+  // Sunday 2026-10-18, 23:30 in Malaysia.
+  const now = new Date('2026-10-18T15:30:00Z');
+
+  it('is zeros with seven slots for an owner nobody has asked', async () => {
+    const { accountId } = await anOwnerWithAPage();
+    expect(await getQuestionWeek(accountId, now)).toEqual({ thisWeek: 0, lastWeek: 0, days: [0, 0, 0, 0, 0, 0, 0] });
+  });
+
+  it('buckets visitor turns by Malaysian day, today last, with both weeks cut at Malaysian midnight', async () => {
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const other = await anOwnerWithAPage();
+    // Today (18th MYT) starts at 17th 16:00Z.
+    await ask(pageId, '2026-10-17T16:00:00Z');
+    await ask(pageId, '2026-10-18T10:00:00Z');
+    await ask(pageId, '2026-10-17T15:59:59Z');
+    // The first slot (12th MYT) starts 11th 16:00Z; a second earlier is last week.
+    await ask(pageId, '2026-10-11T16:00:00Z');
+    await ask(pageId, '2026-10-11T15:59:59Z');
+    // Last week's first day (5th MYT) starts 4th 16:00Z; a second earlier is out.
+    await ask(pageId, '2026-10-04T16:00:00Z');
+    await ask(pageId, '2026-10-04T15:59:59Z');
+    // Not visitor turns, not yet happened, and another owner's.
+    await ask(pageId, '2026-10-18T10:00:00Z', 'ASSISTANT');
+    await ask(pageId, '2026-10-18T16:00:00Z');
+    await ask(other.pageId, '2026-10-18T10:00:00Z');
+
+    const week = await getQuestionWeek(accountId, now);
+    expect(week).toEqual({ thisWeek: 4, lastWeek: 2, days: [1, 0, 0, 0, 0, 1, 2] });
   });
 });
 
