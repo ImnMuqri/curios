@@ -88,8 +88,8 @@ describe('LeadsPage', () => {
     const now = getLeadStats.mock.calls[0]![1] as Date;
     expect(props).toMatchObject({
       stats: { waiting: 1, thisWeek: 1, sold: 0 },
-      handle: 'nadia',
       displayName: 'Nadia',
+      publicUrl: expect.stringMatching(/\/nadia$/),
       language: 'ms',
       now: now.toISOString(),
     });

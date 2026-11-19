@@ -171,6 +171,7 @@ describe('the calm rules on the shared pieces', () => {
     ),
     'apps/web/app/app/panel.module.css',
     'apps/web/app/app/orders/orders.module.css',
+    'apps/web/app/app/leads/leads.module.css',
     'apps/web/app/auth.module.css',
     'apps/web/app/_auth/scene.module.css',
   ];
