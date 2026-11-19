@@ -1,10 +1,11 @@
 /*
- * The inbox screens' shared frame (Orders, Questions, Leads), from the design
- * handoff's Dashboard v2 boards: under the header, a list column on light
- * ground (search, pill filters, the rows, the pager) and the chosen item on
- * the right. The figures that used to sit above are the header's summary
- * sentence now. Each screen's own stylesheet holds what is only its own.
- * --n on .filters is how many filters there are.
+ * The inbox screens' shared kit (Orders, Questions, Leads), from the calm Dash board (Dash.html
+ * 804-822, 1322-1381, 1420-1450): under the header, the stat strip (stat-strip.tsx), a filter bar
+ * (chips and a search), and a split of the list card and the picked item's card. On a phone a
+ * picked item takes the screen as its own view (`data-open` on .split) with a way back.
+ *
+ * Until each screen is rebuilt on the kit (T1.5 to T1.7), the older two-column frame stays below it
+ * (.board and what sits in it): the screens still read those classes.
  */
 
 @keyframes fadeUp {
@@ -29,23 +30,28 @@
   min-height: 0;
 }
 
-.list {
+/* The old list column (pre-kit screens): scoped to .board, since the kit's .list is a card. */
+.board > .list {
   border-right: 1px solid var(--line);
   background: var(--paper);
 }
 
-/* Above the filters: narrows what is on the screen as you type. */
+/* The search (Dash.html .xsrch): narrows what is on the screen as you type. A field, so the 16px box corner (DEVIATIONS 347). */
 .search {
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 38px;
-  margin: 16px 16px 0;
-  padding: 0 12px;
-  border-radius: var(--r-pill);
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--field-radius);
   background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line);
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--faint);
+}
+
+/* Where the old list column puts it. */
+.board .search {
+  margin: 16px 16px 0;
 }
 
 .search:focus-within {
@@ -53,8 +59,8 @@
 }
 
 .search svg {
-  width: 15px;
-  height: 15px;
+  width: 16px;
+  height: 16px;
   flex: none;
   fill: none;
   stroke: currentColor;
@@ -71,12 +77,13 @@
   background: transparent;
   color: var(--ink);
   font: inherit;
-  font-size: 13.5px;
+  font-size: 14px;
   outline: none;
 }
 
+/* Read, so muted, not the icon's faint (global rule 5). */
 .search input::placeholder {
-  color: var(--faint);
+  color: var(--muted);
 }
 
 /*
@@ -239,7 +246,7 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .list {
+  .board > .list {
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -251,7 +258,7 @@
 }
 
 @media (max-width: 760px) {
-  .search {
+  .board .search {
     margin: 14px 16px 0;
   }
 
@@ -355,4 +362,589 @@
   min-width: 20px;
   padding: 0;
   color: var(--faint);
+}
+
+/* ======================================================================
+ * The kit (Dash.html, the calm board). New screens build from here down.
+ * ==================================================================== */
+
+/*
+ * .screen wraps a whole inbox screen, PageHead included, so a picked item on a phone can hide
+ * the rest. .body is the column under the header, inset as the header's text is (--inbox-x, which
+ * the stat strip's phone bleed reads too).
+ */
+.screen {
+  min-width: 0;
+}
+
+/* The strip's own 24px is the board's gap under the summary (Dash.html .stats.xsts), so the header adds none. */
+.screen > header {
+  padding-bottom: 0;
+}
+
+.body {
+  --inbox-x: 40px;
+  min-width: 0;
+  padding: 0 var(--inbox-x) 48px;
+}
+
+/* ---- Filter bar: chips, then the search ---- */
+
+.fbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.chips {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 7px;
+  height: 40px;
+  margin: 0;
+  padding: 0 15px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 0.16s,
+    color 0.16s;
+}
+
+.chip:hover {
+  color: var(--ink);
+}
+
+.chip[aria-pressed='true'],
+.chip[aria-current='true'] {
+  background: var(--action);
+  box-shadow: none;
+  color: var(--action-fg);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+/* The count after a chip's name ("To check 1"). */
+.chip u {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-decoration: none;
+  opacity: 0.7;
+}
+
+.fbar .search input {
+  width: 200px;
+}
+
+/* ---- List and detail ---- */
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  align-items: start;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+/* Outlined with a real border, never an inset shadow, so a row's fill never paints over it. */
+.split > .list {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
+  background: var(--card);
+}
+
+/* A row: avatar, name and line, amount and tag. A button or a link; no left accent bar. */
+.li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 64px;
+  margin: 0;
+  padding: 16px 20px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.li:first-child {
+  border-top: 0;
+}
+
+.li:not([aria-current='true']):hover {
+  background: var(--calm-row-hover);
+}
+
+.li[aria-current='true'] {
+  background: var(--calm-pick);
+}
+
+.li:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: -2px;
+}
+
+.liText {
+  flex: 1;
+  min-width: 0;
+}
+
+.liText b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.li[aria-current='true'] .liText b {
+  font-weight: 700;
+}
+
+.liText small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.liSide {
+  flex: none;
+  text-align: right;
+}
+
+.liSide b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The initial in a circle; data-tone picks a tag family (ok, wait, new, red; none is grey). */
+.av {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+/* A status: a 24px pill with a dot in its own colour. */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.liSide .tag {
+  margin-top: 4px;
+}
+
+.tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.av[data-tone='ok'],
+.tag[data-tone='ok'] {
+  background: var(--tag-ok);
+  color: var(--tag-ok-ink);
+}
+
+.av[data-tone='wait'],
+.tag[data-tone='wait'] {
+  background: var(--tag-wait);
+  color: var(--tag-wait-ink);
+}
+
+.av[data-tone='new'],
+.tag[data-tone='new'] {
+  background: var(--tag-new);
+  color: var(--tag-new-ink);
+}
+
+.av[data-tone='red'],
+.tag[data-tone='red'] {
+  background: var(--tag-red);
+  color: var(--tag-red-ink);
+}
+
+/* The picked item. */
+.det {
+  min-width: 0;
+  padding: 24px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  transition: box-shadow 0.2s;
+}
+
+/* Its small line above the name ("Order #16 · Today 11:42"). */
+.k {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.det h2 {
+  margin: 4px 0 2px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+/* Label and value rows, lined. */
+.kv2 {
+  display: grid;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.kv2 > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14.5px;
+}
+
+.kv2 dt,
+.kv2 span {
+  color: var(--muted);
+}
+
+.kv2 dd,
+.kv2 b {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The way back to the list from a picked item, on a phone (Dash.html .xdback). */
+.back {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin: 0 0 10px -6px;
+  padding: 0 14px 0 10px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.back:hover {
+  background: var(--surface);
+}
+
+.back span {
+  margin-top: -2px;
+  font-size: 20px;
+  line-height: 1;
+}
+
+/* ---- InlineConfirm (inline-confirm.tsx; Dash.html .xcf2 / .xcfb) ---- */
+
+.confirm {
+  display: grid;
+  justify-items: center;
+  margin-top: 12px;
+}
+
+.confirmTrigger {
+  margin: 0;
+  padding: 6px 4px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--calm-danger);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.confirmTrigger:hover {
+  text-decoration: underline;
+}
+
+.confirm[data-tone='quiet'] {
+  justify-items: start;
+}
+
+.confirm[data-tone='quiet'] .confirmTrigger {
+  height: 40px;
+  padding: 0 18px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+}
+
+.confirm[data-tone='quiet'] .confirmTrigger:hover {
+  text-decoration: none;
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+}
+
+.confirmTrigger[hidden] {
+  display: none;
+}
+
+.confirmPanel {
+  display: grid;
+  justify-self: stretch;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--r-box);
+  background: var(--surface);
+  text-align: left;
+  transform-origin: 50% 0;
+  animation: confirmIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.confirmPanel p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.confirmButtons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmYes,
+.confirmNo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.confirmYes {
+  background: var(--action);
+  color: var(--action-fg);
+}
+
+.confirmYes:hover {
+  background: var(--action-hover);
+}
+
+.confirmNo {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+}
+
+.confirmNo:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+}
+
+.confirmTrigger:focus-visible,
+.confirmYes:focus-visible,
+.confirmNo:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+@keyframes confirmIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
+/* ---- EmptyPeek (empty-peek.tsx; Dash.html .xempty) ---- */
+
+.emptyPeek {
+  max-width: 440px;
+  margin: 60px auto 0;
+  text-align: center;
+  animation: fadeUp 450ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+}
+
+.emptyPeekArt {
+  display: block;
+  width: 110px;
+  margin: 0 auto 10px;
+}
+
+.emptyPeekArt svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.emptyPeekTitle {
+  display: block;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.emptyPeekLine {
+  margin: 8px 0 18px;
+  color: var(--muted);
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.emptyPeekActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+/* ---- The kit across widths ---- */
+
+/* The picked item stays in view while the list scrolls. */
+@media (min-width: 1101px) {
+  .split > .det {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+  }
+}
+
+/*
+ * Phone and tablet (the frame's phone, 1100px and under): one column, and a picked item is its
+ * own view. Without data-open the list shows and the detail waits; with it, the detail and the way
+ * back show, and the list, the strip, the filter bar, any banner, the header's summary and its
+ * actions step aside. On a desktop the page picks the first row without data-open.
+ */
+@media (max-width: 1100px) {
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .split > .det {
+    display: none;
+  }
+
+  .split[data-open] > .det {
+    display: block;
+    animation: fadeUp 350ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+  }
+
+  .split[data-open] > .list {
+    display: none;
+  }
+
+  .split[data-open] .back {
+    display: inline-flex;
+  }
+
+  .body:has(> .split[data-open]) > :not(.split),
+  .screen:has(.split[data-open]) > :not(header):not(.body),
+  .screen:has(.split[data-open]) header [data-head-part] {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .body {
+    --inbox-x: 16px;
+    padding-bottom: 40px;
+  }
+
+  .chips {
+    flex-basis: 100%;
+    margin-right: calc(-1 * var(--inbox-x, 16px));
+    padding-right: var(--inbox-x, 16px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .chip {
+    height: 44px;
+  }
+
+  .fbar .search {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 4px;
+  }
+
+  .fbar .search input {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chip,
+  .det {
+    transition: none;
+  }
+
+  .confirmPanel,
+  .emptyPeek,
+  .split[data-open] > .det {
+    animation: none;
+  }
 }

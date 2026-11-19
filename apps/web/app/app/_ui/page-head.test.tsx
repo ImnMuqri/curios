@@ -41,4 +41,15 @@ describe('PageHead', () => {
     expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.hasKicker \.actions \{\s*padding-top: 18px;/);
     expect(css).not.toMatch(/(^|\n)\.actions \{[^}]*padding-top/);
   });
+
+  it('marks the summary and the actions, so an inbox own-view can hide them on a phone', () => {
+    const { container } = render(
+      <PageHead title="Orders" summary="One receipt to check.">
+        <a href="/x">See your shop</a>
+      </PageHead>,
+    );
+    const parts = [...container.querySelectorAll('[data-head-part]')].map((el) => el.getAttribute('data-head-part'));
+    expect(parts).toEqual(['summary', 'actions']);
+    expect(screen.getByRole('heading', { level: 1 }).closest('[data-head-part]')).toBeNull();
+  });
 });

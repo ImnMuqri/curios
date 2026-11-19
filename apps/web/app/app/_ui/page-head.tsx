@@ -16,6 +16,9 @@ import styles from './page-head.module.css';
  *
  * `kicker` (optional) is the small uppercase line above the title ("Inbox", "Orders"): plain text,
  * each page passes its own. Omit it and nothing renders.
+ *
+ * The summary and the actions carry `data-head-part`, so an inbox screen can hide them while a
+ * picked item has the phone to itself (inbox.module.css `.screen`).
  */
 export function PageHead({
   kicker,
@@ -41,9 +44,9 @@ export function PageHead({
             <h1 className={styles.title}>{title}</h1>
             {beside}
           </div>
-          {summary ? <p className={styles.summary}>{summary}</p> : null}
+          {summary ? <p className={styles.summary} data-head-part="summary">{summary}</p> : null}
         </div>
-        {children ? <div className={styles.actions}>{children}</div> : null}
+        {children ? <div className={styles.actions} data-head-part="actions">{children}</div> : null}
         <NavProgress />
       </header>
       <AlertSlot />
