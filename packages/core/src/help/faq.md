@@ -164,7 +164,7 @@ Open: /app/billing
 Source: packages/core/src/qualify.ts; packages/core/src/plan.ts (canCapture); chat.service.ts (a capped page still offers the card)
 
 ### lead-reply · How do I reply to a lead?
-Open the lead in Leads. There is a first message written for you that you can edit, then Send on WhatsApp to send it from your own WhatsApp.
+Open the lead in Leads. A new lead has a first message written for you that you can edit or copy, then Send on WhatsApp to send it from your own WhatsApp, which marks it contacted. After that, Open WhatsApp takes you straight to them.
 Open: /app/leads
 Source: apps/web/app/app/leads/lead-detail.tsx
 
