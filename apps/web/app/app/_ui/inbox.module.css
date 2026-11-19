@@ -805,6 +805,27 @@
   box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
 }
 
+/* While yes is in flight: both pills stay focusable but do nothing. */
+.confirmYes[aria-disabled='true'],
+.confirmNo[aria-disabled='true'] {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.confirmPanel .confirmError {
+  color: var(--calm-danger);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+/* After a successful yes, when the page passes `done` (the board's "Done."). */
+.confirmDone {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .confirmTrigger:focus-visible,
 .confirmYes:focus-visible,
 .confirmNo:focus-visible {
@@ -877,6 +898,10 @@
  * own view. Without data-open the list shows and the detail waits; with it, the detail and the way
  * back show, and the list, the strip, the filter bar, any banner, the header's summary and its
  * actions step aside. On a desktop the page picks the first row without data-open.
+ *
+ * The contract for overlays: a side sheet, dialog or toast host a page renders inside .screen or
+ * .body must be a <dialog>, carry role="dialog", or carry data-keep, or the own-view hides it.
+ * Rendering it outside .screen works too.
  */
 @media (max-width: 1100px) {
   .split {
@@ -900,8 +925,8 @@
     display: inline-flex;
   }
 
-  .body:has(> .split[data-open]) > :not(.split),
-  .screen:has(.split[data-open]) > :not(header):not(.body),
+  .body:has(> .split[data-open]) > :not(.split):not(dialog):not([role='dialog']):not([data-keep]),
+  .screen:has(.split[data-open]) > :not(header):not(.body):not(dialog):not([role='dialog']):not([data-keep]),
   .screen:has(.split[data-open]) header [data-head-part] {
     display: none;
   }

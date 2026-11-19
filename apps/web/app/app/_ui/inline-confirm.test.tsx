@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { InlineConfirm } from './inline-confirm.js';
 
@@ -51,5 +52,86 @@ describe('InlineConfirm', () => {
     await user.click(screen.getByRole('button', { name: 'Keep it' }));
     expect(onYes).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Cancel order' })).toHaveFocus();
+  });
+
+  it('sends once: while yes is in flight the panel stays, busy, and a second press does nothing', async () => {
+    let settle!: () => void;
+    const onYes = vi.fn(() => new Promise<void>((r) => (settle = r)));
+    const { user } = setup(onYes);
+    await user.click(screen.getByRole('button', { name: 'Cancel order' }));
+    const yesPill = screen.getByRole('button', { name: 'Yes, cancel' });
+    await user.dblClick(yesPill);
+    await user.click(yesPill);
+    expect(onYes).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('group')).toHaveAttribute('aria-busy', 'true');
+    expect(yesPill).toHaveAttribute('aria-disabled', 'true');
+    // The way out waits too, and the trigger is not back to press again.
+    await user.click(screen.getByRole('button', { name: 'Keep it' }));
+    expect(screen.getByRole('group')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel order' })).toBeNull();
+    await act(async () => settle());
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Cancel order' })).toHaveFocus();
+  });
+
+  it('stays open and live again when yes fails, and says so (no unhandled rejection)', async () => {
+    const onYes = vi.fn(() => Promise.reject(new Error('409')));
+    const { user } = setup(onYes);
+    await user.click(screen.getByRole('button', { name: 'Cancel order' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, cancel' }));
+    expect(screen.getByRole('group')).not.toHaveAttribute('aria-busy');
+    expect(screen.getByRole('alert')).toHaveTextContent('That did not go through. Try again.');
+    expect(screen.getByRole('button', { name: 'Yes, cancel' })).not.toHaveAttribute('aria-disabled');
+    await user.click(screen.getByRole('button', { name: 'Yes, cancel' }));
+    expect(onYes).toHaveBeenCalledTimes(2);
+  });
+
+  it('hands a failure to onError instead, when the page has a toast', async () => {
+    const onError = vi.fn();
+    const error = new Error('409');
+    const user = userEvent.setup();
+    render(<InlineConfirm trigger="Not received" question="Sure?" yes="Yes" no="Keep it" onYes={() => Promise.reject(error)} onError={onError} />);
+    await user.click(screen.getByRole('button', { name: 'Not received' }));
+    await user.click(screen.getByRole('button', { name: 'Yes' }));
+    expect(onError).toHaveBeenCalledWith(error);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.getByRole('group')).toBeInTheDocument();
+  });
+
+  it('puts the done line in its place after a successful yes', async () => {
+    const user = userEvent.setup();
+    render(<InlineConfirm trigger="Cancel order" question="Sure?" yes="Yes, cancel" no="Keep it" done="Done." onYes={async () => {}} />);
+    await user.click(screen.getByRole('button', { name: 'Cancel order' }));
+    await user.click(screen.getByRole('button', { name: 'Yes, cancel' }));
+    expect(screen.getByRole('status')).toHaveTextContent('Done.');
+    expect(screen.queryByRole('button')).toBeNull();
+  });
+
+  it('can be controlled, so a page keeps one confirm open at a time', async () => {
+    function Two() {
+      const [confirming, setConfirming] = useState<string | null>(null);
+      const props = (id: string) => ({
+        open: confirming === id,
+        onOpenChange: (o: boolean) => setConfirming(o ? id : null),
+      });
+      return (
+        <>
+          <InlineConfirm trigger="Cancel order" question="Cancel?" yes="Yes, cancel" no="Keep it" onYes={() => {}} {...props('cancel')} />
+          <InlineConfirm trigger="Not received" question="Not received?" yes="Yes, not received" no="Keep it" onYes={() => {}} {...props('nr')} />
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    render(<Two />);
+    await user.click(screen.getByRole('button', { name: 'Cancel order' }));
+    expect(screen.getByRole('group', { name: 'Cancel order' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Keep it' })).toHaveFocus();
+    await user.click(screen.getByRole('button', { name: 'Not received' }));
+    expect(screen.getAllByRole('group')).toHaveLength(1);
+    expect(screen.getByRole('group', { name: 'Not received' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel order' })).toBeVisible();
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('group')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Not received' })).toHaveFocus();
   });
 });

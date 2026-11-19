@@ -56,6 +56,9 @@ describe('the inbox kit stylesheet', () => {
     expect(phone).toMatch(/\.split\[data-open\] > \.det \{\s*display: block;/);
     expect(phone).toMatch(/\.split\[data-open\] > \.list \{\s*display: none;/);
     expect(phone).toMatch(/\.screen:has\(\.split\[data-open\]\) header \[data-head-part\]/);
+    // Overlays a page renders inside the screen survive the own-view.
+    expect(phone).toMatch(/\.body:has\(> \.split\[data-open\]\) > :not\(\.split\):not\(dialog\):not\(\[role='dialog'\]\):not\(\[data-keep\]\)/);
+    expect(phone).toMatch(/\.screen:has\(\.split\[data-open\]\) > :not\(header\):not\(\.body\):not\(dialog\):not\(\[role='dialog'\]\):not\(\[data-keep\]\)/);
     expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*\.chip \{\s*height: 44px;/);
   });
 
