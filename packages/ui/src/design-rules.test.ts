@@ -151,8 +151,8 @@ describe('findOffRuleRadii, longhand and multi-value', () => {
 });
 
 describe('the font scale', () => {
-  it("has the board's 48px page title (Dash.html .pg h1)", () => {
-    expect(findOffScaleFontSizes('.a { font-size: 48px; }')).toEqual([]);
+  it("has the board's page title (Dash.html .pg h1) and summary sizes", () => {
+    expect(findOffScaleFontSizes('.a { font-size: 40px; } .b { font-size: 34px; } .c { font-size: 15.5px; }')).toEqual([]);
   });
 });
 
@@ -166,7 +166,7 @@ describe('the calm rules on the shared pieces', () => {
   const shared = [
     'packages/ui/src/button/Button.module.css',
     'packages/ui/src/field/Field.module.css',
-    ...['pill-tabs', 'popover', 'toast', 'alert-slot', 'page-head', 'empty-state', 'inbox', 'editor'].map(
+    ...['pill-tabs', 'popover', 'toast', 'alert-slot', 'switch', 'page-head', 'empty-state', 'inbox', 'editor'].map(
       (name) => `apps/web/app/app/_ui/${name}.module.css`,
     ),
     'apps/web/app/app/panel.module.css',

@@ -62,6 +62,17 @@ const calmDark: Record<string, string> = {
   '--tag-red': '--calm-dark-tag-red',
   '--tag-red-ink': '--calm-dark-tag-red-ink',
   '--badge': '--calm-dark-badge',
+  '--calm-pick': '--calm-dark-pick',
+  '--calm-row-hover': '--calm-dark-row-hover',
+  '--calm-urgent': '--calm-dark-urgent',
+  '--calm-urgent-ring': '--calm-dark-urgent-ring',
+  '--calm-urgent-label': '--calm-dark-urgent-label',
+  '--calm-urgent-ink': '--calm-dark-urgent-ink',
+  '--calm-spark': '--calm-dark-spark',
+  '--calm-spark-today': '--calm-dark-spark-today',
+  '--calm-danger': '--calm-dark-danger',
+  '--calm-twice': '--calm-dark-twice',
+  '--calm-twice-ring': '--calm-dark-twice-ring',
 };
 /** The `.frame {…}` root rule, and the island rule, as text. */
 const frameRoot = frame.slice(frame.indexOf('.frame {'), frame.indexOf('\n}\n', frame.indexOf('.frame {')));
@@ -188,5 +199,19 @@ describe('dashboard dark mode', () => {
       expect(islandBlock[name], name).toBe(`var(--light-${name.slice(2)})`);
       expect(tokens[`--light-${name.slice(2)}`], name).toBe(`var(${name})`);
     }
+  });
+
+  it('maps the page-phase --calm-* tokens: a dark twin swapped in dark, the light value back in an island', () => {
+    const twins = ['pick', 'row-hover', 'urgent', 'urgent-ring', 'urgent-label', 'urgent-ink', 'spark', 'spark-today', 'danger', 'twice', 'twice-ring'];
+    for (const k of twins) {
+      expect(tokens[`--calm-${k}`], k).toMatch(/^#[0-9a-f]{6}$/);
+      expect(tokens[`--calm-dark-${k}`], k).toMatch(/^#[0-9a-f]{6}$/);
+      expect(darkBlock[`--calm-${k}`], k).toBe(`var(--calm-dark-${k})`);
+      expect(chosenBlock[`--calm-${k}`], k).toBe(`var(--calm-dark-${k})`);
+      expect(islandBlock[`--calm-${k}`], k).toBe(`var(--light-calm-${k})`);
+    }
+    // These two are the same in both themes.
+    expect(tokens['--calm-hover-ring']).toBe('#c9c4b8');
+    expect(tokens['--calm-switch-off']).toBe('#8f8b83');
   });
 });

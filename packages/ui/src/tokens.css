@@ -340,6 +340,43 @@
   --light-tag-red-ink: var(--tag-red-ink);
   --light-badge: var(--badge);
 
+  /* The calm pages (page phase, batch 1): lists, the urgent strip, sparklines, switches. The frame's dark scope maps each --calm-X that has a --calm-dark-X; a preview island takes the light value back (--light-calm-X). hover-ring and switch-off have no dark twin. --calm-twice* dark twins come from the dark red tag family (DEVIATIONS 349). */
+  --calm-pick: #f1eee7;
+  --calm-row-hover: #fbfaf7;
+  --calm-urgent: #fdf6e7;
+  --calm-urgent-ring: #f1dfb4;
+  --calm-urgent-label: #7a4b06;
+  --calm-urgent-ink: #5c3804;
+  --calm-spark: #d8d4cb;
+  --calm-spark-today: #1d7a4c;
+  --calm-hover-ring: #c9c4b8;
+  --calm-switch-off: #8f8b83;
+  --calm-danger: #b3261e;
+  --calm-twice: #fdf3f2;
+  --calm-twice-ring: #f3d4d0;
+  --calm-dark-pick: #232321;
+  --calm-dark-row-hover: #1b1b1a;
+  --calm-dark-urgent: #33291a;
+  --calm-dark-urgent-ring: #4d3b1d;
+  --calm-dark-urgent-label: #f2c46b;
+  --calm-dark-urgent-ink: #f2c46b;
+  --calm-dark-spark: #3a3936;
+  --calm-dark-spark-today: #7fd3a5;
+  --calm-dark-danger: #ff8a80;
+  --calm-dark-twice: #451f28;
+  --calm-dark-twice-ring: #5e2b36;
+  --light-calm-pick: var(--calm-pick);
+  --light-calm-row-hover: var(--calm-row-hover);
+  --light-calm-urgent: var(--calm-urgent);
+  --light-calm-urgent-ring: var(--calm-urgent-ring);
+  --light-calm-urgent-label: var(--calm-urgent-label);
+  --light-calm-urgent-ink: var(--calm-urgent-ink);
+  --light-calm-spark: var(--calm-spark);
+  --light-calm-spark-today: var(--calm-spark-today);
+  --light-calm-danger: var(--calm-danger);
+  --light-calm-twice: var(--calm-twice);
+  --light-calm-twice-ring: var(--calm-twice-ring);
+
   /* The page behind an open sheet or panel (More, the bell on a phone, Help): one dim, the board's More scrim. */
   --calm-scrim: color-mix(in srgb, var(--calm-ink) 22%, transparent);
 
