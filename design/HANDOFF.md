@@ -98,6 +98,40 @@ These four boards are plain HTML with the behaviour in vanilla JS inside `boot()
   - This replaces the subscription half of "Payment result pages (2 Nov 2026)".
 - **Billing usage boxes** take only the height they need. They do not stretch to match the plan card.
 
+### Dashboard refinements after the 19 Nov audit (now part of `Dash`)
+
+These keep the calm look and only tighten it. Build them as part of every page.
+
+- **One count everywhere.** A sidebar badge, phone-menu badge, filter chip, stat card and notification all show the same number: the rows that need the owner right now. On the board: Orders 1, Questions 1, Leads 2, Review 3.
+- **Stat strip on Orders, Questions and Leads** (3 cards, 16px corners, at least 112px tall)
+  - **First card:** what needs you. It has a soft amber fill (`#fdf6e7`, ring `#f1dfb4`) and an action line ("Check it →").
+  - **Other cards:** context. A 7-bar chart of the week for volumes, with today's bar in green. A thin progress bar for rates.
+  - **Behaviour:** cards with a count are buttons. A click filters the list below and shows a 2px ink ring, and a second click clears it.
+  - **Phone:** the strip becomes a swipeable row, with each card 72% wide.
+- **Subtitles** are one short instruction ("Check receipts first. Everything else waits for you below."). The numbers live in the cards, not the sentence.
+- **Type:** page titles are 40px (34px on tablet, 32px on phone). Every number that lines up in a column uses `font-variant-numeric: tabular-nums`.
+- **Lists and detail**
+  - The selected row has a deeper fill (`#f1eee7`) and a bolder name. **Never use a left accent bar.** Hovering a row gives a faint fill.
+  - Lists and tables use a real 1px border, so row fills never cover the outline.
+  - On desktop the detail pane stays in view while the list scrolls. It switches instantly, with no slow fade.
+- **Store**
+  - A filter bar sits above the item grid: All, In your shop, Hidden, Digital, and a search. The counts update live.
+  - Each card's footer says how the item is doing ("12 sold in 30 days", "4 enquiries in 30 days", "6 of 12 seats taken") next to its switch.
+  - A switched-off item goes grey and says "Hidden from your shop".
+- **Facts & sources:** topic filter chips with counts, a search, and a "no match" line. Source names are links. The row action is a 32px "···" button (44px on a phone) with an aria-label.
+- **Review**
+  - The top says "2 left to check", followed by a bar and "1 of 3 done".
+  - The side column has "Up next" and "Done" headings with counts. Done items keep full contrast, with a green "Accepted" label.
+  - Keyboard hints read F Fix it · S Skip · A Accept. **A** accepts.
+- **Switches:** the off track is `#8f8b83`, which is 3:1 against white. Every switch has a 44px hit area, `role="switch"`, `aria-checked` and a focus ring. Space and Enter toggle it.
+- **My Curios**
+  - Each font chip is set in its own font.
+  - The selected colour swatch gets a tick, not only a ring.
+  - Every swatch has a name (Paper, Plum, Rose and so on) as its aria-label.
+  - The hex chip reads `#b5294e`, with no space.
+- **Muted text:** anything a person reads uses `#737069` (passes AA). `#a19e97` is only for decoration.
+- **Closed side panels** are hidden (`visibility:hidden`) so they cast no shadow into the page.
+
 ### Sub pages inside the app (added 18 Nov)
 
 Every tab, editor, detail view and sheet of the real app is now on `Dash`. Screenshots are `Calm-Dash-<name>.desktop.jpg` and `.phone.jpg`, and a few also have `-dark`.
