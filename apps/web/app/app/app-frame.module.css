@@ -991,7 +991,8 @@
 
 /* Under 1100px Help takes the screen, so the phone's menu hides while it is open. */
 @media (max-width: 1100px) {
-  .frame[data-help-open] .phoneMenu {
+  .frame[data-help-open] .phoneMenu,
+  .frame[data-sheet-open] .phoneMenu {
     display: none;
   }
 }

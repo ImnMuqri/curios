@@ -12,6 +12,7 @@ import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
 import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
+import { OverlayContext } from './_ui/overlay-context.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
 import { announceOverlay, Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
@@ -154,6 +155,18 @@ export function AppFrame({
     () => ({ open: helpOpen, show: () => setHelpOpen(true), close: () => setHelpOpen(false), toggle: () => setHelpOpen((was) => !was) }),
     [helpOpen],
   );
+  // A SideSheet or Dialog open anywhere in the screen (_ui/overlay-context): counted, so two at once
+  // (a dialog over a sheet) keep the phone's menu hidden until both are gone.
+  const [sheets, setSheets] = useState(0);
+  const overlays = useMemo(
+    () => ({
+      enter: () => {
+        setSheets((n) => n + 1);
+        return () => setSheets((n) => n - 1);
+      },
+    }),
+    [],
+  );
   const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
   const choose = (next: Theme) => {
     setTheme(next);
@@ -291,7 +304,7 @@ export function AppFrame({
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
      <HelpContext.Provider value={help}>
-      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-laptop-scale>
+      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-sheet-open={sheets ? true : undefined} data-laptop-scale>
         <aside className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
             <Wordmark />
@@ -404,7 +417,9 @@ export function AppFrame({
           </header>
           <main className={styles.sheet}>
             <NavProgressProvider>
-              <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
+              <AlertsProvider alerts={alerts}>
+                <OverlayContext.Provider value={overlays}>{children}</OverlayContext.Provider>
+              </AlertsProvider>
             </NavProgressProvider>
           </main>
         </div>
