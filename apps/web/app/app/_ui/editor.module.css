@@ -367,9 +367,16 @@ a.headLink {
   padding: 0;
   border: 0;
   border-radius: 999px;
-  background: var(--edge);
+  background: var(--calm-switch-off);
   cursor: pointer;
   transition: background-color 200ms ease;
+}
+
+/* A 44px hit area around the 38x22 track (an invisible reach, no layout). */
+.switch::after {
+  content: '';
+  position: absolute;
+  inset: -11px -3px;
 }
 
 .switch[aria-checked='true'] {
@@ -394,7 +401,7 @@ a.headLink {
 }
 
 .switch:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--action);
   outline-offset: 2px;
 }
 

@@ -160,21 +160,43 @@
   stroke-linecap: round;
 }
 
+/* On a phone (Dash.html .ban9): the badge and the text share a row, the button drops under the text in column 2, the x sits top right. */
 @media (max-width: 760px) {
   .slot {
     padding: 0 16px 14px;
   }
 
   .ban {
-    flex-wrap: wrap;
+    position: relative;
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 12px;
+    align-items: start;
+    padding: 14px 48px 14px 14px;
   }
 
   .bt {
-    flex: 1 1 calc(100% - 60px);
+    min-width: 0;
   }
 
+  /* The wrapper dissolves so the button and the x place themselves. */
   .acts {
-    margin-left: 54px;
+    display: contents;
+  }
+
+  .btn {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 40px;
+    padding: 0 18px;
+  }
+
+  .x {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 44px;
+    height: 44px;
   }
 }
 
