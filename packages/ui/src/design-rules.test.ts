@@ -166,7 +166,7 @@ describe('the calm rules on the shared pieces', () => {
   const shared = [
     'packages/ui/src/button/Button.module.css',
     'packages/ui/src/field/Field.module.css',
-    ...['pill-tabs', 'popover', 'toast', 'alert-slot', 'switch', 'page-head', 'empty-state', 'inbox', 'editor'].map(
+    ...['pill-tabs', 'popover', 'toast', 'alert-slot', 'switch', 'page-head', 'empty-state', 'inbox', 'stat-strip', 'editor'].map(
       (name) => `apps/web/app/app/_ui/${name}.module.css`,
     ),
     'apps/web/app/app/panel.module.css',

@@ -350,6 +350,8 @@
   --calm-spark: #d8d4cb;
   --calm-spark-today: #1d7a4c;
   --calm-hover-ring: #c9c4b8;
+  /* A clickable stat card's lift on hover, under --calm-hover-ring (Dash.html button.st3:hover). No dark twin: the board uses the one shadow in both themes. */
+  --calm-hover-shadow: 0 8px 20px -14px rgba(40, 30, 10, 0.3);
   --calm-switch-off: #8f8b83;
   --calm-danger: #b3261e;
   --calm-twice: #fdf3f2;
