@@ -313,6 +313,10 @@ describe('a phone (19 Nov review)', () => {
       ['pricing.module.css', '.rng', /(?<![-\w])height:\s*44px/],
     ];
     for (const [file, selector, decl] of targets) expect(phoneRule(read(file), 760, selector), `${file} ${selector}`).toMatch(decl);
+    // The 44px block must not undo the hiding of the language and sign-in links on a narrow phone.
+    const nav = read('nav.module.css');
+    expect(nav.indexOf('@media (max-width: 760px)')).toBeLessThan(nav.indexOf('@media (max-width: 560px)'));
+    expect(phoneRule(nav, 560, '.quiet')).toMatch(/display:\s*none/);
     // The slider's box grows, its drawn track stays 6px.
     expect(phoneRule(read('pricing.module.css'), 760, '.rng')).toMatch(/\/ 100% 6px/);
   });

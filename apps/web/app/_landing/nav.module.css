@@ -83,13 +83,10 @@
   }
 }
 
-@media (max-width: 560px) {
-  .quiet {
-    display: none;
-  }
-}
-
-/* A phone (19 Nov review): the logo, the language and sign-in links and the button are 44px targets. */
+/*
+ * A phone (19 Nov review): the logo, the language and sign-in links and the button are 44px
+ * targets. Before the 560px block, which hides the two quiet links on a narrow phone.
+ */
 @media (max-width: 760px) {
   .brand,
   .quiet {
@@ -100,5 +97,11 @@
 
   .right .cta {
     height: 44px;
+  }
+}
+
+@media (max-width: 560px) {
+  .quiet {
+    display: none;
   }
 }

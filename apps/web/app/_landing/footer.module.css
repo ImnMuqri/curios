@@ -78,8 +78,11 @@
     min-height: 44px;
   }
 
+  /* The 44px boxes are the spacing between wrapped rows now. */
+  .links,
   .legalLinks,
   .co {
     align-items: center;
+    row-gap: 0;
   }
 }
