@@ -115,6 +115,14 @@ describe('the reveal', () => {
     expect(getByTestId('below')).toHaveAttribute('data-rv', 'in');
   });
 
+  it('hides a held block only under `.js`, so a page whose scripts never ran shows every section', () => {
+    const css = read('calm.module.css').replace(/\/\*[\s\S]*?\*\//g, '');
+    const hiding = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel, body]) => /\.rv\b/.test(sel!) && /opacity:\s*0\b/.test(body!));
+    expect(hiding.length).toBeGreaterThan(0);
+    for (const [, sel] of hiding) expect(sel!.trim()).toMatch(/^:global\(\.js\) \.rv\b/);
+    expect(rule(read('calm.module.css'), '.rv')).not.toMatch(/(?<![-\w])(opacity|transform):/);
+  });
+
   it('reveals nothing when the visitor asks for less motion', () => {
     reduceMotion();
     vi.stubGlobal('IntersectionObserver', class { observe() {} unobserve() {} disconnect() {} });

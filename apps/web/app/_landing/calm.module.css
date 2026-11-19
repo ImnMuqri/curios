@@ -243,6 +243,8 @@
  * The scroll reveal (plan, Open decision 2). The server draws every block in
  * place; Reveal.tsx holds a block still only after mount, when it is below
  * the fold, so nothing is hidden from a crawler or a visitor without JS.
+ * The held state is also gated on the `js` class the root layout's inline
+ * <head> script puts on <html> (19 Nov review): no script, no hiding.
  */
 .rv {
   transition:
@@ -250,7 +252,7 @@
     transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) var(--d, 0ms);
 }
 
-.rv[data-rv='wait'] {
+:global(.js) .rv[data-rv='wait'] {
   opacity: 0;
   transform: translateY(22px);
 }

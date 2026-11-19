@@ -22,10 +22,22 @@ export const metadata: Metadata = { title: 'Curios' };
  * friends, which resolve through these -- so the design system never imports
  * Next and stays renderable in a plain vitest jsdom.
  */
+/*
+ * Marks a page whose scripts run, before anything paints. Styles that hide a block until a script
+ * reveals it (the landing's scroll reveal) are gated on `.js`, so a page whose scripts never ran
+ * shows everything. Here, not in the landing's layout, because only the root layout owns <head>;
+ * the class is harmless elsewhere (nothing else reads it). The class is added before hydration,
+ * so <html> suppresses the attribute mismatch it would otherwise report.
+ */
+const JS_CLASS_SCRIPT = "document.documentElement.classList.add('js')";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   lookUpApi();
   return (
-    <html lang="en" className={fontVariables}>
+    <html lang="en" className={fontVariables} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: JS_CLASS_SCRIPT }} />
+      </head>
       <body>
         <Providers>{children}</Providers>
       </body>

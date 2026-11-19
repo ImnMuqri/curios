@@ -50,7 +50,9 @@ finished frame.
 `data-rv=""` and an optional `--d` delay. The server never hides anything;
 `RevealWatcher` holds only blocks below the fold after mount
 (`data-rv="wait"`) and releases each as it comes into view. Reduced motion, or
-no IntersectionObserver, holds nothing.
+no IntersectionObserver, holds nothing. The held style is gated on `.js`, which
+the root layout's inline `<head>` script adds to `<html>` (19 Nov review), so a
+failed or blocked script never leaves a section blank.
 
 **Peek.** `_peek/LivePeek.tsx` with `_peek/peek-life.ts`: every live Peek shares
 one pointer listener (pupils follow the pointer) and one habit clock (look,
