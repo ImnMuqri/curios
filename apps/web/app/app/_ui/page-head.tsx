@@ -13,13 +13,19 @@ import styles from './page-head.module.css';
  * Under it, the frame's alert for this screen if there is one (AlertSlot), so every screen shows
  * its banner in the same place, after its title. Along its bottom edge, the bar that runs while
  * the next screen loads (NavProgress). The theme switch lives in the frame's top bar.
+ *
+ * `kicker` (optional) is the small uppercase line above the title ("Inbox", "Orders"): plain text,
+ * each page passes its own. Omit it and nothing renders.
  */
 export function PageHead({
+  kicker,
   title,
   summary,
   beside,
   children,
 }: {
+  /** Small uppercase line above the title. */
+  kicker?: string;
   title: string;
   /** One sentence; wrap the numbers in <b>. */
   summary?: ReactNode;
@@ -30,6 +36,7 @@ export function PageHead({
     <>
       <header className={beside ? `${styles.head} ${styles.withBeside}` : styles.head}>
         <div className={styles.text}>
+          {kicker ? <p className={styles.kicker}>{kicker}</p> : null}
           <div className={styles.titleRow}>
             <h1 className={styles.title}>{title}</h1>
             {beside}

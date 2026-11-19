@@ -1,0 +1,33 @@
+import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { render, screen } from '@testing-library/react';
+
+vi.mock('next/navigation', () => ({ usePathname: () => '/app/orders' }));
+const { PageHead } = await import('./page-head.js');
+const css = readFileSync(path.resolve(__dirname, './page-head.module.css'), 'utf8');
+
+describe('PageHead', () => {
+  it('renders the kicker above the title, and nothing without one', () => {
+    const { rerender } = render(<PageHead kicker="Inbox" title="Orders" />);
+    expect(screen.getByText('Inbox')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Orders' })).toBeInTheDocument();
+    rerender(<PageHead title="Orders" />);
+    expect(screen.queryByText('Inbox')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Orders' })).toBeInTheDocument();
+  });
+
+  it('sizes the title 40px, 34px at 1100 and under, 32px at 760 and under', () => {
+    expect(css).toMatch(/\.title \{[^}]*font-size: 40px;[^}]*letter-spacing: -0\.04em;/);
+    expect(css).toMatch(/@media \(max-width: 1100px\) \{\s*\.title \{\s*font-size: 34px;/);
+    expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.title \{\s*font-size: 32px;/);
+  });
+
+  it('sets the kicker, the summary and the actions as the board does', () => {
+    expect(css).toMatch(
+      /\.kicker \{[^}]*font-size: 12\.5px;[^}]*font-weight: 600;[^}]*letter-spacing: 0\.06em;[^}]*text-transform: uppercase;[^}]*var\(--muted\)/,
+    );
+    expect(css).toMatch(/\.summary \{\s*margin: 8px 0 0;\s*font-size: 15\.5px;/);
+    expect(css).toMatch(/\.actions \{[^}]*padding-top: 30px;/);
+  });
+});
