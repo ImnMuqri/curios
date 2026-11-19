@@ -863,7 +863,10 @@
 
 .emptyPeekTitle {
   display: block;
+  margin: 0;
+  font-family: inherit;
   font-size: 22px;
+  line-height: 1.25;
   font-weight: 600;
   letter-spacing: -0.03em;
 }

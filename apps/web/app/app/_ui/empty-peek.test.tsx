@@ -10,7 +10,7 @@ describe('EmptyPeek', () => {
       </EmptyPeek>,
     );
     expect(container.querySelector('svg')).toHaveAttribute('width', '110');
-    expect(screen.getByText('No orders yet')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: 'No orders yet' })).toBeInTheDocument();
     expect(screen.getByText('Share your shop and orders land here.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Open your shop' })).toBeInTheDocument();
   });
