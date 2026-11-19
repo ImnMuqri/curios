@@ -14,9 +14,9 @@ import { TERMS, advance, read, reduceMotion, rule, watchViews } from './test-kit
 const CALM_MODULES = ['calm.module.css', 'nav.module.css', 'footer.module.css', 'hero.module.css', 'page-card.module.css', 'claim.module.css', 'ask.module.css', 'who.module.css', 'how.module.css', 'lands.module.css', 'nocut.module.css', 'pricing.module.css', 'faq.module.css', 'closing.module.css'];
 
 const CL_TOKENS = [
-  'text-2', 'text-3', 'faint', 'hint', 'placeholder', 'ghost', 'ring-hover', 'dot', 'hl-green', 'hl-green-ink', 'hl-rose', 'hl-rose-ink',
-  'art-blue', 'art-peach', 'art-mint', 'mark', 'mark-ink', 'fact-next', 'amber-ink', 'paid-wash', 'mint-on-ink', 'hot', 'hot-ink', 'miss',
-  'sys', 'sent', 'zone-key', 'zone-empty', 'receipt-rule', 'mock-line', 'mock-soft', 'mock-hair', 'mock-ring', 'mock-radio', 'mock-text-2',
+  'text-2', 'text-3', 'placeholder', 'ghost', 'ring-hover', 'dot', 'hl-green', 'hl-green-ink', 'hl-rose', 'hl-rose-ink',
+  'art-blue', 'art-peach', 'art-mint', 'mark', 'mark-ink', 'fact-next', 'amber-ink', 'fee-ink', 'paid-wash', 'mint-on-ink', 'hot', 'hot-ink', 'miss',
+  'sys', 'sent', 'zone-empty', 'receipt-rule', 'mock-line', 'mock-soft', 'mock-hair', 'mock-ring', 'mock-radio', 'mock-text-2',
   'ig-a', 'ig-b', 'ig-ring', 'ig-ink',
   ...[1, 2, 3, 4, 5, 6].flatMap((n) => [`word-${n}`, `word-${n}-ink`]),
 ].map((n) => `--cl-${n}`);
@@ -210,20 +210,58 @@ describe('the scene runner', () => {
 });
 
 describe('contrast', () => {
-  it('draws text people read, and everything they click, in --calm-muted or darker, never --cl-faint', () => {
+  const tokens = readFileSync(join(import.meta.dirname, '../../../../packages/ui/src/tokens.css'), 'utf8');
+  const hex = (name: string) => tokens.match(new RegExp(`^\\s*${name}:\\s*(#[0-9a-f]{6});`, 'm'))![1]!;
+  const lum = (h: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => {
+      const c = parseInt(h.slice(i, i + 2), 16) / 255;
+      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+  };
+  const ratio = (a: string, b: string) => {
+    const [x, y] = [lum(a), lum(b)].sort((m, n) => n - m);
+    return (x! + 0.05) / (y! + 0.05);
+  };
+
+  it('draws text people read, and everything they click, in --calm-muted or darker', () => {
+    // The 19 Nov review: labels, small print, handles and receipt lines all pass AA. None is left in the old faint greys.
     const readable: [string, string][] = [
       ['calm.module.css', '.lbl'],
+      ['calm.module.css', '.fine'],
+      ['claim.module.css', '.cin > span'],
       ['footer.module.css', '.note'],
       ['footer.module.css', '.legal'],
       ['who.module.css', '.sw button'],
+      ['who.module.css', '.ask em'],
+      ['who.module.css', '.fa small'],
+      ['who.module.css', '.fa p > span'],
+      ['who.module.css', '.fb em'],
+      ['how.module.css', '.paste small'],
+      ['how.module.css', '.fact small'],
       ['pricing.module.css', '.k0'],
       ['nocut.module.css', '.incl small'],
+      ['nocut.module.css', '.sm'],
       ['lands.module.css', '.lsteps span'],
+      ['lands.module.css', '.lzk'],
+      ['lands.module.css', '.kv small'],
     ];
     for (const [file, selector] of readable) {
       const decls = rule(read(file), selector);
-      expect(decls, `${file} ${selector}`).toMatch(/color:/);
-      expect(decls, `${file} ${selector}`).not.toMatch(/--cl-faint/);
+      expect(decls, `${file} ${selector}`).toMatch(/(?<![-\w])color:\s*var\(--calm-(muted|ink)\)/);
     }
+    for (const bg of ['--calm-bg', '--calm-surface']) expect(ratio(hex('--calm-muted'), hex(bg)), bg).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('keeps the coloured inks at 4.5:1 and the ask strip’s large unlit words at 3:1', () => {
+    expect(rule(read('nocut.module.css'), '.rf b')).toMatch(/color:\s*var\(--cl-fee-ink\)/);
+    expect(ratio(hex('--cl-fee-ink'), hex('--calm-surface'))).toBeGreaterThanOrEqual(4.5);
+    expect(ratio(hex('--cl-hot-ink'), hex('--cl-hot'))).toBeGreaterThanOrEqual(4.5);
+    expect(rule(read('ask.module.css'), '.w')).toMatch(/color:\s*var\(--cl-ghost\)/);
+    expect(ratio(hex('--cl-ghost'), hex('--calm-bg'))).toBeGreaterThanOrEqual(3);
+  });
+
+  it('keeps the marketplace receipt at full strength: no dim', () => {
+    expect(read('nocut.module.css')).not.toMatch(/data-dim/);
   });
 });

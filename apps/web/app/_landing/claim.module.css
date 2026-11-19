@@ -49,7 +49,7 @@
 }
 
 .cin > span {
-  color: var(--cl-hint);
+  color: var(--calm-muted);
 }
 
 .cin input {

@@ -21,7 +21,6 @@ const money = (v: number) => `RM${v.toFixed(2)}`;
 export interface ReceiptsState {
   mk: boolean;
   fees: number;
-  dim: boolean;
   cu: boolean;
   /** 0 nothing, 1 the commission row, 2 and the bank fee. */
   rows: number;
@@ -43,7 +42,6 @@ export const receiptsScene: Scene<ReceiptsState, ReceiptsProps> = {
   still: (p) => ({
     mk: true,
     fees: p.fees.length,
-    dim: true,
     cu: true,
     rows: 2,
     stamp: true,
@@ -52,7 +50,7 @@ export const receiptsScene: Scene<ReceiptsState, ReceiptsProps> = {
     hop: 0,
     cheer: 0,
   }),
-  start: (p) => ({ mk: false, fees: 0, dim: false, cu: false, rows: 0, stamp: false, keepMk: p.start, keepCu: p.start, hop: 0, cheer: 0 }),
+  start: (p) => ({ mk: false, fees: 0, cu: false, rows: 0, stamp: false, keepMk: p.start, keepCu: p.start, hop: 0, cheer: 0 }),
   async run(p, set, wait) {
     set((s) => ({ ...receiptsScene.start(p), hop: s.hop, cheer: s.cheer }));
     await wait(500);
@@ -72,7 +70,6 @@ export const receiptsScene: Scene<ReceiptsState, ReceiptsProps> = {
       k = to;
       await wait(250);
     }
-    set((s) => ({ ...s, dim: true }));
     await wait(500);
     set((s) => ({ ...s, cu: true }));
     await wait(900);
@@ -95,7 +92,8 @@ export const receiptsScene: Scene<ReceiptsState, ReceiptsProps> = {
 
 /**
  * No cut, ever (Landing2 board): the same RM100 cake on two receipts. The
- * marketplace one prints, loses three fees and dims; the Curios one prints,
+ * marketplace one prints, loses three fees and stays at full strength (the 19 Nov board no longer
+ * dims it, so its lines keep their contrast); the Curios one prints,
  * takes no commission (stamped 0%) and only the bank's FPX fee. The figures
  * are a fixed sample, not prices from PlanTerms. The server, and reduced
  * motion, show both printed and totalled.
@@ -126,7 +124,7 @@ export function NoCut({ locale }: { locale: Locale }) {
           {copy.sub}
         </p>
         <div ref={ref} className={`${styles.rcp} ${calm.rv}`} data-rv="" style={{ '--d': '200ms' } as CSSProperties}>
-          <div className={`${styles.rc} ${styles.mk}`} data-receipt="" data-in={s.mk ? '' : undefined} data-dim={s.dim ? '' : undefined}>
+          <div className={`${styles.rc} ${styles.mk}`} data-receipt="" data-in={s.mk ? '' : undefined}>
             <h3>{copy.market.title}</h3>
             <p className={styles.sm}>{copy.market.ref}</p>
             <div className={styles.rl}>
