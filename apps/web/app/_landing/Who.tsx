@@ -97,7 +97,7 @@ export function Who({ locale }: { locale: Locale }) {
   };
 
   return (
-    <section className={calm.sec} id="who" aria-labelledby="who-title">
+    <section className={`${calm.sec} ${calm.secEnd}`} id="who" aria-labelledby="who-title">
       <div className={calm.wrap}>
         <p className={`${calm.lbl} ${calm.rv}`} data-rv="">
           {copy.eyebrow}

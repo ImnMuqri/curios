@@ -64,6 +64,11 @@
   padding: 150px 0 0;
 }
 
+/* Who it's for, How it works and For business end with room before the next section's colour (19 Nov review). */
+.secEnd {
+  padding-bottom: 88px;
+}
+
 .srOnly {
   position: absolute;
   width: 1px;
@@ -260,6 +265,12 @@
 @media (max-width: 900px) {
   .sec {
     padding-top: 96px;
+  }
+}
+
+@media (max-width: 640px) {
+  .secEnd {
+    padding-bottom: 64px;
   }
 }
 

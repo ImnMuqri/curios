@@ -334,3 +334,13 @@ button.pc {
     transform: translateX(calc(-50% + 170px)) scale(0.66);
   }
 }
+
+/* A phone (19 Nov review): the side pages show only their colour and photo, so their names don't overlap the front page. */
+@media (max-width: 640px) {
+  .pc[data-s='-1'] .body,
+  .pc[data-s='1'] .body,
+  .pc[data-s='-1'] .kind,
+  .pc[data-s='1'] .kind {
+    visibility: hidden;
+  }
+}

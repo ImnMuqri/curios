@@ -42,7 +42,7 @@ export function Nav({ nav, home }: { nav: LandingCopy['nav']; home: string }) {
           <a href="/signin" className={styles.quiet}>
             {nav.signIn}
           </a>
-          <a href="/signup" className={`${calm.btn} ${calm.dark} ${calm.sm}`}>
+          <a href="/signup" className={`${calm.btn} ${calm.dark} ${calm.sm} ${styles.cta}`}>
             {nav.cta}
           </a>
         </div>

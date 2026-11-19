@@ -77,7 +77,7 @@ export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerm
         <AskStrip locale={locale} />
         <Who locale={locale} />
         <How locale={locale} />
-        <section className={calm.sec} id="business" aria-labelledby="business-label">
+        <section className={`${calm.sec} ${calm.secEnd}`} id="business" aria-labelledby="business-label">
           <div className={calm.wrap}>
             <p id="business-label" className={`${calm.lbl} ${calm.rv}`} data-rv="">
               {copy.lands.eyebrow}

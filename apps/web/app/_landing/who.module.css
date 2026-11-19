@@ -250,3 +250,10 @@
     display: none;
   }
 }
+
+/* A phone (19 Nov review): the question chips are 44px targets. */
+@media (max-width: 760px) {
+  .sw button {
+    min-height: 44px;
+  }
+}

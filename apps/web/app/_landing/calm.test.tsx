@@ -9,6 +9,7 @@ import { LandingPage } from './LandingPage.js';
 import { RevealWatcher } from './Reveal.js';
 import { play, useScene, type Scene } from './scene.js';
 import { TERMS, advance, read, reduceMotion, rule, watchViews } from './test-kit.js';
+import calm from './calm.module.css';
 
 /** Every calm landing stylesheet, relative to this folder. Each section task appends its own. */
 const CALM_MODULES = ['calm.module.css', 'nav.module.css', 'footer.module.css', 'hero.module.css', 'page-card.module.css', 'claim.module.css', 'ask.module.css', 'who.module.css', 'how.module.css', 'lands.module.css', 'nocut.module.css', 'pricing.module.css', 'faq.module.css', 'closing.module.css'];
@@ -271,5 +272,66 @@ describe('contrast', () => {
 
   it('keeps the marketplace receipt at full strength: no dim', () => {
     expect(read('nocut.module.css')).not.toMatch(/data-dim/);
+  });
+});
+
+/** The declarations of `selector` inside the first `@media (max-width: <px>px)` block of `css`. */
+function phoneRule(css: string, px: number, selector: string): string {
+  const clean = css.replace(/\/\*[\s\S]*?\*\//g, '');
+  const at = clean.indexOf(`@media (max-width: ${px}px) {`);
+  if (at < 0) return '';
+  let depth = 0;
+  let end = at;
+  for (let i = clean.indexOf('{', at); i < clean.length; i++) {
+    if (clean[i] === '{') depth++;
+    if (clean[i] === '}' && --depth === 0) {
+      end = i;
+      break;
+    }
+  }
+  const block = clean.slice(clean.indexOf('{', at) + 1, end);
+  for (const m of block.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (m[1]!.split(',').map((s) => s.trim()).includes(selector)) return m[2]!;
+  }
+  return '';
+}
+
+describe('a phone (19 Nov review)', () => {
+  it('makes every tap target at least 44px: the logos, the nav button, the footer links, the toggles and the slider', () => {
+    const targets: [string, string, RegExp][] = [
+      ['nav.module.css', '.brand', /min-height:\s*44px/],
+      ['nav.module.css', '.quiet', /min-height:\s*44px/],
+      ['nav.module.css', '.right .cta', /(?<![-\w])height:\s*44px/],
+      ['footer.module.css', '.brand', /min-height:\s*44px/],
+      ['footer.module.css', '.links a', /min-height:\s*44px/],
+      ['footer.module.css', '.legalLinks a', /min-height:\s*44px/],
+      ['footer.module.css', '.co a', /min-height:\s*44px/],
+      ['who.module.css', '.sw button', /min-height:\s*44px/],
+      ['lands.module.css', '.tog button', /min-height:\s*44px/],
+      ['pricing.module.css', '.tog button', /min-height:\s*44px/],
+      ['pricing.module.css', '.seg button', /min-height:\s*44px/],
+      ['pricing.module.css', '.rng', /(?<![-\w])height:\s*44px/],
+    ];
+    for (const [file, selector, decl] of targets) expect(phoneRule(read(file), 760, selector), `${file} ${selector}`).toMatch(decl);
+    // The slider's box grows, its drawn track stays 6px.
+    expect(phoneRule(read('pricing.module.css'), 760, '.rng')).toMatch(/\/ 100% 6px/);
+  });
+
+  it('shows the hero’s side pages as colour only, so their names never overlap the front page', () => {
+    const css = read('page-card.module.css');
+    for (const s of ["-1'] .body", "1'] .body", "-1'] .kind", "1'] .kind"]) expect(phoneRule(css, 640, `.pc[data-s='${s}`), s).toMatch(/visibility:\s*hidden/);
+  });
+
+  it('lets the chat’s message list shrink, so messages never slide under the chat header', () => {
+    expect(rule(read('lands.module.css'), '.lcm')).toMatch(/min-height:\s*0;/);
+  });
+});
+
+describe('section ends (19 Nov review)', () => {
+  it.each(['en', 'ms'] as const)('%s: Who it’s for, How it works and For business end with room before the next colour', (locale) => {
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
+    for (const id of ['who', 'how', 'business']) expect(container.querySelector(`#${id}`)!.className, id).toContain(calm.secEnd);
+    expect(rule(read('calm.module.css'), '.secEnd')).toMatch(/padding-bottom:\s*88px/);
+    expect(phoneRule(read('calm.module.css'), 640, '.secEnd')).toMatch(/padding-bottom:\s*64px/);
   });
 });

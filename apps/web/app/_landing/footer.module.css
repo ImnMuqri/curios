@@ -66,3 +66,20 @@
     margin-top: 0;
   }
 }
+
+/* A phone (19 Nov review): the logo and every footer link are 44px targets. */
+@media (max-width: 760px) {
+  .brand,
+  .links a,
+  .legalLinks a,
+  .co a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  .legalLinks,
+  .co {
+    align-items: center;
+  }
+}
