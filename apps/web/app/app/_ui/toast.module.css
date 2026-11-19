@@ -37,10 +37,64 @@
   stroke-linejoin: round;
 }
 
+/* The error tone (`fail`): the soft red family, an alert mark, and a ✕ that takes it away. */
+.toast[data-tone='error'] {
+  padding-right: 6px;
+  background: var(--tag-red);
+  color: var(--tag-red-ink);
+  font-weight: 600;
+  pointer-events: auto;
+}
+
+.toast[data-tone='error'] > svg {
+  stroke: currentColor;
+  stroke-width: 2.2;
+}
+
+.dismiss {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.dismiss:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+.dismiss svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+}
+
 @keyframes toastIn {
   from {
     opacity: 0;
     transform: translateY(16px);
+  }
+}
+
+/* Under 1100px the phone's menu floats at the foot (phone-menu.module.css, 18px up): the toast sits above it, not behind. */
+@media (max-width: 1100px) {
+  .slot {
+    bottom: calc(92px + env(safe-area-inset-bottom));
   }
 }
 
