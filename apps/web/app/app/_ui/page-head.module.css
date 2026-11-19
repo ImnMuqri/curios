@@ -61,10 +61,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  /* Level with the title, as the board's .hrow .acts (padding-top 30px, 18px on a phone). */
-  padding-top: 30px;
   /* Still on the right when they wrap under the title. */
   margin-left: auto;
+}
+
+/* With a kicker above the title the actions drop to stay level with it, as the board's .hrow .acts (30px, 18px on a phone). Without one they stay where they were. */
+.hasKicker .actions {
+  padding-top: 30px;
 }
 
 /* Tabs beside the title (Store, My Curios, often beside a phone preview): the actions sit at the right
@@ -130,6 +133,9 @@
   /* Under the title on a phone, the actions start at the left, as the boards draw "See your shop". */
   .actions {
     margin-left: 0;
+  }
+
+  .hasKicker .actions {
     padding-top: 18px;
   }
 

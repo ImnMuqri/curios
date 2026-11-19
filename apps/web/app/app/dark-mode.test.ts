@@ -202,8 +202,24 @@ describe('dashboard dark mode', () => {
   });
 
   it('maps the page-phase --calm-* tokens: a dark twin swapped in dark, the light value back in an island', () => {
-    const twins = ['pick', 'row-hover', 'urgent', 'urgent-ring', 'urgent-label', 'urgent-ink', 'spark', 'spark-today', 'danger', 'twice', 'twice-ring'];
-    for (const k of twins) {
+    const pinned: Record<string, [string, string]> = {
+      pick: ['#f1eee7', '#232321'],
+      'row-hover': ['#fbfaf7', '#1b1b1a'],
+      urgent: ['#fdf6e7', '#33291a'],
+      'urgent-ring': ['#f1dfb4', '#4d3b1d'],
+      'urgent-label': ['#7a4b06', '#f2c46b'],
+      'urgent-ink': ['#5c3804', '#f2c46b'],
+      spark: ['#d8d4cb', '#3a3936'],
+      'spark-today': ['#1d7a4c', '#7fd3a5'],
+      danger: ['#b3261e', '#ff8a80'],
+      twice: ['#fdf3f2', '#451f28'],
+      'twice-ring': ['#f3d4d0', '#5e2b36'],
+    };
+    for (const [k, [light, dark]] of Object.entries(pinned)) {
+      expect(tokens[`--calm-${k}`], k).toBe(light);
+      expect(tokens[`--calm-dark-${k}`], k).toBe(dark);
+    }
+    for (const k of Object.keys(pinned)) {
       expect(tokens[`--calm-${k}`], k).toMatch(/^#[0-9a-f]{6}$/);
       expect(tokens[`--calm-dark-${k}`], k).toMatch(/^#[0-9a-f]{6}$/);
       expect(darkBlock[`--calm-${k}`], k).toBe(`var(--calm-dark-${k})`);

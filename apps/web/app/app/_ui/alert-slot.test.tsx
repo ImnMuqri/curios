@@ -278,6 +278,10 @@ describe('the banner on a phone (Dash.html .ban9)', () => {
     expect(phone).toMatch(/padding: 14px 48px 14px 14px;/);
   });
 
+  it('dissolves the actions wrapper so the button and the x place themselves', () => {
+    expect(phone).toMatch(/\.acts \{\s*display: contents;/);
+  });
+
   it('puts the button in column 2, left-aligned, 40px tall', () => {
     expect(phone).toMatch(/\.btn \{[^}]*grid-column: 2;[^}]*justify-self: start;[^}]*min-height: 40px;/);
   });

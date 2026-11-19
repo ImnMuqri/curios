@@ -34,7 +34,7 @@ export function PageHead({
 }) {
   return (
     <>
-      <header className={beside ? `${styles.head} ${styles.withBeside}` : styles.head}>
+      <header className={[styles.head, beside ? styles.withBeside : '', kicker ? styles.hasKicker : ''].filter(Boolean).join(' ')}>
         <div className={styles.text}>
           {kicker ? <p className={styles.kicker}>{kicker}</p> : null}
           <div className={styles.titleRow}>
