@@ -950,3 +950,5 @@ In short:
 > **Plan banners on a phone (19 Nov):** under 760px a banner is a two-column grid. The badge sits on the left and the text gets the rest of the width. The button sits under the text, left-aligned, and the × is a 44px target in the top-right corner. Never squeeze the text between the button and the ×.
 >
 > **No left accent bars.** Don't mark a selected row or card with a coloured left border. Use the soft fill and a bolder name instead.
+
+> **List and table outlines (19 Nov):** give lists and tables a real 1px border, not an inset box-shadow. An inset shadow is painted under the rows, so a hovered or selected row's fill covers the outline.
