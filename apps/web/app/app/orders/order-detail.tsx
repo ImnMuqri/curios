@@ -154,6 +154,7 @@ export function OrderDetail({
   move,
   act,
   say,
+  warn,
   onChanged,
 }: {
   order: OrderRow;
@@ -161,8 +162,10 @@ export function OrderDetail({
   move: OrderMove;
   /** The owner's moves on what was sent by email: new links, a new code, another time, the email again. */
   act: DigitalAct;
-  /** The screen's toast, which outlives this panel: what happened, and what failed. */
+  /** The screen's toast, which outlives this panel: what happened. */
   say: (text: string) => void;
+  /** The toast's error tone (no tick, role alert, stays): what failed, for every move in the card. */
+  warn: (text: string) => void;
   /** After a move: read the server again, for the list and the figures. */
   onChanged: () => void;
 }) {
@@ -264,15 +267,15 @@ export function OrderDetail({
       : `Paid some other way? Mark it paid and their digital items go to ${order.email}.`
     : 'Paid some other way? You can still mark it paid.';
   let hint: string | null = null;
-  if (view === 'toCheck' && sendsMail)
-    hint = digitalOnly ? `Their ${only} goes to ${order.email} the moment you do.` : `Their digital items go to ${order.email} the moment you do.`;
-  else if (view === 'awaitingPayment') hint = notReceived ? elsewhere : `No receipt was uploaded. ${elsewhere}`;
+  if (view === 'awaitingPayment') hint = notReceived ? elsewhere : `No receipt was uploaded. ${elsewhere}`;
   else if (view === 'paidOnline' && !paidTwice) hint = 'Paid through CHIP, so there’s nothing to check.';
-  else if (view === 'paid' && !digitalOnly) hint = `Paid. Ready on ${dayLabel(order.day)}. Mark it completed once ${first} has it.`;
+  // A voucher order says how it was paid in its soft card, and the board gives it no hint.
+  else if (view === 'paid' && !digitalOnly && !byVoucher) hint = `Paid. Ready on ${dayLabel(order.day)}. Mark it completed once ${first} has it.`;
   else if (view === 'refundOwed') hint = secondOwed ? 'Send it back yourself and refund the CHIP payment too, then mark it refunded.' : 'Send it back yourself, then mark it refunded.';
   else if (view === 'cancelled') hint = 'Nothing was paid, so nothing is owed.';
 
-  const canCancel = order.status === 'PLACED' || order.status === 'PAID';
+  // Where it was before: beside a next move, so never on a digital-only order that is paid (nothing left to do).
+  const canCancel = (order.status === 'PLACED' || order.status === 'PAID') && ask !== null;
   const cancelQuestion =
     order.status === 'PAID' && order.totalCents > 0
       ? `Cancel #${order.number}? You will owe ${first} ${total}.`
@@ -283,7 +286,8 @@ export function OrderDetail({
 
   /** Sends the move. Throws on failure (an InlineConfirm stays open); stays busy until the server's read arrives. */
   async function perform(action: OrderAction, toast: string) {
-    if (inFlight.current) return;
+    // Another move is still saving: say so, and leave a confirm open (it treats a throw as not done).
+    if (inFlight.current) throw new Error('One moment: the last change is still saving.');
     inFlight.current = true;
     setBusy(true);
     try {
@@ -299,7 +303,7 @@ export function OrderDetail({
     say(toast);
     onChanged();
   }
-  const fail = (failure: unknown) => say(failureText(failure));
+  const fail = (failure: unknown) => warn(failureText(failure));
   const openAs = (which: Exclude<Confirming, null>) => (open: boolean) => setConfirming(open ? which : null);
 
   const isPdf = order.receiptType === 'application/pdf';
@@ -367,7 +371,7 @@ export function OrderDetail({
 
       {hasReceipt && !secondOwed && (!online || paidTwice) ? <div className={styles.block}>{receiptTile(`${uploaded}${opens}`)}</div> : null}
 
-      {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} onChanged={onChanged} /> : null}
+      {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} warn={warn} onChanged={onChanged} /> : null}
 
       {byVoucher ? (
         <div className={styles.soft}>
@@ -392,7 +396,8 @@ export function OrderDetail({
               ? `Confirmed by the bank through CHIP, and a receipt for a transfer came in too. Send the second ${total} back to ${first}, then mark it refunded.`
               : `It was paid, and CHIP took ${total} again too. Refund the second ${total} in CHIP, then mark it refunded.`}
           </p>
-          {hasReceipt ? receiptTile(`${uploaded}${opens}`) : null}
+          {/* CHIP took the second payment: the receipt here is the first one's. */}
+          {hasReceipt ? receiptTile(`${online ? '' : 'First payment · '}${uploaded}${opens}`) : null}
           {/* A cancelled order's Mark refunded below takes both payments back. */}
           {cancelled ? null : (
             <div className={styles.twiceConfirm}>

@@ -64,12 +64,15 @@ const orders: OrderRow[] = [
 
 const stats: OrderStats = { toCheck: 1, toMake: 2, paidThisWeekCents: 17000, paidDaysCents: [0, 0, 0, 0, 0, 0, 17000], paidTodayCents: 17000 };
 
-function show(list = orders, extra: { selected?: string | null; stats?: OrderStats; paging?: { older: string | null; paged: boolean } } = {}) {
-  const move = vi.fn(async () => undefined);
+function show(
+  list = orders,
+  extra: { selected?: string | null; stats?: OrderStats; paging?: { older: string | null; paged: boolean }; move?: () => Promise<void> } = {},
+) {
+  const move = vi.fn(extra.move ?? (async () => undefined));
   const onChanged = vi.fn();
-  render(
+  const view = (next: OrderRow[]) => (
     <OrdersScreen
-      orders={list}
+      orders={next}
       paging={extra.paging}
       stats={extra.stats ?? stats}
       now={now}
@@ -80,9 +83,11 @@ function show(list = orders, extra: { selected?: string | null; stats?: OrderSta
       move={move}
       act={vi.fn()}
       onChanged={onChanged}
-    />,
+    />
   );
-  return { move, onChanged };
+  const { rerender } = render(view(list));
+  // The server's read after a move: the same screen with the orders as they are now.
+  return { move, onChanged, refresh: (next: OrderRow[]) => rerender(view(next)) };
 }
 
 const header = () => screen.getByRole('heading', { name: 'Orders', level: 1 }).closest('header')!;
@@ -175,7 +180,8 @@ describe('OrdersScreen, the filter bar', () => {
 
   it('says All clear, in the words for that filter, when a filter has nothing in it', () => {
     show(orders.filter((o) => o.status !== 'CANCELLED'));
-    expect(chip(/^Refunds/)).toHaveTextContent('Refunds0');
+    // A zero is not shown, as the board never draws one.
+    expect(chip(/^Refunds/)).toHaveTextContent(/^Refunds$/);
     fireEvent.click(chip(/^Refunds/));
     expect(screen.getByText('All clear')).toBeInTheDocument();
     expect(screen.getByText('Nobody is waiting on a refund.')).toBeInTheDocument();
@@ -392,5 +398,90 @@ describe('OrdersScreen, a digital-only order', () => {
     show([sent, ...orders]);
     fireEvent.click(chip(/^Paid/));
     expect(names()).not.toContain('Farah Nadia');
+  });
+});
+
+describe('OrdersScreen, round 1 fixes', () => {
+  it('shows a failed move in the error toast: no tick, role alert, until dismissed', async () => {
+    show(orders, {
+      move: async () => {
+        throw new Error('This order was cancelled.');
+      },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Mark paid' }));
+    const alert = await screen.findByText('This order was cancelled.');
+    expect(alert.closest('[role="alert"]')).not.toBeNull();
+    expect(alert).toHaveAttribute('data-tone', 'error');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByText('This order was cancelled.')).toBeNull();
+  });
+
+  it('puts Older orders at 00:00 in Malaysia six days back, the This week window, not 168 hours', () => {
+    // now is Fri 16 Oct, 2pm in Malaysia: the week starts Sat 10 Oct, 00:00 (9 Oct 16:00 UTC).
+    const at = (id: string, name: string, iso: string): OrderRow => ({ ...orders[5]!, id, number: Number(id.slice(1)), customerName: name, createdAt: new Date(iso) });
+    show([
+      at('o31', 'Week start', '2026-10-09T16:00:00Z'),
+      at('o30', 'Just before', '2026-10-09T15:59:00Z'),
+      // Within 168 hours of now, but on Fri 9 Oct in Malaysia: older.
+      at('o29', 'Fri evening', '2026-10-09T10:00:00Z'),
+    ]);
+    expect(within(screen.getByRole('list', { name: 'Orders' })).getAllByRole('button').map((b) => b.querySelector('b')?.textContent)).toEqual(['Week start']);
+    expect(within(screen.getByRole('list', { name: 'Older orders' })).getAllByRole('button').map((b) => b.querySelector('b')?.textContent)).toEqual(['Just before', 'Fri evening']);
+  });
+
+  it('on a later page, says what needs the owner is on the newest page when a filter is empty there', () => {
+    show([orders[5]!], { paging: { older: null, paged: true } });
+    fireEvent.click(chip(/^To check/));
+    expect(screen.getByText('Not on this page')).toBeInTheDocument();
+    expect(screen.queryByText('All clear')).toBeNull();
+    expect(screen.getByRole('link', { name: 'newest page' })).toHaveAttribute('href', '/app/orders');
+  });
+
+  describe('on a phone, after a move', () => {
+    beforeEach(() => {
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: true, media: query, addEventListener() {}, removeEventListener() {} }));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    const paidNow = (o: OrderRow): OrderRow => ({ ...o, status: 'PAID', paidAt: new Date('2026-10-16T05:59:00Z'), paidVia: 'RECEIPT' });
+
+    it('keeps the only receipt it marked paid on screen under To check, until the owner goes back', () => {
+      const { refresh } = show();
+      fireEvent.click(strip().getByRole('button', { name: /Receipt to check/ }));
+      fireEvent.click(rowOf('Mira Hassan'));
+      refresh(orders.map((o) => (o.id === 'o13' ? paidNow(o) : o)));
+      // Not blank: the same order, now paid, with its next move.
+      expect(document.querySelector('[data-open]')).not.toBeNull();
+      expect(screen.getByRole('heading', { level: 2, name: 'Mira Hassan' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: 'All orders' }));
+      expect(document.querySelector('[data-open]')).toBeNull();
+      expect(screen.getByText('All clear')).toBeInTheDocument();
+    });
+
+    it('never swaps to the next receipt under the same thumb: two receipts, the first marked paid', () => {
+      const second: OrderRow = { ...base, id: 'o14', number: 14, customerName: 'Laila Musa', createdAt: new Date('2026-10-16T01:00:00Z') };
+      const { refresh } = show([base, second], { stats: { ...stats, toCheck: 2 } });
+      fireEvent.click(chip(/^To check/));
+      fireEvent.click(rowOf('Mira Hassan'));
+      refresh([paidNow(base), second]);
+      expect(screen.getByRole('heading', { level: 2, name: 'Mira Hassan' })).toBeInTheDocument();
+      expect(screen.queryByRole('heading', { level: 2, name: 'Laila Musa' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'Mark paid' })).toBeNull();
+      // Back on the list, the second one waits there to be picked.
+      fireEvent.click(screen.getByRole('button', { name: 'All orders' }));
+      expect(document.querySelector('[data-open]')).toBeNull();
+      expect(names()).toEqual(['Laila Musa']);
+    });
+
+    it('goes back to the list, saying so, when the open order is gone from the list altogether', async () => {
+      const { refresh } = show();
+      fireEvent.click(rowOf('Wei Ling'));
+      refresh(orders.filter((o) => o.id !== 'o11'));
+      await waitFor(() => expect(document.querySelector('[data-open]')).toBeNull());
+      expect(screen.getByRole('status')).toHaveTextContent('That order is no longer in this list.');
+      expect(screen.queryByRole('heading', { level: 2, name: 'Wei Ling' })).toBeNull();
+    });
   });
 });

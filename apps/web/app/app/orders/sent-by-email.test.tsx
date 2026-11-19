@@ -75,9 +75,10 @@ const base: OrderRow = {
 
 function show(order: OrderRow, act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
+  const warn = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} move={vi.fn()} act={act} say={say} onChanged={onChanged} />);
-  return { act, say, onChanged };
+  render(<OrderDetail order={order} now={now} move={vi.fn()} act={act} say={say} warn={warn} onChanged={onChanged} />);
+  return { act, say, warn, onChanged };
 }
 const card = () => within(screen.getByRole('region', { name: /Sent by email/ }));
 const row = (name: string) => within(card().getByText(name).closest('div')!);
@@ -123,7 +124,7 @@ describe('Sent by email', () => {
   });
 
   it('replaces how it gets to them on a digital-only order, and sits beside it on a mixed one', () => {
-    const { unmount } = render(<OrderDetail order={base} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+    const { unmount } = render(<OrderDetail order={base} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} warn={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.queryByText('Getting it to them')).toBeNull();
     expect(screen.queryByText('Pickup')).toBeNull();
     unmount();
@@ -175,13 +176,15 @@ describe('Sent by email', () => {
     expect(say).toHaveBeenCalledWith('Sent again to mira.hassan@gmail.example.');
   });
 
-  it('shows the API’s own words in place when an action is refused, and reads the order again', async () => {
+  it('says the API’s own words in the error toast when an action is refused, and reads the order again', async () => {
     const act: DigitalAct = vi.fn(async () => {
       throw new ApiError(409, 'SOLD_OUT', 'Every code for this item is already given out.');
     });
-    const { say, onChanged } = show(base, act);
+    const { say, warn, onChanged } = show(base, act);
     fireEvent.click(card().getByRole('button', { name: 'New code' }));
-    expect(await card().findByRole('alert')).toHaveTextContent('Every code for this item is already given out.');
+    await waitFor(() => expect(warn).toHaveBeenCalledWith('Every code for this item is already given out.'));
+    // One way of reporting a failure in the order card: no second, inline one.
+    expect(card().queryByRole('alert')).toBeNull();
     expect(say).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalled();
     // Free again: another action can run.
@@ -230,9 +233,10 @@ describe('a digital-only order in Orders', () => {
     };
     const move = vi.fn(async () => undefined);
     const say = vi.fn();
-    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
+    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} warn={vi.fn()} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
-    expect(box.getByText('Their kek coklat recipe e-book goes to mira.hassan@gmail.example the moment you do.')).toBeInTheDocument();
+    // The board gives a receipt to check no hint: the Sent by email card says when it goes.
+    expect(screen.queryByText(/the moment you do/)).toBeNull();
     expect(within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem').map((li) => li.hasAttribute('data-on'))).toEqual([true, false, false, false]);
     fireEvent.click(box.getByRole('button', { name: 'Mark paid and send' }));
     await waitFor(() => expect(move).toHaveBeenCalledWith('o15', 'paid'));
@@ -244,7 +248,7 @@ describe('a digital-only order in Orders', () => {
     expect(ownerView(order)).toBe('awaitingPayment');
     const move = vi.fn(async () => undefined);
     const say = vi.fn();
-    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
+    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} warn={vi.fn()} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
     expect(box.queryByRole('button', { name: 'Mark paid' })).toBeNull();
     fireEvent.click(box.getByRole('button', { name: 'Mark paid and send' }));
@@ -259,7 +263,7 @@ describe('a digital-only order in Orders', () => {
   });
 
   it('shows the buyer’s note on a digital-only order, and nothing where there is none', () => {
-    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} warn={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.getByText('Note from Mira')).toBeInTheDocument();
     expect(screen.getByText(/Please send it to my work email too\./)).toBeInTheDocument();
     unmount();

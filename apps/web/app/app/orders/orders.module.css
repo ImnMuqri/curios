@@ -120,6 +120,11 @@
   font-size: 13.5px;
 }
 
+.empty a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
 /* The pager and how long orders are kept, at the list's foot. */
 .foot {
   border-top: 1px solid var(--line);
@@ -277,6 +282,13 @@ a.receipt:hover {
   max-width: 100%;
   max-height: calc(60vh / var(--page-zoom, 1));
   object-fit: contain;
+}
+
+/* On a phone the hint under it stays in view. */
+@media (max-width: 760px) {
+  .receiptBig img {
+    max-height: calc(48vh / var(--page-zoom, 1));
+  }
 }
 
 .dialogHint {
@@ -638,12 +650,6 @@ a.receipt:hover {
   outline-offset: 2px;
 }
 
-.sentError {
-  margin: 8px 0 0;
-  color: var(--calm-danger);
-  font-size: 13px;
-  font-weight: 600;
-}
 
 @media (prefers-reduced-motion: reduce) {
   .rows > .item > .rowBtn {

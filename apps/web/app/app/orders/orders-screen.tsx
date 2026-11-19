@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { malaysiaToday } from '@curios/core/orders';
 import { windowLabel } from '@curios/core/pickup';
 import { formatRinggit } from '@curios/core/store';
 import type { OrderStats } from '@curios/db-read';
@@ -124,14 +125,20 @@ export function OrdersScreen({
   // The phone's own view: an order picked from the list (or named by the link) fills the screen.
   const [open, setOpen] = useState(selected !== null && orders.some((o) => o.id === selected));
   const [copied, setCopied] = useState(false);
-  const { say, toast } = useToast();
+  const { say, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
   // After the own view opens or closes: 'detail', or the id of the row to land back on.
   const focusAfter = useRef<string | null>(null);
 
   const shown = orders.filter((o) => matches(o, filter) && orderMatches(o, query));
-  const chosen = shown.find((o) => o.id === chosenId) ?? shown[0] ?? null;
+  // On a phone the open order keeps the screen, by id, until the owner goes back: after a move it may
+  // leave the filter (a receipt marked paid under To check), and the own view must never go blank or
+  // turn into another customer's order under the same thumb.
+  // The open order is gone from the list altogether (another tab, a later page): back to the list, saying so.
+  const gone = open && chosenId !== null && !orders.some((o) => o.id === chosenId);
+  const pinned = open ? (orders.find((o) => o.id === chosenId) ?? null) : null;
+  const chosen = gone ? null : pinned ?? shown.find((o) => o.id === chosenId) ?? shown[0] ?? null;
   // One count everywhere: the chips say what the cards say (and the sidebar badge, countNavBadges).
   const counts: Record<Filter, number | null> = {
     all: null,
@@ -139,6 +146,14 @@ export function OrdersScreen({
     paid: stats.toMake,
     refund: orders.filter((o) => matches(o, 'refund')).length,
   };
+
+  useEffect(() => {
+    if (!gone) return;
+    focusAfter.current = null;
+    setOpen(false);
+    say('That order is no longer in this list.');
+    scrollToTop(screenRef.current);
+  }, [gone, say]);
 
   useEffect(() => {
     const target = focusAfter.current;
@@ -151,6 +166,12 @@ export function OrdersScreen({
         : screenRef.current?.querySelector<HTMLElement>(`[data-order-row="${CSS.escape(target)}"]`);
     el?.focus({ preventScroll: true });
   }, [open]);
+
+  // A filter or search is changed from the list, so no order holds the own view any more (a ?order= link's included).
+  function choose(next: Filter) {
+    setFilter(next);
+    setOpen(false);
+  }
 
   function pick(id: string) {
     setChosenId(id);
@@ -210,8 +231,9 @@ export function OrdersScreen({
     },
   ];
 
-  // Placed before the last 7 days: under "Older orders", on the All list (owner, 19 Nov 2026).
-  const weekAgo = now.getTime() - 7 * DAY_MS;
+  // Placed before the last 7 days: under "Older orders", on the All list (owner, 19 Nov 2026). The
+  // same 7 Malaysian days as the This week card: from 00:00 in Malaysia, six days before today.
+  const weekAgo = Date.parse(`${malaysiaToday(now)}T00:00:00+08:00`) - 6 * DAY_MS;
   const newer = filter === 'all' ? shown.filter((o) => o.createdAt.getTime() >= weekAgo) : shown;
   const older = filter === 'all' ? shown.filter((o) => o.createdAt.getTime() < weekAgo) : [];
 
@@ -266,15 +288,15 @@ export function OrdersScreen({
                 label="Orders at a glance"
                 cards={cards}
                 active={filter === 'check' || filter === 'paid' ? filter : null}
-                onFilter={(next) => setFilter((next as Filter | null) ?? 'all')}
+                onFilter={(next) => choose((next as Filter | null) ?? 'all')}
               />
 
               <div className={inbox.fbar}>
                 <div className={inbox.chips} role="group" aria-label="Show orders">
                   {FILTERS.map((f) => (
-                    <button key={f.id} type="button" className={inbox.chip} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+                    <button key={f.id} type="button" className={inbox.chip} aria-pressed={filter === f.id} onClick={() => choose(f.id)}>
                       {f.label}
-                      {counts[f.id] !== null ? <u>{counts[f.id]}</u> : null}
+                      {counts[f.id] ? <u>{counts[f.id]}</u> : null}
                     </button>
                   ))}
                 </div>
@@ -283,7 +305,10 @@ export function OrdersScreen({
                     <circle cx="11" cy="11" r="7" />
                     <path d="M20 20l-3.5-3.5" />
                   </svg>
-                  <input type="search" value={query} placeholder="Search name or order" aria-label="Search name or order" onChange={(event) => setQuery(event.target.value)} />
+                  <input type="search" value={query} placeholder="Search name or order" aria-label="Search name or order" onChange={(event) => {
+                      setQuery(event.target.value);
+                      setOpen(false);
+                    }} />
                 </label>
               </div>
 
@@ -294,6 +319,14 @@ export function OrdersScreen({
                       <p className={styles.empty}>
                         <b>No match</b>
                         <small>Try a name or an order number, like 14.</small>
+                      </p>
+                    ) : paging.paged && filter !== 'all' ? (
+                      // A later page holds finished orders only: what needs the owner is on the first one.
+                      <p className={styles.empty}>
+                        <b>Not on this page</b>
+                        <small>
+                          These are older, finished orders. What still needs you is on the <Link href="/app/orders">newest page</Link>.
+                        </small>
                       </p>
                     ) : (
                       <p className={styles.empty}>
@@ -333,7 +366,7 @@ export function OrdersScreen({
                 {chosen ? (
                   <div ref={detailRef} className={inbox.det}>
                     <InboxBack noun="orders" onBack={back} />
-                    <OrderDetail key={chosen.id} order={chosen} now={now} move={move} act={act} say={say} onChanged={onChanged} />
+                    <OrderDetail key={chosen.id} order={chosen} now={now} move={move} act={act} say={say} warn={fail} onChanged={onChanged} />
                   </div>
                 ) : null}
               </div>

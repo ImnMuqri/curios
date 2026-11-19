@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ApiError } from '../../../lib/api.js';
 import { OrderDetail, type OrderMove, type OrderRow } from './order-detail.js';
 import type { DigitalAct } from './sent-by-email.js';
@@ -103,9 +103,10 @@ const refundOwed: OrderRow = {
 
 function show(order: OrderRow, move: OrderMove = vi.fn(async () => undefined), act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
+  const warn = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} move={move} act={act} say={say} onChanged={onChanged} />);
-  return { move, act, say, onChanged };
+  render(<OrderDetail order={order} now={now} move={move} act={act} say={say} warn={warn} onChanged={onChanged} />);
+  return { move, act, say, warn, onChanged };
 }
 
 const next = () => within(screen.getByRole('region', { name: 'What to do next' }));
@@ -113,7 +114,7 @@ const steps = () => within(screen.getByRole('list', { name: 'Order progress' }))
 const lit = () => steps().getAllByRole('listitem').map((li) => li.hasAttribute('data-on'));
 /** The label and value rows, as [label, value] pairs. */
 const kv = () => [...document.querySelectorAll('dl > div')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]);
-const bare = (order: OrderRow) => render(<OrderDetail order={order} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+const bare = (order: OrderRow) => render(<OrderDetail order={order} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} warn={vi.fn()} onChanged={vi.fn()} />);
 
 describe('OrderDetail, who and where it is', () => {
   it('says the order and when, names the customer, tags it, and opens WhatsApp to them by first name', () => {
@@ -325,9 +326,11 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(async () => {
       throw new ApiError(409, 'ORDER_STATE', 'This order has already moved on. Refresh to see where it is.');
     });
-    const { say, onChanged } = show(mira, move);
+    const { say, warn, onChanged } = show(mira, move);
     fireEvent.click(next().getByRole('button', { name: 'Mark paid' }));
-    await waitFor(() => expect(say).toHaveBeenCalledWith('This order has already moved on. Refresh to see where it is.'));
+    await waitFor(() => expect(warn).toHaveBeenCalledWith('This order has already moved on. Refresh to see where it is.'));
+    // The error tone, never the ticked success toast.
+    expect(say).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalledTimes(1);
     // And the button is live again for whatever it is now.
     expect(next().getByRole('button', { name: 'Mark paid' })).toBeEnabled();
@@ -337,9 +340,9 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(async () => {
       throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.');
     });
-    const { say, onChanged } = show(mira, move);
+    const { warn, onChanged } = show(mira, move);
     fireEvent.click(next().getByRole('button', { name: 'Mark paid' }));
-    await waitFor(() => expect(say).toHaveBeenCalledWith('Something failed. Try again.'));
+    await waitFor(() => expect(warn).toHaveBeenCalledWith('Something failed. Try again.'));
     expect(onChanged).not.toHaveBeenCalled();
   });
 
@@ -348,7 +351,7 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
     const say = vi.fn();
     const onChanged = vi.fn();
-    const props = { now, move, act: vi.fn(), say, onChanged };
+    const props = { now, move, act: vi.fn(), say, warn: vi.fn(), onChanged };
     const { rerender } = render(<OrderDetail order={mira} {...props} />);
 
     const button = next().getByRole('button', { name: 'Mark paid' });
@@ -423,11 +426,60 @@ describe('OrderDetail, the moves that ask first', () => {
     const move = vi.fn(async () => {
       throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.');
     });
-    const { say } = show(paid, move);
+    const { say, warn } = show(paid, move);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }));
-    await waitFor(() => expect(say).toHaveBeenCalledWith('Something failed. Try again.'));
+    await waitFor(() => expect(warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    expect(say).not.toHaveBeenCalled();
     expect(screen.getByRole('group', { name: 'Cancel order' })).toBeInTheDocument();
+  });
+
+  it('sends the three confirms’ failures to the error tone too: Not received and the second payment', async () => {
+    const move = vi.fn(async () => {
+      throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.');
+    });
+    const one = show(mira, move);
+    fireEvent.click(screen.getByRole('button', { name: 'Not received' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, not received' }));
+    await waitFor(() => expect(one.warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    cleanup();
+    const two = show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') }, move);
+    fireEvent.click(screen.getByRole('button', { name: 'Mark refunded' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, refunded' }));
+    await waitFor(() => expect(two.warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    expect(screen.getByRole('group', { name: 'Mark refunded' })).toBeInTheDocument();
+  });
+
+  it('does not let a confirm close as done while another move is still saving', async () => {
+    const move = vi.fn(() => new Promise<void>(() => undefined));
+    const { warn } = show(paid, move);
+    fireEvent.click(next().getByRole('button', { name: 'Mark completed' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }));
+    await waitFor(() => expect(warn).toHaveBeenCalledWith('One moment: the last change is still saving.'));
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('group', { name: 'Cancel order' })).toBeInTheDocument();
+  });
+
+  it('offers no Cancel order on a digital-only order once it is paid, as before: there is nothing left to do', () => {
+    const digital: OrderRow = {
+      ...paid,
+      method: null,
+      day: null,
+      paidVia: 'CHIP',
+      email: 'wei@example.com',
+      lines: [{ id: 'ld', itemName: 'Recipe e-book', optionLabel: null, unitPriceCents: 2500, quantity: 1, photoUrl: null, digital: { delivery: 'LINK', files: [], linkOpenedAt: null, codes: [], codesLeft: null, session: null, times: [] } }],
+    };
+    const one = bare(digital);
+    expect(screen.queryByRole('button', { name: 'Cancel order' })).toBeNull();
+    one.unmount();
+    // Sent too.
+    const two = bare({ ...digital, sentAt: new Date('2026-10-16T05:00:00Z') });
+    expect(screen.queryByRole('button', { name: 'Cancel order' })).toBeNull();
+    two.unmount();
+    // Before it is paid it can still be cancelled.
+    bare({ ...digital, status: 'PLACED', paidAt: null, paidVia: null });
+    expect(screen.getByRole('button', { name: 'Cancel order' })).toBeInTheDocument();
   });
 });
 
@@ -491,6 +543,8 @@ describe('OrderDetail, an order paid twice', () => {
     expect(screen.getByText('Paid twice', { selector: 'span' })).toHaveAttribute('data-tone', 'red');
     const panel = screen.getByRole('region', { name: 'Paid twice' });
     expect(panel).toHaveTextContent('It was paid, and CHIP took RM70 again too. Refund the second RM70 in CHIP, then mark it refunded.');
+    // The receipt there is the first payment's.
+    expect(within(panel).getByRole('button', { name: /^Receipt/ })).toHaveTextContent('First payment · Uploaded');
     // The first payment still stands: the order is paid and to be made.
     expect(next().getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
   });
@@ -570,6 +624,8 @@ describe('OrderDetail, a voucher', () => {
     expect(screen.getByText('The voucher took the whole order off, so there is no receipt to check.')).toBeInTheDocument();
     expect(kv().map(([label]) => label)).not.toContain('Paid by');
     expect(screen.queryByText(/No receipt was uploaded/)).toBeNull();
+    // The board gives a voucher order no hint: its soft card says it.
+    expect(screen.queryByText(/Ready on/)).toBeNull();
     // Paid like any paid order: it is made and completed, and may be cancelled.
     expect(next().getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel order' })).toBeInTheDocument();
