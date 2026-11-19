@@ -50,9 +50,11 @@ interface Options {
   language?: string;
   status?: LeadStatus;
   onStatus?: (status: LeadStatus) => Promise<void>;
+  sent?: boolean;
+  onSent?: () => void;
 }
 
-function show({ calls = {}, shown = lead, language = 'en', status = 'NEW', onStatus = vi.fn(async () => undefined) }: Options = {}) {
+function show({ calls = {}, shown = lead, language = 'en', status = 'NEW', onStatus = vi.fn(async () => undefined), sent, onSent }: Options = {}) {
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onDeleted = vi.fn();
   const say = vi.fn();
@@ -69,6 +71,8 @@ function show({ calls = {}, shown = lead, language = 'en', status = 'NEW', onSta
       onDeleted={onDeleted}
       say={say}
       warn={warn}
+      sent={sent}
+      onSent={onSent}
     />,
   );
   return { actions, onDeleted, say, warn, onStatus };
@@ -118,6 +122,48 @@ describe('LeadDetail, the head', () => {
     });
     expect(warn).toHaveBeenCalledWith('No such lead.');
     expect(say).not.toHaveBeenCalled();
+  });
+});
+
+describe('LeadDetail, the status by keyboard', () => {
+  it('is one tab stop, on the checked option', () => {
+    show({ status: 'SOLD' });
+    expect(screen.getAllByRole('radio').map((r) => r.getAttribute('tabindex'))).toEqual(['-1', '-1', '0', '-1']);
+  });
+
+  it.each([
+    ['ArrowRight', 'SOLD', 'Sold'],
+    ['ArrowDown', 'SOLD', 'Sold'],
+    ['ArrowLeft', 'NEW', 'New'],
+    ['ArrowUp', 'NEW', 'New'],
+    ['Home', 'NEW', 'New'],
+    ['End', 'CLOSED', 'Closed'],
+  ] as const)('%s moves focus and chooses', async (key, id, label) => {
+    const { onStatus } = show({ status: 'CONTACTED' });
+    const contacted = screen.getByRole('radio', { name: 'Contacted' });
+    contacted.focus();
+    await act(async () => {
+      fireEvent.keyDown(contacted, { key });
+    });
+    expect(screen.getByRole('radio', { name: label })).toHaveFocus();
+    expect(onStatus).toHaveBeenCalledWith(id);
+  });
+
+  it('wraps round the ends', async () => {
+    const { onStatus } = show({ status: 'CLOSED' });
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('radio', { name: 'Closed' }), { key: 'ArrowRight' });
+    });
+    expect(screen.getByRole('radio', { name: 'New' })).toHaveFocus();
+    expect(onStatus).toHaveBeenCalledWith('NEW');
+  });
+
+  it('ignores other keys', async () => {
+    const { onStatus } = show();
+    await act(async () => {
+      fireEvent.keyDown(screen.getByRole('radio', { name: 'New' }), { key: 'a' });
+    });
+    expect(onStatus).not.toHaveBeenCalled();
   });
 });
 
@@ -267,6 +313,27 @@ describe('LeadDetail, reaching them', () => {
     });
     expect(onStatus).toHaveBeenCalledWith('CONTACTED');
     expect(say).toHaveBeenCalledWith('WhatsApp opened. Marked contacted.');
+  });
+
+  it('keeps the first message after it was sent, with the done line in place of Send', () => {
+    show({ status: 'CONTACTED', sent: true });
+    expect(screen.getByRole('textbox', { name: 'First message' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'WhatsApp opened. Marked contacted.' })).toHaveAttribute('data-done');
+    expect(screen.queryByRole('link', { name: 'Open WhatsApp' })).toBeNull();
+  });
+
+  it('keeps Send while the move to Contacted has not held', () => {
+    show({ status: 'NEW', sent: true });
+    expect(screen.getByRole('link', { name: 'Send on WhatsApp' })).not.toHaveAttribute('data-done');
+  });
+
+  it('tells the screen it was sent', () => {
+    const onSent = vi.fn();
+    show({ onSent });
+    const send = screen.getByRole('link', { name: 'Send on WhatsApp' });
+    send.addEventListener('click', (event) => event.preventDefault());
+    fireEvent.click(send);
+    expect(onSent).toHaveBeenCalled();
   });
 
   it.each(['CONTACTED', 'SOLD', 'CLOSED'] as const)('offers a %s lead Open WhatsApp in white, and no first message', async (status) => {

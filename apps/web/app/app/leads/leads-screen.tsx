@@ -105,6 +105,11 @@ export function LeadsScreen({
   const [statuses, setStatuses] = useState<Record<string, LeadStatus>>({});
   // Deleted here, and gone at once, before the server's read lands.
   const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
+  // Moved from its own card: that lead keeps the detail, by id, on a wide screen too, even after the move takes it
+  // out of the filter (Contacted under New), so the card and the focus in it stay put. A pick, a filter or the search lets go.
+  const [held, setHeld] = useState<string | null>(null);
+  // Sent on WhatsApp in this visit: their card keeps the first message, with the done line in place of Send.
+  const [sent, setSent] = useState<ReadonlySet<string>>(() => new Set());
   const [copied, setCopied] = useState(false);
   const { say, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
@@ -121,7 +126,7 @@ export function LeadsScreen({
   const shown = listed.filter((lead) => (filter === 'all' || statusOf(lead) === filter) && leadMatches(lead, query));
   // The open lead is gone from the list altogether (another tab deleted it): back to the list, saying so.
   const gone = open && chosenId !== null && !listed.some((lead) => lead.id === chosenId);
-  const pinned = open ? (listed.find((lead) => lead.id === chosenId) ?? null) : null;
+  const pinned = open || (held !== null && held === chosenId) ? (listed.find((lead) => lead.id === chosenId) ?? null) : null;
   const chosen = gone ? null : (pinned ?? shown.find((lead) => lead.id === chosenId) ?? shown[0] ?? null);
   // One count everywhere: the chip says what the card says (and the sidebar badge, countNavBadges).
   const counts: Record<Filter, number | null> = { all: null, NEW: stats.waiting, CONTACTED: null, SOLD: null, CLOSED: null };
@@ -151,6 +156,8 @@ export function LeadsScreen({
 
   async function setStatus(lead: OwnerLead, next: LeadStatus) {
     const before = statusOf(lead);
+    setChosenId(lead.id);
+    setHeld(lead.id);
     setStatuses((current) => ({ ...current, [lead.id]: next }));
     try {
       await actions.setStatus(lead.id, next);
@@ -165,10 +172,12 @@ export function LeadsScreen({
   function choose(next: Filter) {
     setFilter(next);
     setOpen(false);
+    setHeld(null);
   }
 
   function pick(id: string) {
     setChosenId(id);
+    setHeld(null);
     // Only where the own view shows: on a wide screen the detail is beside the list already.
     if (typeof window !== 'undefined' && window.matchMedia?.(OWN_VIEW).matches) {
       focusAfter.current = 'detail';
@@ -179,11 +188,13 @@ export function LeadsScreen({
   function back() {
     focusAfter.current = chosen?.id ?? 'first';
     setOpen(false);
+    setHeld(null);
   }
 
   function deleted(id: string) {
     setRemoved((current) => new Set(current).add(id));
     setChosenId(null);
+    setHeld(null);
     // The card it was in is gone: focus lands on the first row left, not the page's foot.
     focusAfter.current = 'first';
     setOpen(false);
@@ -279,6 +290,7 @@ export function LeadsScreen({
                     onChange={(event) => {
                       setQuery(event.target.value);
                       setOpen(false);
+                      setHeld(null);
                     }}
                   />
                 </label>
@@ -355,6 +367,8 @@ export function LeadsScreen({
                       onStatus={(next) => setStatus(chosen, next)}
                       say={say}
                       warn={fail}
+                      sent={sent.has(chosen.id)}
+                      onSent={() => setSent((current) => new Set(current).add(chosen.id))}
                       onDeleted={() => deleted(chosen.id)}
                     />
                   </div>

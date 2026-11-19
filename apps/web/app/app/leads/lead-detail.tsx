@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, type KeyboardEvent } from 'react';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import { formatRinggit } from '@curios/core/store';
 import type { OwnerLead } from '@curios/db-read';
 import inbox from '../_ui/inbox.module.css';
 import { InlineConfirm } from '../_ui/inline-confirm.js';
+import { rovingIndex } from '../_ui/pill-tabs.js';
 import { SheetAction, SheetHint, SideSheet } from '../_ui/side-sheet.js';
 import { enquiryItemName } from './enquiry.js';
 import { enquiryFirstMessage, firstMessage, waNumber } from './first-message.js';
@@ -162,6 +163,8 @@ export function LeadDetail({
   onDeleted,
   say,
   warn,
+  sent = false,
+  onSent,
 }: {
   lead: LeadRow;
   /** The status as the screen shows it now, which may be ahead of `lead.status`. */
@@ -177,6 +180,9 @@ export function LeadDetail({
   say: (text: string) => void;
   /** The toast's error tone (no tick, role alert, stays): what failed. */
   warn: (text: string) => void;
+  /** Sent on WhatsApp from this card in this visit: the first message stays, its Send turned to the done line. */
+  sent?: boolean;
+  onSent?: () => void;
 }) {
   const enquiry = lead.enquiry;
   const [message, setMessage] = useState(() =>
@@ -187,6 +193,7 @@ export function LeadDetail({
   const [copied, setCopied] = useState(false);
   const [talk, setTalk] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
+  const radios = useRef<(HTMLButtonElement | null)[]>([]);
 
   const phone = formatMalaysianPhone(lead.phone);
   const number = waNumber(lead.phone);
@@ -209,6 +216,17 @@ export function LeadDetail({
     else say('WhatsApp opened.');
   };
 
+  // A radio group (WAI-ARIA): one tab stop, the arrows, Home and End move and choose.
+  const checkedAt = STATUSES.findIndex((s) => s.id === status);
+  function onStatusKey(event: KeyboardEvent<HTMLButtonElement>, at: number) {
+    const next = rovingIndex(event.key, at, STATUSES.length, true);
+    if (next === null) return;
+    event.preventDefault();
+    radios.current[next]?.focus();
+    const s = STATUSES[next]!;
+    void choose(s.id, `Marked ${s.label.toLowerCase()}.`);
+  }
+
   async function copy() {
     try {
       await navigator.clipboard.writeText(message);
@@ -223,6 +241,8 @@ export function LeadDetail({
   const from = enquiry?.item?.fromCents ?? null;
   const note = enquiry?.note?.trim();
   const theirName = enquiry?.name?.trim();
+  // The done line only once the move to Contacted has held (a failed save puts New, and Send, back).
+  const done = sent && status !== 'NEW';
   const left = enquiry ? `sent from your shop at ${clock(lead.createdAt)}` : `left their number at ${clock(lead.createdAt)}`;
 
   return (
@@ -235,14 +255,19 @@ export function LeadDetail({
       </h2>
 
       <div className={styles.status} role="radiogroup" aria-label="Lead status">
-        {STATUSES.map((s) => (
+        {STATUSES.map((s, i) => (
           <button
             key={s.id}
+            ref={(el) => {
+              radios.current[i] = el;
+            }}
             type="button"
             role="radio"
             className={styles.statusOption}
             aria-checked={status === s.id}
+            tabIndex={i === (checkedAt < 0 ? 0 : checkedAt) ? 0 : -1}
             onClick={() => void choose(s.id, `Marked ${s.label.toLowerCase()}.`)}
+            onKeyDown={(event) => onStatusKey(event, i)}
           >
             {s.label}
           </button>
@@ -316,24 +341,31 @@ export function LeadDetail({
         <em aria-hidden="true">›</em>
       </button>
 
-      {status === 'NEW' ? (
+      {status === 'NEW' || sent ? (
         <div className={styles.first}>
           <p className={styles.lab}>
             First message<span>Edit it before you send</span>
           </p>
           <textarea className={styles.message} value={message} aria-label="First message" rows={4} onChange={(event) => setMessage(event.target.value)} />
           <div className={styles.sendRow}>
+            {/* After Send the same link stays (focus with it, and it opens WhatsApp again), as the board's done line. */}
             <a
               className={styles.send}
+              data-done={done || undefined}
               href={`https://wa.me/${number}?text=${encodeURIComponent(message)}`}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={reachedOut}
+              onClick={() => {
+                onSent?.();
+                reachedOut();
+              }}
             >
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d={CHAT} />
-              </svg>
-              Send on WhatsApp
+              {done ? null : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d={CHAT} />
+                </svg>
+              )}
+              {done ? 'WhatsApp opened. Marked contacted.' : 'Send on WhatsApp'}
             </a>
             <button type="button" className={styles.copy} onClick={() => void copy()}>
               {copied ? 'Copied' : 'Copy'}

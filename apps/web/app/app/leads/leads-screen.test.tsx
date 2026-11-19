@@ -246,19 +246,63 @@ describe('LeadsScreen, the status', () => {
     expect(screen.getByRole('status')).toHaveTextContent('');
   });
 
-  it('flips a new lead to Contacted when the first message is sent, and offers Open WhatsApp after', async () => {
+  it('flips a new lead to Contacted when the first message is sent, keeping the message and turning Send into the done line', async () => {
     const { actions } = show();
     const send = screen.getByRole('link', { name: 'Send on WhatsApp' });
     expect(send.getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60127814402\?text=/);
     send.addEventListener('click', (event) => event.preventDefault());
+    fireEvent.change(screen.getByRole('textbox', { name: 'First message' }), { target: { value: 'Hi! RM170 for 2kg.' } });
+    send.focus();
     await act(async () => {
       fireEvent.click(send);
     });
     expect(actions.setStatus).toHaveBeenCalledWith('l1', 'CONTACTED');
     expect(screen.getByRole('status')).toHaveTextContent('WhatsApp opened. Marked contacted.');
     expect(statusSwitch().getByRole('radio', { name: 'Contacted' })).toHaveAttribute('aria-checked', 'true');
-    expect(screen.getByRole('link', { name: 'Open WhatsApp' })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'First message' })).toBeNull();
+    // The board (Dash.html 1887): the box stays, with the owner's edit and Copy; the same link is now the done line.
+    expect(screen.getByRole('textbox', { name: 'First message' })).toHaveValue('Hi! RM170 for 2kg.');
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    const done = screen.getByRole('link', { name: 'WhatsApp opened. Marked contacted.' });
+    expect(done).toBe(send);
+    expect(done).toHaveFocus();
+    expect(done).toHaveAttribute('href', `https://wa.me/60127814402?text=${encodeURIComponent('Hi! RM170 for 2kg.')}`);
+    expect(screen.queryByRole('link', { name: 'Open WhatsApp' })).toBeNull();
+    // Opening it again changes nothing more.
+    await act(async () => {
+      fireEvent.click(done);
+    });
+    expect(actions.setStatus).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(/^WhatsApp opened\.$/);
+  });
+
+  it('keeps a lead sent under the New filter on screen on a wide screen, with focus where it was', async () => {
+    const second: OwnerLead = { ...leads[0]!, id: 'l5', phone: '+60125550000', ...at('2026-10-17T04:00:00Z') };
+    show([leads[0]!, second, leads[1]!], { stats: { ...stats, waiting: 2 } });
+    fireEvent.click(chip(/^New/));
+    const send = screen.getByRole('link', { name: 'Send on WhatsApp' });
+    send.addEventListener('click', (event) => event.preventDefault());
+    send.focus();
+    await act(async () => {
+      fireEvent.click(send);
+    });
+    expect(screen.getByRole('heading', { level: 2, name: '+60 12-781 4402' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'WhatsApp opened. Marked contacted.' })).toHaveFocus();
+    // It left the New list; picking the next one lets go.
+    expect(phones()).toEqual(['+60 12-555 0000']);
+    fireEvent.click(rowOf(/\+60 12-555 0000/));
+    expect(screen.getByRole('heading', { level: 2, name: '+60 12-555 0000' })).toBeInTheDocument();
+  });
+
+  it('keeps focus on the status after a move takes the lead out of the filter', async () => {
+    show();
+    fireEvent.click(chip(/^New/));
+    const closed = statusSwitch().getByRole('radio', { name: 'Closed' });
+    closed.focus();
+    await act(async () => {
+      fireEvent.click(closed);
+    });
+    expect(screen.getByRole('heading', { level: 2, name: '+60 12-781 4402' })).toBeInTheDocument();
+    expect(statusSwitch().getByRole('radio', { name: 'Closed' })).toHaveFocus();
   });
 
   it('leaves a lead past New where it is when WhatsApp is opened', async () => {

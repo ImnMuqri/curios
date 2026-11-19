@@ -4,6 +4,20 @@ import { useRef, type KeyboardEvent, type ReactNode } from 'react';
 import styles from './pill-tabs.module.css';
 
 /**
+ * Where a key moves the choice in a row of options (a tab list, a radio group): Right (and, with
+ * `upDown`, Down) to the next, Left (Up) to the one before, both wrapping; Home and End to the ends.
+ * Null for any other key. `at` is the chosen option's index (-1 when none is).
+ */
+export function rovingIndex(key: string, at: number, length: number, upDown = false): number | null {
+  if (length === 0) return null;
+  if (key === 'ArrowRight' || (upDown && key === 'ArrowDown')) return (at + 1) % length;
+  if (key === 'ArrowLeft' || (upDown && key === 'ArrowUp')) return (at - 1 + length) % length;
+  if (key === 'Home') return 0;
+  if (key === 'End') return length - 1;
+  return null;
+}
+
+/**
  * The dashboard's one tab style (Dashboard v2): a grey track with the chosen tab as a white pill,
  * no underline. Left and right move between them and choose, Home and End jump, as a tab list
  * does. Each tab controls `panel-{id}`. A tab's `count` is a small badge after its label.
@@ -26,16 +40,7 @@ export function PillTabs<Id extends string>({
   const at = tabs.findIndex((t) => t.id === selected);
 
   function onKey(event: KeyboardEvent<HTMLButtonElement>) {
-    const next =
-      event.key === 'ArrowRight'
-        ? (at + 1) % tabs.length
-        : event.key === 'ArrowLeft'
-          ? (at - 1 + tabs.length) % tabs.length
-          : event.key === 'Home'
-            ? 0
-            : event.key === 'End'
-              ? tabs.length - 1
-              : null;
+    const next = rovingIndex(event.key, at, tabs.length);
     if (next === null) return;
     event.preventDefault();
     const id = tabs[next]!.id;
