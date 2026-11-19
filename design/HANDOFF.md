@@ -946,3 +946,7 @@ In short:
   - The No Cut strip labels are "Your website", "Your payments" and "Your Google listing".
   - A "Link in bio, for Malaysia" label sits above the h1, so the first screen names what Curios is.
 - **Kept on purpose, even though taste-skill flags them:** a hero taller than one screen with the cards peeking in, sections that aren't exactly one screen tall, scroll reveals, tilted receipts, Peek sitting over panel edges, and the "curios.my/" prefix standing in for a visible field label.
+
+> **Plan banners on a phone (19 Nov):** under 760px a banner is a two-column grid. The badge sits on the left and the text gets the rest of the width. The button sits under the text, left-aligned, and the × is a 44px target in the top-right corner. Never squeeze the text between the button and the ×.
+>
+> **No left accent bars.** Don't mark a selected row or card with a coloured left border. Use the soft fill and a bolder name instead.
