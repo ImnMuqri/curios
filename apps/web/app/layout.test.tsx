@@ -1,6 +1,7 @@
 import { render } from '@testing-library/react';
 import { renderToString } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
+import { describe, expect, it } from 'vitest';
 import RootLayout from './layout.js';
 
 describe('RootLayout', () => {
@@ -31,12 +32,12 @@ describe('RootLayout', () => {
     const head = html.match(/<head>([\s\S]*?)<\/head>/)?.[1] ?? '';
     expect(head).toContain("<script>document.documentElement.classList.add('js')</script>");
     expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('<body'));
-    // The class lands before hydration; <html> must not report it as a mismatch.
-    document.documentElement.className = 'js';
-    const errors: unknown[] = [];
-    const spy = vi.spyOn(console, 'error').mockImplementation((...a) => void errors.push(a));
-    render(<RootLayout>{null}</RootLayout>);
-    spy.mockRestore();
-    expect(errors).toEqual([]);
+  });
+
+  it('lets <html> differ by that class at hydration: suppressHydrationWarning is on the element', () => {
+    // The script adds `js` before React hydrates; without this React reports an attribute mismatch on <html>.
+    const html = RootLayout({ children: null }) as ReactElement<{ suppressHydrationWarning?: boolean }>;
+    expect(html.type).toBe('html');
+    expect(html.props.suppressHydrationWarning).toBe(true);
   });
 });

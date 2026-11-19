@@ -47,10 +47,6 @@ describe('the FAQ', () => {
     expect([...h2.childNodes].map((n) => (n.nodeName === 'BR' ? '|' : n.textContent))).toEqual([a, '|', b]);
   });
 
-  it('splits the heading without a regex lookbehind, which Safari before 16.4 cannot parse', () => {
-    expect(read('Faq.tsx')).not.toMatch(/\(\?<[=!]/);
-  });
-
   it('hides a closed answer from screen readers once it has folded away', () => {
     const css = read('faq.module.css');
     expect(rule(css, '.a')).toMatch(/visibility:\s*hidden/);

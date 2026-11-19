@@ -301,7 +301,7 @@ describe('a phone (19 Nov review)', () => {
     const targets: [string, string, RegExp][] = [
       ['nav.module.css', '.brand', /min-height:\s*44px/],
       ['nav.module.css', '.quiet', /min-height:\s*44px/],
-      ['nav.module.css', '.right .cta', /(?<![-\w])height:\s*44px/],
+      ['nav.module.css', '.right .cta', /min-height:\s*44px/],
       ['footer.module.css', '.brand', /min-height:\s*44px/],
       ['footer.module.css', '.links a', /min-height:\s*44px/],
       ['footer.module.css', '.legalLinks a', /min-height:\s*44px/],

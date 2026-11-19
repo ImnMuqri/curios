@@ -34,6 +34,9 @@ export function contentSecurityPolicy({ apiUrl, sentryDsn, dev }: SecurityHeader
   const connect = ["'self'", originOf(apiUrl), originOf(sentryDsn), dev ? 'ws:' : null];
   const directives: [string, ...(string | null)[]][] = [
     ['default-src', "'self'"],
+    // 'unsafe-inline' also runs app/layout.tsx's <head> script, which adds `js` to <html> (the
+    // landing's reveal is gated on it). A nonce CSP must give that script the nonce; it fails safe
+    // (no `js`, nothing hidden), but the reveal would silently stop.
     ['script-src', "'self'", "'unsafe-inline'", dev ? "'unsafe-eval'" : null],
     ['style-src', "'self'", "'unsafe-inline'"],
     ['img-src', "'self'", 'data:', 'blob:', 'https:'],

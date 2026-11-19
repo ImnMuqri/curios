@@ -37,7 +37,7 @@ describe('pricing', () => {
     expect(range).toHaveValue('5');
   });
 
-  it.each(LOCALES)('%s: the title breaks after the first sentence and carries the price in force', (locale) => {
+  it.each(LOCALES)('%s: the title is two lines, the second carrying the price in force', (locale) => {
     const raised = landingCopy(locale, raisedSettings()).pricing;
     expect(raised.title[1]).toMatch(/^RM59 /);
     const { container } = render(<Pricing locale={locale} terms={raisedSettings()} />);
