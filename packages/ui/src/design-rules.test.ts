@@ -170,6 +170,7 @@ describe('the calm rules on the shared pieces', () => {
       (name) => `apps/web/app/app/_ui/${name}.module.css`,
     ),
     'apps/web/app/app/panel.module.css',
+    'apps/web/app/app/orders/orders.module.css',
     'apps/web/app/auth.module.css',
     'apps/web/app/_auth/scene.module.css',
   ];

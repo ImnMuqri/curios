@@ -107,10 +107,10 @@ export function SentByEmail({
   }
 
   return (
-    <section className={styles.card} aria-labelledby="order-sent">
-      <h3 className={styles.cardTitle} id="order-sent">
+    <section className={styles.sent} aria-labelledby="order-sent">
+      <h3 className={styles.sentTitle} id="order-sent">
         Sent by email{' '}
-        <span className={styles.badge} data-badge="" data-tone={sent ? 'hijau' : 'grey'}>
+        <span className={styles.sentState} data-badge="" data-sent={sent || undefined}>
           {order.sentAt ? `Sent ${when(order.sentAt)}` : 'Not sent yet'}
         </span>
       </h3>

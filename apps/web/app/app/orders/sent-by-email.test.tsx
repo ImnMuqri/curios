@@ -122,16 +122,17 @@ describe('Sent by email', () => {
     expect(card().queryByRole('button')).toBeNull();
   });
 
-  it('replaces Getting it to them on a digital-only order, and sits beside it on a mixed one', () => {
+  it('replaces how it gets to them on a digital-only order, and sits beside it on a mixed one', () => {
     const { unmount } = render(<OrderDetail order={base} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.queryByText('Getting it to them')).toBeNull();
+    expect(screen.queryByText('Pickup')).toBeNull();
     unmount();
-    show({ ...base, method: 'PICKUP', day: '2026-10-17', lines: [physical, base.lines[0]!] });
+    show({ ...base, method: 'PICKUP', day: '2026-10-17', pickupPlaceName: 'Home', pickupPlaceAddress: 'Seksyen 7', lines: [physical, base.lines[0]!] });
     expect(screen.getByText('Getting it to them')).toBeInTheDocument();
     expect(card().getByText('Kek coklat recipe e-book')).toBeInTheDocument();
     // The physical line is not in the card.
     expect(card().queryByText('Kek batik')).toBeNull();
-    expect(screen.getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
+    expect(screen.getByText('Pickup · Sat 17 Oct · Home')).toBeInTheDocument();
   });
 
   it('makes New links, and says it only mails on Resend', async () => {
@@ -210,7 +211,9 @@ describe('a digital-only order in Orders', () => {
     expect(ownerView(base)).toBe('sent');
     show(base);
     const steps = within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem');
-    expect(steps.map((li) => li.textContent)).toEqual(['Placedtoday, 4:04pm', 'Paid by FPXtoday, 4:05pm', 'CheckedBy the bank', 'Senttoday, 4:05pm']);
+    // Sent is where a digital-only order ends: every step is reached.
+    expect(steps.map((li) => li.hasAttribute('data-on'))).toEqual([true, true, true, true]);
+    expect(screen.getByText('Sent', { selector: 'span' })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'What to do next' })).toBeNull();
     expect(screen.queryByText(/Ready on/)).toBeNull();
   });
@@ -230,7 +233,7 @@ describe('a digital-only order in Orders', () => {
     render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
     expect(box.getByText('Their kek coklat recipe e-book goes to mira.hassan@gmail.example the moment you do.')).toBeInTheDocument();
-    expect(within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem')[3]!.textContent).toBe('SentWhen you mark it paid');
+    expect(within(screen.getByRole('list', { name: 'Order progress' })).getAllByRole('listitem').map((li) => li.hasAttribute('data-on'))).toEqual([true, false, false, false]);
     fireEvent.click(box.getByRole('button', { name: 'Mark paid and send' }));
     await waitFor(() => expect(move).toHaveBeenCalledWith('o15', 'paid'));
     expect(say).toHaveBeenCalledWith('#15 paid. It’s on its way to Mira’s email.');
@@ -269,7 +272,7 @@ describe('a digital-only order in Orders', () => {
     show(mixed);
     expect(ownerView(mixed)).toBe('paid');
     expect(within(screen.getByRole('region', { name: 'What to do next' })).getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
-    expect(screen.getByText('Paid. Ready on Sat 17 Oct')).toBeInTheDocument();
+    expect(screen.getByText('Paid. Ready on Sat 17 Oct. Mark it completed once Mira has it.')).toBeInTheDocument();
   });
 });
 
