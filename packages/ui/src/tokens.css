@@ -381,6 +381,8 @@
 
   /* The page behind an open sheet or panel (More, the bell on a phone, Help): one dim, the board's More scrim. */
   --calm-scrim: color-mix(in srgb, var(--calm-ink) 22%, transparent);
+  --calm-dark-scrim: rgb(0 0 0 / 50%);
+  --light-calm-scrim: var(--calm-scrim);
 
   /* The badge red as a role: counts, the account's initial disc and Sign out read it; the frame's dark scopes swap it. */
   --badge: var(--calm-badge);

@@ -63,6 +63,7 @@ const calmDark: Record<string, string> = {
   '--tag-red-ink': '--calm-dark-tag-red-ink',
   '--badge': '--calm-dark-badge',
   '--calm-pick': '--calm-dark-pick',
+  '--calm-scrim': '--calm-dark-scrim',
   '--calm-row-hover': '--calm-dark-row-hover',
   '--calm-urgent': '--calm-dark-urgent',
   '--calm-urgent-ring': '--calm-dark-urgent-ring',

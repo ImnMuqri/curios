@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useId, useRef, type RefObject, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { useModal } from './use-modal.js';
 import styles from './side-sheet.module.css';
 
@@ -49,6 +49,7 @@ export function SideSheet({
   subtitle,
   footer,
   closeLabel = 'Close',
+  returnFocusTo,
   children,
 }: {
   open: boolean;
@@ -58,11 +59,13 @@ export function SideSheet({
   /** The `.xshf` row: one SheetAction, one SheetDanger, or a SheetHint. */
   footer?: ReactNode;
   closeLabel?: string;
+  /** Where focus goes on close if the opener is gone or was never focused (a ref or a selector); else the main landmark. */
+  returnFocusTo?: RefObject<HTMLElement | null> | string;
   children: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useModal(open, onClose, panel);
+  useModal(open, onClose, panel, returnFocusTo);
   return (
     <>
       <div className={styles.scrim} data-open={open || undefined} aria-hidden="true" onClick={onClose} />

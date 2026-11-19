@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { OVERLAY_OPENS } from './popover.js';
 
@@ -71,12 +71,22 @@ describe('SideSheet', () => {
     expect(screen.getByRole('button', { name: 'Reply' })).toBeInTheDocument();
   });
 
-  it('is inert while closed, and open once asked', async () => {
+  it('is inert and hidden from assistive tech while closed, and live once asked', async () => {
     const user = userEvent.setup();
-    render(<Story />);
+    const { container } = render(<Story />);
+    const closed = [...container.querySelectorAll('[role="dialog"]')];
+    expect(closed).toHaveLength(2);
+    for (const el of closed) {
+      expect(el).toHaveAttribute('inert');
+      expect(el).toHaveAttribute('aria-hidden', 'true');
+      expect(el).not.toHaveAttribute('data-open');
+    }
     expect(screen.queryByRole('dialog')).toBeNull();
     await user.click(screen.getByRole('button', { name: 'Open sheet' }));
-    expect(screen.getByRole('dialog', { name: 'Mira, Peek, Lead' })).not.toHaveAttribute('inert');
+    const open = screen.getByRole('dialog', { name: 'Mira, Peek, Lead' });
+    expect(open).not.toHaveAttribute('inert');
+    expect(open).not.toHaveAttribute('aria-hidden');
+    expect(open).toHaveAttribute('data-open');
   });
 
   it('puts focus inside on open, and back on the opener when closed by the close button', async () => {
@@ -120,7 +130,7 @@ describe('SideSheet', () => {
   it('closes on a tap on the dimmed page', async () => {
     const user = userEvent.setup();
     const { container } = render(<Story start />);
-    await user.click(container.querySelector('[aria-hidden="true"]') as HTMLElement);
+    await user.click(container.querySelector('div[aria-hidden="true"]:not([role])') as HTMLElement);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
@@ -234,7 +244,6 @@ describe('the phone menu while a sheet or dialog is open', () => {
     frame(<Story />);
     await user.click(screen.getByRole('button', { name: 'Open dialog' }));
     expect(root()).toHaveAttribute('data-sheet-open');
-    act(() => {});
   });
 
   it('the frame CSS hides the phone menu for data-sheet-open under 1100px', () => {
@@ -243,6 +252,20 @@ describe('the phone menu while a sheet or dialog is open', () => {
     expect(at).toBeGreaterThan(0);
     expect(frameCss.slice(frameCss.lastIndexOf('@media', at), at)).toContain('(max-width: 1100px)');
     expect(frameCss.slice(at, frameCss.indexOf('}', at))).toMatch(/display:\s*none/);
+  });
+});
+
+describe('the dark scrim', () => {
+  it('is mapped in both dark scopes and given back to a preview island; the dialog sits above the sheet', () => {
+    const frameCss = css('../app-frame.module.css');
+    expect(frameCss.match(/--calm-scrim:\s*var\(--calm-dark-scrim\);/g)).toHaveLength(2);
+    expect(frameCss).toMatch(/--calm-scrim:\s*var\(--light-calm-scrim\);/);
+    expect(readFileSync(path.resolve(__dirname, '../../../../../packages/ui/src/tokens.css'), 'utf8')).toMatch(/--calm-dark-scrim:\s*rgb\(0 0 0 \/ 50%\);/);
+    const z = (src: string, sel: string) => Number(new RegExp(`\\n\\${sel} \\{[^}]*z-index:\\s*(\\d+)`).exec(src)?.[1]);
+    const sheet = css('side-sheet.module.css');
+    const dialog = css('dialog.module.css');
+    expect(z(dialog, '.scrim')).toBeGreaterThan(z(sheet, '.sheet'));
+    expect(z(dialog, '.dialog')).toBeGreaterThan(z(dialog, '.scrim'));
   });
 });
 

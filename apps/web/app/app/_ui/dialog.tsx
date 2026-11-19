@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useRef, type ReactNode } from 'react';
+import { useId, useRef, type RefObject, type ReactNode } from 'react';
 import { CloseButton } from './side-sheet.js';
 import { useModal } from './use-modal.js';
 import styles from './dialog.module.css';
@@ -18,6 +18,7 @@ export function Dialog({
   description,
   actions,
   closeLabel = 'Close',
+  returnFocusTo,
   children,
 }: {
   open: boolean;
@@ -26,11 +27,13 @@ export function Dialog({
   description?: ReactNode;
   actions?: ReactNode;
   closeLabel?: string;
+  /** Where focus goes on close if the opener is gone or was never focused (a ref or a selector); else the main landmark. */
+  returnFocusTo?: RefObject<HTMLElement | null> | string;
   children?: ReactNode;
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useModal(open, onClose, panel);
+  useModal(open, onClose, panel, returnFocusTo);
   return (
     <>
       <div className={styles.scrim} data-open={open || undefined} aria-hidden="true" onClick={onClose} />

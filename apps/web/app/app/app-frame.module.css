@@ -798,6 +798,7 @@
     --tag-red-ink: var(--calm-dark-tag-red-ink);
     --badge: var(--calm-dark-badge);
     --calm-pick: var(--calm-dark-pick);
+    --calm-scrim: var(--calm-dark-scrim);
     --calm-row-hover: var(--calm-dark-row-hover);
     --calm-urgent: var(--calm-dark-urgent);
     --calm-urgent-ring: var(--calm-dark-urgent-ring);
@@ -880,6 +881,7 @@
   --tag-red-ink: var(--calm-dark-tag-red-ink);
   --badge: var(--calm-dark-badge);
   --calm-pick: var(--calm-dark-pick);
+  --calm-scrim: var(--calm-dark-scrim);
   --calm-row-hover: var(--calm-dark-row-hover);
   --calm-urgent: var(--calm-dark-urgent);
   --calm-urgent-ring: var(--calm-dark-urgent-ring);
@@ -960,6 +962,7 @@
   --tag-red-ink: var(--light-tag-red-ink);
   --badge: var(--light-badge);
   --calm-pick: var(--light-calm-pick);
+  --calm-scrim: var(--light-calm-scrim);
   --calm-row-hover: var(--light-calm-row-hover);
   --calm-urgent: var(--light-calm-urgent);
   --calm-urgent-ring: var(--light-calm-urgent-ring);
