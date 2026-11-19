@@ -85,6 +85,17 @@ describe('getLeads', () => {
     const [lead] = await getLeads(accountId);
     expect(lead?.transcript).toHaveLength(3);
     expect(lead?.capturedAfter).toBe(2);
+    // When the conversation began: its first message, before the number was left.
+    expect(lead?.startedAt).toEqual(at(1));
+  });
+
+  it('starts a lead with no messages at its own time', async () => {
+    const { pageId, accountId } = await anOwnerWithAPage();
+    const conversation = await write.conversation.create({ data: { pageId } });
+    const left = new Date(Date.UTC(2026, 9, 17, 6, 0));
+    await write.lead.create({ data: { pageId, conversationId: conversation.id, phone: '+60127814403', createdAt: left } });
+    const [lead] = await getLeads(accountId);
+    expect(lead?.startedAt).toEqual(left);
   });
 
   it('carries the slots and the score', async () => {

@@ -23,6 +23,8 @@ export interface OwnerLead {
   slots: LeadSlots | null;
   status: 'NEW' | 'CONTACTED' | 'SOLD' | 'CLOSED';
   createdAt: Date;
+  /** When the conversation began on the page: its first message, or the lead's own time when it has none. */
+  startedAt: Date;
   /** The conversation's first TRANSCRIPT_LIMIT messages, in order. */
   transcript: LeadTranscriptLine[];
   /** Every message the conversation has, which is more than `transcript` holds when it was long. */
@@ -115,6 +117,7 @@ export async function getLeads(
     slots: (row.slots as LeadSlots | null) ?? null,
     status: row.status,
     createdAt: row.createdAt,
+    startedAt: row.conversation.messages[0]?.createdAt ?? row.createdAt,
     transcript: row.conversation.messages.map((message) => ({
       role: message.role,
       content: message.content,
