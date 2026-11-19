@@ -187,7 +187,7 @@ describe('less template', () => {
     render(<LandingPage locale={locale} terms={TERMS} />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/\.\s*\S.*\./);
     // The ask strip's one sentence ends in a full stop; no section heading has a second sentence.
-    for (const h2 of screen.getAllByRole('heading', { level: 2 })) expect(h2.textContent, h2.textContent!).not.toMatch(/[.!?]\s*\S/);
+    for (const h2 of screen.getAllByRole('heading', { level: 2 })) expect(h2.textContent, h2.textContent).not.toMatch(/[.!?]\s*\S/);
   });
 
   it.each(LOCALES)('%s: no gradient blobs or grain in the hero and the closing section', (locale) => {
