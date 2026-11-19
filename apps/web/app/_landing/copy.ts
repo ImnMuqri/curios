@@ -121,6 +121,8 @@ export interface LandingCopy {
     other: { href: string; short: string; name: string; lang: Locale };
   };
   hero: {
+    /** The label above the h1, so the first screen names what Curios is (19 Nov review). */
+    eyebrow: string;
     line: string;
     ask: string;
     /** The whole headline with the first page's name, for the share card. */
@@ -144,7 +146,7 @@ export interface LandingCopy {
   askStrip: { eyebrow: string; lead: string; words: string[]; body: string };
   who: {
     eyebrow: string;
-    /** "Same question. ", "Their own" (highlighted), " answer." */
+    /** "One question, ", "five different" (highlighted), " answers". */
     title: [string, string, string];
     lede: string;
     asking: (n: number) => string;
@@ -205,7 +207,7 @@ export interface LandingCopy {
   };
   pricing: {
     eyebrow: string;
-    /** Two lines: "Free to be asked." and the price in force "when you’re selling". */
+    /** Two lines: "Free for you," and the price in force "a month for business". */
     title: [string, string];
     billing: string;
     monthly: string;
@@ -253,7 +255,8 @@ export interface LandingCopy {
     monthlyText: string;
     annualAMonthText: string;
   };
-  faq: { label: string; title: string; items: Faq[] };
+  /** `title` is two lines: "Before" / "you start". */
+  faq: { label: string; title: [string, string]; items: Faq[] };
   /** `label` reads "Tanya je." on both landings (plan, Open decision 3). */
   closing: { label: string; onePageFor: string; words: string[]; button: string; note: string };
   footer: { note: string; signIn: string };
@@ -315,6 +318,7 @@ const EN: LandingBase = {
     other: { href: '/ms', short: 'BM', name: 'Bahasa Melayu', lang: 'ms' },
   },
   hero: {
+    eyebrow: 'Link in bio, for Malaysia',
     line: 'Don’t read the bio.',
     ask: 'Ask',
     title: 'Don’t read the bio. Ask Aisyah.',
@@ -340,7 +344,7 @@ const EN: LandingBase = {
   },
   who: {
     eyebrow: 'Who it’s for',
-    title: ['Same question. ', 'Their own', ' answer.'],
+    title: ['One question, ', 'five different', ' answers'],
     lede: 'Each page knows its owner, and nothing else. Ask five of them the same thing.',
     asking: (n) => `asking ${n} pages`,
     questionsLabel: 'Questions',
@@ -504,15 +508,15 @@ const EN: LandingBase = {
       stamp: '0%',
     },
     incl: [
-      { kicker: 'Instead of a website', title: 'RM2,000+ to build', body: 'Plus about RM420 a year to host. Your page is the website.' },
-      { kicker: 'Instead of a gateway form', title: 'Your own CHIP or QR', body: 'Connect CHIP for FPX, e-wallet and card. Or take DuitNow QR.' },
-      { kicker: 'Instead of an SEO person', title: 'Found on Google', body: 'Titles, previews and a sitemap, done for you.' },
+      { kicker: 'Your website', title: 'RM2,000+ to build', body: 'Plus about RM420 a year to host. Your page is the website.' },
+      { kicker: 'Your payments', title: 'Your own CHIP or QR', body: 'Connect CHIP for FPX, e-wallet and card. Or take DuitNow QR.' },
+      { kicker: 'Your Google listing', title: 'Found on Google', body: 'Titles, previews and a sitemap, done for you.' },
     ],
     fine: 'Marketplace example uses typical 2026 Malaysian fees: 5% platform fee, 2–6% commission and a 2.16% transaction fee. Card and e-wallet payments cost 1–2% through CHIP.',
   },
   faq: {
     label: 'FAQ',
-    title: 'Asked before. Answered here.',
+    title: ['Before', 'you start'],
     items: [
       { q: 'Can I use it for myself, not a business?', a: 'Yes. Personal is free: a page with an AI that answers questions about you, your work and your rates. It stays hidden from Google unless you switch it on.' },
       { q: 'What if it says something wrong?', a: 'It only answers from facts you approved. If nothing you approved answers the question, it says it will check with you. It never guesses, and never rounds a number.' },
@@ -560,6 +564,7 @@ const MS: LandingBase = {
     other: { href: '/', short: 'EN', name: 'English', lang: 'en' },
   },
   hero: {
+    eyebrow: 'Link bio, untuk Malaysia',
     line: 'Tak payah baca bio.',
     ask: 'Tanya',
     title: 'Tak payah baca bio. Tanya Aisyah.',
@@ -585,7 +590,7 @@ const MS: LandingBase = {
   },
   who: {
     eyebrow: 'Untuk siapa',
-    title: ['Soalan sama. Jawapan ', 'mereka sendiri', '.'],
+    title: ['Satu soalan, ', 'lima jawapan berbeza', ''],
     lede: 'Setiap halaman kenal pemiliknya, dan tiada yang lain. Tanya lima daripadanya soalan yang sama.',
     asking: (n) => `tanya ${n} halaman`,
     questionsLabel: 'Soalan',
@@ -749,15 +754,15 @@ const MS: LandingBase = {
       stamp: '0%',
     },
     incl: [
-      { kicker: 'Ganti laman web', title: 'RM2,000+ untuk bina', body: 'Tambah lebih kurang RM420 setahun untuk hosting. Halaman anda ialah laman webnya.' },
-      { kicker: 'Ganti borang gateway', title: 'CHIP atau QR anda sendiri', body: 'Sambung CHIP untuk FPX, e-dompet dan kad. Atau terima DuitNow QR.' },
-      { kicker: 'Ganti orang SEO', title: 'Dijumpai di Google', body: 'Tajuk, pratonton dan peta laman, disediakan untuk anda.' },
+      { kicker: 'Laman web anda', title: 'RM2,000+ untuk bina', body: 'Tambah lebih kurang RM420 setahun untuk hosting. Halaman anda ialah laman webnya.' },
+      { kicker: 'Bayaran anda', title: 'CHIP atau QR anda sendiri', body: 'Sambung CHIP untuk FPX, e-dompet dan kad. Atau terima DuitNow QR.' },
+      { kicker: 'Listing Google anda', title: 'Dijumpai di Google', body: 'Tajuk, pratonton dan peta laman, disediakan untuk anda.' },
     ],
     fine: 'Contoh marketplace guna yuran biasa di Malaysia pada 2026: yuran platform 5%, komisen 2–6% dan yuran transaksi 2.16%. Bayaran kad dan e-dompet dikenakan 1–2% melalui CHIP.',
   },
   faq: {
     label: 'Soalan lazim',
-    title: 'Pernah ditanya. Dijawab di sini.',
+    title: ['Sebelum', 'anda mula'],
     items: [
       { q: 'Boleh guna untuk diri sendiri, bukan bisnes?', a: 'Boleh. Peribadi percuma: halaman dengan AI yang jawab soalan tentang anda, kerja anda dan harga anda. Ia tersembunyi dari Google kecuali anda hidupkan.' },
       { q: 'Kalau ia cakap benda yang salah?', a: 'Ia hanya jawab dari fakta yang anda luluskan. Kalau tiada fakta yang menjawab, ia kata akan semak dengan anda. Ia tak meneka, dan tak bundarkan nombor.' },
@@ -790,7 +795,7 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
   const f = figures(terms);
   return {
     eyebrow: 'Pricing',
-    title: ['Free to be asked.', `${f.monthlyText} when you’re selling`],
+    title: ['Free for you,', `${f.monthlyText} a month for business`],
     billing: 'Business billing',
     monthly: 'Monthly',
     yearly: 'Yearly',
@@ -840,8 +845,8 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
       under: (oneMore) => (oneMore ? 'One more order and it pays for itself.' : 'That’s less than Business costs. Stay on Personal until orders pick up.'),
     },
     payment: 'Pay by FPX, card or e-wallet. Nothing renews unless you turn on auto-renew by card.',
-    disclaimer: 'The calculator is an illustration, not a forecast.',
-    fine: 'Business is paid by FPX, e-wallet or card, through CHIP. The calculator is an illustration, not a forecast.',
+    disclaimer: 'The calculator is an illustration only.',
+    fine: 'Business is paid by FPX, e-wallet or card, through CHIP. The calculator is an illustration only.',
     monthlyRinggit: f.monthly,
     annualAMonth: f.annualAMonth,
     monthlyText: f.monthlyText,
@@ -853,7 +858,7 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
   const f = figures(terms);
   return {
     eyebrow: 'Harga',
-    title: ['Percuma untuk ditanya.', `${f.monthlyText} bila anda menjual`],
+    title: ['Percuma untuk anda,', `${f.monthlyText} sebulan untuk bisnes`],
     billing: 'Bayaran bisnes',
     monthly: 'Bulanan',
     yearly: 'Tahunan',
@@ -903,8 +908,8 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
       under: (oneMore) => (oneMore ? 'Satu tempahan lagi dan ia bayar balik sendiri.' : 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.'),
     },
     payment: 'Bayar dengan FPX, kad atau e-dompet. Tiada pembaharuan automatik melainkan anda hidupkan auto-renew dengan kad.',
-    disclaimer: 'Kalkulator ini contoh, bukan ramalan.',
-    fine: 'Bisnes dibayar dengan FPX, e-dompet atau kad, melalui CHIP. Kalkulator ini contoh, bukan ramalan.',
+    disclaimer: 'Kalkulator ini contoh sahaja.',
+    fine: 'Bisnes dibayar dengan FPX, e-dompet atau kad, melalui CHIP. Kalkulator ini contoh sahaja.',
     monthlyRinggit: f.monthly,
     annualAMonth: f.annualAMonth,
     monthlyText: f.monthlyText,

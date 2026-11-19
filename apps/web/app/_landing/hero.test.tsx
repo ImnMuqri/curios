@@ -22,6 +22,16 @@ describe('the hero', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName('Don’t read the bio. Ask Aisyah.');
   });
 
+  it('names what Curios is above the h1, in both languages', () => {
+    for (const [locale, label] of [['en', 'Link in bio, for Malaysia'], ['ms', 'Link bio, untuk Malaysia']] as const) {
+      const { container, unmount } = render(<Hero locale={locale} />);
+      const h1 = container.querySelector('h1')!;
+      expect(h1.previousElementSibling).toHaveTextContent(label);
+      expect(h1.previousElementSibling!.tagName).toBe('P');
+      unmount();
+    }
+  });
+
   it('shows three pages, Aisyah in front', () => {
     expect(DECK).toEqual(['aisyah', 'lina', 'hana']);
     const { container } = render(<Hero locale="en" />);

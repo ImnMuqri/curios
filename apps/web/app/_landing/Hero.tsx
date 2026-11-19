@@ -144,6 +144,9 @@ export function Hero({ locale }: { locale: Locale }) {
     <section className={styles.hero}>
       <div className={calm.dotbg} aria-hidden="true" />
       <div className={styles.hin}>
+        <p className={`${calm.lbl} ${calm.rv}`} data-rv="">
+          {copy.hero.eyebrow}
+        </p>
         <h1 className={`${styles.h1} ${calm.rv}`} data-rv="">
           {copy.hero.line}
           <br />

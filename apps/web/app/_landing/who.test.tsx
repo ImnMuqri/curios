@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { Who, SQ_HOLD_MS, SQ_USER_HOLD_MS } from './Who.js';
+import { Who, SQ_HOLD_MS, SQ_USER_HOLD_MS, initialInk } from './Who.js';
 import { COPY } from './copy.js';
-import { WHO } from './personas.js';
+import { PERSONAS, WHO } from './personas.js';
 import { LOCALES, advance, reduceMotion, watchViews } from './test-kit.js';
 
 afterEach(() => {
@@ -28,17 +28,27 @@ describe('who it’s for', () => {
     expect(screen.queryByRole('tablist')).toBeNull();
   });
 
+  it('draws each initial in the owner’s colour mixed 55% toward ink', () => {
+    expect(initialInk('#c58a12')).toBe('color-mix(in srgb, #c58a12 55%, var(--calm-ink))');
+    const { container } = render(<Who locale="en" />);
+    for (const key of WHO) {
+      const av = card(container, key).querySelector('[aria-hidden="true"]') as HTMLElement;
+      expect(av.textContent).toBe(PERSONAS[key].name.charAt(0));
+      expect(av.getAttribute('style')).toContain(`color-mix(in srgb, ${PERSONAS[key].accent} 55%`);
+    }
+  });
+
   it('announces nothing by itself: the answers are not a live region', () => {
     const { container } = render(<Who locale="en" />);
     expect(container.querySelector('[aria-live]')).toBeNull();
   });
 
-  it('highlights only "Their own"', () => {
+  it('highlights only "five different"', () => {
     const { container } = render(<Who locale="en" />);
     const hl = container.querySelectorAll('h2 span');
     expect(hl).toHaveLength(1);
-    expect(hl[0]).toHaveTextContent('Their own');
-    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('Same question. Their own answer.');
+    expect(hl[0]).toHaveTextContent('five different');
+    expect(screen.getByRole('heading', { level: 2 })).toHaveTextContent('One question, five different answers');
   });
 
   it('types the question, then reveals the answers 260ms apart', async () => {
