@@ -275,6 +275,94 @@ describe('LeadsScreen, the status', () => {
     expect(screen.getByRole('status')).toHaveTextContent(/^WhatsApp opened\.$/);
   });
 
+  /** A save the test settles by hand, in whatever order it likes. */
+  function held() {
+    const pending: { status: string; ok: () => void; fail: (message: string) => void }[] = [];
+    const setStatus = vi.fn(
+      (_id: string, status: string) =>
+        new Promise<undefined>((resolve, reject) => {
+          pending.push({ status, ok: () => resolve(undefined), fail: (message) => reject(new Error(message)) });
+        }),
+    );
+    return { pending, setStatus };
+  }
+  const arrow = (from: string) => {
+    const radio = statusSwitch().getByRole('radio', { name: from });
+    radio.focus();
+    fireEvent.keyDown(radio, { key: 'ArrowRight' });
+  };
+  const flush = () => act(async () => {});
+
+  it('three quick arrow presses save one after another, and only the last one speaks and re-reads', async () => {
+    const { pending, setStatus } = held();
+    const { onChanged } = show(leads, { calls: { setStatus } });
+    arrow('New');
+    arrow('Contacted');
+    arrow('Sold');
+    await flush();
+    // The screen is already on the last choice; the server is sent them in order, one at a time.
+    expect(statusSwitch().getByRole('radio', { name: 'Closed' })).toHaveAttribute('aria-checked', 'true');
+    expect(setStatus).toHaveBeenCalledTimes(1);
+    for (const status of ['CONTACTED', 'SOLD', 'CLOSED']) {
+      expect(pending.at(-1)?.status).toBe(status);
+      const call = pending.shift()!;
+      call.ok();
+      await flush();
+      // A superseded one settling late changes nothing on screen and says nothing.
+      expect(statusSwitch().getByRole('radio', { name: 'Closed' })).toHaveAttribute('aria-checked', 'true');
+      if (status !== 'CLOSED') expect(screen.getByRole('status')).toHaveTextContent('');
+    }
+    expect(setStatus.mock.calls.map((call) => call[1])).toEqual(['CONTACTED', 'SOLD', 'CLOSED']);
+    expect(screen.getByRole('status')).toHaveTextContent('Marked closed.');
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('an earlier save that fails never puts a newer choice back', async () => {
+    const { pending, setStatus } = held();
+    const { onChanged } = show(leads, { calls: { setStatus } });
+    arrow('New');
+    arrow('Contacted');
+    await flush();
+    pending.shift()!.fail('No such lead.');
+    await flush();
+    // Contacted failed, but Sold was chosen after it and is still on its way.
+    expect(statusSwitch().getByRole('radio', { name: 'Sold' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('alert')).toBeNull();
+    pending.shift()!.ok();
+    await flush();
+    expect(statusSwitch().getByRole('radio', { name: 'Sold' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent('Marked sold.');
+    expect(onChanged).toHaveBeenCalledTimes(1);
+  });
+
+  it('when the last choice fails, the screen goes back to what the server last confirmed, with the error toast', async () => {
+    const { pending, setStatus } = held();
+    show(leads, { calls: { setStatus } });
+    arrow('New');
+    arrow('Contacted');
+    await flush();
+    pending.shift()!.ok();
+    await flush();
+    pending.shift()!.fail('No such lead.');
+    await flush();
+    // Contacted held; only Sold failed.
+    expect(statusSwitch().getByRole('radio', { name: 'Contacted' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('alert')).toHaveTextContent('No such lead.');
+  });
+
+  it('a failed Send puts New back, and with it the Send link, with the error toast', async () => {
+    show(leads, { calls: { setStatus: vi.fn(async () => Promise.reject(new Error('No such lead.'))) } });
+    const send = screen.getByRole('link', { name: 'Send on WhatsApp' });
+    send.addEventListener('click', (event) => event.preventDefault());
+    await act(async () => {
+      fireEvent.click(send);
+    });
+    expect(statusSwitch().getByRole('radio', { name: 'New' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('link', { name: 'Send on WhatsApp' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'WhatsApp opened. Marked contacted.' })).toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('No such lead.');
+  });
+
   it('keeps a lead sent under the New filter on screen on a wide screen, with focus where it was', async () => {
     const second: OwnerLead = { ...leads[0]!, id: 'l5', phone: '+60125550000', ...at('2026-10-17T04:00:00Z') };
     show([leads[0]!, second, leads[1]!], { stats: { ...stats, waiting: 2 } });
@@ -374,6 +462,23 @@ describe('LeadsScreen, paging', () => {
     const nav = screen.getByRole('navigation', { name: 'More leads' });
     expect(within(nav).getByRole('link', { name: 'Older leads' })).toHaveAttribute('href', '/app/leads?before=l3');
     expect(within(nav).getByRole('link', { name: 'Newest' })).toHaveAttribute('href', '/app/leads');
+  });
+});
+
+describe('LeadsScreen, on a later page', () => {
+  it('says the new leads are on the newest page when the New filter has none here', () => {
+    const past = leads.filter((l) => l.status !== 'NEW');
+    show(past, { paging: { older: null, paged: true } });
+    fireEvent.click(chip(/^New/));
+    expect(screen.getByText('Not on this page')).toBeInTheDocument();
+    expect(screen.queryByText('Nothing here yet')).toBeNull();
+    expect(screen.getByRole('link', { name: 'newest page' })).toHaveAttribute('href', '/app/leads');
+  });
+
+  it('keeps Nothing here yet on the first page, where every new lead is', () => {
+    show(leads.filter((l) => l.status !== 'NEW'), { stats: { ...stats, waiting: 0 } });
+    fireEvent.click(chip(/^New/));
+    expect(screen.getByText('Nothing here yet')).toBeInTheDocument();
   });
 });
 

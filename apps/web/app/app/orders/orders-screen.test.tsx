@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { OrderStats } from '@curios/db-read';
 import type { OrderRow } from './order-detail.js';
 import { OrdersScreen } from './orders-screen.js';
@@ -346,6 +346,45 @@ describe('OrdersScreen, on a phone', () => {
   });
 });
 
+describe('OrdersScreen, after a move on a wide screen', () => {
+  const paidNow = (o: OrderRow): OrderRow => ({ ...o, status: 'PAID', paidAt: new Date('2026-10-16T05:59:00Z'), paidVia: 'RECEIPT' });
+  const second: OrderRow = { ...base, id: 'o14', number: 14, customerName: 'Laila Musa', createdAt: new Date('2026-10-16T01:00:00Z') };
+
+  it('holds the order it moved, by id, instead of showing the next customer’s card under the pointer', async () => {
+    const { refresh, onChanged } = show([base, second], { stats: { ...stats, toCheck: 2 } });
+    fireEvent.click(chip(/^To check/));
+    expect(screen.getByRole('heading', { level: 2, name: 'Mira Hassan' })).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mark paid' }));
+    });
+    expect(onChanged).toHaveBeenCalled();
+    refresh([paidNow(base), second]);
+    // Mira's card stays, now paid, with its next move; Laila's receipt is in the list, not on the card.
+    expect(screen.getByRole('heading', { level: 2, name: 'Mira Hassan' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    expect(names()).toEqual(['Laila Musa']);
+    // The pressed control is gone: focus is on the card's heading, not the body.
+    expect(screen.getByRole('heading', { level: 2, name: 'Mira Hassan' })).toHaveFocus();
+    // Picking the other lets go.
+    fireEvent.click(rowOf('Laila Musa'));
+    expect(screen.getByRole('heading', { level: 2, name: 'Laila Musa' })).toBeInTheDocument();
+  });
+
+  it('lets go of the held order when a chip, a card or the search changes', async () => {
+    const { refresh } = show([base, second], { stats: { ...stats, toCheck: 2 } });
+    fireEvent.click(chip(/^To check/));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mark paid' }));
+    });
+    refresh([paidNow(base), second]);
+    expect(screen.getByRole('heading', { level: 2, name: 'Mira Hassan' })).toBeInTheDocument();
+    fireEvent.click(chip(/^To check/));
+    fireEvent.click(chip(/^To check/));
+    expect(screen.getByRole('heading', { level: 2, name: 'Laila Musa' })).toBeInTheDocument();
+  });
+});
+
 describe('OrdersScreen, before the first order', () => {
   it('shows Peek, where the first order lands, the link to share and the shop to set up, under the header line', () => {
     show([], { stats: { toCheck: 0, toMake: 0, paidThisWeekCents: 0, paidDaysCents: [0, 0, 0, 0, 0, 0, 0], paidTodayCents: 0 } });
@@ -481,7 +520,21 @@ describe('OrdersScreen, round 1 fixes', () => {
       refresh(orders.filter((o) => o.id !== 'o11'));
       await waitFor(() => expect(document.querySelector('[data-open]')).toBeNull());
       expect(screen.getByRole('status')).toHaveTextContent('That order is no longer in this list.');
+      // Neutral news, not a success: no tick.
+      expect(screen.getByRole('status').querySelector('svg')).toBeNull();
       expect(screen.queryByRole('heading', { level: 2, name: 'Wei Ling' })).toBeNull();
+      // Focus lands on the first row, not the body.
+      await waitFor(() => expect(rowButtons()[0]).toHaveFocus());
+    });
+
+    it('puts focus on the first row when back finds the order’s row gone from the filter', async () => {
+      const second: OrderRow = { ...base, id: 'o14', number: 14, customerName: 'Laila Musa', createdAt: new Date('2026-10-16T01:00:00Z') };
+      const { refresh } = show([base, second], { stats: { ...stats, toCheck: 2 } });
+      fireEvent.click(chip(/^To check/));
+      fireEvent.click(rowOf('Mira Hassan'));
+      refresh([paidNow(base), second]);
+      fireEvent.click(screen.getByRole('button', { name: 'All orders' }));
+      await waitFor(() => expect(rowOf('Laila Musa')).toHaveFocus());
     });
   });
 });

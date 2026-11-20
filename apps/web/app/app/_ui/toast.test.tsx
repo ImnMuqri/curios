@@ -3,11 +3,13 @@ import { act, render, screen } from '@testing-library/react';
 import { TOAST_ERROR_MS, useToast } from './toast.js';
 
 let sayIt: (text: string) => void = () => {};
+let noteIt: (text: string) => void = () => {};
 let failIt: (text: string) => void = () => {};
 
 function Screen() {
-  const { say, fail, toast } = useToast(2400);
+  const { say, note, fail, toast } = useToast(2400);
   sayIt = say;
+  noteIt = note;
   failIt = fail;
   return toast;
 }
@@ -35,6 +37,21 @@ describe('useToast', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Marked contacted.');
     act(() => {
       vi.advanceTimersByTime(400);
+    });
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  });
+
+  it('has a neutral tone for news that is not a success: the same pill, no tick', () => {
+    vi.useFakeTimers();
+    render(<Screen />);
+    act(() => noteIt('That order is no longer in this list.'));
+    const status = screen.getByRole('status');
+    expect(status).toHaveTextContent('That order is no longer in this list.');
+    expect(status.querySelector('svg')).toBeNull();
+    act(() => sayIt('Saved.'));
+    expect(screen.getByRole('status').querySelector('svg')).not.toBeNull();
+    act(() => {
+      vi.advanceTimersByTime(2400);
     });
     expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
@@ -71,5 +88,15 @@ describe('useToast', () => {
     act(() => sayIt('Saved.'));
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getByRole('status')).toHaveTextContent('Saved.');
+  });
+});
+
+describe('failureText', () => {
+  it('is the API’s words, else the one fallback sentence, else a page’s own', async () => {
+    const { failureText, FAILED } = await import('./toast.js');
+    expect(failureText(new Error('No such lead.'))).toBe('No such lead.');
+    expect(failureText(new Error(''))).toBe(FAILED);
+    expect(failureText('nope')).toBe('That did not go through. Try again.');
+    expect(failureText(undefined, 'Could not send.')).toBe('Could not send.');
   });
 });

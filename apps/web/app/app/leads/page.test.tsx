@@ -66,6 +66,9 @@ describe('LeadsPage', () => {
     render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText(/Personal pages don't collect phone numbers/)).toBeInTheDocument();
+    // The same head as the business screen's.
+    expect(screen.getByText('Inbox')).toBeInTheDocument();
+    expect(screen.getByText('People your page couldn’t answer, with what they asked.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
     // An empty list under that sentence would read as "leads will land here".
     expect(Leads).not.toHaveBeenCalled();

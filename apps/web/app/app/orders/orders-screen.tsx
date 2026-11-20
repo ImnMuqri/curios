@@ -144,6 +144,16 @@ export function OrdersScreen({
     refund: orders.filter((o) => matches(o, 'refund')).length,
   };
 
+  // After a move the control the owner pressed may be gone (Mark paid turns into Mark completed): focus then goes to
+  // the card's heading, never to the body. A control that is still there keeps focus.
+  const moved = useRef(false);
+  useEffect(() => {
+    if (!moved.current) return;
+    moved.current = false;
+    const active = document.activeElement;
+    if (!active || active === document.body) detailRef.current?.querySelector<HTMLElement>('[data-detail-heading]')?.focus({ preventScroll: true });
+  }, [chosen?.id, chosen?.status, chosen?.sentAt]);
+
   useEffect(() => {
     if (!gone) return;
     view.gone();
@@ -340,7 +350,9 @@ export function OrdersScreen({
                     <InboxBack noun="orders" onBack={() => view.back(chosen?.id ?? null)} />
                     <OrderDetail key={chosen.id} order={chosen} now={now} move={move} act={act} say={say} fail={fail} onChanged={() => {
                         // A move from this card: keep the order on screen, by id, as the list re-reads.
+                        setChosenId(chosen.id);
                         view.hold(chosen.id);
+                        moved.current = true;
                         onChanged();
                       }} />
                   </div>
