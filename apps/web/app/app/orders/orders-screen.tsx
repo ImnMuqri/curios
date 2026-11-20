@@ -160,7 +160,7 @@ export function OrdersScreen({
     if (!gone) return;
     view.gone();
     note('That order is no longer in this list.');
-  }, [gone, note]);
+  }, [gone, note, view]);
 
   // A filter or search is changed from the list, so no order holds the own view any more (a ?order= link's included).
   function choose(next: Filter) {

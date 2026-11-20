@@ -123,7 +123,7 @@ export function LeadsScreen({
     if (!gone) return;
     view.gone();
     note('That lead is no longer in this list.');
-  }, [gone, note]);
+  }, [gone, note, view]);
 
   // The save for each lead's status, in the order the owner chose them: a burst of arrow presses (New,
   // Contacted, Sold) sends its PATCHes one after another, so the server ends on the last. Only the latest
