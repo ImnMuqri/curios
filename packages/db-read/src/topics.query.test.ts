@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { countQuestionsThisWeek, countTopicsNeedingOwner, getAnswerRate, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
+import { countTopicsNeedingOwner, getAnswerRate, getQuestionWeek, questionWeekStart, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -90,7 +90,7 @@ describe('getTopics', () => {
     expect(pages.flat().map((t) => t.id).sort()).toEqual([...ids].sort());
   });
 
-  it('reads one topic by id, and never another owner�s', async () => {
+  it('reads one topic by id, and never another owner', async () => {
     const [first] = await getTopics(ownerA);
     expect(await getTopics(ownerA, { id: first!.id })).toEqual([first]);
     const [theirs] = await getTopics(ownerB);
@@ -144,52 +144,6 @@ describe('getTopics', () => {
   });
 });
 
-describe('the week of asks', () => {
-  const now = new Date('2026-10-17T12:00:00Z');
-  const ago = (hours: number) => new Date(now.getTime() - hours * 3600 * 1000);
-
-  it('counts each topic’s asks in each of the last seven days, oldest first, today last', async () => {
-    const { accountId, pageId } = await anOwnerWithAPage();
-    const t = await topic(pageId, 'Ada delivery?', 5, '2026-10-17T11:00:00Z');
-    const one = await wording(pageId, t.id, 'Ada delivery?', 3, '2026-10-10T00:00:00Z');
-    const two = await wording(pageId, t.id, 'delivery ada', 2, '2026-10-10T00:00:00Z');
-    const quiet = await topic(pageId, 'Ada halal?', 1, '2026-10-01T00:00:00Z');
-    const old = await wording(pageId, quiet.id, 'Ada halal?', 1, '2026-10-01T00:00:00Z');
-    await write.questionAsk.createMany({
-      data: [
-        { questionId: one.id, askedAt: ago(1) },
-        { questionId: two.id, askedAt: ago(2) },
-        { questionId: one.id, askedAt: ago(25) },
-        { questionId: two.id, askedAt: ago(6 * 24 + 23) },
-        // Older than a week, and after now: neither counts.
-        { questionId: one.id, askedAt: ago(8 * 24) },
-        { questionId: one.id, askedAt: new Date(now.getTime() + 3600 * 1000) },
-        { questionId: old.id, askedAt: ago(10 * 24) },
-      ],
-    });
-
-    const topics = await getTopics(accountId, { now });
-    expect(topics.find((x) => x.id === t.id)?.week).toEqual([1, 0, 0, 0, 0, 1, 2]);
-    expect(topics.find((x) => x.id === quiet.id)?.week).toEqual([0, 0, 0, 0, 0, 0, 0]);
-  });
-
-  it('counts every visitor turn on the page this week, and nobody else’s', async () => {
-    const mine = await anOwnerWithAPage();
-    const theirs = await anOwnerWithAPage();
-    const say = async (pageId: string, turns: { role: 'USER' | 'ASSISTANT'; createdAt: Date }[]) =>
-      write.conversation.create({ data: { pageId, messages: { create: turns.map((turn) => ({ ...turn, content: 'x' })) } } });
-    await say(mine.pageId, [
-      { role: 'USER', createdAt: ago(1) },
-      { role: 'ASSISTANT', createdAt: ago(1) },
-      { role: 'USER', createdAt: ago(48) },
-      { role: 'USER', createdAt: ago(8 * 24) },
-    ]);
-    await say(theirs.pageId, [{ role: 'USER', createdAt: ago(1) }]);
-
-    expect(await countQuestionsThisWeek(mine.accountId, now)).toBe(2);
-  });
-});
-
 describe('getAnswerRate', () => {
   it('counts the last thirty days of asks whose outcome was recorded, and how many the chat could answer', async () => {
     const now = new Date('2026-10-18T12:00:00Z');
@@ -220,9 +174,11 @@ describe('getAnswerRate', () => {
 });
 
 describe('getQuestionWeek', () => {
-  async function ask(pageId: string, at: string, role: 'USER' | 'ASSISTANT' = 'USER') {
-    const conversation = await write.conversation.create({ data: { pageId } });
-    await write.message.create({ data: { conversationId: conversation.id, role, content: 'x', createdAt: new Date(at) } });
+  // A recorded ask on a page: a Question and one QuestionAsk, `answered` as the chat marked it.
+  async function ask(pageId: string, at: string, answered: boolean | null = true) {
+    const t = await topic(pageId, 't', 1, at);
+    const q = await wording(pageId, t.id, `q-${randomUUID().slice(0, 8)}`, 1, at);
+    await write.questionAsk.create({ data: { questionId: q.id, askedAt: new Date(at), answered } });
   }
 
   // Sunday 2026-10-18, 23:30 in Malaysia.
@@ -233,12 +189,12 @@ describe('getQuestionWeek', () => {
     expect(await getQuestionWeek(accountId, now)).toEqual({ thisWeek: 0, lastWeek: 0, days: [0, 0, 0, 0, 0, 0, 0] });
   });
 
-  it('buckets visitor turns by Malaysian day, today last, with both weeks cut at Malaysian midnight', async () => {
+  it('buckets recorded asks by Malaysian day, today last, with both weeks cut at Malaysian midnight', async () => {
     const { accountId, pageId } = await anOwnerWithAPage();
     const other = await anOwnerWithAPage();
     // Today (18th MYT) starts at 17th 16:00Z.
     await ask(pageId, '2026-10-17T16:00:00Z');
-    await ask(pageId, '2026-10-18T10:00:00Z');
+    await ask(pageId, '2026-10-18T10:00:00Z', null);
     await ask(pageId, '2026-10-17T15:59:59Z');
     // The first slot (12th MYT) starts 11th 16:00Z; a second earlier is last week.
     await ask(pageId, '2026-10-11T16:00:00Z');
@@ -246,13 +202,30 @@ describe('getQuestionWeek', () => {
     // Last week's first day (5th MYT) starts 4th 16:00Z; a second earlier is out.
     await ask(pageId, '2026-10-04T16:00:00Z');
     await ask(pageId, '2026-10-04T15:59:59Z');
-    // Not visitor turns, not yet happened, and another owner's.
-    await ask(pageId, '2026-10-18T10:00:00Z', 'ASSISTANT');
+    // Not yet happened, and another owner's.
     await ask(pageId, '2026-10-18T16:00:00Z');
     await ask(other.pageId, '2026-10-18T10:00:00Z');
 
     const week = await getQuestionWeek(accountId, now);
     expect(week).toEqual({ thisWeek: 4, lastWeek: 2, days: [1, 0, 0, 0, 0, 1, 2] });
+  });
+
+  it('puts the rate on the same window: its recorded count is the week card, and never more', async () => {
+    const { accountId, pageId } = await anOwnerWithAPage();
+    // 15 minutes before the week's first Malaysian midnight: inside a rolling 168 hours, outside the calendar week.
+    await ask(pageId, '2026-10-11T15:45:00Z', true);
+    await ask(pageId, '2026-10-12T14:00:00Z', true);
+    await ask(pageId, '2026-10-15T02:00:00Z', false);
+    await ask(pageId, '2026-10-18T10:00:00Z', true);
+    const week = await getQuestionWeek(accountId, now);
+    const rate = await getAnswerRate(accountId, now, 7, { from: questionWeekStart(now) });
+    expect(week.thisWeek).toBe(3);
+    expect(rate).toEqual({ answered: 2, recorded: 3 });
+    expect(rate.recorded).toBe(week.thisWeek);
+    // An ask with no recorded outcome counts in the card but not in the rate: never the other way round.
+    await ask(pageId, '2026-10-18T11:00:00Z', null);
+    const more = await getQuestionWeek(accountId, now);
+    expect((await getAnswerRate(accountId, now, 7, { from: questionWeekStart(now) })).recorded).toBeLessThanOrEqual(more.thisWeek);
   });
 });
 

@@ -9,7 +9,7 @@ export { getOwnerPage } from './owner-page.query.js';
 export type { OwnerPage } from './owner-page.query.js';
 export { getSignInMethods } from './sign-in-methods.query.js';
 export type { SignInMethods } from './sign-in-methods.query.js';
-export { countQuestionsThisWeek, countTopicsNeedingOwner, getAnswerRate, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
+export { countTopicsNeedingOwner, getAnswerRate, getQuestionWeek, questionWeekStart, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
 export type { AnswerRate, ChatReply, QuestionWeek, TopicChoice, TopicShow, TopicTotals } from './topics.query.js';
 export type { OwnerTopic, OwnerWording } from './topics.query.js';
 export { getLeadStats, getLeads, TRANSCRIPT_LIMIT } from './leads.query.js';

@@ -18,8 +18,6 @@ export interface OwnerTopic {
   lastAskedAt: Date;
   /** Most asked first; includes the title's wording. */
   wordings: OwnerWording[];
-  /** Asks in each of the last seven days, oldest first, today last. Logged since 2026-10-17. */
-  week: number[];
   /** What the model last replied to it, and whether that was an answer or "not sure". Null until it has replied (kept since 2026-10-27). */
   chat: ChatReply | null;
 }
@@ -104,25 +102,11 @@ export async function getTopics(
       questions: { orderBy: [{ askCount: 'desc' }, { firstAskedAt: 'asc' }], select: { id: true, text: true, askCount: true } },
     },
   });
-  // The week of asks: rolling days back from now, so "today" is the last 24 hours.
-  const asks = await prismaRead.questionAsk.findMany({
-    where: { askedAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now }, question: { topicId: { in: topics.map((t) => t.id) } } },
-    select: { askedAt: true, question: { select: { topicId: true } } },
-  });
-  const weeks = new Map<string, number[]>();
-  for (const ask of asks) {
-    const daysAgo = Math.floor((now.getTime() - ask.askedAt.getTime()) / DAY_MS);
-    const week = weeks.get(ask.question.topicId) ?? [0, 0, 0, 0, 0, 0, 0];
-    week[6 - daysAgo]! += 1;
-    weeks.set(ask.question.topicId, week);
-  }
-
   const replies = await latestReplies(topics.map((t) => t.id));
 
   return topics.map(({ questions, ...topic }) => ({
     ...topic,
     wordings: questions,
-    week: weeks.get(topic.id) ?? [0, 0, 0, 0, 0, 0, 0],
     chat: replies.get(topic.id) ?? null,
   }));
 }
@@ -200,12 +184,16 @@ export interface AnswerRate {
 }
 
 /**
- * The Questions screen's "Of asks the chat can answer": asks answered from the
+ * The Questions screen's "Answered by your page": asks answered from the
  * owner's answer or the facts, against every ask whose outcome was recorded
  * (the chat marks each; the month's fixed reply is neither and is left out).
+ * `from` starts the window there (inclusive) instead of `days` rolling days
+ * back: the screen gives it the week card's first Malaysian midnight
+ * (`questionWeekStart`), so the card and the rate count the same asks.
  */
-export async function getAnswerRate(accountId: string, now = new Date(), days = 30): Promise<AnswerRate> {
-  const where = { askedAt: { gt: new Date(now.getTime() - days * DAY_MS), lte: now }, question: { page: { accountId } } };
+export async function getAnswerRate(accountId: string, now = new Date(), days = 30, options: { from?: Date } = {}): Promise<AnswerRate> {
+  const askedAt = options.from ? { gte: options.from, lte: now } : { gt: new Date(now.getTime() - days * DAY_MS), lte: now };
+  const where = { askedAt, question: { page: { accountId } } };
   const [answered, recorded] = await Promise.all([
     prismaRead.questionAsk.count({ where: { ...where, answered: true } }),
     prismaRead.questionAsk.count({ where: { ...where, answered: { not: null } } }),
@@ -213,35 +201,38 @@ export async function getAnswerRate(accountId: string, now = new Date(), days = 
   return { answered, recorded };
 }
 
-/** What visitors asked the page in the last seven days: every visitor turn, answered or not. */
-export async function countQuestionsThisWeek(accountId: string, now = new Date()): Promise<number> {
-  return prismaRead.message.count({
-    where: { role: 'USER', createdAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now }, conversation: { page: { accountId } } },
-  });
-}
-
-/** Visitor questions by week: this and last 7 Malaysian days, and the day-by-day bar of this one. */
+/** Questions asked, by week: this and last 7 Malaysian days, and the day-by-day bar of this one. */
 export interface QuestionWeek {
-  /** USER messages over the last 7 Malaysian days, today included. */
+  /** Recorded question asks (QuestionAsk) over the last 7 Malaysian days, today included. */
   thisWeek: number;
-  /** USER messages over the 7 Malaysian days before those. */
+  /** The same over the 7 Malaysian days before those. */
   lastWeek: number;
-  /** USER messages per Malaysian day, 7 slots, oldest first, today last (the week bar). */
+  /** Asks per Malaysian day, 7 slots, oldest first, today last (the week bar). */
   days: number[];
 }
 
-/** One grouped query over 14 Malaysian days, bucketed by the Malaysian date of each visitor turn. */
+/** The week's first moment: 00:00 in Malaysia, six days before today. `getAnswerRate` takes it as `from`. */
+export function questionWeekStart(now: Date): Date {
+  const today = Date.parse(`${malaysiaToday(now)}T00:00:00Z`);
+  return new Date(today - 6 * DAY_MS - MALAYSIA_OFFSET_MS);
+}
+
+/**
+ * One grouped query over 14 Malaysian days, bucketed by the Malaysian date of each recorded ask. It counts
+ * what the topics are made of (QuestionAsk), not every visitor message, so "Asked this week" and the share
+ * answered beside it are over the same asks and the same window.
+ */
 export async function getQuestionWeek(accountId: string, now = new Date()): Promise<QuestionWeek> {
   const today = Date.parse(`${malaysiaToday(now)}T00:00:00Z`);
   const first = today - 6 * DAY_MS;
   const from = new Date(first - 7 * DAY_MS - MALAYSIA_OFFSET_MS);
   const to = new Date(today + DAY_MS - MALAYSIA_OFFSET_MS);
   const rows = await prismaRead.$queryRaw<{ day: string; n: number }[]>`
-    SELECT to_char(m."createdAt" + interval '8 hours', 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
-    FROM "Message" m
-    JOIN "Conversation" c ON c."id" = m."conversationId"
-    JOIN "Page" p ON p."id" = c."pageId"
-    WHERE p."accountId" = ${accountId} AND m."role" = 'USER' AND m."createdAt" >= ${from} AND m."createdAt" < ${to}
+    SELECT to_char(a."askedAt" + interval '8 hours', 'YYYY-MM-DD') AS day, COUNT(*)::int AS n
+    FROM "QuestionAsk" a
+    JOIN "Question" q ON q."id" = a."questionId"
+    JOIN "Page" p ON p."id" = q."pageId"
+    WHERE p."accountId" = ${accountId} AND a."askedAt" >= ${from} AND a."askedAt" < ${to}
     GROUP BY 1`;
   const days = [0, 0, 0, 0, 0, 0, 0];
   let lastWeek = 0;
