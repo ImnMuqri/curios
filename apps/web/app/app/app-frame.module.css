@@ -329,6 +329,10 @@
 
 /* ---- The top bar and the sheet ---- */
 
+.layers {
+  display: contents;
+}
+
 .column {
   flex: 1;
   min-width: 0;

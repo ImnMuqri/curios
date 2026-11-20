@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { LayerPortal } from './overlay-context.js';
+import { LAYER_STOP } from './use-modal.js';
 import styles from './toast.module.css';
 
 /** How long a toast stays, as the boards time it. */
@@ -17,6 +19,11 @@ export const TOAST_ERROR_MS = 10000;
  * tick, in a `role="alert"` region put in with it (read at once), staying until it is
  * dismissed (its ✕) or `TOAST_ERROR_MS` passes. A success clears a failure
  * still showing, and the other way round, so only one pill is ever up.
+ *
+ * In the dashboard the pill renders in the frame's layer host (_ui/overlay-context), above any open
+ * sheet or dialog (its z-index is over the dialog's), and its Dismiss is a stop of an open modal's Tab
+ * trap, so a failure raised under a layer can be read and dismissed. A sheet's own failure line is still
+ * preferred while the sheet holds focus.
  *
  * Each live region is always in the page and only its words change, so a
  * screen reader hears each one; a region that appears together with its text
@@ -47,7 +54,7 @@ export function useToast(ms = TOAST_MS): { say: (text: string) => void; fail: (t
   const ok = shown.tone === 'ok' && shown.text;
   const error = shown.tone === 'error' && shown.text;
   const toast = (
-    <>
+    <LayerPortal>
       <div className={styles.slot} role="status">
         {ok ? (
           <p key={nth} className={styles.toast}>
@@ -68,7 +75,7 @@ export function useToast(ms = TOAST_MS): { say: (text: string) => void; fail: (t
               <path d="M12 7.5v5.5M12 16.5v.01" />
             </svg>
             {shown.text}
-            <button type="button" className={styles.dismiss} aria-label="Dismiss" onClick={dismiss}>
+            <button type="button" className={styles.dismiss} aria-label="Dismiss" {...{ [LAYER_STOP]: '' }} onClick={dismiss}>
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M7 7l10 10M17 7L7 17" />
               </svg>
@@ -76,7 +83,7 @@ export function useToast(ms = TOAST_MS): { say: (text: string) => void; fail: (t
           </p>
         </div>
       ) : null}
-    </>
+    </LayerPortal>
   );
 
   return { say, fail, toast };

@@ -111,6 +111,9 @@ export function InlineConfirm({
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'Escape') return;
+    // preventDefault is what a surrounding sheet or Help honours (use-modal ignores a handled Escape): React's
+    // root listener sits on the document, the same node theirs do, so stopPropagation alone cannot stop them.
+    event.preventDefault();
     event.stopPropagation();
     close();
   }

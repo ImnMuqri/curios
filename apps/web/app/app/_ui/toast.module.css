@@ -4,7 +4,8 @@
   position: fixed;
   left: 50%;
   bottom: 28px;
-  z-index: 20;
+  /* Over the sheet (85) and the dialog (87): a failure raised under a layer stays readable. */
+  z-index: 88;
   width: max-content;
   max-width: calc(100vw / var(--page-zoom, 1) - 32px);
   transform: translateX(-50%);

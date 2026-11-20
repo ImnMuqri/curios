@@ -1,8 +1,11 @@
 'use client';
 
-import { useEffect, useId, useRef, type RefObject } from 'react';
+import { useContext, useEffect, useId, useRef, type RefObject } from 'react';
 import { announceOverlay } from './popover.js';
-import { useOverlayOpen } from './overlay-context.js';
+import { OverlayContext } from './overlay-context.js';
+
+/** A toast's Dismiss: outside the panel (it sits in the frame's layer host, above the layers) but still reachable while a modal is open. */
+export const LAYER_STOP = 'data-layer-stop';
 
 const STOPS = 'a[href], button, input:not([type="hidden"]), select, textarea, summary, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
 
@@ -60,17 +63,25 @@ export function useModal(
   close.current = onClose;
   const back = useRef(returnFocusTo);
   back.current = returnFocusTo;
-  useOverlayOpen(open);
+  const frame = useContext(OverlayContext);
+  const enter = frame?.enter;
+  // In the frame the panel lives in the layer host, which is not there until the frame has mounted.
+  const hostReady = frame ? frame.host !== null : true;
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !hostReady) return;
     const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null;
     announceOverlay(id);
+    // After the opener is read: making the rest of the frame inert takes focus off it.
+    const leave = enter?.();
     const unlock = lockScroll();
     stack.push(id);
     const stops = () => {
       const root = panel.current;
-      return root ? [...root.querySelectorAll<HTMLElement>(STOPS)].filter((el) => reachable(el, root)) : [];
+      if (!root) return [];
+      const inside = [...root.querySelectorAll<HTMLElement>(STOPS)].filter((el) => reachable(el, root));
+      const toast = [...document.querySelectorAll<HTMLElement>(`[${LAYER_STOP}]`)].filter((el) => reachable(el, root));
+      return [...inside, ...toast];
     };
     (panel.current?.querySelector<HTMLElement>('[data-autofocus]') ?? stops()[0] ?? panel.current)?.focus();
 
@@ -91,7 +102,7 @@ export function useModal(
         return;
       }
       const here = document.activeElement;
-      if (!panel.current.contains(here) || here === panel.current || (event.shiftKey && here === first)) {
+      if (!(here instanceof HTMLElement) || !all.includes(here) || (event.shiftKey && here === first)) {
         event.preventDefault();
         (event.shiftKey ? last : first).focus();
       } else if (!event.shiftKey && here === last) {
@@ -104,6 +115,8 @@ export function useModal(
       document.removeEventListener('keydown', key);
       stack.splice(stack.lastIndexOf(id), 1);
       unlock();
+      // Before focus goes back: the opener is inert until the frame is let go.
+      leave?.();
       const given = back.current;
       const named = typeof given === 'string' ? document.querySelector<HTMLElement>(given) : (given?.current ?? null);
       const main = document.querySelector<HTMLElement>('main');
@@ -114,5 +127,5 @@ export function useModal(
         if (document.activeElement === target) return;
       }
     };
-  }, [open, id, panel]);
+  }, [open, id, panel, enter, hostReady]);
 }

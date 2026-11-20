@@ -2,6 +2,7 @@
 
 import { useId, useRef, type RefObject, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import { useModal } from './use-modal.js';
+import { LayerPortal, useInFrame } from './overlay-context.js';
 import styles from './side-sheet.module.css';
 
 /** The 44px close circle, in a sheet's header and a dialog's corner. */
@@ -66,15 +67,17 @@ export function SideSheet({
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useModal(open, onClose, panel, returnFocusTo);
+  // In the frame the rest of the screen is inert while open (AppFrame), which is what aria-modal says; keeping both would prune the toast, which sits beside the layer.
+  const modal = useInFrame() ? undefined : true;
   return (
-    <>
+    <LayerPortal>
       <div className={styles.scrim} data-open={open || undefined} aria-hidden="true" onClick={onClose} />
       <div
         ref={panel}
         className={styles.sheet}
         data-open={open || undefined}
         role="dialog"
-        aria-modal="true"
+        aria-modal={modal}
         aria-labelledby={titleId}
         tabIndex={-1}
         inert={!open}
@@ -90,6 +93,6 @@ export function SideSheet({
         <div className={styles.body}>{children}</div>
         {footer ? <div className={styles.footer}>{footer}</div> : null}
       </div>
-    </>
+    </LayerPortal>
   );
 }

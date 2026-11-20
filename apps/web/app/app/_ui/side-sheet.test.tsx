@@ -10,6 +10,8 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/app/orders', useSearchP
 vi.mock('../../../lib/api.js', () => ({ apiFetch: vi.fn(async () => ({ sections: [], chat: true })), ApiError: class extends Error {} }));
 const { SideSheet, SheetAction, SheetDanger, SheetHint } = await import('./side-sheet.js');
 const { Dialog } = await import('./dialog.js');
+const { useToast } = await import('./toast.js');
+const { InlineConfirm } = await import('./inline-confirm.js');
 const { AppFrame } = await import('../app-frame.js');
 
 afterEach(() => {
@@ -252,6 +254,128 @@ describe('the phone menu while a sheet or dialog is open', () => {
     expect(at).toBeGreaterThan(0);
     expect(frameCss.slice(frameCss.lastIndexOf('@media', at), at)).toContain('(max-width: 1100px)');
     expect(frameCss.slice(at, frameCss.indexOf('}', at))).toMatch(/display:\s*none/);
+  });
+});
+
+describe('the layers in the frame (the overlay host)', () => {
+  const frame = (children: React.ReactNode) =>
+    render(
+      <AppFrame
+        displayName="Iman Muqri"
+        avatarUrl={null}
+        plan={{ name: 'Business plan', note: '18 days left', fill: 0.6, glance: 'Business' }}
+        badges={{ review: 0, questions: 0, leads: 0, orders: 0 }}
+        mode="BUSINESS"
+        billingDot={false}
+        alerts={[]}
+      >
+        {children}
+      </AppFrame>,
+    );
+  const root = () => document.querySelector('[data-laptop-scale]') as HTMLElement;
+
+  it('renders the sheet and the dialog in the frame host, outside main', async () => {
+    const user = userEvent.setup();
+    frame(<Story />);
+    await user.click(screen.getByRole('button', { name: 'Open sheet' }));
+    const sheet = screen.getByRole('dialog', { name: 'Mira, Peek, Lead' });
+    const host = root().lastElementChild as HTMLElement;
+    expect(sheet.parentElement).toBe(host);
+    expect(root().contains(host)).toBe(true);
+    expect(document.querySelector('main')?.contains(sheet)).toBe(false);
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('button', { name: 'Open dialog' }));
+    expect(screen.getByRole('dialog', { name: 'Cancel order?' }).parentElement).toBe(host);
+  });
+
+  it('makes the sidebar, top bar and screen inert while a layer is open, and gives focus back to the opener', async () => {
+    const user = userEvent.setup();
+    frame(<Story />);
+    const side = document.querySelector('aside') as HTMLElement;
+    const column = document.querySelector('main')?.parentElement as HTMLElement;
+    const opener = screen.getByRole('button', { name: 'Open sheet' });
+    await user.click(opener);
+    expect(side).toHaveAttribute('inert');
+    expect(column).toHaveAttribute('inert');
+    await user.keyboard('{Escape}');
+    expect(side).not.toHaveAttribute('inert');
+    expect(column).not.toHaveAttribute('inert');
+    expect(opener).toHaveFocus();
+  });
+
+  it('stays inert until the last of two stacked layers closes', async () => {
+    function Both() {
+      const [d, setD] = useState(false);
+      return (
+        <>
+          <SideSheet open onClose={() => {}} title="Sheet">
+            <button type="button" onClick={() => setD(true)}>
+              Ask
+            </button>
+          </SideSheet>
+          <Dialog open={d} onClose={() => setD(false)} title="Sure?" />
+        </>
+      );
+    }
+    const user = userEvent.setup();
+    frame(<Both />);
+    const side = document.querySelector('aside') as HTMLElement;
+    await user.click(screen.getByRole('button', { name: 'Ask' }));
+    await user.keyboard('{Escape}');
+    expect(side).toHaveAttribute('inert');
+  });
+
+  function Failing() {
+    const { fail, toast } = useToast();
+    const [open, setOpen] = useState(true);
+    return (
+      <>
+        <SideSheet open={open} onClose={() => setOpen(false)} title="Item">
+          <button type="button" onClick={() => fail('Could not save.')}>
+            Save
+          </button>
+        </SideSheet>
+        {toast}
+      </>
+    );
+  }
+
+  it('a failure raised under a sheet shows in the host above it, announced, and its Dismiss is in the Tab trap', async () => {
+    const user = userEvent.setup();
+    frame(<Failing />);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    const alert = screen.getByRole('alert');
+    expect(alert).toHaveTextContent('Could not save.');
+    expect(root().lastElementChild?.contains(alert)).toBe(true);
+    expect(css('toast.module.css')).toMatch(/\.slot \{[^}]*z-index:\s*88/);
+    const dismiss = screen.getByRole('button', { name: 'Dismiss' });
+    await user.tab();
+    expect(dismiss).toHaveFocus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('Escape in an inline confirm inside a sheet closes only the confirm; the event is marked handled for listeners on the document', async () => {
+    const user = userEvent.setup();
+    let seen: KeyboardEvent | null = null;
+    const record = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') seen = event;
+    };
+    document.addEventListener('keydown', record, true);
+    try {
+      frame(
+        <SideSheet open onClose={() => {}} title="Item" returnFocusTo="main">
+          <InlineConfirm trigger="Remove" question="Remove it?" yes="Yes" no="Keep" onYes={() => {}} />
+        </SideSheet>,
+      );
+      await user.click(screen.getByRole('button', { name: 'Remove' }));
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('group', { name: 'Remove' })).toBeNull();
+      expect(screen.getByRole('dialog', { name: 'Item' })).toHaveAttribute('data-open');
+      expect(seen!.defaultPrevented).toBe(true);
+    } finally {
+      document.removeEventListener('keydown', record, true);
+    }
   });
 });
 

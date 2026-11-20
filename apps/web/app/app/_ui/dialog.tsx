@@ -3,6 +3,7 @@
 import { useId, useRef, type RefObject, type ReactNode } from 'react';
 import { CloseButton } from './side-sheet.js';
 import { useModal } from './use-modal.js';
+import { LayerPortal, useInFrame } from './overlay-context.js';
 import styles from './dialog.module.css';
 
 /**
@@ -34,15 +35,17 @@ export function Dialog({
   const panel = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useModal(open, onClose, panel, returnFocusTo);
+  // In the frame the rest of the screen is inert while open (AppFrame), which is what aria-modal says; keeping both would prune the toast, which sits beside the layer.
+  const modal = useInFrame() ? undefined : true;
   return (
-    <>
+    <LayerPortal>
       <div className={styles.scrim} data-open={open || undefined} aria-hidden="true" onClick={onClose} />
       <div
         ref={panel}
         className={styles.dialog}
         data-open={open || undefined}
         role="dialog"
-        aria-modal="true"
+        aria-modal={modal}
         aria-labelledby={titleId}
         tabIndex={-1}
         inert={!open}
@@ -56,6 +59,6 @@ export function Dialog({
         {children}
         {actions ? <div className={styles.actions}>{actions}</div> : null}
       </div>
-    </>
+    </LayerPortal>
   );
 }
