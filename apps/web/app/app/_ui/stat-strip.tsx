@@ -109,7 +109,7 @@ export function Spark({ values }: { values: readonly number[] }) {
             width="8"
             height={h}
             rx="2"
-            className={i === values.length - 1 ? styles.today : undefined}
+            className={i === values.length - 1 && max > 0 ? styles.today : undefined}
           />
         );
       })}

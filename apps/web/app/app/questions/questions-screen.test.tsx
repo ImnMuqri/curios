@@ -128,6 +128,15 @@ describe('QuestionsScreen, the header and the strip', () => {
     expect(strip().getByText('Same as last week')).toBeInTheDocument();
   });
 
+  it('with asks this week but no outcome recorded (a capped chat) says so, not "Nothing asked"', () => {
+    show({ answerRate: { answered: 0, recorded: 0 }, week: { thisWeek: 6, lastWeek: 2, days: [0, 0, 1, 1, 1, 1, 2] } });
+    const rate = strip().getByText('Answered by your page').closest('div')!;
+    expect(rate).toHaveTextContent('–');
+    expect(rate).toHaveTextContent('No answers recorded yet');
+    expect(rate).not.toHaveTextContent('Nothing asked');
+    expect(rate.querySelector('u')).toBeNull();
+  });
+
   it('shows 0% only when asks were recorded and none was answered', () => {
     show({ answerRate: { answered: 0, recorded: 4 } });
     const rate = strip().getByText('Answered by your page').closest('div')!;

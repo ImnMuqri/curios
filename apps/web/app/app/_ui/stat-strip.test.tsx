@@ -53,6 +53,15 @@ describe('the line tone', () => {
   });
 });
 
+describe('Spark', () => {
+  it('draws today in the today colour only when the week has something in it', () => {
+    const { container, rerender } = render(<Spark values={[0, 0, 0, 0, 0, 0, 0]} />);
+    expect(container.querySelector(`.${styles.today}`)).toBeNull();
+    rerender(<Spark values={[0, 0, 0, 0, 0, 0, 3]} />);
+    expect(container.querySelector(`.${styles.today}`)).not.toBeNull();
+  });
+});
+
 describe('StatStrip', () => {
   it('makes buttons only of the cards with a filter', () => {
     render(<StatStrip cards={CARDS} />);

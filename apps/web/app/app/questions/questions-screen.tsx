@@ -249,7 +249,7 @@ export function QuestionsScreen({
       // Nothing recorded this week: no rate to give (a 0% would say the page failed every question).
       // 0% only when asks were recorded and none was answered.
       value: answerRate.recorded > 0 ? `${Math.round(rate * 100)}%` : '–',
-      line: answerRate.recorded > 0 ? `${answerRate.answered} of ${answerRate.recorded} this week` : 'Nothing asked this week',
+      line: answerRate.recorded > 0 ? `${answerRate.answered} of ${answerRate.recorded} this week` : week.thisWeek > 0 ? 'No answers recorded yet' : 'Nothing asked this week',
       lineTone: answerRate.recorded > 0 && rate > 0 ? 'up' : 'flat',
       rate: answerRate.recorded > 0 ? rate : undefined,
     },
