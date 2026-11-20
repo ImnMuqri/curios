@@ -648,6 +648,8 @@ describe('orders.module.css', () => {
   });
 
   it('draws the steps as 3px lines, ink once reached, and the move as a full-width pill in the action fill', () => {
+    // In a box (owner, 12 Nov 2026), with the calm 16px box corner instead of the old 10px.
+    expect(css).toMatch(/\.steps \{[^}]*border: 1px solid var\(--line\);[^}]*border-radius: var\(--r-box\);[^}]*background: var\(--surface\);/);
     expect(css).toMatch(/\.steps > li \{[^}]*border-top: 3px solid var\(--line\);/);
     expect(css).toMatch(/\.steps > li\[data-on\] \{\s*border-color: var\(--ink\);/);
     expect(css).toMatch(/\.primary \{\s*background: var\(--action\);/);

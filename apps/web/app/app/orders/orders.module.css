@@ -161,12 +161,16 @@
   margin-top: 4px;
 }
 
-/* The four steps (Dash.html .xsteps2): a 3px line over each word, ink once reached. */
+/* The four steps (Dash.html .xsteps2): a 3px line over each word, ink once reached, in a box (owner, 12 Nov 2026,
+   kept by the calm rebuild with the 16px box corner: DEVIATIONS 305). */
 .steps {
   display: flex;
   gap: 4px;
   margin: 14px 0 4px;
-  padding: 0;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-box);
+  background: var(--surface);
   list-style: none;
 }
 
