@@ -54,9 +54,10 @@ describe('PageReply', () => {
 
 // The page's replies in the previews were bubbles (a tint, a rounded corner). Their text colour
 // is the dashboard's own now that the chats are neutral (Dashboard v2), so only the bubble is ruled out.
+// Leads left this list with the calm board (19 Nov 2026): its conversation sheet draws the page's
+// replies as the board's white card bubbles (Dash.html .xconvsh .xa).
 describe('the previews draw no reply bubble', () => {
   const classes: [string, string][] = [
-    ['../leads/leads.module.css', '.fromPage'],
     ['../questions/questions.module.css', '.reply'],
     ['../questions/questions.module.css', '.replyNote'],
     ['../review/review.module.css', '.reply'],

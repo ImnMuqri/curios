@@ -12,6 +12,7 @@ import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
 import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
+import { OverlayContext } from './_ui/overlay-context.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
 import { announceOverlay, Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
@@ -154,6 +155,38 @@ export function AppFrame({
     () => ({ open: helpOpen, show: () => setHelpOpen(true), close: () => setHelpOpen(false), toggle: () => setHelpOpen((was) => !was) }),
     [helpOpen],
   );
+  // A SideSheet or Dialog open anywhere in the screen (_ui/overlay-context): counted, so two at once
+  // (a dialog over a sheet) keep the phone's menu hidden until both are gone.
+  const [sheets, setSheets] = useState(0);
+  // Where the layers render (the last child of the frame, below), and what stays reachable under one.
+  const [layerHost, setLayerHost] = useState<HTMLElement | null>(null);
+  const sideRef = useRef<HTMLElement>(null);
+  const columnRef = useRef<HTMLDivElement>(null);
+  const open = useRef(0);
+  const overlays = useMemo(() => {
+    // The sidebar, top bar and screen go inert while any layer is open: set and cleared on the element
+    // itself, not through state, so it is already gone when the layer hands focus back to its opener.
+    const inert = (on: boolean) => {
+      for (const el of [sideRef.current, columnRef.current]) {
+        if (on) el?.setAttribute('inert', '');
+        else el?.removeAttribute('inert');
+      }
+    };
+    return {
+      host: layerHost,
+      enter: () => {
+        if (open.current++ === 0) inert(true);
+        setSheets((n) => n + 1);
+        let left = false;
+        return () => {
+          if (left) return;
+          left = true;
+          if (--open.current === 0) inert(false);
+          setSheets((n) => n - 1);
+        };
+      },
+    };
+  }, [layerHost]);
   const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
   const choose = (next: Theme) => {
     setTheme(next);
@@ -291,8 +324,8 @@ export function AppFrame({
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
      <HelpContext.Provider value={help}>
-      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-laptop-scale>
-        <aside className={styles.side}>
+      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-sheet-open={sheets ? true : undefined} data-laptop-scale>
+        <aside ref={sideRef} className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
             <Wordmark />
             <span className={styles.srOnly}>Curios dashboard</span>
@@ -367,7 +400,7 @@ export function AppFrame({
           </Link>
         </aside>
 
-        <div className={styles.column}>
+        <div ref={columnRef} className={styles.column}>
           <header className={styles.top}>
             {/* A phone has no sidebar: the logo starts its top bar. */}
             <Link href="/app/curios" className={styles.topBrand}>
@@ -404,12 +437,16 @@ export function AppFrame({
           </header>
           <main className={styles.sheet}>
             <NavProgressProvider>
-              <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
+              <AlertsProvider alerts={alerts}>
+                <OverlayContext.Provider value={overlays}>{children}</OverlayContext.Provider>
+              </AlertsProvider>
             </NavProgressProvider>
           </main>
         </div>
 
         <PhoneMenu pathname={pathname} items={items} badges={badges} billingDot={billingDot} className={styles.phoneMenu} />
+        {/* SideSheet, Dialog and the toast render here (_ui/overlay-context): inside the frame for its tokens and dark mode, outside the screen so nothing in it can trap a fixed layer. */}
+        <div ref={setLayerHost} className={styles.layers} />
         {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}
       </div>
      </HelpContext.Provider>

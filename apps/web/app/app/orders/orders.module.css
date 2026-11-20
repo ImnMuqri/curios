@@ -1,751 +1,254 @@
 /*
- * Orders, from the design handoff's Orders board (Dashboard v2). The frame
- * (the list column, its search and pill filters, the detail column) is the
- * inbox's (../_ui/inbox.module.css); this is what only Orders has: the order
- * rows and badges, the four bars, the action box, the two plain columns,
- * the receipt and its zoom.
+ * Orders, on the calm Dash board (Dash.html, the `orders` screen). The frame is the inbox kit's
+ * (../_ui/inbox.module.css: the screen and body, filter bar, split, list rows, detail card, tags,
+ * label and value rows, InlineConfirm) and the stat strip's; this is what only Orders has: the
+ * header's shop link, the "Older orders" label, the four quiet steps, the receipt tile and its
+ * viewer, the soft cards, the paid-twice panel, getting it to them, and the two full-width pills.
  */
 
-@keyframes fadeIn {
+@keyframes fadeUp {
   from {
     opacity: 0;
-  }
-}
-
-@keyframes popIn {
-  from {
-    opacity: 0;
-    transform: scale(0.6) rotate(-4deg);
-  }
-}
-
-@keyframes ray {
-  from {
-    opacity: 1;
-    transform: rotate(var(--r)) translateY(-18px) scaleY(1);
+    transform: translateY(8px);
   }
 
   to {
-    opacity: 0;
-    transform: rotate(var(--r)) translateY(-40px) scaleY(0.2);
+    opacity: 1;
+    transform: none;
   }
+}
+
+/* ---- The header ---- */
+
+/* "See your shop": the board's white pill (.btn.lite.sm). */
+.headLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 18px;
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: box-shadow 0.2s;
+}
+
+.headLink:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+  color: var(--ink);
+}
+
+/* "Copy your link" under the empty Peek: the board's .btn.dark.sm, in the action fill. */
+.darkPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--action);
+  color: var(--action-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.darkPill:hover {
+  background: var(--action-hover);
+}
+
+.headLink:focus-visible,
+.darkPill:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
 }
 
 /* ---- The list ---- */
 
-.row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--blob-pink);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.avatar[data-big] {
-  width: 40px;
-  height: 40px;
-  font-size: 15px;
-}
-
-.avatar[data-tone='blue'] {
-  background: var(--blob-blue);
-}
-
-.avatar[data-tone='mint'] {
-  background: var(--blob-mint);
-}
-
-.avatar[data-tone='peach'] {
-  background: var(--blob-peach);
-}
-
-.avatar[data-tone='sand'] {
-  background: var(--ghost-b);
-}
-
-.avatar[data-tone='sage'] {
-  background: var(--hijau-line);
-}
-
-.avatar[data-tone='sky'] {
-  background: var(--biru-ring);
-}
-
-.rowMid {
-  flex: 1;
-  min-width: 0;
-}
-
-.rowMid > b {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.rowMid > span {
-  display: block;
-  overflow: hidden;
-  font-size: 12.5px;
-  color: var(--muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--kuning);
-  box-shadow: 0 0 0 3px var(--kuning-muda);
-}
-
-.rowEnd {
-  display: grid;
-  justify-items: end;
-  gap: 4px;
-  flex: none;
-}
-
-.rowEnd > b {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.badge {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  font-size: 11.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: background-color 300ms ease, color 300ms ease;
-}
-
-.badge[data-tone='kuning'] {
-  background: var(--kuning-muda);
-  color: var(--kuning-ink);
-}
-
-.badge[data-tone='biru'] {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
-}
-
-.badge[data-tone='hijau'] {
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
-}
-
-.badge[data-tone='merah'] {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-}
-
-.badge[data-tone='muted'] {
-  color: var(--muted);
-}
-
-/* ---- Before the first order ---- */
-
-.empty {
-  padding: 44px 24px 40px;
-}
-
-.emptyArt {
-  width: 236px;
-  height: 124px;
-  margin-bottom: 16px;
-}
-
-.emptyBadge {
-  background: var(--hijau);
-}
-
-.emptyActions {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 8px;
-}
-
-.outlineLink {
-  display: inline-flex;
-  align-items: center;
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.outlineLink:hover {
-  border-color: var(--ghost-line);
-  background: var(--paper);
-  color: var(--ink);
-}
-
-/* ---- The chosen order: who ---- */
-
-.head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.headText {
-  min-width: 0;
-}
-
-.headText p {
-  margin: 2px 0 0;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
-.whatsapp {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 36px;
-  margin-left: auto;
-  padding: 0 14px;
-  border-radius: 999px;
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
-  font-weight: 500;
-  white-space: nowrap;
-  text-decoration: none;
-}
-
-.whatsapp:hover {
-  background: var(--hijau-line);
-  color: var(--hijau-ink);
-}
-
-.whatsapp svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* ---- The four steps: a bar each, its step and when under it ---- */
-
-/* In a box, as Store's ready strip: bare, the four bars floated (owner, 12 Nov 2026). */
-.progress {
-  margin: 24px 0 0;
-  padding: 16px 18px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
-}
-
-.steps {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
+.rows {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.step {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.step > b {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--hint);
-}
-
-.step[aria-current='step'] > b,
-.step:has(.node[data-state='done']) > b,
-.step:has(.node[data-state='complete']) > b,
-.step:has(.node[data-state='cancel']) > b {
-  color: var(--ink);
-}
-
-.step > span:last-child {
-  font-size: 11.5px;
-  color: var(--muted);
-}
-
-.node {
-  display: block;
-  height: 3px;
-  margin-bottom: 10px;
-  border-radius: 2px;
-  background: var(--action);
-  transition: background-color 300ms ease;
-}
-
-.node[data-state='complete'] {
-  background: var(--hijau);
-}
-
-.node[data-state='cancel'] {
-  background: var(--merah);
-}
-
-.node[data-state='todo'] {
-  background: var(--line);
-}
-
-/* The step to do next: a tint of the done colour, so the eye lands on it. */
-.node[data-state='next'] {
-  background: var(--biru-ring);
-}
-
-/* ---- What to do next ---- */
-
-.actbar {
-  --act-bg: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
-  --act-ring: var(--biru-ring);
-  --act-ink: var(--biru-ink);
-  --act-btn: var(--biru);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  padding: 14px 14px 14px 18px;
-  border-radius: 10px;
-  background: var(--act-bg);
-  box-shadow: inset 0 0 0 1px var(--act-ring);
-}
-
-.actbar[data-tone='grey'] {
-  --act-bg: var(--paper);
-  --act-ring: var(--line);
-  --act-ink: var(--ink-soft);
-  --act-btn: var(--ink);
-}
-
-.actbar[data-tone='hijau'] {
-  --act-bg: color-mix(in srgb, var(--hijau-muda) 60%, var(--card));
-  --act-ring: var(--hijau-line);
-  --act-ink: var(--hijau-ink);
-  --act-btn: var(--hijau);
-}
-
-.actbar[data-tone='merah'] {
-  --act-bg: color-mix(in srgb, var(--merah-muda) 50%, var(--card));
-  --act-ring: color-mix(in srgb, var(--merah) 20%, var(--merah-muda));
-  --act-ink: var(--merah-ink);
-  --act-btn: var(--merah);
-}
-
-.actText {
-  flex: 1 1 240px;
-  margin: 0;
-  font-size: 13px;
-  color: var(--act-ink);
-}
-
-.actText b {
-  display: block;
-  font-size: 14px;
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-}
-
-.ghost {
-  height: 38px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--merah-deep);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.ghost:hover {
-  background: var(--merah-muda);
-}
-
-.outline {
-  height: 42px;
-  padding: 0 16px;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.outline:hover {
-  border-color: var(--ghost-line);
-  background: var(--paper);
-}
-
-.big {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 42px;
-  padding: 0 20px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--act-btn);
-  color: var(--card);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.big:hover {
-  background: color-mix(in srgb, var(--act-btn) 82%, var(--ink));
-}
-
-.big:active {
-  transform: scale(0.97);
-}
-
-.big svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ghost:disabled,
-.outline:disabled,
-.big:disabled {
-  cursor: progress;
-  opacity: 0.7;
-}
-
-.ray {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 3px;
-  height: 12px;
-  margin: -6px 0 0 -1.5px;
-  border-radius: 2px;
-  background: var(--act-btn);
-  animation: ray 520ms ease-out forwards;
-  pointer-events: none;
-}
-
-.confirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.confirm button {
-  height: 30px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 7px;
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.confirm button[data-tone='merah'] {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-}
-
-.error {
-  margin-top: 12px;
-}
-
-/* ---- What they bought; payment and getting it to them: two plain columns, no boxes ---- */
-
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 48px;
-  margin-top: 26px;
-}
-
-.side {
-  display: grid;
-  align-content: start;
-  gap: 28px;
-}
-
-.card {
-  min-width: 0;
-}
-
-.cardTitle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 0 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.cardTitle > span:not(.badge) {
-  font-weight: 500;
-}
-
-.line {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 0;
-}
-
-.line + .line {
-  border-top: 1px dashed var(--line);
-}
-
-.thumb {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--blob-pink);
-  color: var(--rose);
-  font-family: var(--font-display);
-  font-weight: 800;
-}
-
-.thumb[data-tone='peach'] {
-  background: var(--blob-peach);
-  color: var(--kuning-ink);
-}
-
-.thumb[data-tone='mint'] {
-  background: var(--hijau-muda);
-  color: var(--hijau);
-}
-
-.thumb img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumb svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.lineName {
-  flex: 1;
-  min-width: 0;
-}
-
-.lineName b {
-  display: block;
-  font-weight: 500;
-}
-
-.lineName span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.amount {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.total {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-top: 8px;
-  padding-top: 12px;
+/* Each row is the kit's .li inside its own <li>, so the kit's first-child rule cannot tell rows
+   apart: the line between rows is drawn here, and only the list's very first row goes without. */
+.rows > .item > .rowBtn {
   border-top: 1px solid var(--line);
+  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rows:first-child > .item:first-child > .rowBtn {
+  border-top: 0;
+}
+
+/* "Older orders": what was placed before the last 7 days (owner, 19 Nov 2026). Read, so muted. */
+.old {
+  margin: 14px 6px 6px;
   color: var(--muted);
-}
-
-.total b {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-}
-
-/* The receipt: a file row (thumbnail, name, when, View), the rows it should show, and the warning. */
-.receiptFile {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 4px 0 14px;
-  border-bottom: 1px solid var(--line);
-}
-
-.receiptThumb {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 48px;
-  height: 60px;
-  flex: none;
-  padding: 0;
-  overflow: hidden;
-  border: 0;
-  border-radius: 8px;
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 4px 10px -6px rgb(25 31 44 / 30%);
-  color: var(--merah);
-  text-decoration: none;
-  cursor: zoom-in;
-  transition: transform 320ms cubic-bezier(0.34, 1.4, 0.64, 1);
-}
-
-.receiptThumb:hover {
-  transform: rotate(-2deg) scale(1.04);
-}
-
-.receiptThumb[data-pdf] {
-  align-content: center;
-  gap: 2px;
-  cursor: pointer;
-}
-
-.receiptThumb small {
-  font-size: 9.5px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
-.receiptThumb svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.receiptThumb img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: top;
-}
-
-.receiptText {
-  flex: 1;
-  min-width: 0;
-}
-
-.receiptText > b {
-  display: block;
-  font-size: 14px;
-  font-weight: 600;
-  overflow-wrap: anywhere;
-}
-
-.receiptText > span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.view {
-  flex: none;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--biru);
-  font: inherit;
-  font-size: 13.5px;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-}
-
-.view:hover {
-  color: var(--biru-deep);
-  text-decoration: underline;
-}
-
-.hint {
-  margin: 12px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.waitbox {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 120px;
-  padding: 16px;
-  border: 1.5px dashed var(--edge);
-  border-radius: 10px;
-  color: var(--muted);
-  font-size: 13px;
+/* No match, and All clear (Dash.html .xnomatch / .xallclear). */
+.empty {
+  margin: 0;
+  padding: 28px 16px;
   text-align: center;
 }
 
-.waitbox svg {
-  width: 22px;
-  height: 22px;
+.empty b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty small {
+  display: block;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.empty a {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* The pager and how long orders are kept, at the list's foot. */
+.foot {
+  border-top: 1px solid var(--line);
+}
+
+.foot > nav {
+  border-top: 0;
+}
+
+.kept {
+  margin: 0;
+  padding: 10px 16px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.foot > nav + .kept {
+  padding-top: 0;
+}
+
+/* ---- The detail ---- */
+
+.name {
+  margin: 4px 0 2px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  outline: none;
+}
+
+.name + span {
+  margin-top: 4px;
+}
+
+/* The four steps (Dash.html .xsteps2): a 3px line over each word, ink once reached, in a box (owner, 12 Nov 2026,
+   kept by the calm rebuild with the 16px box corner: DEVIATIONS 305). */
+.steps {
+  display: flex;
+  gap: 4px;
+  margin: 14px 0 4px;
+  padding: 12px 14px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-box);
+  background: var(--surface);
+  list-style: none;
+}
+
+.steps > li {
+  flex: 1;
+  padding-top: 8px;
+  border-top: 3px solid var(--line);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.steps > li[data-on] {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.block {
+  margin-top: 16px;
+}
+
+/* The receipt tile (Dash.html .xrcpt): the picture, "Receipt", when, and what a tap does. */
+.receipt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 10px 14px 10px 10px;
+  border: 0;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  transition: box-shadow 0.2s;
+}
+
+button.receipt,
+a.receipt {
+  cursor: pointer;
+}
+
+button.receipt:hover,
+a.receipt:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+  color: inherit;
+}
+
+.receipt:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+/* A container corner (16px), not the board's 8px (DEVIATIONS 355). */
+.receiptThumb {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: var(--r-box);
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--muted);
+}
+
+.receiptThumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.receiptThumb svg {
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -753,213 +256,279 @@
   stroke-linejoin: round;
 }
 
-/* CHIP took a second payment for an order paid another way: one is owed back. */
-.paidTwice {
-  margin: 10px 0 0;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-  font-size: 13px;
+.receiptText {
+  display: grid;
+  min-width: 0;
+}
+
+.receiptText b {
+  font-size: 14px;
   font-weight: 600;
 }
 
-.paidTwice p {
-  margin: 0;
+.receiptText small {
+  color: var(--muted);
+  font-size: 12.5px;
 }
 
-.refundAsk {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-  margin-top: 8px;
-  font-weight: 500;
-}
-
-.refundedQuiet {
-  margin: 10px 0 0;
-  color: var(--ink-soft);
-  font-size: 13px;
-}
-
-/* The Payment card of an order CHIP confirmed: no receipt to show, only the bank's word. */
-.paidOnline {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--hijau-wash);
-}
-
-.paidTick {
+/* The receipt, large, in the Dialog (Dash.html .xrimg). */
+.receiptBig {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--hijau);
+  margin: 16px 0 10px;
+  padding: 16px;
+  border-radius: var(--r-box);
+  background: var(--surface);
 }
 
-.paidTick svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: var(--card);
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.receiptBig img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(60vh / var(--page-zoom, 1));
+  object-fit: contain;
 }
 
-.paidOnline b {
+/* On a phone the hint under it stays in view. */
+@media (max-width: 760px) {
+  .receiptBig img {
+    max-height: calc(48vh / var(--page-zoom, 1));
+  }
+}
+
+.dialogHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: center;
+}
+
+/* Soft cards (Dash.html .xsent): a voucher, sent by email; amber for a receipt not received. */
+.soft,
+.sent {
+  margin-top: 14px;
+  padding: 12px 16px;
+  border-radius: var(--r-box);
+  background: var(--surface);
+}
+
+.soft b {
   display: block;
   font-size: 14px;
   font-weight: 600;
-  color: var(--hijau-ink);
 }
 
-.paidOnline span > span {
+.soft small {
   display: block;
-  margin-top: 2px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
-.kv {
-  display: flex;
-  gap: 12px;
+.soft[data-tone='warn'] {
+  background: var(--calm-urgent);
 }
 
-.kv b {
-  display: block;
+.soft[data-tone='warn'] b {
+  color: var(--calm-urgent-ink);
+}
+
+/* Paid twice (Dash.html .xtwice): the soft red panel with the second receipt and Mark refunded. */
+.twice {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px 16px;
+  border-radius: var(--r-box);
+  background: var(--calm-twice);
+  box-shadow: inset 0 0 0 1px var(--calm-twice-ring);
+}
+
+.twice > b {
+  color: var(--calm-danger);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.twice > p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+/* Its Mark refunded pill spans the panel, as the board draws it. */
+.twiceConfirm > div {
+  justify-items: stretch;
+  margin-top: 0;
+}
+
+.twiceConfirm > div > button[aria-expanded] {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Getting it to them (Dash.html .xgo): the method and day, the address, the customer's note. */
+.go {
+  margin-top: 16px;
+}
+
+.lab {
+  margin: 0 0 10px;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 600;
 }
 
-.kv > span:last-child > span {
-  display: block;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.kvIcon {
+.goBox {
   display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  flex: none;
-  border-radius: 9px;
-  background: var(--hijau-muda);
-  color: var(--hijau);
+  gap: 2px;
+  padding: 12px 16px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
-.kvIcon[data-method='PICKUP'] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
+.goBox b {
+  font-size: 14px;
+  font-weight: 600;
 }
 
-.kvIcon svg {
-  width: 15px;
-  height: 15px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.goBox span {
+  color: var(--muted);
+  font-size: 13.5px;
 }
 
 .note {
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--amber-muda);
-  color: color-mix(in srgb, var(--amber-ink) 70%, var(--ink));
-  font-size: 13px;
-  overflow-wrap: anywhere;
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r-box);
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-.note b {
+.go > .note:first-child {
+  margin-top: 0;
+}
+
+.note small {
   display: block;
   margin-bottom: 2px;
+  color: var(--muted);
   font-size: 12px;
-  color: var(--amber-ink);
+  font-weight: 600;
 }
 
-/* ---- The receipt, large ---- */
-
-.zoom {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgb(25 31 44 / 55%);
-  cursor: zoom-out;
-  animation: fadeIn 200ms ease both;
+/* The hint and the one move. */
+.next {
+  margin-top: 14px;
 }
 
-.zoomImage {
-  max-width: min(520px, 100%);
-  max-height: calc(100dvh / var(--page-zoom, 1) - 48px);
-  border-radius: 20px;
-  background: var(--card);
-  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 50%);
-  object-fit: contain;
-  animation: popIn 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+.hint {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.zoomClose {
-  position: fixed;
-  top: 16px;
-  right: 16px;
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
+.next > .hint:first-child {
+  margin-top: 0;
+}
+
+/* The full-width pills (Dash.html .det .btn): the move in the action fill, WhatsApp in white. */
+.primary,
+.whatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  margin: 16px 0 0;
+  padding: 0 26px;
   border: 0;
-  border-radius: 50%;
-  background: var(--card);
-  color: var(--ink);
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.18s;
 }
 
-.zoomClose:focus-visible {
+.primary {
+  background: var(--action);
+  color: var(--action-fg);
+}
+
+.primary:hover {
+  background: var(--action-hover);
+}
+
+.primary:active,
+.whatsapp:active {
+  transform: scale(0.98);
+}
+
+.primary:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.whatsapp {
+  margin-top: 8px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+}
+
+/* With no move above it, WhatsApp is the card's first pill. */
+.whatsapp[data-alone] {
+  margin-top: 16px;
+}
+
+.whatsapp:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+  color: var(--ink);
+}
+
+.primary:focus-visible,
+.whatsapp:focus-visible {
   outline: 2px solid var(--biru);
   outline-offset: 2px;
 }
 
-.zoomClose svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
+/* ---- Sent by email: what went to the buyer, line by line, in a soft card ---- */
+
+.sentTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2px 10px;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
 }
 
-/* The detail column can be narrow on a wide screen, so the inner layout follows its own width. */
-@container (max-width: 760px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 28px;
-  }
-
-  .head {
-    flex-wrap: wrap;
-  }
-
-  .whatsapp {
-    margin-left: 0;
-  }
+.sentState {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 500;
 }
 
-/* ---- Sent by email: what went to the buyer, line by line ---- */
+.sentState[data-sent] {
+  color: var(--tag-ok-ink);
+}
 
 .sentTo {
-  margin: -4px 0 6px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
+  margin: 2px 0 4px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .sentLine {
@@ -978,13 +547,13 @@
 .sentText b {
   display: block;
   font-size: 13.5px;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sentText > span {
   display: block;
-  font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .sentText .sentCode {
@@ -995,26 +564,27 @@
 
 .sentBtn {
   flex: none;
-  height: 30px;
-  padding: 0 12px;
-  border: 1px solid var(--edge);
-  border-radius: 8px;
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-pill);
   background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
   font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .sentBtn:hover {
-  border-color: var(--ghost-line);
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
 }
 
 .sentBtn:disabled,
 .sentResend:disabled {
   cursor: progress;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 .sentPick {
@@ -1025,40 +595,47 @@
   padding: 0 0 10px;
 }
 
+/* A field: the 16px box corner (DEVIATIONS 347). */
 .sentPick select {
   flex: 1;
   min-width: 0;
-  height: 30px;
-  padding: 0 8px;
+  height: 34px;
+  padding: 0 10px;
   border: 1px solid var(--edge);
-  border-radius: 8px;
+  border-radius: var(--field-radius);
   background: var(--card);
   color: var(--ink);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 13px;
 }
 
 .sentNone {
+  margin: 0;
   padding: 0 0 10px;
-  font-size: 12.5px;
-  color: var(--ink-soft);
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .sentResend {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 36px;
-  margin-top: 10px;
+  height: 34px;
+  margin-top: 6px;
   padding: 0 14px;
   border: 0;
-  border-radius: 8px;
-  background: var(--surface);
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
   font: inherit;
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
+}
+
+.sentResend:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
 }
 
 .sentResend svg {
@@ -1071,22 +648,22 @@
   stroke-linejoin: round;
 }
 
-.sentError {
-  margin: 8px 0 0;
-  font-size: 12.5px;
-  color: var(--merah-deep);
+.sentBtn:focus-visible,
+.sentResend:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
 }
 
+
 @media (prefers-reduced-motion: reduce) {
-  .zoom,
-  .zoomImage,
-  .ray {
+  .rows > .item > .rowBtn {
     animation: none;
   }
 
-  .node,
-  .receiptThumb {
+  .headLink,
+  .receipt,
+  .primary,
+  .whatsapp {
     transition: none;
   }
 }
-

@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { orderView, type OrderView } from '@curios/core/orders';
-import { pickupLine } from '@curios/core/pickup';
+import { useEffect, useRef, useState } from 'react';
+import { customerSteps, orderView, type OrderView } from '@curios/core/orders';
+import { pickupLine, windowLabel } from '@curios/core/pickup';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import { formatRinggit } from '@curios/core/store';
 import type { OwnerOrder } from '@curios/db-read';
-import { Callout } from '@curios/ui';
 import { ApiError } from '../../../lib/api.js';
+import { Dialog } from '../_ui/dialog.js';
 import inbox from '../_ui/inbox.module.css';
+import { InlineConfirm } from '../_ui/inline-confirm.js';
+import { failureText } from '../_ui/toast.js';
 import { waNumber } from '../leads/first-message.js';
 import styles from './orders.module.css';
 import { SentByEmail, type DigitalAct } from './sent-by-email.js';
@@ -64,6 +66,8 @@ export const itemCount = (order: OrderRow) => order.lines.reduce((sum, line) => 
 
 export const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
+
 /** `orderView`, plus Sent: a digital-only order that has been delivered (the board's `view()` reads it as Sent, not Completed). */
 export type OwnerView = OrderView | 'sent';
 
@@ -73,57 +77,73 @@ export function ownerView(order: OrderRow): OwnerView {
   return delivered && order.method === null && order.sentAt !== null ? 'sent' : view;
 }
 
-/** The board's badges, by `orderView`. A refunded order reads Cancelled in the list, as the board's `view()` has it. */
-export const BADGES: Record<OwnerView, { label: string; tone: 'grey' | 'kuning' | 'biru' | 'hijau' | 'merah' | 'muted' }> = {
+/** A tag's colour family in the inbox kit (inbox.module.css `.tag[data-tone]`); grey is the kit's plain tag. */
+export type TagTone = 'ok' | 'wait' | 'red' | 'grey';
+
+/** The board's tags by view (Dash.html `.li .tag`): green for paid and done, amber to check, red for money owed back. */
+export const BADGES: Record<OwnerView, { label: string; tone: TagTone }> = {
   awaitingPayment: { label: 'Awaiting payment', tone: 'grey' },
-  toCheck: { label: 'To check', tone: 'kuning' },
-  paid: { label: 'Paid', tone: 'biru' },
-  // CHIP confirmed it: green like Completed, so it reads apart from a payment the owner marked by hand.
-  paidOnline: { label: 'Paid online', tone: 'hijau' },
-  completed: { label: 'Completed', tone: 'hijau' },
+  toCheck: { label: 'To check', tone: 'wait' },
+  paid: { label: 'Paid', tone: 'ok' },
+  paidOnline: { label: 'Paid online', tone: 'ok' },
+  completed: { label: 'Completed', tone: 'ok' },
   // A digital-only order, delivered: nothing to make and nothing to complete, so Sent is where it ends.
-  sent: { label: 'Sent', tone: 'hijau' },
-  refundOwed: { label: 'Refund owed', tone: 'merah' },
-  refunded: { label: 'Cancelled', tone: 'muted' },
-  cancelled: { label: 'Cancelled', tone: 'muted' },
+  sent: { label: 'Sent', tone: 'ok' },
+  refundOwed: { label: 'Refund owed', tone: 'red' },
+  refunded: { label: 'Cancelled', tone: 'grey' },
+  cancelled: { label: 'Cancelled', tone: 'grey' },
 };
 
-const AVATAR_TONES = ['pink', 'blue', 'mint', 'peach', 'sand', 'sage', 'sky'] as const;
+/** CHIP also took the money for an order paid another way, and the second payment is not back yet. */
+export const owesSecond = (order: Pick<OrderRow, 'chipPaidTwiceAt' | 'secondRefundedAt'>) => order.chipPaidTwiceAt !== null && order.secondRefundedAt === null;
 
-/** The customer's initial on a soft colour, the same colour every time for the same order. */
-export function Initial({ order, big = false }: { order: Pick<OrderRow, 'customerName' | 'number'>; big?: boolean }) {
+/**
+ * The order's tag. Paid twice (red) stands over a live order's own tag while the second payment
+ * is owed back; a cancelled one already says Refund owed. The detail spells two out in full.
+ */
+export function orderTag(order: OrderRow, where: 'list' | 'detail' = 'list'): { label: string; tone: TagTone } {
+  const view = ownerView(order);
+  if (owesSecond(order) && order.status !== 'CANCELLED') return { label: 'Paid twice', tone: 'red' };
+  if (where === 'detail' && view === 'toCheck') return { label: 'Receipt to check', tone: 'wait' };
+  if (where === 'detail' && view === 'refunded') return { label: 'Refunded', tone: 'grey' };
+  return BADGES[view];
+}
+
+/** The customer's initial in a circle, tinted as the order's tag is. */
+export function Initial({ order }: { order: OrderRow }) {
+  const tone = orderTag(order).tone;
   return (
-    <span className={styles.avatar} data-tone={AVATAR_TONES[order.number % AVATAR_TONES.length]} data-big={big || undefined} aria-hidden="true">
+    <span className={inbox.av} data-tone={tone === 'grey' ? undefined : tone} aria-hidden="true">
       {order.customerName.trim().charAt(0).toUpperCase()}
     </span>
   );
 }
 
-const TICK = 'M5 12.5l4.5 4.5L19 7.5';
-const CROSS = 'M7 7l10 10M17 7L7 17';
-const PIN = 'M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z';
-const VAN = 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z';
-const CHAT = 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z';
-const CLOCK = 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2';
+/** A tag pill: the kit's `.tag`, its colour from the tone. */
+export function Tag({ tag }: { tag: { label: string; tone: TagTone } }) {
+  return (
+    <span className={inbox.tag} data-tone={tag.tone === 'grey' ? undefined : tag.tone}>
+      {tag.label}
+    </span>
+  );
+}
+
 const FILE = 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5M9 13h6M9 17h4';
-const RAYS = [0, 45, 90, 135, 180, 225, 270, 315];
+const STEPS = ['Placed', 'Paid', 'Ready', 'Done'] as const;
 
-const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
+type Ask = { button: string; action: OrderAction; toast: string };
+type Confirming = 'not-received' | 'cancel' | 'second' | null;
 
-type Ask = { tone: 'biru' | 'grey' | 'hijau' | 'merah'; title: string; text: string; button: string; action: OrderAction; toast: string };
 
 /**
- * One order: who and when, its four steps, the one thing to do next, then
- * two plain columns (Dashboard v2, no boxes): what was ordered, and the
- * payment with its receipt and how it gets to them.
+ * One order, as the calm board's detail card (Dash.html `.det.xd`): the order's number and when,
+ * the customer, the tag, four quiet steps, the label and value rows, then whichever of the
+ * receipt, the soft cards (sent by email, a voucher, a receipt not received), the paid-twice panel
+ * and how it gets to them apply. Under them a one-line hint, the one move as a full-width pill,
+ * WhatsApp, and the red moves that ask first (InlineConfirm, one open at a time).
  *
- * The receipt's rows say what it should show: the order's total, and the
- * bank account the order page told them to pay. Nothing reads the receipt
- * itself yet, so there is no tick saying it matches (DEVIATIONS).
- *
- * The action box's words are the board's `ab`, word for word. Not received
- * (owner decision 3) sits beside Mark paid while a receipt is in; it removes
- * the receipt, so it asks first, as Cancel does.
+ * Renders the card's contents; the screen puts them in the kit's `.det`. The heading takes focus
+ * (tabIndex -1) when a phone opens the order as its own view.
  */
 export function OrderDetail({
   order,
@@ -131,6 +151,7 @@ export function OrderDetail({
   move,
   act,
   say,
+  fail,
   onChanged,
 }: {
   order: OrderRow;
@@ -138,21 +159,18 @@ export function OrderDetail({
   move: OrderMove;
   /** The owner's moves on what was sent by email: new links, a new code, another time, the email again. */
   act: DigitalAct;
-  /** The screen's toast, which outlives this panel. */
+  /** The screen's toast, which outlives this panel: what happened. */
   say: (text: string) => void;
+  /** The toast's error tone (no tick, role alert, stays): what failed, for every move in the card. */
+  fail: (text: string) => void;
   /** After a move: read the server again, for the list and the figures. */
   onChanged: () => void;
 }) {
-  const [confirming, setConfirming] = useState<'cancel' | 'not-received' | null>(null);
-  const [refunding, setRefunding] = useState(false);
+  const [confirming, setConfirming] = useState<Confirming>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [zoom, setZoom] = useState(false);
-  const [sparks, setSparks] = useState(0);
   const inFlight = useRef(false);
-  // Whichever opened the large receipt (the thumbnail or View), to hand focus back to.
-  const zoomTrigger = useRef<HTMLButtonElement | null>(null);
-  const closeRef = useRef<HTMLButtonElement>(null);
+  const tile = useRef<HTMLButtonElement>(null);
 
   const view = ownerView(order);
   // A digital-only order has no method and no day: it is paid, then sent, and nothing is made or completed.
@@ -165,12 +183,13 @@ export function OrderDetail({
   const when = (date: Date) => orderWhen(date, now);
   // Confirmed by CHIP: no receipt, nothing for the owner to check.
   const online = order.paidVia === 'CHIP' && order.paidAt !== null;
-  const via = order.paidMethodLabel ?? 'CHIP';
   // A voucher took it to RM0: paid at once, with no receipt to wait for or check.
   const byVoucher = order.paidVia === 'VOUCHER' && order.paidAt !== null;
   // CHIP also took the money for an order paid another way: one of the two is owed back.
   const paidTwice = order.chipPaidTwiceAt !== null;
-  const secondOwed = paidTwice && order.secondRefundedAt === null;
+  const secondOwed = owesSecond(order);
+  const notReceived = order.status === 'PLACED' && order.receiptRejectedAt !== null && !hasReceipt;
+  const sendsMail = hasDigital && order.email !== null;
 
   // A fresh read of this order: whatever was in flight has landed, and its buttons are live again.
   useEffect(() => {
@@ -178,480 +197,296 @@ export function OrderDetail({
     setBusy(false);
   }, [order]);
 
-  // The large receipt takes focus onto its close button and gives it back to the thumbnail.
-  useEffect(() => {
-    if (!zoom) return;
-    closeRef.current?.focus();
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setZoom(false);
-    };
-    document.addEventListener('keydown', close);
-    return () => {
-      document.removeEventListener('keydown', close);
-      zoomTrigger.current?.focus();
-    };
-  }, [zoom]);
+  // The board's four steps. Ready lights once it is paid and its day has come; a cancelled order keeps what it reached.
+  const reached = customerSteps(order, now);
+  const lit = cancelled
+    ? [order.paidAt !== null, order.paidAt !== null, false, false]
+    : [true, reached.paid, reached.ready || view === 'sent', reached.done || view === 'sent'];
+  const lastLit = lit.lastIndexOf(true);
 
-  useEffect(() => {
-    if (!sparks) return;
-    const t = setTimeout(() => setSparks(0), 560);
-    return () => clearTimeout(t);
-  }, [sparks]);
+  // Label and value rows (Dash.html `.kv2`).
+  const lineText = (line: OrderRow['lines'][number], one: boolean) =>
+    `${line.quantity > 1 ? `${line.quantity}× ` : ''}${line.itemName}${line.optionLabel ? `${one ? ' · ' : ' '}${line.optionLabel}` : ''}`;
+  const count = itemCount(order);
+  const rows: [string, string][] = [[count === 1 ? 'Item' : 'Items', order.lines.map((line) => lineText(line, order.lines.length === 1)).join(' · ')]];
+  if (order.discountCents > 0) {
+    rows.push(['Subtotal', formatRinggit(order.itemsCents)]);
+    rows.push(['Voucher', `${order.voucherLabel ?? 'Voucher'} · −${formatRinggit(order.discountCents)}`]);
+  }
+  rows.push(['Total', order.deliveryCents > 0 ? `${formatRinggit(order.totalCents - order.deliveryCents)} + ${formatRinggit(order.deliveryCents)} delivery` : total]);
+  if (order.paidAt !== null && !byVoucher) {
+    const paidBy =
+      order.paidVia === 'CHIP'
+        ? [order.paidMethodLabel ?? 'CHIP', order.paidRef ? `Ref ${order.paidRef}` : null].filter(Boolean).join(' · ')
+        : order.paidVia === 'RECEIPT' || (order.paidVia === null && hasReceipt)
+          ? 'Receipt · checked by you'
+          : 'Marked paid by you';
+    rows.push(['Paid by', paidBy]);
+  }
+  // How it gets to them: a block with the address and the note when there is either, else one row.
+  const placeAddress = order.method === 'PICKUP' ? order.pickupPlaceAddress : order.method === 'DELIVERY' ? order.address : null;
+  const methodLine =
+    order.method === null ? null : (pickupLine({ ...order, dayLabel: dayLabel(order.day) }) ?? `Delivery · ${dayLabel(order.day)}`);
+  const showGo = order.method !== null && (placeAddress !== null || order.note !== null);
+  if (order.method !== null && !showGo) {
+    rows.push(
+      order.method === 'PICKUP'
+        ? [
+            'Pickup',
+            [order.pickupPlaceName, [dayLabel(order.day), order.pickupFrom !== null && order.pickupTo !== null ? windowLabel(order.pickupFrom, order.pickupTo) : null].filter(Boolean).join(', ')]
+              .filter(Boolean)
+              .join(' · '),
+          ]
+        : ['Delivery', dayLabel(order.day)],
+    );
+  }
+  if (cancelled) rows.push(['Cancelled', `${capital(when(order.cancelledAt ?? order.createdAt))}${order.paidAt === null ? ', before payment' : ''}`]);
+  else rows.push(['WhatsApp', formatMalaysianPhone(order.phone)]);
 
-  // The last step: Completed, or Sent for a digital-only order (when it was delivered, or what delivers it).
-  const end: [string, string, boolean] = digitalOnly
-    ? ['Sent', order.sentAt ? when(order.sentAt) : online || byVoucher ? 'Not yet' : 'When you mark it paid', order.sentAt !== null]
-    : ['Completed', order.completedAt ? when(order.completedAt) : dayLabel(order.day), order.completedAt !== null];
-  // The board's stepsRaw: [label, when, done].
-  const steps: [string, string, boolean][] = cancelled
-    ? [
-        ['Placed', when(order.createdAt), true],
-        ['Receipt', order.receiptUploadedAt ? when(order.receiptUploadedAt) : 'None', hasReceipt],
-        ['Paid', order.paidAt ? when(order.paidAt) : 'No', order.paidAt !== null],
-        [order.refundedAt ? 'Refunded' : 'Cancelled', when(order.refundedAt ?? order.cancelledAt ?? order.createdAt), true],
-      ]
-    : byVoucher
-      ? [
-          ['Placed', when(order.createdAt), true],
-          ['Paid with a voucher', when(order.paidAt!), true],
-          end,
-        ]
-    : online
-      ? [
-          ['Placed', when(order.createdAt), true],
-          ['Paid by ' + via.split(' · ')[0], when(order.paidAt!), true],
-          ['Checked', 'By the bank', true],
-          end,
-        ]
-      : [
-        ['Placed', when(order.createdAt), true],
-        // Marked paid some other way: there is no receipt to wait for.
-        ['Receipt', order.receiptUploadedAt ? when(order.receiptUploadedAt) : order.paidAt ? 'None' : 'Waiting', hasReceipt],
-        ['Paid', order.paidAt ? when(order.paidAt) : hasReceipt ? 'Your check' : 'Not yet', order.paidAt !== null],
-        end,
-      ];
-  const lastDone = steps.reduce((at, s, i) => (s[2] ? i : at), 0);
-  // The step after the last one done; a step skipped on the way (no receipt, paid another way) is not "next".
-  // A cancelled order rings its first step not reached, as the board's findIndex(!done) does.
-  const next = cancelled ? steps.findIndex((s) => !s[2]) : steps.findIndex((s, i) => !s[2] && i > lastDone);
-
-  const sendsMail = hasDigital && order.email !== null;
-  const only = order.lines.length === 1 ? order.lines[0]!.itemName.toLowerCase() : 'items';
+  // The one move, in a full-width pill.
+  const paidToast = digitalOnly ? `#${order.number} paid. It’s on its way to ${first}’s email.` : `#${order.number} marked paid. The digital items are on their way to ${first}’s email.`;
   let ask: Ask | null = null;
-  if (view === 'toCheck' && sendsMail)
-    ask = {
-      tone: 'biru',
-      title: 'Check the receipt, then mark it paid',
-      text: digitalOnly ? `Their ${only} goes to ${order.email} the moment you do.` : `Make sure ${total} reached your account. Their digital items go to ${order.email} the moment you do.`,
-      button: 'Mark paid and send',
-      action: 'paid',
-      toast: digitalOnly ? `#${order.number} paid. It’s on its way to ${first}’s email.` : `#${order.number} marked paid. The digital items are on their way to ${first}’s email.`,
-    };
-  else if (view === 'toCheck')
-    ask = {
-      tone: 'biru',
-      title: 'Check the receipt, then mark it paid',
-      text: `Make sure ${total} reached your account.`,
-      button: 'Mark paid',
-      action: 'paid',
-      toast: `#${order.number} marked paid. ${first} can see it on their order page.`,
-    };
-  else if (view === 'awaitingPayment' && sendsMail)
-    ask = {
-      tone: 'grey',
-      title: `Waiting for ${first} to pay`,
-      text: digitalOnly ? `Paid some other way? Mark it paid and their ${only} goes to ${order.email}.` : `Paid some other way? Mark it paid and their digital items go to ${order.email}.`,
-      button: 'Mark paid and send',
-      action: 'paid',
-      toast: digitalOnly ? `#${order.number} paid. It’s on its way to ${first}’s email.` : `#${order.number} marked paid. The digital items are on their way to ${first}’s email.`,
-    };
+  if (view === 'toCheck')
+    ask = sendsMail
+      ? { button: 'Mark paid and send', action: 'paid', toast: paidToast }
+      : { button: 'Mark paid', action: 'paid', toast: `#${order.number} marked paid. ${first} can see it on their order page.` };
   else if (view === 'awaitingPayment')
-    ask = {
-      tone: 'grey',
-      title: `Waiting for ${first} to pay`,
-      text: 'Paid some other way? You can still mark it paid.',
-      button: 'Mark paid',
-      action: 'paid',
-      toast: `#${order.number} marked paid.`,
-    };
+    ask = sendsMail ? { button: 'Mark paid and send', action: 'paid', toast: paidToast } : { button: 'Mark paid', action: 'paid', toast: `#${order.number} marked paid.` };
   // A digital-only order has nothing to make: once paid it is sent, and Sent is where it ends.
-  else if ((view === 'paid' || view === 'paidOnline') && !digitalOnly)
-    ask = {
-      tone: 'hijau',
-      title: `Paid. Ready on ${dayLabel(order.day)}`,
-      text: `Mark it completed once ${first} has it.`,
-      button: 'Mark completed',
-      action: 'completed',
-      toast: `#${order.number} completed. Nice one.`,
-    };
-  else if (view === 'refundOwed')
-    ask = {
-      tone: 'merah',
-      title: `You owe ${first} ${total}`,
-      text: secondOwed ? 'Send it back yourself and refund the CHIP payment too, then mark it refunded.' : 'Send it back yourself, then mark it refunded.',
-      button: 'Mark refunded',
-      action: 'refunded',
-      toast: `#${order.number} marked refunded.`,
-    };
-  const canCancel = order.status === 'PLACED' || order.status === 'PAID';
+  else if ((view === 'paid' || view === 'paidOnline') && !digitalOnly) ask = { button: 'Mark completed', action: 'completed', toast: `#${order.number} completed. Nice one.` };
+  else if (view === 'refundOwed') ask = { button: 'Mark refunded', action: 'refunded', toast: `#${order.number} marked refunded.` };
 
-  async function run(action: OrderAction, toast: string) {
-    if (inFlight.current) return;
+  // The quiet line above it (Dash.html `.xhint`).
+  const only = order.lines.length === 1 ? order.lines[0]!.itemName.toLowerCase() : 'items';
+  const elsewhere = sendsMail
+    ? digitalOnly
+      ? `Paid some other way? Mark it paid and their ${only} goes to ${order.email}.`
+      : `Paid some other way? Mark it paid and their digital items go to ${order.email}.`
+    : 'Paid some other way? You can still mark it paid.';
+  let hint: string | null = null;
+  if (view === 'awaitingPayment') hint = notReceived ? elsewhere : `No receipt was uploaded. ${elsewhere}`;
+  else if (view === 'paidOnline' && !paidTwice) hint = 'Paid through CHIP, so there’s nothing to check.';
+  // A voucher order says how it was paid in its soft card, and the board gives it no hint.
+  else if (view === 'paid' && !digitalOnly && !byVoucher) hint = `Paid. Ready on ${dayLabel(order.day)}. Mark it completed once ${first} has it.`;
+  else if (view === 'refundOwed') hint = secondOwed ? 'Send it back yourself and refund the CHIP payment too, then mark it refunded.' : 'Send it back yourself, then mark it refunded.';
+  else if (view === 'cancelled') hint = 'Nothing was paid, so nothing is owed.';
+
+  // Where it was before: beside a next move, so never on a digital-only order that is paid (nothing left to do).
+  const canCancel = (order.status === 'PLACED' || order.status === 'PAID') && ask !== null;
+  const cancelQuestion =
+    order.status === 'PAID' && order.totalCents > 0
+      ? `Cancel #${order.number}? You will owe ${first} ${total}.`
+      : view === 'toCheck'
+        ? // Not marked paid, so cancelling tracks no refund: say how to make it.
+          `Cancel #${order.number}? ${first}’s receipt is in. If the money arrived, mark it paid first, so cancelling records the refund you owe.`
+        : `Cancel #${order.number}?`;
+
+  /** Sends the move. Throws on failure (an InlineConfirm stays open); stays busy until the server's read arrives. */
+  async function perform(action: OrderAction, toast: string) {
+    // Another move is still saving: say so, and leave a confirm open (it treats a throw as not done).
+    if (inFlight.current) throw new Error('One moment: the last change is still saving.');
     inFlight.current = true;
     setBusy(true);
-    setError('');
     try {
       await move(order.id, action);
-      setConfirming(null);
-      setRefunding(false);
-      setSparks((n) => n + 1);
-      say(toast);
-      // Still busy: the buttons on screen are this order's old state until
-      // the server's read arrives (the effect on `order` frees them).
-      onChanged();
     } catch (failure) {
       inFlight.current = false;
       setBusy(false);
-      setError(failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
       // Gone, or moved on elsewhere (another tab): read it again, as the words say.
       if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) onChanged();
+      throw failure;
     }
+    setConfirming(null);
+    say(toast);
+    onChanged();
   }
+  const failed = (failure: unknown) => fail(failureText(failure));
+  const openAs = (which: Exclude<Confirming, null>) => (open: boolean) => setConfirming(open ? which : null);
 
-  const question =
-    confirming === 'cancel'
-      ? order.status === 'PAID' && order.totalCents > 0
-        ? `Cancel #${order.number}? You will owe ${first} ${total}.`
-        : view === 'toCheck'
-          ? // Not marked paid, so cancelling tracks no refund: say how to make it.
-            `Cancel #${order.number}? ${first}’s receipt is in. If the money arrived, mark it paid first, so cancelling records the refund you owe.`
-          : `Cancel #${order.number}?`
-      : `Mark the receipt not received? ${first} will be asked to pay again.`;
-
-  const paymentBadge =
-    view === 'toCheck'
-      ? { label: 'Receipt to check', tone: 'kuning' }
-      : order.paidAt
-        ? order.refundedAt && cancelled
-          ? { label: 'Refunded', tone: 'grey' }
-          : { label: `Paid ${when(order.paidAt)}`, tone: 'hijau' }
-        : { label: 'Not paid', tone: BADGES[view].tone };
   const isPdf = order.receiptType === 'application/pdf';
-  const file = `receipt-${first.toLowerCase()}.${EXT[order.receiptType ?? ''] ?? 'jpg'}`;
-  const waitText =
-    order.status !== 'PLACED'
-      ? 'No receipt was uploaded.'
-      : order.receiptRejectedAt
-        ? `You marked the receipt not received. ${first}’s order page asks them to pay again.`
-        : `${first} has not uploaded a receipt yet. Their order page shows your QR and bank details.`;
-  const count = itemCount(order);
+  const receiptTile = (small: string) => {
+    const body = (
+      <>
+        <span className={styles.receiptThumb} data-pdf={isPdf || !order.receiptUrl || undefined} aria-hidden="true">
+          {order.receiptUrl && !isPdf ? (
+            <img src={order.receiptUrl} alt="" />
+          ) : (
+            <svg viewBox="0 0 24 24" width="20" height="20">
+              <path d={FILE} />
+            </svg>
+          )}
+        </span>
+        <span className={styles.receiptText}>
+          <b>Receipt</b>
+          <small>{small}</small>
+        </span>
+      </>
+    );
+    if (order.receiptUrl && isPdf)
+      return (
+        <a className={styles.receipt} href={order.receiptUrl} target="_blank" rel="noopener noreferrer">
+          {body}
+        </a>
+      );
+    if (order.receiptUrl)
+      return (
+        <button ref={tile} type="button" className={styles.receipt} onClick={() => setZoom(true)}>
+          {body}
+        </button>
+      );
+    return <div className={styles.receipt}>{body}</div>;
+  };
+  const uploaded = order.receiptUploadedAt ? `Uploaded ${when(order.receiptUploadedAt)}` : 'Uploaded';
+  const opens = order.receiptUrl ? (isPdf ? ' · opens the PDF' : ' · tap to open') : '';
 
   return (
-    <div className={inbox.detailInner}>
-      <div className={styles.head}>
-        <Initial order={order} big />
-        <span className={styles.headText}>
-          <h2 className={inbox.title}>
-            #{order.number} · {order.customerName}
-          </h2>
+    <>
+      <p className={inbox.k}>
+        Order #{order.number} · {capital(when(order.createdAt))}
+      </p>
+      <h2 className={styles.name} tabIndex={-1} data-detail-heading="">
+        {order.customerName}
+      </h2>
+      <Tag tag={orderTag(order, 'detail')} />
+
+      <ol className={styles.steps} aria-label="Order progress">
+        {STEPS.map((label, i) => (
+          <li key={label} data-on={lit[i] || undefined} aria-current={i === lastLit && !cancelled ? 'step' : undefined}>
+            {label}
+          </li>
+        ))}
+      </ol>
+
+      <dl className={inbox.kv2}>
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+          </div>
+        ))}
+      </dl>
+
+      {hasReceipt && !secondOwed && (!online || paidTwice) ? <div className={styles.block}>{receiptTile(`${uploaded}${opens}`)}</div> : null}
+
+      {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} fail={fail} onChanged={onChanged} /> : null}
+
+      {byVoucher ? (
+        <div className={styles.soft}>
+          <b>Paid with a voucher</b>
+          <small>The voucher took the whole order off, so there is no receipt to check.</small>
+        </div>
+      ) : null}
+
+      {notReceived ? (
+        <div className={styles.soft} data-tone="warn">
+          <b>Receipt not received</b>
+          <small>You marked the receipt not received. {first}’s order page asks them to pay again.</small>
+        </div>
+      ) : null}
+
+      {/* CHIP took the money on top of the QR or a hand-marked payment (DEVIATIONS 187). */}
+      {secondOwed ? (
+        <section className={styles.twice} aria-label="Paid twice">
+          <b>Paid twice</b>
           <p>
-            Placed {when(order.createdAt)} · {formatMalaysianPhone(order.phone)}
+            {online
+              ? `Confirmed by the bank through CHIP, and a receipt for a transfer came in too. Send the second ${total} back to ${first}, then mark it refunded.`
+              : `It was paid, and CHIP took ${total} again too. Refund the second ${total} in CHIP, then mark it refunded.`}
           </p>
-        </span>
-        <a className={styles.whatsapp} href={`https://wa.me/${waNumber(order.phone)}`} target="_blank" rel="noopener noreferrer">
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d={CHAT} />
-          </svg>
-          WhatsApp {first}
-        </a>
-      </div>
-
-      {/* Four bars, each with its step and when under it: the bar is the step's state. */}
-      <div className={styles.progress}>
-        <ol className={styles.steps} aria-label="Order progress">
-          {steps.map(([label, at, done], i) => {
-            const isEnd = i === 3;
-            const state = done ? (cancelled && isEnd && !order.refundedAt ? 'cancel' : isEnd && !cancelled ? 'complete' : 'done') : i === next ? 'next' : 'todo';
-            return (
-              // The ring only, on a cancelled order: nothing there is the current step.
-              <li key={label} className={styles.step} aria-current={i === next && !cancelled ? 'step' : undefined}>
-                <span className={styles.node} data-state={state} aria-hidden="true" />
-                <b>{label}</b>
-                <span>{at}</span>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-
-      {ask ? (
-        <section className={styles.actbar} data-tone={ask.tone} aria-label="What to do next">
-          <p className={styles.actText}>
-            <b>{ask.title}</b>
-            <span>{ask.text}</span>
-          </p>
-          {confirming ? (
-            <span className={styles.confirm} role="group" aria-label={confirming === 'cancel' ? 'Confirm cancelling this order' : 'Confirm the receipt was not received'}>
-              {question}
-              <button type="button" data-tone="merah" disabled={busy} onClick={() => void (confirming === 'cancel' ? run('cancel', `#${order.number} cancelled.${order.paidAt && order.totalCents > 0 ? ' A refund is owed.' : ''}`) : run('not-received', `#${order.number}: receipt marked not received. ${first} will be asked to pay again.`))}>
-                {confirming === 'cancel' ? 'Yes, cancel' : 'Yes, not received'}
-              </button>
-              <button type="button" disabled={busy} onClick={() => setConfirming(null)}>
-                Keep
-              </button>
-            </span>
-          ) : (
-            <span className={styles.actions}>
-              {canCancel ? (
-                <button type="button" className={styles.ghost} disabled={busy} onClick={() => setConfirming('cancel')}>
-                  Cancel order
-                </button>
-              ) : null}
-              {view === 'toCheck' ? (
-                <button type="button" className={styles.outline} disabled={busy} onClick={() => setConfirming('not-received')}>
-                  Not received
-                </button>
-              ) : null}
-              <button type="button" className={styles.big} data-tone={ask.tone} disabled={busy} onClick={() => void run(ask.action, ask.toast)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d={TICK} />
-                </svg>
-                {ask.button}
-                {sparks ? RAYS.map((r) => <span key={`${sparks}-${r}`} className={styles.ray} style={{ '--r': `${r}deg` } as CSSProperties} aria-hidden="true" />) : null}
-              </button>
-            </span>
+          {/* CHIP took the second payment: the receipt here is the first one's. */}
+          {hasReceipt ? receiptTile(`${online ? '' : 'First payment · '}${uploaded}${opens}`) : null}
+          {/* A cancelled order's Mark refunded below takes both payments back. */}
+          {cancelled ? null : (
+            <div className={styles.twiceConfirm}>
+              <InlineConfirm
+                tone="quiet"
+                trigger="Mark refunded"
+                question="Marked the second payment refunded?"
+                yes="Yes, refunded"
+                no="Not yet"
+                open={confirming === 'second'}
+                onOpenChange={openAs('second')}
+                onYes={() => perform('refunded', `#${order.number}: second payment marked refunded.`)}
+                onError={failed}
+              />
+            </div>
           )}
         </section>
+      ) : paidTwice && !(cancelled && order.refundedAt) ? (
+        // Once a cancelled order is refunded, its Refunded tag says it all.
+        <p className={styles.hint}>Second payment refunded</p>
       ) : null}
 
-      {error ? (
-        <div className={styles.error}>
-          <Callout tone="error">{error}</Callout>
+      {showGo || (digitalOnly && order.note) ? (
+        <div className={styles.go}>
+          {showGo ? (
+            <>
+              <p className={styles.lab}>Getting it to them</p>
+              <div className={styles.goBox}>
+                <b>{methodLine}</b>
+                {placeAddress ? <span>{placeAddress}</span> : null}
+              </div>
+            </>
+          ) : null}
+          {order.note ? (
+            <div className={styles.note}>
+              <small>Note from {first}</small>
+              {order.note}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      <div className={styles.grid}>
-        <section className={styles.card} aria-labelledby="order-items">
-          <h3 className={styles.cardTitle} id="order-items">
-            What {first} bought <span>{plural(count, 'item')}</span>
-          </h3>
-          {order.lines.map((line, i) => (
-            <div key={i} className={styles.line}>
-              <span className={styles.thumb} data-tone={i % 2 ? 'peach' : 'pink'} aria-hidden="true">
-                {line.photoUrl ? <img src={line.photoUrl} alt="" /> : line.itemName.trim().charAt(0).toUpperCase()}
-              </span>
-              <span className={styles.lineName}>
-                <b>
-                  {line.quantity}× {line.itemName}
-                </b>
-                <span>{`${line.optionLabel ? `${line.optionLabel} · ` : ''}${formatRinggit(line.unitPriceCents)} each`}</span>
-              </span>
-              <span className={styles.amount}>{formatRinggit(line.unitPriceCents * line.quantity)}</span>
-            </div>
-          ))}
-          {order.deliveryCents > 0 ? (
-            <div className={styles.line}>
-              <span className={styles.thumb} data-tone="mint" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                  <path d={VAN} />
-                </svg>
-              </span>
-              <span className={styles.lineName}>
-                <b>Delivery</b>
-                <span>Flat fee</span>
-              </span>
-              <span className={styles.amount}>{formatRinggit(order.deliveryCents)}</span>
-            </div>
+      {hint || ask ? (
+        <section className={styles.next} aria-label={ask ? 'What to do next' : undefined}>
+          {hint ? <p className={styles.hint}>{hint}</p> : null}
+          {ask ? (
+            <button type="button" className={styles.primary} disabled={busy} onClick={() => void perform(ask.action, ask.toast).catch(failed)}>
+              {ask.button}
+            </button>
           ) : null}
-          {order.discountCents > 0 ? (
-            <div className={styles.line}>
-              <span className={styles.lineName}>
-                <b>{`${order.voucherLabel ?? 'Voucher'} −${formatRinggit(order.discountCents)}`}</b>
-              </span>
-            </div>
-          ) : null}
-          <div className={styles.total}>
-            <span>Total</span>
-            <b>{total}</b>
-          </div>
         </section>
-
-        <div className={styles.side}>
-          <section className={styles.card} aria-labelledby="order-payment">
-            <h3 className={styles.cardTitle} id="order-payment">
-              Payment{' '}
-              <span className={styles.badge} data-badge="" data-tone={paymentBadge.tone}>
-                {paymentBadge.label}
-              </span>
-            </h3>
-            {online ? (
-              <div className={styles.paidOnline}>
-                <span className={styles.paidTick} aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d={TICK} />
-                  </svg>
-                </span>
-                <span>
-                  <b>
-                    {total} paid by {via}
-                  </b>
-                  <span>{`Confirmed by the bank through CHIP${paidTwice && hasReceipt ? '. A receipt was also sent — check it before you refund one.' : ', so there is no receipt to check.'}${order.paidRef ? ` Ref ${order.paidRef}.` : ''}`}</span>
-                </span>
-              </div>
-            ) : null}
-            {byVoucher ? (
-              <div className={styles.paidOnline}>
-                <span className={styles.paidTick} aria-hidden="true">
-                  <svg viewBox="0 0 24 24">
-                    <path d={TICK} />
-                  </svg>
-                </span>
-                <span>
-                  <b>Paid with a voucher</b>
-                  <span>The voucher took the whole order off, so there is no receipt to check.</span>
-                </span>
-              </div>
-            ) : null}
-            {hasReceipt && (!online || paidTwice) ? (
-              <div className={styles.receipt}>
-                <div className={styles.receiptFile}>
-                  {order.receiptUrl && isPdf ? (
-                    <a className={styles.receiptThumb} data-pdf="" href={order.receiptUrl} target="_blank" rel="noopener noreferrer" aria-label="Open the receipt">
-                      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                        <path d={FILE} />
-                      </svg>
-                      <small>PDF</small>
-                    </a>
-                  ) : order.receiptUrl ? (
-                    <button
-                      type="button"
-                      className={styles.receiptThumb}
-                      aria-label="Open the receipt"
-                      onClick={(event) => {
-                        zoomTrigger.current = event.currentTarget;
-                        setZoom(true);
-                      }}
-                    >
-                      <img src={order.receiptUrl} alt="" />
-                    </button>
-                  ) : (
-                    <span className={styles.receiptThumb} data-pdf="" aria-hidden="true">
-                      <svg viewBox="0 0 24 24" width="20" height="20">
-                        <path d={FILE} />
-                      </svg>
-                    </span>
-                  )}
-                  <span className={styles.receiptText}>
-                    <b>{file}</b>
-                    {order.receiptUploadedAt ? <span>Uploaded {when(order.receiptUploadedAt)}</span> : null}
-                  </span>
-                  {order.receiptUrl && isPdf ? (
-                    <a className={styles.view} href={order.receiptUrl} target="_blank" rel="noopener noreferrer">
-                      View
-                    </a>
-                  ) : order.receiptUrl ? (
-                    <button
-                      type="button"
-                      className={styles.view}
-                      onClick={(event) => {
-                        zoomTrigger.current = event.currentTarget;
-                        setZoom(true);
-                      }}
-                    >
-                      View
-                    </button>
-                  ) : null}
-                </div>
-                {online ? null : <p className={styles.hint}>Receipts can be edited. Check {total} is in your bank before you mark it paid.</p>}
-              </div>
-            ) : !online && !byVoucher ? (
-              <div className={styles.waitbox}>
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d={CLOCK} />
-                </svg>
-                {waitText}
-              </div>
-            ) : null}
-            {/* CHIP took the money on top of the QR or a hand-marked payment (DEVIATIONS 187). */}
-            {secondOwed ? (
-              <div className={styles.paidTwice} role="note" aria-label="Paid twice">
-                <p>Paid twice — refund {total} in CHIP</p>
-                {cancelled ? null : refunding ? (
-                  <span className={styles.confirm} role="group" aria-label="Confirm the second payment was refunded">
-                    Marked the second payment refunded?
-                    <button type="button" data-tone="merah" disabled={busy} onClick={() => void run('refunded', `#${order.number}: second payment marked refunded.`)}>
-                      Yes, refunded
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => setRefunding(false)}>
-                      Keep
-                    </button>
-                  </span>
-                ) : (
-                  <span className={styles.refundAsk}>
-                    <span>You owe {total}. Refund it in CHIP, then mark it refunded.</span>
-                    <button type="button" className={styles.outline} disabled={busy} onClick={() => setRefunding(true)}>
-                      Mark refunded
-                    </button>
-                  </span>
-                )}
-              </div>
-            ) : paidTwice && !(cancelled && order.refundedAt) ? (
-              // Once a cancelled order is refunded, its Refunded badge says it all.
-              <p className={styles.refundedQuiet}>Second payment refunded</p>
-            ) : null}
-          </section>
-
-          {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} onChanged={onChanged} /> : null}
-
-          {digitalOnly && order.note ? (
-            <section className={styles.card} aria-label="Note">
-              <div className={styles.note}>
-                <b>Note from {first}</b>
-                {order.note}
-              </div>
-            </section>
-          ) : null}
-
-          {digitalOnly ? null : <section className={styles.card} aria-labelledby="order-getting">
-            <h3 className={styles.cardTitle} id="order-getting">
-              Getting it to them
-            </h3>
-            <div className={styles.kv}>
-              <span className={styles.kvIcon} data-method={order.method} aria-hidden="true">
-                <svg viewBox="0 0 24 24">
-                  <path d={order.method === 'PICKUP' ? PIN : VAN} />
-                </svg>
-              </span>
-              <span>
-                <b>
-                  {order.method === null ? null : (pickupLine({ ...order, dayLabel: dayLabel(order.day) }) ?? `Delivery · ${dayLabel(order.day)}`)}
-                </b>
-                {/* Where to hand it over: the pickup place's address as the order kept it, or the customer's. */}
-                {(order.method === 'PICKUP' ? order.pickupPlaceAddress : order.address) ? (
-                  <span>{order.method === 'PICKUP' ? order.pickupPlaceAddress : order.address}</span>
-                ) : null}
-              </span>
-            </div>
-            {order.note ? (
-              <div className={styles.note}>
-                <b>Note from {first}</b>
-                {order.note}
-              </div>
-            ) : null}
-          </section>}
-        </div>
-      </div>
-
-      {zoom && order.receiptUrl ? (
-        <div className={styles.zoom} role="dialog" aria-modal="true" aria-label="Receipt" onClick={() => setZoom(false)}>
-          <img className={styles.zoomImage} src={order.receiptUrl} alt={`Receipt for order #${order.number}`} />
-          <button ref={closeRef} type="button" className={styles.zoomClose} aria-label="Close" onClick={() => setZoom(false)}>
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-              <path d={CROSS} />
-            </svg>
-          </button>
-        </div>
       ) : null}
-    </div>
+
+      <a className={styles.whatsapp} data-alone={ask ? undefined : ''} href={`https://wa.me/${waNumber(order.phone)}`} target="_blank" rel="noopener noreferrer">
+        WhatsApp {first}
+      </a>
+
+      {view === 'toCheck' ? (
+        <InlineConfirm
+          trigger="Not received"
+          question={`Mark the receipt not received? ${first} will be asked to pay again.`}
+          yes="Yes, not received"
+          no="Keep it"
+          open={confirming === 'not-received'}
+          onOpenChange={openAs('not-received')}
+          onYes={() => perform('not-received', `#${order.number}: receipt marked not received. ${first} will be asked to pay again.`)}
+          onError={failed}
+        />
+      ) : null}
+      {canCancel ? (
+        <InlineConfirm
+          trigger="Cancel order"
+          question={cancelQuestion}
+          yes="Yes, cancel"
+          no="Keep it"
+          open={confirming === 'cancel'}
+          onOpenChange={openAs('cancel')}
+          onYes={() => perform('cancel', `#${order.number} cancelled.${order.paidAt && order.totalCents > 0 ? ' A refund is owed.' : ''}`)}
+          onError={failed}
+        />
+      ) : null}
+
+      {order.receiptUrl && !isPdf ? (
+        <Dialog open={zoom} onClose={() => setZoom(false)} title={`Receipt for order #${order.number}`} returnFocusTo={tile}>
+          {zoom ? (
+            <div className={styles.receiptBig}>
+              <img src={order.receiptUrl} alt={`Receipt for order #${order.number}`} />
+            </div>
+          ) : null}
+          {view === 'toCheck' ? <p className={styles.dialogHint}>Make sure {total} reached your account before you mark it paid.</p> : null}
+        </Dialog>
+      ) : null}
+    </>
   );
 }

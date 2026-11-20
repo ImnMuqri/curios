@@ -24,12 +24,12 @@ export function findHexLiterals(css: string): string[] {
  * (design/boards) is denser, and its CSS is the source of truth for sizes, so
  * this is every size those boards use on product screens. A size not here is
  * one nobody designed: the check still catches a stray 15.7px. (52 is the
- * System board's 404 headline, set inline there; 48 is the calm Dash board's page title (.pg h1); 54 is the
+ * System board's 404 headline, set inline there; 48 was the calm Dash board's page title (.pg h1, now 40 / 34 / 32); 15.5 is its summary line; 54 is the
  * Onboarding board's "facts found" count; 8.5 is the TanyaJe board's count badge in the Orders mirror; 64 is the Public board's product-page hero initial.)
  */
 const SCALE = new Set(
   [
-    8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 28, 30, 31,
+    8.5, 9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 15.5, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 28, 30, 31,
     32, 34, 36, 38, 40, 42, 44, 48, 52, 54, 64,
   ].map((px) => `${px}px`),
 );

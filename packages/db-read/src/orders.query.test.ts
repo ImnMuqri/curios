@@ -337,6 +337,43 @@ describe('getOrderStats', () => {
     expect(stats.toCheck).toBe(1);
     expect(stats.toMake).toBe(2);
     expect(stats.paidThisWeekCents).toBe(3000);
+    expect(stats.paidDaysCents).toEqual([0, 0, 0, 0, 0, 2000, 1000]);
+    expect(stats.paidTodayCents).toBe(1000);
+  });
+
+  it('puts a payment on its Malaysian day at the midnight boundaries, and gives zeros for a quiet week', async () => {
+    const owner = await anOwner();
+    const p = owner.pageId;
+    const quiet = await getOrderStats(owner.accountId, NOW);
+    expect(quiet.paidDaysCents).toEqual([0, 0, 0, 0, 0, 0, 0]);
+    expect(quiet.paidTodayCents).toBe(0);
+    // 2026-10-17 23:59:59 MYT = 15:59:59Z on the 17th: yesterday. 00:00:00 MYT on the 18th = 16:00:00Z: today.
+    await anOrder(p, { status: 'PAID', totalCents: 100, paidAt: new Date('2026-10-17T15:59:59Z') });
+    await anOrder(p, { status: 'PAID', totalCents: 200, paidAt: new Date('2026-10-17T16:00:00Z') });
+    // The window starts 2026-10-12 00:00 MYT = 11th 16:00Z; a second earlier is out.
+    await anOrder(p, { status: 'PAID', totalCents: 400, paidAt: new Date('2026-10-11T16:00:00Z') });
+    await anOrder(p, { status: 'PAID', totalCents: 800, paidAt: new Date('2026-10-11T15:59:59Z') });
+    // Past today's midnight (the 19th in Malaysia): not yet in this week.
+    await anOrder(p, { status: 'PAID', totalCents: 1600, paidAt: new Date('2026-10-18T16:00:00Z') });
+    // Cancelled orders are not counted.
+    await anOrder(p, { status: 'CANCELLED', totalCents: 3200, paidAt: new Date('2026-10-18T10:00:00Z'), cancelledAt: NOW });
+    const stats = await getOrderStats(owner.accountId, NOW);
+    expect(stats.paidDaysCents).toEqual([400, 0, 0, 0, 0, 100, 200]);
+    expect(stats.paidDaysCents).toHaveLength(7);
+    expect(stats.paidTodayCents).toBe(200);
+    expect(stats.paidThisWeekCents).toBe(700);
+  });
+
+  it('agrees with the sidebar badge on the same fixture', async () => {
+    const owner = await anOwner();
+    const p = owner.pageId;
+    await anOrder(p, { receiptKey: 'r/a.png', receiptType: 'image/png', receiptUploadedAt: NOW });
+    await anOrder(p, { receiptKey: 'r/b.png', receiptType: 'image/png', receiptUploadedAt: NOW });
+    await anOrder(p);
+    await anOrder(p, { status: 'PAID', paidAt: NOW });
+    const stats = await getOrderStats(owner.accountId, NOW);
+    expect(stats.toCheck).toBe(2);
+    expect((await countNavBadges(owner.accountId)).orders).toBe(stats.toCheck);
   });
 });
 

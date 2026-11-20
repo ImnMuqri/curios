@@ -274,6 +274,10 @@ export interface OrderStats {
   toMake: number;
   /** Paid sen over the last 7 Malaysian days, today included. */
   paidThisWeekCents: number;
+  /** Paid sen per Malaysian day, 7 slots, oldest first, today last (the week bar). */
+  paidDaysCents: number[];
+  /** Paid sen on today's Malaysian day: the last slot of `paidDaysCents`. */
+  paidTodayCents: number;
 }
 
 const DAY_MS = 86_400_000;
@@ -297,13 +301,14 @@ export async function getOrderStats(accountId: string, now = new Date()): Promis
       select: { totalCents: true, paidAt: true },
     }),
   ]);
-  let paidThisWeekCents = 0;
+  const paidDaysCents = [0, 0, 0, 0, 0, 0, 0];
   for (const order of paid) {
     if (!order.paidAt) continue;
     const slot = Math.floor((order.paidAt.getTime() + MALAYSIA_OFFSET_MS - first) / DAY_MS);
-    if (slot >= 0 && slot < 7) paidThisWeekCents += order.totalCents;
+    if (slot >= 0 && slot < 7) paidDaysCents[slot] = (paidDaysCents[slot] ?? 0) + order.totalCents;
   }
-  return { toCheck, toMake, paidThisWeekCents };
+  const paidThisWeekCents = paidDaysCents.reduce((sum, cents) => sum + cents, 0);
+  return { toCheck, toMake, paidThisWeekCents, paidDaysCents, paidTodayCents: paidDaysCents[6] ?? 0 };
 }
 
 /** A grant to download one file of a FILES line (the newest per file; older ones are only made obsolete by new links). */

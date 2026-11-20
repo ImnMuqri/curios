@@ -329,6 +329,10 @@
 
 /* ---- The top bar and the sheet ---- */
 
+.layers {
+  display: contents;
+}
+
 .column {
   flex: 1;
   min-width: 0;
@@ -797,6 +801,18 @@
     --tag-red: var(--calm-dark-tag-red);
     --tag-red-ink: var(--calm-dark-tag-red-ink);
     --badge: var(--calm-dark-badge);
+    --calm-pick: var(--calm-dark-pick);
+    --calm-scrim: var(--calm-dark-scrim);
+    --calm-row-hover: var(--calm-dark-row-hover);
+    --calm-urgent: var(--calm-dark-urgent);
+    --calm-urgent-ring: var(--calm-dark-urgent-ring);
+    --calm-urgent-label: var(--calm-dark-urgent-label);
+    --calm-urgent-ink: var(--calm-dark-urgent-ink);
+    --calm-spark: var(--calm-dark-spark);
+    --calm-spark-today: var(--calm-dark-spark-today);
+    --calm-danger: var(--calm-dark-danger);
+    --calm-twice: var(--calm-dark-twice);
+    --calm-twice-ring: var(--calm-dark-twice-ring);
   }
 }
 
@@ -868,6 +884,18 @@
   --tag-red: var(--calm-dark-tag-red);
   --tag-red-ink: var(--calm-dark-tag-red-ink);
   --badge: var(--calm-dark-badge);
+  --calm-pick: var(--calm-dark-pick);
+  --calm-scrim: var(--calm-dark-scrim);
+  --calm-row-hover: var(--calm-dark-row-hover);
+  --calm-urgent: var(--calm-dark-urgent);
+  --calm-urgent-ring: var(--calm-dark-urgent-ring);
+  --calm-urgent-label: var(--calm-dark-urgent-label);
+  --calm-urgent-ink: var(--calm-dark-urgent-ink);
+  --calm-spark: var(--calm-dark-spark);
+  --calm-spark-today: var(--calm-dark-spark-today);
+  --calm-danger: var(--calm-dark-danger);
+  --calm-twice: var(--calm-dark-twice);
+  --calm-twice-ring: var(--calm-dark-twice-ring);
 }
 
 /* Unconditional: in a light frame these are the values a preview has anyway. */
@@ -937,6 +965,18 @@
   --tag-red: var(--light-tag-red);
   --tag-red-ink: var(--light-tag-red-ink);
   --badge: var(--light-badge);
+  --calm-pick: var(--light-calm-pick);
+  --calm-scrim: var(--light-calm-scrim);
+  --calm-row-hover: var(--light-calm-row-hover);
+  --calm-urgent: var(--light-calm-urgent);
+  --calm-urgent-ring: var(--light-calm-urgent-ring);
+  --calm-urgent-label: var(--light-calm-urgent-label);
+  --calm-urgent-ink: var(--light-calm-urgent-ink);
+  --calm-spark: var(--light-calm-spark);
+  --calm-spark-today: var(--light-calm-spark-today);
+  --calm-danger: var(--light-calm-danger);
+  --calm-twice: var(--light-calm-twice);
+  --calm-twice-ring: var(--light-calm-twice-ring);
   /* What the frame works out from a remapped token is worked out again here, or the island would inherit the frame's result. */
   --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--light-ink));
   --button-secondary-bg: var(--light-card);
@@ -958,7 +998,8 @@
 
 /* Under 1100px Help takes the screen, so the phone's menu hides while it is open. */
 @media (max-width: 1100px) {
-  .frame[data-help-open] .phoneMenu {
+  .frame[data-help-open] .phoneMenu,
+  .frame[data-sheet-open] .phoneMenu {
     display: none;
   }
 }

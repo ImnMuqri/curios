@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -263,5 +265,28 @@ describe('the banner’s ×, role and badge', () => {
     window.localStorage.clear();
     const { container } = slot(await mk(3, 10));
     expect(badge(container).querySelector('svg')).toBeInTheDocument();
+  });
+});
+
+describe('the banner on a phone (Dash.html .ban9)', () => {
+  const css = readFileSync(path.resolve(__dirname, './alert-slot.module.css'), 'utf8');
+  const phone = css.slice(css.indexOf('@media (max-width: 760px)'), css.indexOf('@media (prefers-reduced-motion'));
+
+  it('is a 40px + flexible grid with 12px gaps and room for the x', () => {
+    expect(phone).toMatch(/grid-template-columns: 40px minmax\(0, 1fr\);/);
+    expect(phone).toMatch(/gap: 12px;/);
+    expect(phone).toMatch(/padding: 14px 48px 14px 14px;/);
+  });
+
+  it('dissolves the actions wrapper so the button and the x place themselves', () => {
+    expect(phone).toMatch(/\.acts \{\s*display: contents;/);
+  });
+
+  it('puts the button in column 2, left-aligned, 40px tall', () => {
+    expect(phone).toMatch(/\.btn \{[^}]*grid-column: 2;[^}]*justify-self: start;[^}]*min-height: 40px;/);
+  });
+
+  it('pins a 44px x top right', () => {
+    expect(phone).toMatch(/\.x \{[^}]*position: absolute;[^}]*top: 8px;[^}]*right: 8px;[^}]*width: 44px;[^}]*height: 44px;/);
   });
 });

@@ -1,9 +1,10 @@
 /*
- * Leads, from the design handoff's Leads board (Dashboard v2). The frame
- * (the searched, filtered list, the detail column, the neutral chat panel)
- * is ../_ui/inbox.module.css; this is what is only Leads': the number rows,
- * the number on its own with its status pills, what they are after, the
- * conversation and the first message.
+ * Leads, on the calm Dash board (Dash.html, the `leads` screen). The frame is the inbox kit's
+ * (../_ui/inbox.module.css: the screen and body, filter bar, split, list rows, detail card, tags,
+ * label and value rows, InlineConfirm) and the stat strip's; this is what only Leads has: the
+ * Enquiry mini-label in a row, the number on its own, the four-way status segment, the ring, the
+ * enquiry's item card and message, "See the conversation" and its sheet's bubbles, and the first
+ * message with Send on WhatsApp.
  */
 
 @keyframes fadeUp {
@@ -18,634 +19,600 @@
   }
 }
 
-/* ---- A number in the list ---- */
+/* ---- The empty screen ---- */
 
-.lead {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.leadMid {
-  flex: 1;
-  min-width: 0;
-}
-
-.phone {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.newDot {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--tag-new-ink);
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--biru-muda) 70%, var(--biru));
-}
-
-.wants {
-  display: block;
-  margin-top: 2px;
-  overflow: hidden;
-  font-size: 12.5px;
-  color: var(--muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.leadEnd {
-  display: grid;
-  flex: none;
-  justify-items: end;
-  gap: 5px;
-}
-
-.leadEnd > span:first-child {
-  font-size: 12px;
-  color: var(--faint);
-}
-
-/* How many of the three details they gave: three bars, warmer as they fill. */
-.heat {
+/* "Copy your link" under the empty Peek: the board's .btn.dark.sm, in the action fill. */
+.darkPill {
   display: inline-flex;
-  gap: 3px;
-}
-
-.heat i {
-  display: block;
-  width: 6px;
-  height: 14px;
-  border-radius: 2px;
-  background: var(--line);
-}
-
-.heat[data-score='1'] i:nth-child(-n + 1) {
-  background: color-mix(in srgb, var(--rose) 40%, var(--card));
-}
-
-.heat[data-score='2'] i:nth-child(-n + 2) {
-  background: color-mix(in srgb, var(--rose) 65%, var(--card));
-}
-
-.heat[data-score='3'] i {
-  background: var(--rose);
-}
-
-/* ---- The number on its own ---- */
-
-.head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px 16px;
-}
-
-.headText {
-  min-width: 0;
-}
-
-.head h2 {
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.head p {
-  margin: 2px 0 0;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
-.whatsapp {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 42px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--hijau);
-  color: var(--card);
-  font: inherit;
-  font-weight: 600;
-  text-decoration: none;
-  cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.whatsapp:hover {
-  background: color-mix(in oklch, var(--hijau) 82%, var(--ink));
-  color: var(--card);
-}
-
-.whatsapp:active {
-  transform: scale(0.97);
-}
-
-.whatsapp svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.whatsapp[data-small] {
-  height: 36px;
-  margin-left: 0;
-  padding: 0 14px;
-  font-size: 13px;
-}
-
-/*
- * New, Contacted, Sold, Closed: the one pill style (pill-tabs.module.css's track and pill), right
- * after the number. The chosen one is aria-checked, which the shared pill does not read, so it is
- * drawn here the same way: a white pill on the grey track.
- */
-/* The status and WhatsApp keep together, to the right; when the row is too narrow they wrap under the number as one. */
-.headEnd {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-}
-
-.head .statusPill {
-  height: 32px;
-  padding: 0 14px;
-  font-size: 13.5px;
-}
-
-.statusPill[aria-checked='true'] {
-  background: var(--card);
-  color: var(--ink);
-  font-weight: 600;
-  box-shadow: 0 1px 2px var(--soft-shadow, rgb(25 31 44 / 8%)), 0 0 0 1px var(--line);
-}
-
-/* What they're after: three slots and how ready the lead is. */
-.slots {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) 150px;
-  gap: 10px;
-}
-
-.slot {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 14px;
-  border-radius: 10px;
-  background: var(--paper);
-  animation: fadeUp 360ms ease both;
-}
-
-.slot[data-missing] {
-  border: 1.5px dashed var(--edge);
-  background: var(--card);
-}
-
-.slot small {
-  color: var(--muted);
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-.slot b {
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 1.3;
-}
-
-.slot[data-missing] b {
-  color: var(--faint);
-  font-weight: 400;
-}
-
-/* Beside the slots, in a row: the ring, then how many of three and what that means. */
-.meter {
-  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
+  height: 42px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--action);
+  color: var(--action-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.darkPill:hover {
+  background: var(--action-hover);
+}
+
+/* ---- The list ---- */
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each row is the kit's .li inside its own <li>: the line between rows is drawn here. */
+.rows > .entry > .rowBtn {
+  border-top: 1px solid var(--line);
+  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.rows > .entry:first-child > .rowBtn {
+  border-top: 0;
+}
+
+/* A number lines up with the next one. */
+.phone {
+  font-variant-numeric: tabular-nums;
+}
+
+/* "Enquiry", before the summary of one from the shop (Dash.html .xenq). */
+.enquiryTag {
+  margin-right: 6px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* No match, and Nothing here yet (Dash.html .xnomatch / .xallclear). */
+.empty {
+  margin: 0;
+  padding: 28px 16px;
   text-align: center;
 }
 
-.meter circle {
-  fill: none;
-  stroke-width: 5;
-}
-
-.meter circle:first-child {
-  stroke: var(--biru-muda);
-}
-
-.meter circle:last-child {
-  stroke: var(--biru);
-  stroke-linecap: round;
-  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.meter svg {
-  width: 36px;
-  height: 36px;
-  flex: none;
-}
-
-.meter > span {
-  display: flex;
-  flex-direction: column;
-}
-
-.meter b {
-  color: color-mix(in oklch, var(--biru) 70%, var(--ink));
-  font-size: 13px;
+.empty b {
+  display: block;
+  font-size: 15px;
   font-weight: 600;
 }
 
-.meter span span {
-  color: var(--ink-soft);
-  font-size: 11.5px;
+.empty small {
+  display: block;
+  color: var(--muted);
+  font-size: 13.5px;
 }
 
-/* Their enquiry, from an Ask item in the shop (Leads board, 8 Nov): the item, three details, their note. */
-.enquiry {
-  padding: 14px;
-  border-radius: 10px;
+/* The pager and how long numbers are kept, at the list's foot. */
+.foot {
+  border-top: 1px solid var(--line);
+}
+
+.foot > nav {
+  border-top: 0;
+}
+
+.kept {
+  margin: 0;
+  padding: 10px 16px 14px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+}
+
+.foot > nav + .kept {
+  padding-top: 0;
+}
+
+/* ---- The detail ---- */
+
+.number {
+  margin: 4px 0 2px;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  outline: none;
+}
+
+/* Where the owner is with it (Dash.html .xstat): a soft track, the chosen one raised in white. */
+.status {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+  margin-top: 12px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+}
+
+.statusOption {
+  display: flex;
+  align-items: center;
+  height: 32px;
+  margin: 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+}
+
+.statusOption:hover {
+  color: var(--ink);
+}
+
+.statusOption[aria-checked='true'] {
   background: var(--card);
-  box-shadow: 0 0 0 1px var(--line);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 8%),
+    inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  font-weight: 600;
 }
 
-.enquiryItem {
+.statusOption:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+/* How much is known (Dash.html .xring): a green arc, a quarter per detail. */
+.ring {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
+  margin-top: 14px;
 }
 
-.enquiryItem > span:last-child {
-  flex: 1;
-  min-width: 0;
+.ring svg {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  transform: rotate(-90deg);
 }
 
-.enquiryItem b {
-  display: block;
+.ring circle {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 5;
+}
+
+.ring .ringFill {
+  stroke: var(--tag-ok-ink);
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s;
+}
+
+.ring > span {
+  display: grid;
+}
+
+.ring b {
   font-size: 14.5px;
   font-weight: 600;
 }
 
-.enquiryItem small {
+.ring small {
   color: var(--muted);
   font-size: 12.5px;
 }
 
-.enquiryThumb {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 44px;
-  height: 44px;
-  flex: none;
-  overflow: hidden;
-  border-radius: 8px;
-  background: var(--ungu-muda);
-  color: var(--ungu);
-  font-size: 18px;
-  font-weight: 700;
+/* A small heading over a group (Dash.html .lab2), with its quieter aside. */
+.lab {
+  margin: 18px 0 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.enquiryThumb img {
-  position: absolute;
-  inset: 0;
+.lab span {
+  margin-left: 8px;
+  font-weight: 500;
+}
+
+.kv {
+  margin-top: 0;
+}
+
+/* Their enquiry's item card sits straight over the rows. */
+.item + .kv {
+  margin-top: 6px;
+}
+
+/* Not picked out (Dash.html .xnm, an <i> set upright): read, so muted rather than the board's faint. */
+.missing {
+  color: var(--muted);
+  font-style: normal;
+  font-weight: 500;
+}
+
+/* The item they asked after (Dash.html .xenqc): its photo, or a soft wash, its name and how it is priced. */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+/* A container corner (16px), not the board's 12px (the corner rule). */
+.itemThumb {
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--r-box);
+  background: linear-gradient(135deg, var(--tag-red), color-mix(in srgb, var(--tag-red-ink) 38%, var(--tag-red)));
+}
+
+.itemThumb img {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.enquiryFields {
+.itemText {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.enquiryField {
-  display: block;
-  padding: 9px 12px;
-  border-radius: 8px;
-  background: var(--paper);
-  line-height: 1.35;
-}
-
-.enquiryField small {
-  display: block;
-  margin: 0 0 2px;
-  color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.3;
-}
-
-.enquiryField b {
-  display: block;
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.enquiryField[data-missing] b {
-  color: var(--faint);
-  font-weight: 400;
-}
-
-.enquiryNote {
-  margin: 12px 0 0;
-  color: var(--ink-soft);
-  font-size: 13.5px;
-  font-style: italic;
-}
-
-/* "Enquiry", before an enquiry's line in the list. */
-.enquiryTag {
-  display: inline-block;
-  margin-right: 6px;
-  padding: 1px 7px;
-  border-radius: 6px;
-  background: var(--rose-muda);
-  color: var(--rose);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
-  vertical-align: 1px;
-}
-
-/* The conversation beside the first message. */
-.pair {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.convo {
-  max-height: 300px;
-  overflow: auto;
-}
-
-
-.leftNumber {
-  display: inline-flex;
-  align-self: center;
-  align-items: center;
-  gap: 6px;
-  margin: 4px 0;
-  padding: 5px 12px;
-  border-radius: 999px;
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
-  font-size: 11.5px;
-  font-weight: 500;
-}
-
-.leftNumber svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.reply {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  background: var(--card);
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.reply:focus-within {
-  border-color: var(--hijau);
-  box-shadow: 0 0 0 3px rgb(29 111 95 / 12%);
-}
-
-.replyHead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--line);
-  color: var(--ink-soft);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.replyHead svg {
-  fill: none;
-  stroke: var(--hijau);
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.replyHead span {
-  margin-left: auto;
-  color: var(--faint);
-  font-weight: 400;
-}
-
-.reply textarea {
-  flex: 1;
-  min-height: 170px;
-  padding: 14px;
-  border: 0;
-  background: color-mix(in srgb, var(--hijau-muda) 60%, var(--card));
-  color: color-mix(in oklch, var(--hijau) 50%, var(--ink));
-  font: inherit;
-  line-height: 1.55;
-  resize: none;
-  outline: none;
-}
-
-.replyFoot {
-  display: flex;
-  gap: 8px;
-  padding: 10px;
-  border-top: 1px solid var(--line);
-}
-
-.outline {
-  display: inline-flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.outline:hover {
-  border-color: var(--faint);
-  background: var(--paper);
-}
-
-.pairTitle {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin: 0 0 10px;
-  color: var(--ink-soft);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.pairTitle span {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-/* Consent, and the one way to let the number go. */
-.foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 26px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-  color: var(--muted);
-  font-size: 12.5px;
-}
-
-.foot > svg {
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.foot > span:first-of-type {
-  flex: 1 1 200px;
   min-width: 0;
 }
 
-.footEnd {
-  margin-left: auto;
+.itemText b {
+  font-size: 14.5px;
+  font-weight: 600;
 }
 
-.ghost {
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--merah-deep);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
+.itemText small {
+  color: var(--muted);
+  font-size: 13px;
 }
 
-.ghost:hover {
-  background: var(--merah-muda);
+/* Their message, in their words (Dash.html .xnote). */
+.note {
+  margin-top: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r-box);
+  background: var(--surface);
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.confirm {
-  display: inline-flex;
-  flex-wrap: wrap;
+.note small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: normal;
+}
+
+.hint {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* "See the conversation" (Dash.html .xconv): a soft row that opens the sheet. */
+.conv {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  color: var(--merah-deep);
+  gap: 12px;
+  width: 100%;
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.conv:hover {
+  background: var(--surface);
+}
+
+.conv:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+.convIcon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--muted);
+}
+
+.convIcon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.convText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.convText b {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.convText small {
+  color: var(--muted);
   font-size: 12.5px;
 }
 
-.confirm button {
-  height: 30px;
-  padding: 0 10px;
+.conv em {
+  color: var(--faint);
+  font-size: 20px;
+  font-style: normal;
+}
+
+/* The first message (Dash.html .xwa): the box to edit, then Send on WhatsApp. */
+.first {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.first > .lab {
+  margin: 0;
+}
+
+/* A field: the 16px box corner (DEVIATIONS 347). */
+.message {
+  display: block;
+  width: 100%;
+  min-height: 120px;
+  margin: 0;
+  padding: 16px 20px;
   border: 0;
-  border-radius: 7px;
-  background: var(--surface);
+  border-radius: var(--field-radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
   font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
+  font-size: 14.5px;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.message:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.sendRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* The full-width pills (Dash.html .det .btn): Send in the action fill, Open WhatsApp and Copy in white. */
+.send,
+.whatsapp,
+.copy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 52px;
+  margin: 0;
+  padding: 0 22px;
+  border: 0;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: 15.5px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
   cursor: pointer;
+  transition:
+    background-color 0.2s,
+    box-shadow 0.2s,
+    transform 0.18s;
 }
 
-.confirm button:first-of-type {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
+.send {
+  flex: 1;
+  background: var(--action);
+  color: var(--action-fg);
 }
 
-.error {
-  margin-top: 12px;
+.send:hover {
+  background: var(--action-hover);
+  color: var(--action-fg);
 }
 
-/* ---- Narrower ---- */
-
-@container (max-width: 760px) {
-  .slots {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-  }
-
-  .meter {
-    padding: 12px;
-  }
-
-  .enquiryFields {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .pair {
-    grid-template-columns: minmax(0, 1fr);
-  }
+/* After Send (Dash.html 1887): the button turns into the lite done line, still a link to WhatsApp. */
+.send[data-done] {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: normal;
+  text-align: center;
 }
 
-@container (max-width: 520px) {
-  .whatsapp {
-    margin-left: 0;
-  }
+.send[data-done]:hover {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+  color: var(--ink);
+}
 
-  .headEnd {
-    width: 100%;
-    margin-left: 0;
-  }
+.send svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 
-  .status {
-    display: grid;
-    width: 100%;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.whatsapp,
+.copy {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+}
+
+.whatsapp {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.copy {
+  flex: none;
+}
+
+.whatsapp:hover,
+.copy:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+  color: var(--ink);
+}
+
+.send:active,
+.whatsapp:active,
+.copy:active {
+  transform: scale(0.98);
+}
+
+.send:focus-visible,
+.whatsapp:focus-visible,
+.copy:focus-visible,
+.darkPill:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+/* ---- The conversation, in its sheet (Dash.html .xconvsh) ---- */
+
+.chat {
+  display: grid;
+  gap: 10px;
+}
+
+/* Theirs: dark, on the right. The 16px box corner all round, not the board's 18px with a 6px tail (the corner rule). */
+.q {
+  justify-self: end;
+  max-width: 80%;
+  padding: 10px 15px;
+  border-radius: var(--r-box);
+  background: var(--ink);
+  color: var(--card);
+  font-size: 14.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* The page's: a white card on the left, under "{Name}’s page". */
+.a {
+  justify-self: start;
+  max-width: 85%;
+  padding: 10px 15px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: 14.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.a small {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: normal;
+}
+
+/* Where they left their number (Dash.html .xleft2). */
+.left {
+  justify-self: center;
+  padding: 4px 12px;
+  border-radius: var(--r-pill);
+  background: var(--card);
+  color: var(--tag-ok-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.more {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+@media (max-width: 760px) {
+  .send,
+  .whatsapp,
+  .copy {
+    padding: 0 18px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .slot {
+  .rows > .entry > .rowBtn {
     animation: none;
   }
 
-  .meter circle:last-child {
+  .statusOption,
+  .ring .ringFill,
+  .conv,
+  .send,
+  .whatsapp,
+  .copy {
     transition: none;
   }
-}
-
-
-.more {
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 12.5px;
 }

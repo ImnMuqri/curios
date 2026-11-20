@@ -11,9 +11,10 @@ import type { OrderRow } from './order-detail.js';
 import { Orders } from './orders-screen.js';
 
 /**
- * What customers ordered from the shop, newest first: one sentence of
- * figures under the title, the orders down the left, and the chosen one on
- * the right with its receipt and the one thing to do next.
+ * What customers ordered from the shop, newest first, on the calm board: the
+ * header and its line, three stat cards, the filter chips and search, the
+ * orders down the left and the chosen one on the right with its receipt and
+ * the one thing to do next.
  *
  * `getOwnerOrdersPage` scopes to this owner inside the query. Keys never leave the
  * server: the receipt and item photos go down as addresses, built here as
@@ -30,7 +31,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   if (page.mode === 'PERSONAL') {
     return (
       <>
-        <PageHead title="Orders" />
+        <PageHead kicker="Inbox" title="Orders" summary="Check receipts first. Everything else waits for you below." />
         <div className={panel.body}>
           <Callout tone="info">
             Orders come from a shop, and shops are part of business pages. If you start selling, you can make this a business page from{' '}

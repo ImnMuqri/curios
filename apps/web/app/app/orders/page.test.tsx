@@ -103,6 +103,9 @@ describe('OrdersPage', () => {
     render(await OrdersPage(params()));
 
     expect(screen.getByText(/Orders come from a shop/)).toBeInTheDocument();
+    // The same head as the business screen's: the Inbox kicker and its line.
+    expect(screen.getByText('Inbox')).toBeInTheDocument();
+    expect(screen.getByText('Check receipts first. Everything else waits for you below.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
     expect(Orders).not.toHaveBeenCalled();
     expect(getOwnerOrdersPage).not.toHaveBeenCalled();

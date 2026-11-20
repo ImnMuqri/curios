@@ -62,6 +62,18 @@ const calmDark: Record<string, string> = {
   '--tag-red': '--calm-dark-tag-red',
   '--tag-red-ink': '--calm-dark-tag-red-ink',
   '--badge': '--calm-dark-badge',
+  '--calm-pick': '--calm-dark-pick',
+  '--calm-scrim': '--calm-dark-scrim',
+  '--calm-row-hover': '--calm-dark-row-hover',
+  '--calm-urgent': '--calm-dark-urgent',
+  '--calm-urgent-ring': '--calm-dark-urgent-ring',
+  '--calm-urgent-label': '--calm-dark-urgent-label',
+  '--calm-urgent-ink': '--calm-dark-urgent-ink',
+  '--calm-spark': '--calm-dark-spark',
+  '--calm-spark-today': '--calm-dark-spark-today',
+  '--calm-danger': '--calm-dark-danger',
+  '--calm-twice': '--calm-dark-twice',
+  '--calm-twice-ring': '--calm-dark-twice-ring',
 };
 /** The `.frame {…}` root rule, and the island rule, as text. */
 const frameRoot = frame.slice(frame.indexOf('.frame {'), frame.indexOf('\n}\n', frame.indexOf('.frame {')));
@@ -188,5 +200,35 @@ describe('dashboard dark mode', () => {
       expect(islandBlock[name], name).toBe(`var(--light-${name.slice(2)})`);
       expect(tokens[`--light-${name.slice(2)}`], name).toBe(`var(${name})`);
     }
+  });
+
+  it('maps the page-phase --calm-* tokens: a dark twin swapped in dark, the light value back in an island', () => {
+    const pinned: Record<string, [string, string]> = {
+      pick: ['#f1eee7', '#232321'],
+      'row-hover': ['#fbfaf7', '#1b1b1a'],
+      urgent: ['#fdf6e7', '#33291a'],
+      'urgent-ring': ['#f1dfb4', '#4d3b1d'],
+      'urgent-label': ['#7a4b06', '#f2c46b'],
+      'urgent-ink': ['#5c3804', '#f2c46b'],
+      spark: ['#d8d4cb', '#3a3936'],
+      'spark-today': ['#1d7a4c', '#7fd3a5'],
+      danger: ['#b3261e', '#ff8a80'],
+      twice: ['#fdf3f2', '#451f28'],
+      'twice-ring': ['#f3d4d0', '#5e2b36'],
+    };
+    for (const [k, [light, dark]] of Object.entries(pinned)) {
+      expect(tokens[`--calm-${k}`], k).toBe(light);
+      expect(tokens[`--calm-dark-${k}`], k).toBe(dark);
+    }
+    for (const k of Object.keys(pinned)) {
+      expect(tokens[`--calm-${k}`], k).toMatch(/^#[0-9a-f]{6}$/);
+      expect(tokens[`--calm-dark-${k}`], k).toMatch(/^#[0-9a-f]{6}$/);
+      expect(darkBlock[`--calm-${k}`], k).toBe(`var(--calm-dark-${k})`);
+      expect(chosenBlock[`--calm-${k}`], k).toBe(`var(--calm-dark-${k})`);
+      expect(islandBlock[`--calm-${k}`], k).toBe(`var(--light-calm-${k})`);
+    }
+    // These two are the same in both themes.
+    expect(tokens['--calm-hover-ring']).toBe('#c9c4b8');
+    expect(tokens['--calm-switch-off']).toBe('#8f8b83');
   });
 });

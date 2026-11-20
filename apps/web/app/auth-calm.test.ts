@@ -105,15 +105,16 @@ describe('the page title, from the calm Dash board (.pg h1)', () => {
   const css = read('./app/_ui/page-head.module.css');
   const title = (from: number) => css.slice(css.indexOf('.title {', from), css.indexOf('}', css.indexOf('.title {', from)));
 
-  it('is Inter 48px, weight 600, -0.045em on a desktop', () => {
+  it('is Inter 40px, weight 600, -0.04em on a desktop', () => {
     const t = title(0);
     expect(t).toMatch(/font-family:\s*var\(--font-body\)/);
-    expect(t).toMatch(/font-size:\s*48px/);
+    expect(t).toMatch(/font-size:\s*40px/);
     expect(t).toMatch(/font-weight:\s*600/);
-    expect(t).toMatch(/letter-spacing:\s*-0\.045em/);
+    expect(t).toMatch(/letter-spacing:\s*-0\.04em/);
   });
 
-  it('steps down to 38px on a phone', () => {
-    expect(title(css.indexOf('@media (max-width: 760px)'))).toMatch(/font-size:\s*38px/);
+  it('steps down to 34px at 1100 and 32px on a phone', () => {
+    expect(title(css.indexOf('@media (max-width: 1100px)'))).toMatch(/font-size:\s*34px/);
+    expect(title(css.indexOf('@media (max-width: 760px)'))).toMatch(/font-size:\s*32px/);
   });
 });

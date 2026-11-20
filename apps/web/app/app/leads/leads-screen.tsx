@@ -1,19 +1,20 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import type { LeadStats, OwnerLead } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
-import { PageHead } from '../_ui/page-head.js';
-import ui from '../_ui/editor.module.css';
+import { EmptyPeek } from '../_ui/empty-peek.js';
+import { InboxBack } from '../_ui/inbox-back.js';
 import inbox from '../_ui/inbox.module.css';
-import pills from '../_ui/pill-tabs.module.css';
-import { relativeTime } from '../_ui/relative-time.js';
+import { useOwnView } from '../_ui/own-view.js';
+import { PageHead } from '../_ui/page-head.js';
+import { changeTone, StatStrip, type StatCard } from '../_ui/stat-strip.js';
 import { useToast } from '../_ui/toast.js';
 import { enquiryItemName, leadSummary } from './enquiry.js';
-import { LeadDetail, STATUSES, type LeadActions, type LeadRow, type LeadStatus } from './lead-detail.js';
+import { LeadDetail, LeadTag, STATUSES, type LeadActions, type LeadRow, type LeadStatus } from './lead-detail.js';
 import styles from './leads.module.css';
 
 type Filter = 'all' | LeadStatus;
@@ -32,23 +33,38 @@ export function leadMatches(lead: OwnerLead, query: string): boolean {
   return (digits.length >= 2 && lead.phone.replace(/\D/g, '').includes(digits)) || wants.includes(q);
 }
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+/** The "Left a number this week" card's line: signed against last week, or the same. */
+export function weekLine(thisWeek: number, lastWeek: number): string {
+  const diff = thisWeek - lastWeek;
+  if (diff === 0) return 'Same as last week';
+  return `${diff > 0 ? '+' : '−'}${Math.abs(diff)} on last week`;
+}
+
+/** Of this week's leads, the share that became a sale: 0..1, and 0 (never NaN) with no leads this week. */
+export function soldRate(soldThisWeek: number, thisWeek: number): number {
+  return thisWeek > 0 ? Math.min(1, Math.max(0, soldThisWeek / thisWeek)) : 0;
+}
 
 /**
- * Every number a page has captured, newest first: one sentence of figures
- * under the title, the numbers down the left (searched, and filtered by
- * where the owner is with them), and the chosen one on the right with the
- * conversation behind it. The search narrows the fifty on this page.
+ * Every number a page has captured, newest first, on the calm board (Dash.html `leads`): the
+ * header ("Inbox", Leads, one line), three stat cards (the new ones waiting, this week's numbers
+ * with its spark, the ones that became sales with a rate bar), the filter chips and search, then
+ * the numbers down the left and the chosen one on the right. The search narrows the fifty on this
+ * page; the next fifty are a page further (`?before=`).
  *
- * Presentational: it takes the rows and the mutations, and `Leads` below
- * supplies the real ones. A status shows the moment it is chosen and goes
- * back if the save fails; the server is re-read after, for the figures.
+ * On a phone a picked lead takes the screen as its own view (`data-open` on the split), with
+ * "‹ All leads" back. It holds that lead by id until the owner goes back, even when a move takes
+ * it out of the filter (Contacted under New); only a lead gone from the list altogether closes it.
+ * Focus goes to the lead's heading on the way in and back to its row (or the first) on the way
+ * out, the screen scrolled to the top each time.
+ *
+ * Presentational: `Leads` below supplies the real mutations. A status shows the moment it is
+ * chosen and goes back if the save fails; the server is re-read after, for the figures.
  */
 export function LeadsScreen({
   leads,
   paging = { older: null, paged: false },
   stats,
-  handle,
   displayName,
   language,
   publicUrl,
@@ -61,7 +77,6 @@ export function LeadsScreen({
   /** `older`: the last lead shown, when there are more below it. `paged`: this is not the newest page. */
   paging?: { older: string | null; paged: boolean };
   stats: LeadStats;
-  handle: string;
   displayName: string;
   language: string;
   /** The page's full address, for "Copy your link". */
@@ -74,28 +89,92 @@ export function LeadsScreen({
 }) {
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<string | null>(null);
+  const [chosenId, setChosenId] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, LeadStatus>>({});
+  // Deleted here, and gone at once, before the server's read lands.
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
+  // Sent on WhatsApp in this visit: their card keeps the first message, with the done line in place of Send.
+  const [sent, setSent] = useState<ReadonlySet<string>>(() => new Set());
   const [copied, setCopied] = useState(false);
-  const { say, toast } = useToast();
+  // The lead last moved from its card, as the owner left it (see `kept`).
+  const [snapshot, setSnapshot] = useState<OwnerLead | null>(null);
+  const { say, note, fail, toast } = useToast();
+  const screenRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+  const view = useOwnView({ screen: screenRef, detail: detailRef, row: (id) => `[data-lead-row="${CSS.escape(id)}"]`, firstRow: '[data-lead-row]' });
+  const { open } = view;
   // A fresh read from the server is the truth again.
   useEffect(() => setStatuses({}), [leads]);
 
+  const listed = leads.filter((lead) => !removed.has(lead.id));
   const statusOf = (lead: OwnerLead) => statuses[lead.id] ?? lead.status;
-  const shown = leads.filter((lead) => (filter === 'all' || statusOf(lead) === filter) && leadMatches(lead, query));
-  const chosen = shown.find((lead) => lead.id === selected) ?? shown[0] ?? null;
-  const waiting = leads.filter((lead) => statusOf(lead) === 'NEW').length;
+  const shown = listed.filter((lead) => (filter === 'all' || statusOf(lead) === filter) && leadMatches(lead, query));
+  // The open lead is gone from the list altogether (another tab deleted it): back to the list, saying so.
+  // A lead the owner moved from its card may leave the refreshed list (an old New one past the newest handled);
+  // the last copy seen, with the status it was moved to, keeps the card in place, on every width.
+  const kept = snapshot !== null && snapshot.id === chosenId && !removed.has(snapshot.id) ? snapshot : null;
+  const gone = open && chosenId !== null && !listed.some((lead) => lead.id === chosenId) && kept === null;
+  const pinned = view.holds(chosenId) ? (listed.find((lead) => lead.id === chosenId) ?? kept) : null;
+  const chosen = gone ? null : (pinned ?? shown.find((lead) => lead.id === chosenId) ?? shown[0] ?? null);
+  // One count everywhere: the chip says what the card says (and the sidebar badge, countNavBadges).
+  const counts: Record<Filter, number | null> = { all: null, NEW: stats.waiting, CONTACTED: null, SOLD: null, CLOSED: null };
 
-  async function setStatus(lead: OwnerLead, next: LeadStatus) {
-    const before = statusOf(lead);
-    setStatuses((current) => ({ ...current, [lead.id]: next }));
+  useEffect(() => {
+    if (!gone) return;
+    view.gone();
+    note('That lead is no longer in this list.');
+  }, [gone, note, view]);
+
+  // The save for each lead's status, in the order the owner chose them: a burst of arrow presses (New,
+  // Contacted, Sold) sends its PATCHes one after another, so the server ends on the last. Only the latest
+  // choice may change the screen, revert it or say anything; an earlier one settling late is dropped.
+  const latest = useRef(new Map<string, number>());
+  const queue = useRef(new Map<string, Promise<unknown>>());
+  // What the server last confirmed for a lead mid-burst: where a failed last choice goes back to.
+  const confirmed = useRef(new Map<string, LeadStatus>());
+
+  /** Resolves true when this was still the latest choice and saved; false when a newer one took over; rejects when the latest failed. */
+  async function setStatus(lead: OwnerLead, next: LeadStatus): Promise<boolean> {
+    const id = lead.id;
+    const mine = (latest.current.get(id) ?? 0) + 1;
+    latest.current.set(id, mine);
+    if (!confirmed.current.has(id)) confirmed.current.set(id, statusOf(lead));
+    setChosenId(id);
+    view.hold(id);
+    setSnapshot({ ...lead, status: next });
+    setStatuses((current) => ({ ...current, [id]: next }));
+    const run = (queue.current.get(id) ?? Promise.resolve()).catch(() => undefined).then(() => actions.setStatus(id, next));
+    queue.current.set(id, run.catch(() => undefined));
+    const current = () => latest.current.get(id) === mine;
     try {
-      await actions.setStatus(lead.id, next);
-      onChanged();
+      await run;
+      confirmed.current.set(id, next);
     } catch (failure) {
-      setStatuses((current) => ({ ...current, [lead.id]: before }));
+      if (!current()) return false;
+      const back = confirmed.current.get(id) ?? statusOf(lead);
+      confirmed.current.delete(id);
+      setSnapshot((now) => (now?.id === id ? { ...now, status: back } : now));
+      setStatuses((now) => ({ ...now, [id]: back }));
       throw failure;
     }
+    if (!current()) return false;
+    confirmed.current.delete(id);
+    onChanged();
+    return true;
+  }
+
+  // A filter or search is changed from the list, so no lead holds the own view any more.
+  function choose(next: Filter) {
+    setFilter(next);
+    view.leave();
+  }
+
+  function deleted(id: string) {
+    setRemoved((current) => new Set(current).add(id));
+    setChosenId(null);
+    view.removed();
+    say('Lead deleted.');
+    onChanged();
   }
 
   async function copyLink() {
@@ -108,153 +187,183 @@ export function LeadsScreen({
     }
   }
 
+  const rate = soldRate(stats.soldThisWeek, stats.thisWeek);
+  const cards: StatCard[] = [
+    {
+      id: 'new',
+      label: 'New, not contacted',
+      value: stats.waiting,
+      urgent: true,
+      filter: 'NEW',
+      go: (
+        <>
+          Reply to them <span aria-hidden="true">→</span>
+        </>
+      ),
+    },
+    {
+      id: 'week',
+      label: 'Left a number this week',
+      value: stats.thisWeek,
+      line: weekLine(stats.thisWeek, stats.lastWeek),
+      lineTone: changeTone(stats.thisWeek - stats.lastWeek),
+      // Exactly the week: seven Malaysian days, today last.
+      spark: Array.from({ length: 7 }, (_, i) => stats.days[stats.days.length - 7 + i] ?? 0),
+    },
+    {
+      id: 'sold',
+      label: 'Became sales',
+      value: stats.soldThisWeek,
+      line: `${Math.round(rate * 100)}% of this week’s leads`,
+      lineTone: rate > 0 ? 'up' : 'flat',
+      rate,
+    },
+  ];
+
   return (
     <>
-      <PageHead
-        title="Leads"
-        summary={
-          <>
-            <b>{plural(stats.waiting, 'new number')}</b> {stats.waiting === 1 ? 'is' : 'are'} waiting for you. {plural(stats.thisWeek, 'person', 'people')} left their number this
-            week, and {stats.sold} became {stats.sold === 1 ? 'a sale' : 'sales'}.
-          </>
-        }
-      />
+      <div ref={screenRef} className={inbox.screen}>
+        <PageHead kicker="Inbox" title="Leads" summary="People your page couldn’t answer, with what they asked." />
 
-      {leads.length === 0 ? (
-        <div className={inbox.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          <div className={inbox.detail} style={{ display: 'grid', placeItems: 'center', minHeight: 420 }}>
-            <div className={ui.empty} style={{ border: 0 }}>
-              <div className={ui.emptyArt} aria-hidden="true">
-                <span className={ui.ghostRows}>
-                  <span data-tone="rose">
-                    <i />
-                    <b />
-                    <em />
-                  </span>
-                  <span data-tone="biru">
-                    <i />
-                    <b />
-                    <em />
-                  </span>
-                  <span data-tone="hijau">
-                    <i />
-                    <b />
-                    <em />
-                  </span>
-                </span>
-                <span className={ui.emptyBadge} data-tone="rose">
-                  <svg viewBox="0 0 24 24" width="21" height="21">
-                    <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
-                  </svg>
-                </span>
-              </div>
-              <h3>No numbers yet</h3>
-              <p>When the chat can&apos;t answer, it offers to pass the question to you. Numbers people leave show up here, with what they were asking.</p>
-              <button type="button" className={ui.primaryButton} onClick={() => void copyLink()}>
+        <div className={inbox.body}>
+          {leads.length === 0 ? (
+            <EmptyPeek
+              title="No numbers yet"
+              line="When the chat can’t answer, it offers to pass the question to you. Numbers people leave show up here, with what they were asking."
+            >
+              <button type="button" className={styles.darkPill} onClick={() => void copyLink()}>
                 {copied ? 'Copied' : 'Copy your link'}
               </button>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className={inbox.board}>
-          <div className={inbox.list}>
-            <label className={inbox.search}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <circle cx="11" cy="11" r="7" />
-                <path d="M20 20l-3.5-3.5" />
-              </svg>
-              <input type="search" value={query} placeholder="Search number or what they want" aria-label="Search number or what they want" onChange={(event) => setQuery(event.target.value)} />
-            </label>
-            <div className={`${pills.track} ${inbox.filters}`} role="tablist" aria-label="Show leads" style={{ '--n': FILTERS.length } as CSSProperties}>
-              {FILTERS.map((f) => (
-                <button key={f.id} type="button" role="tab" className={`${pills.pill} ${inbox.filter}`} aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
-                  {f.label}
-                  {f.id === 'NEW' && waiting > 0 ? <span className={`${pills.count} ${inbox.count}`}>{waiting}</span> : null}
-                </button>
-              ))}
-            </div>
-            {shown.length === 0 && query.trim() ? (
-              <p className={inbox.listEmpty}>
-                <b>No match</b>
-                No number here matches “{query.trim()}”.
-              </p>
-            ) : shown.length === 0 ? (
-              <p className={inbox.listEmpty}>
-                <b>All clear</b>
-                {filter === 'NEW' ? 'New numbers land here as people leave them.' : 'Nothing here yet.'}
-              </p>
-            ) : (
-              <ul className={inbox.rows} aria-label="Leads">
-                {shown.map((lead, i) => {
-                  const status = statusOf(lead);
-                  const wants = leadSummary(lead);
-                  return (
-                    <li key={lead.id}>
-                      <button
-                        type="button"
-                        className={inbox.row}
-                        aria-current={chosen?.id === lead.id}
-                        style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
-                        onClick={() => setSelected(lead.id)}
-                      >
-                        <span className={styles.lead}>
-                          <span className={styles.leadMid}>
-                            <span className={styles.phone}>
-                              {formatMalaysianPhone(lead.phone)}
-                              {status === 'NEW' ? <span className={styles.newDot} aria-label="New" /> : null}
-                            </span>
-                            <span className={styles.wants}>
-                              {lead.enquiry ? <em className={styles.enquiryTag}>Enquiry</em> : null}
-                              {wants || 'Nothing picked out yet'}
-                            </span>
-                          </span>
-                          <span className={styles.leadEnd}>
-                            <span>{relativeTime(lead.createdAt, now)}</span>
-                            <span className={styles.heat} data-score={Math.max(0, Math.min(3, lead.score))} aria-label={`${lead.score} of 3 details`}>
-                              <i />
-                              <i />
-                              <i />
-                            </span>
-                          </span>
-                        </span>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {paging.older || paging.paged ? (
-              <nav className={inbox.pager} aria-label="More leads">
-                {paging.paged ? <Link href="/app/leads">Newest</Link> : null}
-                {paging.older ? <Link href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</Link> : null}
-              </nav>
-            ) : null}
-            <p className={inbox.listNote}>Numbers visitors left in the chat · kept for {keptMonths} months</p>
-          </div>
-          <div className={inbox.detail}>
-            {chosen ? (
-              <LeadDetail
-                key={chosen.id}
-                lead={chosen}
-                status={statusOf(chosen)}
-                handle={handle}
-                displayName={displayName}
-                language={language}
-                now={now}
-                actions={actions}
-                onStatus={(next) => setStatus(chosen, next)}
-                say={say}
-                onDeleted={() => {
-                  setSelected(null);
-                  say('Lead deleted.');
-                  onChanged();
-                }}
+            </EmptyPeek>
+          ) : (
+            <>
+              <StatStrip
+                label="Leads at a glance"
+                cards={cards}
+                active={filter === 'NEW' ? 'NEW' : null}
+                onFilter={(next) => choose((next as Filter | null) ?? 'all')}
               />
-            ) : null}
-          </div>
+
+              <div className={inbox.fbar}>
+                <div className={inbox.chips} role="group" aria-label="Show leads">
+                  {FILTERS.map((f) => (
+                    <button key={f.id} type="button" className={inbox.chip} aria-pressed={filter === f.id} onClick={() => choose(f.id)}>
+                      {f.label}
+                      {counts[f.id] ? <u>{counts[f.id]}</u> : null}
+                    </button>
+                  ))}
+                </div>
+                <label className={inbox.search}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M20 20l-3.5-3.5" />
+                  </svg>
+                  <input
+                    type="search"
+                    value={query}
+                    placeholder="Search number or what they want"
+                    aria-label="Search number or what they want"
+                    onChange={(event) => {
+                      setQuery(event.target.value);
+                      view.leave();
+                    }}
+                  />
+                </label>
+              </div>
+
+              <div className={inbox.split} data-open={open || undefined}>
+                <div className={inbox.list}>
+                  {shown.length === 0 ? (
+                    query.trim() ? (
+                      <p className={styles.empty}>
+                        <b>No match</b>
+                        <small>Try part of a number, or what they wanted.</small>
+                      </p>
+                    ) : paging.paged && filter === 'NEW' ? (
+                      // A later page holds leads past New only: every new one is on the first.
+                      <p className={styles.empty}>
+                        <b>Not on this page</b>
+                        <small>
+                          These are older leads. The new ones are on the <Link href="/app/leads">newest page</Link>.
+                        </small>
+                      </p>
+                    ) : (
+                      <p className={styles.empty}>
+                        <b>Nothing here yet</b>
+                        {filter === 'NEW' ? <small>New numbers land here as people leave them.</small> : null}
+                      </p>
+                    )
+                  ) : (
+                    <ul className={styles.rows} aria-label="Leads">
+                      {shown.map((lead, i) => {
+                        const wants = leadSummary(lead);
+                        return (
+                          <li key={lead.id} className={styles.entry}>
+                            <button
+                              type="button"
+                              className={`${inbox.li} ${styles.rowBtn}`}
+                              aria-current={chosen?.id === lead.id}
+                              data-lead-row={lead.id}
+                              style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
+                              onClick={() => {
+                                setChosenId(lead.id);
+                                view.pick();
+                              }}
+                            >
+                              <span className={inbox.av} data-tone="red" aria-hidden="true">
+                                #
+                              </span>
+                              <span className={inbox.liText}>
+                                <b className={styles.phone}>{formatMalaysianPhone(lead.phone)}</b>
+                                <small>
+                                  {lead.enquiry ? <em className={styles.enquiryTag}>Enquiry</em> : null}
+                                  {wants || 'Nothing picked out yet'}
+                                </small>
+                              </span>
+                              <span className={inbox.liSide}>
+                                <LeadTag status={statusOf(lead)} />
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                  <div className={styles.foot}>
+                    {paging.older || paging.paged ? (
+                      <nav className={inbox.pager} aria-label="More leads">
+                        {paging.paged ? <Link href="/app/leads">Newest</Link> : null}
+                        {paging.older ? <Link href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</Link> : null}
+                      </nav>
+                    ) : null}
+                    <p className={styles.kept}>Newest first · kept for {keptMonths} months</p>
+                  </div>
+                </div>
+                {chosen ? (
+                  <div ref={detailRef} className={inbox.det}>
+                    <InboxBack noun="leads" onBack={() => view.back(chosen?.id ?? null)} />
+                    <LeadDetail
+                      key={chosen.id}
+                      lead={chosen}
+                      status={statusOf(chosen)}
+                      displayName={displayName}
+                      language={language}
+                      now={now}
+                      actions={actions}
+                      onStatus={(next) => setStatus(chosen, next)}
+                      say={say}
+                      fail={fail}
+                      sent={sent.has(chosen.id)}
+                      onSent={() => setSent((current) => new Set(current).add(chosen.id))}
+                      onDeleted={() => deleted(chosen.id)}
+                    />
+                  </div>
+                ) : null}
+              </div>
+            </>
+          )}
         </div>
-      )}
+      </div>
       {toast}
     </>
   );

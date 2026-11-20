@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../../../lib/api.js';
+import { failureText } from '../_ui/toast.js';
 import styles from './orders.module.css';
 import type { OrderRow } from './order-detail.js';
 
@@ -70,6 +71,7 @@ export function SentByEmail({
   when,
   act,
   say,
+  fail,
   onChanged,
 }: {
   order: OrderRow;
@@ -77,10 +79,11 @@ export function SentByEmail({
   when: (date: Date) => string;
   act: DigitalAct;
   say: (text: string) => void;
+  /** The order card's one way of reporting a failure: the toast's error tone. */
+  fail: (text: string) => void;
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
   const [moving, setMoving] = useState<string | null>(null);
   const [pick, setPick] = useState('');
   const inFlight = useRef(false);
@@ -91,14 +94,13 @@ export function SentByEmail({
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
-    setError('');
     try {
       await act(order.id, action, body);
       setMoving(null);
       say(toast);
       onChanged();
     } catch (failure) {
-      setError(failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
+      fail(failureText(failure));
       if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) onChanged();
     } finally {
       inFlight.current = false;
@@ -107,10 +109,10 @@ export function SentByEmail({
   }
 
   return (
-    <section className={styles.card} aria-labelledby="order-sent">
-      <h3 className={styles.cardTitle} id="order-sent">
+    <section className={styles.sent} aria-labelledby="order-sent">
+      <h3 className={styles.sentTitle} id="order-sent">
         Sent by email{' '}
-        <span className={styles.badge} data-badge="" data-tone={sent ? 'hijau' : 'grey'}>
+        <span className={styles.sentState} data-badge="" data-sent={sent || undefined}>
           {order.sentAt ? `Sent ${when(order.sentAt)}` : 'Not sent yet'}
         </span>
       </h3>
@@ -127,7 +129,7 @@ export function SentByEmail({
               : d.delivery === 'CODES'
                 ? { text: 'New code', go: () => void run('new-code', `Gave ${first} another code. They keep the first one. Resend the email to send both.`, { lineId: line.id }) }
                 : canMove
-                  ? { text: 'Move time', go: () => { setMoving(moving === line.id ? null : line.id); setPick(d.times[0]?.id ?? ''); setError(''); } }
+                  ? { text: 'Move time', go: () => { setMoving(moving === line.id ? null : line.id); setPick(d.times[0]?.id ?? ''); } }
                   : null;
         return (
           <div key={line.id}>
@@ -179,11 +181,6 @@ export function SentByEmail({
           </div>
         );
       })}
-      {error ? (
-        <p className={styles.sentError} role="alert">
-          {error}
-        </p>
-      ) : null}
       {sent && order.status !== 'CANCELLED' ? (
         <button type="button" className={styles.sentResend} disabled={busy} onClick={() => void run('resend', `Sent again to ${order.email}.`)}>
           <svg viewBox="0 0 24 24" aria-hidden="true">

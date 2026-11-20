@@ -339,7 +339,7 @@ describe('the top bar', () => {
     frame({ badges: { review: 0, questions: 2, leads: 0, orders: 0 } });
     fireEvent.click(bell());
     const panel = panelOf(bell());
-    expect(within(panel).getByRole('link', { name: /^2 new questions/ })).toHaveAttribute('href', '/app/questions');
+    expect(within(panel).getByRole('link', { name: /^2 questions need your answer/ })).toHaveAttribute('href', '/app/questions');
     expect(within(panel).queryByRole('group', { name: 'Heads up' })).toBeNull();
   });
 

@@ -1,4 +1,4 @@
-/* The boards' v2 .head (title now the calm board's Inter 48px), a summary sentence under it, actions to the right.
+/* The boards' v2 .head (title the calm board's Inter, 40px, 34px and 32px as the screen narrows), a summary sentence under it, actions to the right.
    The actions sit at the top, level with the title row: centred on the whole block (v3), a summary
    that wrapped to two lines took them down to the middle of it (owner, 30 Oct 2026). */
 .head {
@@ -25,19 +25,29 @@
   gap: 12px 20px;
 }
 
-/* The calm Dash board's .pg h1: Inter 48px, 600, tight. */
+/* Above the title: 12.5px, 600, tracked, uppercase, muted (a screen passes its own via PageHead's kicker). */
+.kicker {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* The calm Dash board's .pg h1: Inter 40px, 600, tight; 34px at 1100 and under, 32px on a phone. */
 .title {
   margin: 0;
   font-family: var(--font-body);
-  font-size: 48px;
+  font-size: 40px;
   font-weight: 600;
   line-height: 1.05;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.04em;
 }
 
 .summary {
   margin: 8px 0 0;
-  font-size: 15px;
+  font-size: 15.5px;
   color: var(--muted);
 }
 
@@ -53,6 +63,11 @@
   gap: 10px;
   /* Still on the right when they wrap under the title. */
   margin-left: auto;
+}
+
+/* With a kicker above the title the actions drop to stay level with it, as the board's .hrow .acts (30px, 18px on a phone). Without one they stay where they were. */
+.hasKicker .actions {
+  padding-top: 30px;
 }
 
 /* Tabs beside the title (Store, My Curios, often beside a phone preview): the actions sit at the right
@@ -95,6 +110,12 @@
   }
 }
 
+@media (max-width: 1100px) {
+  .title {
+    font-size: 34px;
+  }
+}
+
 @media (max-width: 760px) {
   .head {
     --head-x: 16px;
@@ -102,7 +123,7 @@
   }
 
   .title {
-    font-size: 38px;
+    font-size: 32px;
   }
 
   .summary {
@@ -112,6 +133,10 @@
   /* Under the title on a phone, the actions start at the left, as the boards draw "See your shop". */
   .actions {
     margin-left: 0;
+  }
+
+  .hasKicker .actions {
+    padding-top: 18px;
   }
 
   /* The actions' own line, so a "Saved" status can lead it and the button sit right. */
