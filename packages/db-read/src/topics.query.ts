@@ -81,9 +81,9 @@ function showWhere(show: TopicShow, chatIds: string[]): Prisma.TopicWhereInput {
  */
 export async function getTopics(
   accountId: string,
+  // `now` is still accepted: callers hand one moment to the whole screen, and the per-topic week that read it is gone.
   options: { limit?: number; offset?: number; now?: Date; show?: TopicShow; id?: string } = {},
 ): Promise<OwnerTopic[]> {
-  const now = options.now ?? new Date();
   const show = options.show ?? 'all';
   const topics = await prismaRead.topic.findMany({
     where: { page: { accountId }, ...(options.id ? { id: options.id } : {}), ...showWhere(show, show === 'needs' || show === 'chat' ? await chatAnsweredIds(accountId) : []) },

@@ -19,7 +19,6 @@ const klang: OwnerTopic = {
     { id: 'w2', text: 'boleh hantar ke klang tak', askCount: 5 },
     { id: 'w3', text: 'delivery klang ada?', askCount: 3 },
   ],
-  week: [1, 2, 1, 3, 2, 2, 3],
   chat: null,
 };
 

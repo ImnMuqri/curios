@@ -5,7 +5,7 @@ import { answerShare, listHref, QuestionsScreen, topicHref, weekLine } from './q
 import type { TopicActions } from './topic-detail.js';
 
 const now = new Date('2026-10-17T06:00:00Z');
-const base = { conflictAnswer: null, faqSlug: null, faqSuppressed: false, lastAskedAt: new Date('2026-10-17T03:00:00Z'), week: [0, 0, 0, 0, 0, 0, 1], chat: null };
+const base = { conflictAnswer: null, faqSlug: null, faqSuppressed: false, lastAskedAt: new Date('2026-10-17T03:00:00Z'), chat: null };
 const w = (id: string, text: string, askCount: number) => ({ id, text, askCount });
 const topics: OwnerTopic[] = [
   { ...base, id: 't1', title: 'Do you deliver to Klang?', askCount: 14, answer: null, wordings: [w('w1', 'Do you deliver to Klang?', 9), w('w2', 'delivery klang ada?', 5)] },
