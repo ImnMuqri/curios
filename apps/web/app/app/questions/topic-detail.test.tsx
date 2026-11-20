@@ -43,12 +43,15 @@ function actions(over: Partial<TopicActions> = {}): TopicActions {
 function show(topic = klang, opts: { calls?: TopicActions; others?: OwnerTopic[]; publishesFaq?: boolean } = {}) {
   const calls = opts.calls ?? actions();
   const onChanged = vi.fn();
-  const onSelect = vi.fn();
+  const onGo = vi.fn();
   const say = vi.fn();
+  const fail = vi.fn();
   render(
     <TopicDetail
       topic={topic}
       others={opts.others ?? [halal]}
+      backHref="/app/questions?show=needs"
+      hrefFor={(id) => `/app/questions?topic=${id}&show=needs`}
       publishesFaq={opts.publishesFaq ?? true}
       faqMinAsks={3}
       handle="keklina"
@@ -59,22 +62,37 @@ function show(topic = klang, opts: { calls?: TopicActions; others?: OwnerTopic[]
       now={now}
       actions={calls}
       onChanged={onChanged}
-      onSelect={onSelect}
+      onGo={onGo}
       say={say}
+      fail={fail}
     />,
   );
-  return { calls, onChanged, onSelect, say };
+  return { calls, onChanged, onGo, say, fail };
 }
 
 const answerBox = () => screen.getByRole('textbox', { name: 'Your answer' });
 
 describe('TopicDetail, the head', () => {
-  it('says what the topic waits on, how it was asked, and when', () => {
+  it('goes back to the list, and says what the topic waits on, how it was asked, and when', () => {
     show();
-    expect(screen.getByRole('heading', { name: 'Do you deliver to Klang?' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('href', '/app/questions?show=needs');
+    expect(screen.getByText('Questions · Topic')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Do you deliver to Klang?', level: 1 })).toBeInTheDocument();
     expect(screen.getByText('Needs answer')).toBeInTheDocument();
-    expect(screen.getByText(/14 asks in 3 wordings · last asked 12 min ago/)).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '14 asks in the last 7 days' })).toBeInTheDocument();
+    expect(screen.getByText(/14 asks, in 3 ways. Last asked 12 min ago./)).toBeInTheDocument();
+  });
+
+  it('has a row for each thing to do, in the board’s words', () => {
+    show();
+    for (const [title, line] of [
+      ['How people ask', 'Hover a wording to split it into its own topic, or delete it.'],
+      ['Your answer', 'The chat uses it for every wording above.'],
+      ['How the chat replies', 'On your page, right now.'],
+      ['Same question as…', 'Both have an answer? The one you merge into keeps its answer.'],
+    ] as const) {
+      expect(screen.getByRole('heading', { name: title, level: 3 })).toBeInTheDocument();
+      expect(screen.getByText(line)).toBeInTheDocument();
+    }
   });
 });
 
@@ -95,7 +113,7 @@ describe('TopicDetail, the answer', () => {
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save answer' })); });
     expect(calls.answer).toHaveBeenCalledWith('t1', 'Yes, RM15 to Klang.');
     expect(onChanged).toHaveBeenCalled();
-    expect(say).toHaveBeenCalledWith('Saved. The chat now answers all 3 wordings with it.');
+    expect(say).toHaveBeenCalledWith('Saved. The chat now answers all 3 ways with it.');
   });
 
   // The screen refreshes from the server after a save; until it does, what was saved stays on screen.
@@ -126,10 +144,11 @@ describe('TopicDetail, the answer', () => {
   });
 
   it('keeps the draft and shows the error when saving fails', async () => {
-    show(klang, { calls: actions({ answer: vi.fn(async () => { throw new Error('That answer is too long.'); }) }) });
+    const { fail } = show(klang, { calls: actions({ answer: vi.fn(async () => { throw new Error('That answer is too long.'); }) }) });
     fireEvent.change(answerBox(), { target: { value: 'Yes.' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save answer' })); });
-    expect(screen.getByRole('alert')).toHaveTextContent('That answer is too long.');
+    expect(fail).toHaveBeenCalledWith('That answer is too long.');
+    expect(screen.queryByRole('alert')).toBeNull();
     expect(answerBox()).toHaveValue('Yes.');
   });
 
@@ -161,14 +180,15 @@ describe('TopicDetail, the answer', () => {
 
   it('says what the chat does without an answer, rather than inventing a reply', () => {
     show();
-    expect(within(screen.getByLabelText('How the chat replies')).getByText(/replies from your facts, or says it isn.t sure/)).toBeInTheDocument();
+    // The hint sits under the chat, not in it (Dash.html .xhint).
+    expect(screen.getByText(/replies from your facts, or says it isn.t sure/)).toBeInTheDocument();
   });
 
   it('shows what the chat really answered from the facts, to the wording it was asked in', () => {
     show({ ...klang, chat: { asked: 'boleh hantar ke klang tak', reply: 'Boleh, RM10 ke Klang.', answered: true, at: new Date('2026-10-17T04:00:00Z') } });
     const chat = within(screen.getByLabelText('How the chat replies'));
     expect(chat.getByText('Boleh, RM10 ke Klang.')).toBeInTheDocument();
-    expect(chat.getByText(/Answered from your facts, 2h ago/)).toBeInTheDocument();
+    expect(screen.getByText(/Answered from your facts, 2h ago/)).toBeInTheDocument();
     expect(chat.queryByText('Kek can answer this one')).toBeNull();
     expect(screen.getByText('Chat answered')).toBeInTheDocument();
   });
@@ -177,7 +197,7 @@ describe('TopicDetail, the answer', () => {
     show({ ...klang, chat: { asked: 'Do you deliver to Klang?', reply: 'Tak pasti, saya tanya Lina.', answered: false, at: new Date('2026-10-17T05:00:00Z') } });
     const chat = within(screen.getByLabelText('How the chat replies'));
     expect(chat.getByText('Tak pasti, saya tanya Lina.')).toBeInTheDocument();
-    expect(chat.getByText(/wasn’t sure, 1h ago. Your answer replaces this reply/)).toBeInTheDocument();
+    expect(screen.getByText(/wasn’t sure, 1h ago. Your answer replaces this reply/)).toBeInTheDocument();
     expect(screen.getByText('Needs answer')).toBeInTheDocument();
   });
 
@@ -215,12 +235,32 @@ describe('TopicDetail, the wordings', () => {
   });
 
   it('deletes a wording only after confirming', async () => {
-    const { calls } = show();
+    const { calls, onChanged } = show();
     fireEvent.click(screen.getByRole('button', { name: 'Delete wording: delivery klang ada?' }));
     expect(calls.deleteWording).not.toHaveBeenCalled();
-    const confirm = screen.getByRole('group', { name: 'Confirm deleting this wording' });
-    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes' })); });
+    const confirm = screen.getByRole('group', { name: 'Delete wording' });
+    expect(confirm).toHaveTextContent('Delete “delivery klang ada?”');
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete it' })); });
     expect(calls.deleteWording).toHaveBeenCalledWith('w3');
+    expect(onChanged).toHaveBeenCalled();
+  });
+
+  it('keeps the wording when the owner keeps it, and puts focus back on its delete button', () => {
+    const { calls } = show();
+    const del = screen.getByRole('button', { name: 'Delete wording: delivery klang ada?' });
+    fireEvent.click(del);
+    fireEvent.click(within(screen.getByRole('group', { name: 'Delete wording' })).getByRole('button', { name: 'Keep it' }));
+    expect(calls.deleteWording).not.toHaveBeenCalled();
+    expect(screen.queryByRole('group', { name: 'Delete wording' })).toBeNull();
+    expect(del).toHaveFocus();
+  });
+
+  it('reports a failed delete in the toast and leaves the confirm open', async () => {
+    const { fail } = show(klang, { calls: actions({ deleteWording: vi.fn(async () => { throw new Error('Not yours.'); }) }) });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete wording: delivery klang ada?' }));
+    await act(async () => { fireEvent.click(within(screen.getByRole('group', { name: 'Delete wording' })).getByRole('button', { name: 'Yes, delete it' })); });
+    expect(fail).toHaveBeenCalledWith('Not yours.');
+    expect(screen.getByRole('group', { name: 'Delete wording' })).toBeInTheDocument();
   });
 
   it('offers no split for a topic with one wording', () => {
@@ -270,45 +310,74 @@ describe('TopicDetail, rename, merge and delete', () => {
   });
 
   it('merges into the topic picked, which keeps its answer, and moves there', async () => {
-    const { calls, onSelect } = show();
-    fireEvent.click(screen.getByRole('button', { name: 'Same question as…' }));
-    const merge = screen.getByRole('group', { name: 'Same question as' });
-    expect(within(merge).getByRole('button', { name: 'Merge' })).toBeDisabled();
-    fireEvent.click(within(merge).getByRole('button', { name: 'Is it halal?' }));
-    await act(async () => { fireEvent.click(within(merge).getByRole('button', { name: 'Merge' })); });
+    const { calls, onGo } = show();
+    expect(screen.queryByRole('button', { name: 'Merge' })).toBeNull();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Merge into' }), { target: { value: 't2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    const confirm = screen.getByRole('group', { name: 'Merge' });
+    expect(confirm).toHaveTextContent('Merge into “Is it halal?”');
+    expect(calls.merge).not.toHaveBeenCalled();
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, merge' })); });
     expect(calls.merge).toHaveBeenCalledWith('t1', 't2', 'into');
-    expect(onSelect).toHaveBeenCalledWith('t2');
+    expect(onGo).toHaveBeenCalledWith('/app/questions?topic=t2&show=needs');
   });
 
   it('keeps this topic’s answer when the one picked has none', async () => {
     const { calls } = show(halal, { others: [klang] });
-    fireEvent.click(screen.getByRole('button', { name: 'Same question as…' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Do you deliver to Klang?' }));
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Merge' })); });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Merge into' }), { target: { value: 't1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Yes, merge' })); });
     expect(calls.merge).toHaveBeenCalledWith('t2', 't1', 'this');
   });
 
   it('says which answer stays when both have one', () => {
     show(halal, { others: [{ ...klang, answer: 'Yes.' }] });
-    fireEvent.click(screen.getByRole('button', { name: 'Same question as…' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Do you deliver to Klang?' }));
-    expect(screen.getByText('Both have an answer. The one you merge into keeps its answer.')).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Merge into' }), { target: { value: 't1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    expect(screen.getByRole('group', { name: 'Merge' })).toHaveTextContent('Both have an answer: the one you merge into keeps its answer.');
   });
 
-  it('deletes only after confirming, naming what goes', async () => {
-    const { calls, onSelect } = show(halal);
+  it('offers no merge when there is nothing to merge into', () => {
+    show(klang, { others: [] });
+    expect(screen.queryByRole('combobox', { name: 'Merge into' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Delete topic' })).toBeInTheDocument();
+  });
+
+  it('deletes only after confirming, naming what goes, and goes back to the list', async () => {
+    const { calls, onGo } = show(halal);
     fireEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
-    const confirm = screen.getByRole('group', { name: 'Confirm deleting this topic' });
+    const confirm = screen.getByRole('group', { name: 'Delete topic' });
     expect(confirm).toHaveTextContent('Delete this topic and all its wordings? Your answer goes too.');
-    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Delete topic' })); });
+    expect(calls.deleteTopic).not.toHaveBeenCalled();
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete topic' })); });
     expect(calls.deleteTopic).toHaveBeenCalledWith('t2');
-    expect(onSelect).toHaveBeenCalledWith(null);
+    expect(onGo).toHaveBeenCalledWith('/app/questions?show=needs');
+  });
+
+  it('has one confirm open at a time: opening another closes the first', () => {
+    show(klang);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete wording: delivery klang ada?' }));
+    expect(screen.getByRole('group', { name: 'Delete wording' })).toBeInTheDocument();
+    fireEvent.change(screen.getByRole('combobox', { name: 'Merge into' }), { target: { value: 't2' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
+    expect(screen.getByRole('group', { name: 'Merge' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+    expect(screen.getByRole('group', { name: 'Delete topic' })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Merge' })).toBeNull();
+  });
+
+  it('reports a failed delete of the topic in the toast', async () => {
+    const { fail, onGo } = show(halal, { calls: actions({ deleteTopic: vi.fn(async () => { throw new Error('Try later.'); }) }) });
+    fireEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Yes, delete topic' })); });
+    expect(fail).toHaveBeenCalledWith('Try later.');
+    expect(onGo).not.toHaveBeenCalled();
   });
 
   it('shows the error when an action fails', async () => {
-    show(klang, { calls: actions({ split: vi.fn(async () => { throw new Error('That wording moved.'); }) }) });
+    const { fail } = show(klang, { calls: actions({ split: vi.fn(async () => { throw new Error('That wording moved.'); }) }) });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Not the same question: delivery klang ada?' })); });
-    expect(screen.getByRole('alert')).toHaveTextContent('That wording moved.');
+    expect(fail).toHaveBeenCalledWith('That wording moved.');
   });
 });
 
@@ -343,11 +412,12 @@ describe('TopicDetail, in the board’s words', () => {
   });
 
   it('says a topic went with its last wording, and lets go of it', async () => {
-    const { say, onSelect } = show(halal);
+    const { say, onGo } = show(halal);
     fireEvent.click(screen.getByRole('button', { name: 'Delete wording: Is it halal?' }));
-    const confirm = screen.getByRole('group', { name: 'Confirm deleting this wording' });
-    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes' })); });
+    const confirm = screen.getByRole('group', { name: 'Delete wording' });
+    expect(confirm).toHaveTextContent('so the topic goes with it');
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete it' })); });
     expect(say).toHaveBeenLastCalledWith('Wording deleted, and its topic with it.');
-    expect(onSelect).toHaveBeenCalledWith(null);
+    expect(onGo).toHaveBeenCalledWith('/app/questions?show=needs');
   });
 });

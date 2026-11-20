@@ -1,9 +1,9 @@
 /*
- * Questions, from the design handoff's Questions board (Dashboard v2): a
- * summary sentence in the header, the topics down the left (filtered, most asked first), and the
- * chosen topic on the right: how people asked it, your answer, what the chat
- * says with it, its FAQ page, and what else can be done with it. Shared
- * parts (buttons, the empty state, switches) are in ../_ui/editor.module.css.
+ * Questions, on the calm Dash board (Dash.html, the `questions` and `topic` screens). The frame is
+ * the inbox kit's (../_ui/inbox.module.css: the screen and body, the filter bar, tags, the pager,
+ * InlineConfirm, the empty Peek) and the stat strip's; this is what only Questions has: the topic
+ * cards (.qc), and on a topic's own screen the rows (.xrow) with the wording chips, the answer, the
+ * chat preview, the FAQ line, and Merge and Delete.
  */
 
 @keyframes fadeUp {
@@ -18,147 +18,327 @@
   }
 }
 
-.rowTop {
+/* ---- Pills ---- */
+
+/* Save answer, Copy your link: the board's .btn.dark (the action fill). */
+.darkPill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 42px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--action);
+  color: var(--action-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.darkPill:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+
+.darkPill:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.darkPill:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* See your FAQ, Try asking your page, Rename, Withdraw: the board's .btn.lite (white, on a ring). */
+.litePill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  margin: 0;
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.litePill:hover:not(:disabled) {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
+}
+
+.litePill:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.darkPill:focus-visible,
+.litePill:focus-visible,
+.back:focus-visible,
+.title:focus-visible,
+.tools button:focus-visible,
+.pickSelect:focus-visible,
+.renameInput:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+/* ---- The list: topic cards (Dash.html .qa / .qc) ---- */
+
+.qa {
+  display: grid;
+  gap: 12px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.qc {
+  padding: 20px 22px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.hd {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
 
-.rowTitle {
-  flex: 1;
-  min-width: 0;
-  font-weight: 600;
-  line-height: 1.35;
+.hd > small {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
 }
 
-.rowMeta {
-  display: block;
-  margin-top: 3px;
-  font-size: 12.5px;
+/* The topic's name, a link to its own screen. */
+.title {
+  min-width: 0;
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 4px;
+  transition: text-decoration-color 200ms;
+}
+
+.title:hover {
+  text-decoration-color: currentColor;
+}
+
+.ways {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ways li {
+  padding: 5px 11px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
+/* Write your answer once: the board's .in, a field (the 16px corner) with Save answer at its end. */
+.in {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 6px 6px 6px 18px;
+  border-radius: var(--field-radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.in:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.in textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 38px;
+  margin: 0;
+  padding: 9px 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.4;
+  outline: none;
+  resize: none;
+}
+
+.in textarea::placeholder {
   color: var(--muted);
 }
 
-/* How asked this topic is next to the most asked one. */
-.bar {
-  position: relative;
+.in .darkPill {
+  flex: none;
+  height: 38px;
+  font-size: 13.5px;
+}
+
+/* How far over the limit, beside Save answer. */
+.over {
+  align-self: center;
+  color: var(--calm-danger);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The answer, on a soft block (Dash.html .ans). */
+.ans {
+  margin: 12px 0 0;
+  padding: 12px 16px;
+  border-radius: var(--r-box);
+  background: var(--surface);
+  font-size: 14.5px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Nothing here, and No match. */
+.empty {
+  margin: 16px 0 0;
+  padding: 28px 16px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  text-align: center;
+}
+
+.empty b {
   display: block;
-  height: 4px;
-  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.empty small {
+  display: block;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+/* The pager, in a card of its own under the topics. */
+.foot {
+  margin-top: 12px;
   overflow: hidden;
-  border-radius: 2px;
+  border: 1px solid var(--edge);
+  border-radius: var(--r-box);
+  background: var(--card);
+}
+
+.foot > nav {
+  border-top: 0;
+}
+
+/* ---- A topic's own screen (Dash.html .xed) ---- */
+
+/* "‹ Questions", above the header, always: the topic is a screen of its own. */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  margin: 10px 0 0 34px;
+  padding: 0 14px 0 10px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background-color 200ms;
+}
+
+.back:hover {
   background: var(--surface);
 }
 
-.bar > i {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 0;
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--action) 25%, var(--card));
-  transition: width 800ms cubic-bezier(0.22, 1, 0.36, 1), background-color 200ms ease;
+.back span {
+  margin-top: -2px;
+  font-size: 20px;
+  line-height: 1;
 }
 
-.bar[data-needs] > i {
-  background: var(--kuning);
+/* The header's line puts the tag after the sentence. */
+.subTag {
+  margin-left: 6px;
+  vertical-align: 1px;
 }
 
-.bar[data-current] > i {
-  background: var(--action);
+/* A row: its heading at 240px, its content beside it. */
+.xrow {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 36px;
+  padding: 34px 0;
+  border-bottom: 1px solid var(--line);
 }
 
-.chip {
-  display: inline-flex;
-  align-items: center;
-  flex: none;
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: var(--hijau-muda);
-  color: color-mix(in oklch, var(--hijau) 70%, var(--ink));
-  font-size: 11.5px;
+.xrow:first-child {
+  padding-top: 8px;
+}
+
+.xrow[data-last] {
+  border-bottom: 0;
+}
+
+.rh h3 {
+  margin: 0;
+  font-size: 16px;
   font-weight: 600;
-  white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
-.chip[data-state='needs'] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
-}
-
-.chip[data-state='chat'] {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
-}
-
-.chip[data-state='conflict'] {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-}
-
-.head {
-  display: flex;
-  align-items: flex-start;
-  gap: 16px;
-}
-
-.head p {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+.rh p {
   margin: 6px 0 0;
-  font-size: 13.5px;
   color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-/* The last seven days of asks, today last and darker. */
-.spark {
-  display: flex;
-  align-items: flex-end;
-  gap: 5px;
-  height: 44px;
-  margin: 0 0 0 auto;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
+.xr {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-width: 0;
 }
 
-.spark i {
-  display: block;
-  width: 9px;
-  border-radius: 3px;
-  background: color-mix(in srgb, var(--action) 25%, var(--card));
-  transition: height 700ms cubic-bezier(0.22, 1, 0.36, 1);
+.hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
 }
 
-.spark i:last-child {
-  background: var(--action);
-}
-
-.rename {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.rename input {
-  flex: 1;
-  min-width: 200px;
-  height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--biru);
-  border-radius: 10px;
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
-  color: var(--ink);
-  font: inherit;
-  font-size: 18px;
-  font-weight: 600;
-  outline: none;
-}
-
-/* How people asked it: each wording as a pill, its tools showing on hover or focus. */
+/* The wordings: a chip each, its count, and the two tools (shown on hover or focus, always on touch). */
 .words {
   display: flex;
   flex-wrap: wrap;
@@ -172,219 +352,116 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 36px;
-  padding: 4px 6px 4px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
+  min-height: 40px;
+  padding: 0 8px 0 16px;
+  border-radius: var(--r-pill);
   background: var(--card);
-  font-size: 13.5px;
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: 14.5px;
   animation: fadeUp 300ms ease both;
 }
 
 .word > em {
-  color: var(--biru);
+  color: var(--muted);
   font-size: 12px;
   font-style: normal;
-  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.wordTools {
-  display: flex;
+.tools {
+  display: inline-flex;
   gap: 2px;
-  max-width: 0;
-  overflow: hidden;
-  opacity: 0;
-  transition: max-width 260ms ease, opacity 200ms ease;
 }
 
-.word:hover .wordTools,
-.word:focus-within .wordTools {
-  max-width: 200px;
+.tools button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 200ms,
+    background-color 200ms;
+}
+
+.word:hover .tools button,
+.word:focus-within .tools button,
+.tools button:focus-visible {
   opacity: 1;
 }
 
+.tools button:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.tools button[data-danger]:hover:not(:disabled) {
+  color: var(--calm-danger);
+}
+
+.tools button:disabled {
+  cursor: default;
+}
+
+/* A phone has no hover: the tools are always there. */
 @media (hover: none) {
-  .wordTools {
-    max-width: 200px;
+  .tools button {
     opacity: 1;
   }
 }
 
-.wordTools button,
-.wordConfirm button {
-  height: 26px;
-  padding: 0 9px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 11.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.wordTools button:hover {
-  background: var(--biru-muda);
-  color: var(--biru);
-}
-
-.wordTools button[data-danger]:hover {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-}
-
-.wordConfirm {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--merah-deep);
-  font-size: 12px;
-}
-
-.wordConfirm button:first-of-type {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-  font-weight: 600;
-}
-
-/* Your answer beside (or above) what the chat says with it. */
-.answerGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 16px;
-}
-
-.answer {
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  background: var(--card);
-  transition: border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.answer:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
-}
-
-.answer textarea {
+/* The answer: a field with its footer. */
+.answerField {
   display: block;
-  flex: 1;
   width: 100%;
-  min-height: 150px;
-  padding: 12px;
+  min-height: 110px;
+  margin: 0;
+  padding: 16px 20px;
   border: 0;
-  background: transparent;
+  border-radius: var(--field-radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
   font: inherit;
-  line-height: 1.55;
-  resize: none;
-  outline: none;
+  font-size: 15px;
+  line-height: 1.5;
+  resize: vertical;
 }
 
-.answerFoot {
+.answerField:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.answerField::placeholder {
+  color: var(--muted);
+}
+
+.btns {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  padding: 6px 6px 6px 12px;
-  border-top: 1px solid var(--line);
 }
 
-.answerFoot small {
+.btns small {
   margin-right: auto;
+  color: var(--muted);
   font-size: 12px;
-  color: var(--faint);
+  font-variant-numeric: tabular-nums;
 }
 
-.answerFoot small[data-over] {
-  color: var(--merah-deep);
-}
-
-.save {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--action);
-  color: var(--action-fg);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 160ms ease, transform 160ms ease;
-}
-
-.save:hover:not(:disabled) {
-  background: var(--action-hover);
-}
-
-.save:active:not(:disabled) {
-  transform: scale(0.97);
-}
-
-.save:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.save svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ghost {
-  height: 34px;
-  padding: 0 12px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--merah-deep);
-  font: inherit;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.ghost:hover {
-  background: var(--merah-muda);
-}
-
-/* What the chat says, on the inbox's neutral chat panel (inbox.chat): its label, the question, then its reply. */
-.chatLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-/* The live dot: green, as the boards' v2 .chatc .lbl i. */
-.chatLabel i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--hijau);
-}
-
-
-.replyNote {
-  align-self: flex-start;
-  max-width: 92%;
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--muted);
+.btns small[data-over] {
+  color: var(--calm-danger);
 }
 
 /* Two answers: pick one. */
@@ -397,22 +474,21 @@
 .pick {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  border: 1.5px solid var(--edge);
-  border-radius: 10px;
+  gap: 8px;
+  margin: 0;
+  padding: 16px 18px;
+  border: 0;
+  border-radius: var(--r-box);
   background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms ease, transform 260ms cubic-bezier(0.34, 1.4, 0.64, 1), box-shadow 160ms ease;
 }
 
 .pick:hover:not(:disabled) {
-  border-color: var(--biru);
-  transform: translateY(-2px);
-  box-shadow: 0 12px 24px -18px rgb(35 64 200 / 60%);
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
 }
 
 .pick:focus-visible {
@@ -422,173 +498,31 @@
 
 .pick small {
   color: var(--muted);
-  font-size: 11.5px;
+  font-size: 12.5px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
 }
 
 .pick b {
+  font-size: 14.5px;
   font-weight: 500;
-  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.pick > span {
-  margin-top: auto;
-  color: var(--biru);
-  font-size: 12.5px;
+.pick span {
+  font-size: 13px;
   font-weight: 600;
 }
 
-/* Its FAQ page. */
-.faq {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-
-.faqText {
-  flex: 1;
-  min-width: 0;
-}
-
-.faqText b {
-  display: block;
-  font-size: 13.5px;
-  font-weight: 600;
-}
-
-.faqText span {
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.faqText a {
-  display: block;
-  margin-top: 2px;
+/* How the chat replies: the board's .xchat, a soft panel with the question and the reply in it. */
+.xchat {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
   overflow: hidden;
-  color: var(--biru);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  text-decoration: none;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.faqText a:hover {
-  text-decoration: underline;
-}
-
-/* Rename, merge, delete. */
-.more {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 26px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
-}
-
-.outline {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--card);
+  border-radius: var(--r-box);
+  background: var(--surface);
   color: var(--ink);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.outline:hover:not(:disabled) {
-  border-color: var(--faint);
-  background: var(--paper);
-}
-
-.outline[aria-pressed='true'] {
-  border-color: color-mix(in srgb, var(--biru) 50%, var(--card));
-  background: var(--biru-muda);
-  color: color-mix(in oklch, var(--biru) 70%, var(--ink));
-}
-
-.moreEnd {
-  margin-left: auto;
-}
-
-.merge {
-  flex-basis: 100%;
-  order: 9;
-  padding: 14px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
-  animation: fadeUp 260ms ease both;
-}
-
-.merge > p {
-  margin: 0 0 10px;
-  color: color-mix(in oklch, var(--biru) 70%, var(--ink));
-  font-size: 13px;
-}
-
-.merge > p + p {
-  margin: 10px 0 0;
-  color: var(--ink-soft);
-  font-size: 12.5px;
-}
-
-.mergeChoices {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.mergeActions {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.error {
-  margin-top: 12px;
-}
-
-/* The board's save: eight sparks fly off the button, and the answer types itself in. */
-.sparks {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.sparks i {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 3px;
-  height: 12px;
-  margin: -6px 0 0 -1.5px;
-  border-radius: 2px;
-  background: var(--action);
-  animation: spark 520ms ease-out forwards;
-}
-
-@keyframes spark {
-  from {
-    transform: rotate(var(--r)) translateY(-18px) scaleY(1);
-    opacity: 1;
-  }
-  to {
-    transform: rotate(var(--r)) translateY(-40px) scaleY(0.2);
-    opacity: 0;
-  }
 }
 
 .caret {
@@ -607,50 +541,195 @@
   }
 }
 
+/* The FAQ page: its address and the switch. */
+.faq {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.faq a {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Merge into: a field, 16px corners, and the select's own arrow drawn in the muted ink. */
+.pickField {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+}
+
+.pickField > small {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.pickSelect {
+  width: 100%;
+  height: 50px;
+  margin: 0;
+  padding: 0 40px 0 20px;
+  border: 0;
+  border-radius: var(--field-radius);
+  appearance: none;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.pickSelect:focus {
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.pickField::after {
+  position: absolute;
+  right: 18px;
+  bottom: 17px;
+  width: 16px;
+  height: 16px;
+  background: var(--muted);
+  content: '';
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* The InlineConfirms sit at the left of their row, not centred. */
+.confirmSlot {
+  display: grid;
+  justify-items: start;
+}
+
+.confirmSlot > div {
+  justify-items: start;
+  margin-top: 0;
+}
+
+/* Renaming: the title's field, between the header and the rows. */
+.rename {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.renameInput {
+  flex: 1;
+  min-width: 200px;
+  height: 50px;
+  margin: 0;
+  padding: 0 20px;
+  border: 0;
+  border-radius: var(--field-radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.renameInput:focus {
+  outline: none;
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+/* The board's save: eight sparks fly off the button, and the answer types itself in. */
+.sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sparks i {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 12px;
+  margin: -6px 0 0 -1.5px;
+  border-radius: var(--r-pill);
+  background: var(--action);
+  animation: spark 520ms ease-out forwards;
+}
+
+@keyframes spark {
+  from {
+    transform: rotate(var(--r)) translateY(-18px) scaleY(1);
+    opacity: 1;
+  }
+
+  to {
+    transform: rotate(var(--r)) translateY(-40px) scaleY(0.2);
+    opacity: 0;
+  }
+}
+
+/* ---- Narrower ---- */
+
+@media (max-width: 1100px) {
+  .xrow {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+}
+
+@media (max-width: 760px) {
+  .back {
+    margin-left: 10px;
+  }
+
+  .xrow {
+    padding: 26px 0;
+  }
+
+  .hd {
+    flex-wrap: wrap;
+  }
+
+  .hd > small {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .in {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 12px 14px;
+  }
+
+  .in .darkPill {
+    width: 100%;
+  }
+
+  .conflict {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .qc,
+  .word {
+    animation: none;
+  }
+
   .sparks {
     display: none;
   }
 
   .caret {
     animation: none;
-  }
-}
-
-/* ---- Narrower ---- */
-
-@container (max-width: 760px) {
-  .head {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .spark {
-    margin-left: 0;
-  }
-
-  .answerGrid,
-  .conflict {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 760px) {
-
-  .head h2 {
-    font-size: 23px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .word,
-  .merge {
-    animation: none;
-  }
-
-  .bar > i,
-  .spark i,
-  .wordTools {
-    transition: none;
   }
 }

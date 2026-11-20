@@ -5,13 +5,13 @@ import type { OwnerPage } from '@curios/db-read';
 const getTopics = vi.fn();
 const getOwnerPage = vi.fn();
 const getMyCurios = vi.fn();
-const countQuestionsThisWeek = vi.fn();
+const getQuestionWeek = vi.fn();
 const getAnswerRate = vi.fn(async () => ({ answered: 0, recorded: 0 }));
 // 30 topics in all: five pages of seven; nine need the owner: two pages.
 const totals = { topics: { all: 30, needs: 9, chat: 5, answered: 16 }, asks: 60, answeredAsks: 20 };
 const getTopicTotals = vi.fn(async () => totals);
 const getTopicChoices = vi.fn(async () => [{ id: 't1', title: 'Harga', answer: null }]);
-vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
+vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, getQuestionWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -60,7 +60,8 @@ describe('QuestionsPage', () => {
     Topics.mockClear();
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getTopics.mockResolvedValue([]);
-    countQuestionsThisWeek.mockResolvedValue(23);
+    getQuestionWeek.mockResolvedValue({ thisWeek: 39, lastWeek: 27, days: [3, 5, 4, 8, 6, 7, 6] });
+    getTopicChoices.mockClear();
     getMyCurios.mockResolvedValue({ handle: 'nadia', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null });
   });
 
@@ -102,14 +103,33 @@ describe('QuestionsPage', () => {
     expect(props.paging).toEqual({ page: 3, pages: 5 });
   });
 
-  it('pages a filter by its own total, and gives an empty filter one page', async () => {
+  it('pages a filter by its own total', async () => {
     getOwnerPage.mockResolvedValue(business);
     render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'needs' }) }));
     expect(Topics.mock.lastCall?.[0]).toMatchObject({ paging: { page: 1, pages: 2 } });
+  });
 
-    getTopicTotals.mockResolvedValueOnce({ ...totals, topics: { ...totals.topics, chat: 0 } });
+  // Owner, 19 Nov 2026: "Chat answers" is dropped, and old links to it still open the page.
+  it('opens an old ?show=chat link as All', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getTopics.mockResolvedValue([{ id: 't1' }]);
     render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'chat' }) }));
-    expect(Topics.mock.lastCall?.[0]).toMatchObject({ show: 'chat', paging: { page: 1, pages: 1 } });
+    expect(getTopics).toHaveBeenLastCalledWith('acc1', expect.objectContaining({ show: 'all' }));
+    expect(Topics.mock.lastCall?.[0]).toMatchObject({ show: 'all', paging: { page: 1, pages: 5 } });
+  });
+
+  it('reads one topic by id for ?topic, leaves the list out, and keeps show and page for the way back', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getTopics.mockResolvedValue([{ id: 't9', title: 'Harga' }]);
+    render(await QuestionsPage({ searchParams: Promise.resolve({ topic: 't9', show: 'needs', page: '2' }) }));
+    expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), id: 't9' });
+    expect(Topics.mock.lastCall?.[0]).toMatchObject({ topic: { id: 't9', title: 'Harga' }, topics: [], show: 'needs', paging: { page: 2, pages: 2 } });
+  });
+
+  it('sends a topic that is gone (or not this owner’s) back to the list', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getTopics.mockResolvedValue([]);
+    await expect(QuestionsPage({ searchParams: Promise.resolve({ topic: 'nope' }) })).rejects.toThrow('NEXT_REDIRECT:/app/questions');
   });
 
   it('filters with ?show before paging, ignoring a filter it does not know', async () => {
@@ -142,9 +162,11 @@ describe('QuestionsPage', () => {
 
     const props = Topics.mock.calls[0]![0];
     const now = getTopics.mock.calls[0]![1].now as Date;
-    expect(countQuestionsThisWeek).toHaveBeenCalledWith('acc1', now);
+    expect(getQuestionWeek).toHaveBeenCalledWith('acc1', now);
+    // The card says "this week": seven days, not the thirty the query defaults to.
+    expect(getAnswerRate).toHaveBeenCalledWith('acc1', now, 7);
     expect(props).toMatchObject({
-      askedThisWeek: 23,
+      week: { thisWeek: 39, lastWeek: 27, days: [3, 5, 4, 8, 6, 7, 6] },
       handle: 'nadia',
       now: now.toISOString(),
       look: { accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null },

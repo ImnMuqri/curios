@@ -62,11 +62,13 @@ describe('the inbox kit stylesheet', () => {
     expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*\.chip \{\s*height: 44px;/);
   });
 
-  it('keeps the classes the pre-kit screens still read', () => {
-    for (const cls of ['board', 'detail', 'detailInner', 'filters', 'filter', 'count', 'rows', 'row', 'listEmpty', 'listNote', 'title', 'section', 'chat', 'pager', 'pages']) {
+  it('keeps the shared pager and search, and no longer carries the pre-kit two-column frame', () => {
+    for (const cls of ['pager', 'pages', 'search']) {
       expect(rules(cls).length, cls).toBeGreaterThan(0);
     }
-    expect(css).toMatch(/\.board > \.list \{/);
+    for (const cls of ['board', 'detail', 'detailInner', 'filters', 'filter', 'count', 'rows', 'row', 'listEmpty', 'listNote', 'title', 'section', 'chat']) {
+      expect(rules(cls).length, cls).toBe(0);
+    }
   });
 });
 

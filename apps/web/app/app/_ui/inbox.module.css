@@ -4,8 +4,8 @@
  * (chips and a search), and a split of the list card and the picked item's card. On a phone a
  * picked item takes the screen as its own view (`data-open` on .split) with a way back.
  *
- * Until each screen is rebuilt on the kit (T1.5 to T1.7), the older two-column frame stays below it
- * (.board and what sits in it): the screens still read those classes.
+ * Orders, Leads and Questions are all on it now; the pre-kit two-column frame (.board, .filters,
+ * .rows, .detail, .section, .chat and the rest) was deleted with the last page that read it.
  */
 
 @keyframes fadeUp {
@@ -20,21 +20,7 @@
   }
 }
 
-/* ---- The two columns ---- */
-
-/* Straight under the header (Dashboard v2): no line between them, the list column on its own light ground. */
-.board {
-  flex: 1;
-  display: grid;
-  grid-template-columns: 430px minmax(0, 1fr);
-  min-height: 0;
-}
-
-/* The old list column (pre-kit screens): scoped to .board, since the kit's .list is a card. */
-.board > .list {
-  border-right: 1px solid var(--line);
-  background: var(--paper);
-}
+/* ---- The search ---- */
 
 /* The search (Dash.html .xsrch): narrows what is on the screen as you type. A field, so the 16px box corner (DEVIATIONS 347). */
 .search {
@@ -47,11 +33,6 @@
   background: var(--card);
   box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--faint);
-}
-
-/* Where the old list column puts it. */
-.board .search {
-  margin: 16px 16px 0;
 }
 
 .search:focus-within {
@@ -84,199 +65,6 @@
 /* Read, so muted, not the icon's faint (global rule 5). */
 .search input::placeholder {
   color: var(--muted);
-}
-
-/*
- * All, To check, Paid...: the one pill style (pill-tabs.module.css's track, pill and count on the
- * same elements), stretched across the column in equal parts. Two classes deep, so it wins over
- * the track's own display and the pill's size whichever stylesheet loads first.
- */
-.list .filters {
-  display: grid;
-  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
-  gap: 2px;
-  margin: 10px 16px 0;
-  padding: 3px;
-}
-
-.filters .filter {
-  gap: 6px;
-  height: 32px;
-  padding: 0 6px;
-  font-size: 12.5px;
-}
-
-.filters .count[data-tone='kuning'] {
-  background: var(--kuning);
-  color: var(--ink);
-}
-
-.filters .count[data-tone='merah'] {
-  background: var(--merah);
-  color: var(--card);
-}
-
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 0;
-  padding: 12px 12px 24px;
-  list-style: none;
-}
-
-.row {
-  display: block;
-  width: 100%;
-  padding: 12px 14px 14px;
-  border: 0;
-  border-radius: var(--r-box);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 160ms ease;
-  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.row:hover {
-  background: color-mix(in srgb, var(--pick) 55%, transparent);
-}
-
-/* The chosen one: a flat tint, no raised card, ring or border. */
-.row[aria-current='true'] {
-  background: var(--pick);
-}
-
-.row:focus-visible {
-  outline: 2px solid var(--biru);
-  outline-offset: 2px;
-}
-
-.listEmpty {
-  margin: 48px 24px;
-  color: var(--muted);
-  font-size: 13.5px;
-  text-align: center;
-}
-
-.listEmpty b {
-  display: block;
-  margin-bottom: 4px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  color: var(--ink);
-}
-
-/* How long the list keeps things, quiet at its foot: it was the header's note before the summary took that line. */
-.listNote {
-  margin: 0;
-  padding: 4px 16px 20px;
-  color: var(--faint);
-  font-size: 12px;
-  text-align: center;
-}
-
-/* ---- The chosen item ---- */
-
-.detail {
-  min-width: 0;
-  padding: 20px 40px 48px;
-  container-type: inline-size;
-}
-
-.detailInner {
-  max-width: 1240px;
-  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* The chosen item's title: 22px text, not a display heading (the boards' v3 .dh / .qh / .lh). */
-.title {
-  margin: 0;
-  font-family: inherit;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-}
-
-.section {
-  margin-top: 26px;
-}
-
-.section > h3 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin: 0 0 10px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-.section > h3 span {
-  font-size: 12.5px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-/* Dashboard chats (the Questions preview, a lead's conversation): a neutral AI-chat panel, not the owner's page colours. */
-.chat {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  overflow: hidden;
-  border-radius: var(--r-box);
-  background: var(--chat);
-  color: var(--ink);
-}
-
-@media (min-width: 1101px) and (max-width: 1400px) {
-  .board {
-    grid-template-columns: 340px minmax(0, 1fr);
-  }
-}
-
-@media (max-width: 1100px) {
-  .board {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .board > .list {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-
-  .rows {
-    max-height: 380px;
-    overflow-y: auto;
-  }
-}
-
-@media (max-width: 760px) {
-  .board .search {
-    margin: 14px 16px 0;
-  }
-
-  .detail {
-    padding: 20px 16px 40px;
-  }
-
-  .filters .filter {
-    gap: 4px;
-    font-size: 12px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .row,
-  .detailInner {
-    animation: none;
-  }
 }
 
 /* Under a list: Newest / Older, or Previous / Next. Quiet, since most owners never need it. */

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
-import { countQuestionsThisWeek, getAnswerRate, getMyCurios, getOwnerPage, getTopicChoices, getTopics, getTopicTotals, type TopicShow } from '@curios/db-read';
+import { getAnswerRate, getMyCurios, getOwnerPage, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals, type TopicShow } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Questions } from './questions-screen.js';
 
@@ -13,25 +13,33 @@ import { Questions } from './questions-screen.js';
  * answer on its own the last time it was asked (its "not sure" marker, see
  * unsure.ts), and the ones it has never replied to yet.
  */
-/** Topics a screen shows; `?page=2` is the next seven, most asked first. `?show=needs|chat|answered` filters, before paging. */
+/**
+ * Topics a screen shows; `?page=2` is the next seven, most asked first. `?show=needs|answered` filters, before
+ * paging. The old "Chat answers" filter is gone (owner, 19 Nov 2026): `?show=chat` links still open the page, as All.
+ * `?topic=<id>` is one topic's own screen, from any page of the list; `show` and `page` ride along so "Questions" goes back to where it was.
+ */
 const TOPICS_PER_PAGE = 7;
 
-const SHOWS: readonly TopicShow[] = ['all', 'needs', 'chat', 'answered'];
+const SHOWS = ['all', 'needs', 'answered'] as const satisfies readonly TopicShow[];
 
-export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[]; show?: string | string[] }> }) {
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[]; show?: string | string[]; topic?: string | string[] }> }) {
   const query = await searchParams;
   const pageNumber = Math.max(1, Number.parseInt(typeof query.page === 'string' ? query.page : '1', 10) || 1);
-  const show: TopicShow = SHOWS.find((s) => s === query.show) ?? 'all';
+  const show = SHOWS.find((s) => s === query.show) ?? 'all';
+  const topicId = typeof query.topic === 'string' && query.topic ? query.topic : null;
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
   // One moment for the whole screen, handed down, so "12 min ago" and the
   // week of asks read the same on the server and in the browser.
   const now = new Date();
-  const [topics, askedThisWeek, answerRate, owned, page, totals, choices] = await Promise.all([
-    getTopics(owner.accountId, { now, show, limit: TOPICS_PER_PAGE, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
-    countQuestionsThisWeek(owner.accountId, now),
-    getAnswerRate(owner.accountId, now),
+  const [topics, week, answerRate, owned, page, totals, choices] = await Promise.all([
+    // The topic screen reads its one topic; the list is not on it.
+    getTopics(owner.accountId, topicId ? { now, id: topicId } : { now, show, limit: TOPICS_PER_PAGE, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
+    // Malaysian calendar days: this week, last week and the week's bars.
+    getQuestionWeek(owner.accountId, now),
+    // The card says "this week", so seven days (the default is thirty).
+    getAnswerRate(owner.accountId, now, 7),
     getOwnerPage(owner.accountId),
     // For the chat preview's colours.
     getMyCurios(owner.accountId),
@@ -42,7 +50,9 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   if (!owned || !page) redirect('/app/onboarding');
   const pages = Math.max(1, Math.ceil(totals.topics[show] / TOPICS_PER_PAGE));
   // Past the last page (topics merged or deleted since the link was made): the first one.
-  if (pageNumber > pages) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
+  if (!topicId && pageNumber > pages) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
+  // A topic that is gone (deleted or merged away, or never this owner's): the list again.
+  if (topicId && topics.length === 0) redirect('/app/questions');
 
   // Plain data across the boundary: strings, numbers, booleans and Dates all
   // cross fine. The handlers live inside `Questions`, a client component -- a
@@ -52,12 +62,13 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
     <Questions
       // Keyed by the page, as Leads is: each page of topics starts fresh after a client-side navigation.
       key={`${show}-${pageNumber}`}
-      topics={topics}
+      topics={topicId ? [] : topics}
+      topic={topicId ? (topics[0] ?? null) : null}
       paging={{ page: pageNumber, pages }}
       show={show}
       totals={totals}
       choices={choices}
-      askedThisWeek={askedThisWeek}
+      week={week}
       answerRate={answerRate}
       publishesFaq={owned.mode === 'BUSINESS'}
       faqMinAsks={FAQ_MIN_ASKS}
