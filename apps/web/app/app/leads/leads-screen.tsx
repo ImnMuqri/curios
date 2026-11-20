@@ -96,6 +96,8 @@ export function LeadsScreen({
   // Sent on WhatsApp in this visit: their card keeps the first message, with the done line in place of Send.
   const [sent, setSent] = useState<ReadonlySet<string>>(() => new Set());
   const [copied, setCopied] = useState(false);
+  // The lead last moved from its card, as the owner left it (see `kept`).
+  const [snapshot, setSnapshot] = useState<OwnerLead | null>(null);
   const { say, note, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -108,8 +110,11 @@ export function LeadsScreen({
   const statusOf = (lead: OwnerLead) => statuses[lead.id] ?? lead.status;
   const shown = listed.filter((lead) => (filter === 'all' || statusOf(lead) === filter) && leadMatches(lead, query));
   // The open lead is gone from the list altogether (another tab deleted it): back to the list, saying so.
-  const gone = open && chosenId !== null && !listed.some((lead) => lead.id === chosenId);
-  const pinned = view.holds(chosenId) ? (listed.find((lead) => lead.id === chosenId) ?? null) : null;
+  // A lead the owner moved from its card may leave the refreshed list (an old New one past the newest handled);
+  // the last copy seen, with the status it was moved to, keeps the card in place, on every width.
+  const kept = snapshot !== null && snapshot.id === chosenId && !removed.has(snapshot.id) ? snapshot : null;
+  const gone = open && chosenId !== null && !listed.some((lead) => lead.id === chosenId) && kept === null;
+  const pinned = view.holds(chosenId) ? (listed.find((lead) => lead.id === chosenId) ?? kept) : null;
   const chosen = gone ? null : (pinned ?? shown.find((lead) => lead.id === chosenId) ?? shown[0] ?? null);
   // One count everywhere: the chip says what the card says (and the sidebar badge, countNavBadges).
   const counts: Record<Filter, number | null> = { all: null, NEW: stats.waiting, CONTACTED: null, SOLD: null, CLOSED: null };
@@ -136,6 +141,7 @@ export function LeadsScreen({
     if (!confirmed.current.has(id)) confirmed.current.set(id, statusOf(lead));
     setChosenId(id);
     view.hold(id);
+    setSnapshot({ ...lead, status: next });
     setStatuses((current) => ({ ...current, [id]: next }));
     const run = (queue.current.get(id) ?? Promise.resolve()).catch(() => undefined).then(() => actions.setStatus(id, next));
     queue.current.set(id, run.catch(() => undefined));
@@ -147,6 +153,7 @@ export function LeadsScreen({
       if (!current()) return false;
       const back = confirmed.current.get(id) ?? statusOf(lead);
       confirmed.current.delete(id);
+      setSnapshot((now) => (now?.id === id ? { ...now, status: back } : now));
       setStatuses((now) => ({ ...now, [id]: back }));
       throw failure;
     }

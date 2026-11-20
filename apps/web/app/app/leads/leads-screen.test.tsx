@@ -243,7 +243,7 @@ describe('LeadsScreen, the status', () => {
     });
     expect(statusSwitch().getByRole('radio', { name: 'New' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('alert')).toHaveTextContent('No such lead.');
-    expect(screen.getByRole('status')).toHaveTextContent('');
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('flips a new lead to Contacted when the first message is sent, keeping the message and turning Send into the done line', async () => {
@@ -310,7 +310,10 @@ describe('LeadsScreen, the status', () => {
       await flush();
       // A superseded one settling late changes nothing on screen and says nothing.
       expect(statusSwitch().getByRole('radio', { name: 'Closed' })).toHaveAttribute('aria-checked', 'true');
-      if (status !== 'CLOSED') expect(screen.getByRole('status')).toHaveTextContent('');
+      if (status !== 'CLOSED') {
+        expect(screen.getByRole('status')).toBeEmptyDOMElement();
+        expect(screen.queryByRole('alert')).toBeNull();
+      }
     }
     expect(setStatus.mock.calls.map((call) => call[1])).toEqual(['CONTACTED', 'SOLD', 'CLOSED']);
     expect(screen.getByRole('status')).toHaveTextContent('Marked closed.');
@@ -569,5 +572,22 @@ describe('LeadsScreen, on a phone', () => {
     refresh(leads.filter((lead) => lead.id !== 'l2'));
     await waitFor(() => expect(document.querySelector('[data-open]')).toBeNull());
     expect(screen.getByRole('status')).toHaveTextContent('That lead is no longer in this list.');
+  });
+});
+
+describe('LeadsScreen, a held lead on a wide screen', () => {
+  it('keeps the card on the lead the owner moved when the refreshed list no longer carries it, never another customer’s', async () => {
+    const { refresh } = show();
+    await act(async () => {
+      fireEvent.click(statusSwitch().getByRole('radio', { name: 'Contacted' }));
+    });
+    // An old New lead moved out of New and past the newest handled ones: the read leaves it out.
+    refresh(leads.filter((lead) => lead.id !== 'l1'));
+    expect(screen.getByRole('heading', { level: 2, name: /\+60 12-781 4402/ })).toBeInTheDocument();
+    expect(statusSwitch().getByRole('radio', { name: 'Contacted' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.queryByRole('heading', { level: 2, name: /\+60 11-2045 7788/ })).toBeNull();
+    // Picking another row lets it go.
+    fireEvent.click(rowOf(/\+60 11-2045 7788/));
+    expect(screen.getByRole('heading', { level: 2, name: /\+60 11-2045 7788/ })).toBeInTheDocument();
   });
 });

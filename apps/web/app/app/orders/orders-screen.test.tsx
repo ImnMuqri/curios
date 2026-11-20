@@ -538,3 +538,17 @@ describe('OrdersScreen, round 1 fixes', () => {
     });
   });
 });
+
+describe('OrdersScreen, a held order on a wide screen', () => {
+  it('says so, rather than showing another customer’s order, when a move takes the held order out of the refreshed list', async () => {
+    const { refresh } = show();
+    fireEvent.click(rowOf('Wei Ling'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mark completed' }));
+    });
+    refresh(orders.filter((o) => o.id !== 'o11'));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('That order is no longer in this list.'));
+    expect(screen.queryByRole('heading', { level: 2, name: 'Wei Ling' })).toBeNull();
+    await waitFor(() => expect(rowButtons()[0]).toHaveFocus());
+  });
+});

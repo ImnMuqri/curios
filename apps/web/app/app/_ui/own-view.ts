@@ -107,6 +107,7 @@ export function useOwnView({
       focusAfter.current = FIRST;
       setOpen(false);
       setHeld(null);
+      setNudge((n) => n + 1);
     },
     /** The item was deleted from its own card: focus lands on the first row left, not the page's foot. */
     removed() {

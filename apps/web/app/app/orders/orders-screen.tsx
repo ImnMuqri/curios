@@ -133,7 +133,9 @@ export function OrdersScreen({
   // may leave the filter (a receipt marked paid under To check), and the card must never go blank or turn into another
   // customer's order under the owner's pointer, a wide screen's included.
   // The open order is gone from the list altogether (another tab, a later page): back to the list, saying so.
-  const gone = open && chosenId !== null && !orders.some((o) => o.id === chosenId);
+  // A held order (a move made from its card) that the refreshed list no longer carries (an old open one completed, past
+  // the newest finished) is told the same way on every width, never swapped for another customer's.
+  const gone = view.holds(chosenId) && chosenId !== null && !orders.some((o) => o.id === chosenId);
   const pinned = view.holds(chosenId) ? (orders.find((o) => o.id === chosenId) ?? null) : null;
   const chosen = gone ? null : pinned ?? shown.find((o) => o.id === chosenId) ?? shown[0] ?? null;
   // One count everywhere: the chips say what the cards say (and the sidebar badge, countNavBadges).
