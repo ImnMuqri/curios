@@ -306,6 +306,16 @@
   border-bottom: 0;
 }
 
+/* The inbox header's 24px foot (inbox.module.css .screen > header) already sits above the topic's
+   first row, so that row's own 34px top keeps only the rest, as the board spaces it under the sub line. */
+.topicBody > .xrow:first-child {
+  padding-top: 10px;
+}
+
+.topicBody > .rename:first-child {
+  margin-top: 0;
+}
+
 .rh h3 {
   margin: 0;
   font-size: 16px;

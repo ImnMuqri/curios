@@ -101,7 +101,7 @@ describe('StatStrip', () => {
   });
 
   it('keeps the board values (Dash.html 1405-1418, 1441-1443)', () => {
-    expect(css).toMatch(/\.strip \{[^}]*gap: 12px;[^}]*margin-top: 24px;/);
+    expect(css).toMatch(/\.strip \{[^}]*gap: 12px;[^}]*margin-top: var\(--strip-top, 24px\);/);
     expect(css).toMatch(/\.card \{[^}]*min-height: 112px;[^}]*padding: 16px 18px;[^}]*border-radius: var\(--r-box\);/);
     expect(css).toMatch(/button\.card:hover \{[^}]*var\(--calm-hover-ring\),[^}]*var\(--calm-hover-shadow\)/);
     expect(css).toMatch(/\.card\[aria-pressed='true'\] \{[^}]*inset 0 0 0 2px var\(--ink\)/);

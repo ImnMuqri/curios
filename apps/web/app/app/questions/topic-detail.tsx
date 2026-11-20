@@ -225,7 +225,7 @@ export function TopicDetail({
         ) : null}
       </PageHead>
 
-      <div className={inbox.body}>
+      <div className={`${inbox.body} ${styles.topicBody}`}>
         {renaming ? (
           <div className={styles.rename}>
             <input ref={titleRef} className={styles.renameInput} value={title} aria-label="Topic title" maxLength={titleMax} onChange={(event) => setTitle(event.target.value)} />

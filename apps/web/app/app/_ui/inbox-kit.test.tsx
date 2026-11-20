@@ -50,6 +50,13 @@ describe('the inbox kit stylesheet', () => {
     expect(css).toMatch(/\.tag::before \{[^}]*width: 6px;[^}]*height: 6px;[^}]*background: currentColor;/);
   });
 
+  it('keeps the 24px under the summary in the header, so the loading bar and a banner sit clear of it', () => {
+    // NavProgress sits 8px up from the header's bottom: with no foot it drew across the summary.
+    expect(css).toMatch(/\.screen > header \{\s*padding-bottom: 24px;/);
+    expect(css).toMatch(/\.screen \{\s*--strip-top: 0px;/);
+    expect(css).toMatch(/\.emptyPeek \{[^}]*margin: 36px auto 0;/);
+  });
+
   it('gives a picked item the phone to itself under 1100px, and 44px chips under 760px', () => {
     const phone = css.slice(css.indexOf('@media (max-width: 1100px) {\n  .split {'));
     expect(phone).toMatch(/\.split > \.det \{\s*display: none;/);

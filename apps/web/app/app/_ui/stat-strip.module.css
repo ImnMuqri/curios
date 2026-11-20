@@ -8,7 +8,8 @@
   display: grid;
   grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
   gap: 12px;
-  margin-top: 24px;
+  /* The gap under the summary; an inbox screen's header carries it instead (inbox.module.css .screen). */
+  margin-top: var(--strip-top, 24px);
 }
 
 .card {
