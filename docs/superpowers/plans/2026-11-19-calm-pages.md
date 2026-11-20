@@ -820,4 +820,6 @@ Batch 1 done: all seven tasks reviewed. One-count parity tests pass. Screens lig
 - Q2 Lead ring: the number is detail 1, plus the three picked-out ones (chat: Wants/When/Where; enquiry: When/For/Budget). 1 "Start with hello" → 4 "Ready to quote".
 - Q3 Orders "Older orders": orders placed before the last 7 days; the existing pager stays at the foot.
 - Q5 Questions filters: drop "Chat answers"; old links still open the page.
-- Still open (ask before their batch): Q4 Store layout (phone preview, reordering), Q6 the "asked 3 times" email, Q7 pickup Add to calendar before payment.
+- Q4a Store phone preview (20 Nov): keep it beside Store's tabs, a departure from the board (log it in DEVIATIONS in Batch 2).
+- Q4b Reordering (20 Nov): add a "Reorder" mode; the default view stays the board's grid, Reorder turns it into a list with move up/down.
+- Still open (ask before their batch): Q6 the "asked 3 times" email, Q7 pickup Add to calendar before payment.
