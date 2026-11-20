@@ -139,16 +139,19 @@ describe('the claim field', () => {
     expect(readWantedHandle()).toBe('kakmira');
   });
 
-  it('Peek ducks while the claim field has focus', () => {
+  it('Peek stays up over the claim field and smiles while it holds a name, never ducking on focus', () => {
     const { container } = render(<Claim id="c2" label="Address" placeholder="yourname" button="Claim" />);
     const input = screen.getByLabelText('Address');
     const wrap = container.querySelector('[data-field]')!;
-    expect(wrap).not.toHaveAttribute('data-typing');
+    const svg = () => wrap.querySelector('svg[viewBox="0 0 160 150"]')!.getAttribute('class') ?? '';
     fireEvent.focus(input);
-    expect(wrap).toHaveAttribute('data-typing');
-    fireEvent.blur(input);
-    expect(wrap).not.toHaveAttribute('data-typing');
-    expect(wrap.querySelector('svg')).not.toBeNull();
+    expect(wrap).not.toHaveAttribute('data-text');
+    expect(svg()).not.toMatch(/happy/);
+    fireEvent.input(input, { target: { value: 'kakmira' } });
+    expect(wrap).toHaveAttribute('data-text');
+    expect(svg()).toMatch(/happy/);
+    fireEvent.input(input, { target: { value: '  ' } });
+    expect(svg()).not.toMatch(/happy/);
   });
 
   it('the closing claim field has no Peek on it', () => {

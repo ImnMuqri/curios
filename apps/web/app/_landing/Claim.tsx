@@ -28,7 +28,8 @@ export function Claim({
   button: string;
   variant?: 'hero' | 'end';
 }) {
-  const [typing, setTyping] = useState(false);
+  // Peek smiles while the field holds a name; it never ducks behind the field (owner, 21 Nov 2026).
+  const [hasText, setHasText] = useState(false);
   function remember(event: FormEvent<HTMLFormElement>) {
     const handle = new FormData(event.currentTarget).get('handle');
     rememberWantedHandle(typeof handle === 'string' ? handle : '');
@@ -39,10 +40,10 @@ export function Claim({
       <label htmlFor={id} className={calm.srOnly}>
         {label}
       </label>
-      <span className={styles.wrap} data-field="" data-typing={typing ? '' : undefined}>
+      <span className={styles.wrap} data-field="" data-text={hasText ? '' : undefined}>
         {variant === 'hero' ? (
           <span className={styles.pk}>
-            <LivePeek width={78} follow />
+            <LivePeek width={78} follow held={hasText ? 'happy' : null} />
           </span>
         ) : null}
         <span className={styles.cin}>
@@ -55,8 +56,7 @@ export function Claim({
             autoCapitalize="none"
             spellCheck={false}
             maxLength={30}
-            onFocus={() => setTyping(true)}
-            onBlur={() => setTyping(false)}
+            onInput={(event) => setHasText(event.currentTarget.value.trim() !== '')}
           />
         </span>
       </span>
