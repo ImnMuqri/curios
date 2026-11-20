@@ -321,7 +321,7 @@ describe('QuestionsScreen, a topic’s own screen', () => {
     });
     expect(onGo).toHaveBeenCalledWith('/app/questions?show=answered');
     view.unmount();
-    render(<QuestionsScreen {...props} topics={[]} topic={topics[1]!} onGo={onGo} show="answered" />);
+    render(<QuestionsScreen {...props} topics={[]} topic={topics[1]} onGo={onGo} show="answered" />);
     fireEvent.change(screen.getByRole('combobox', { name: 'Merge into' }), { target: { value: 't1' } });
     fireEvent.click(screen.getByRole('button', { name: 'Merge' }));
     await act(async () => {
@@ -333,7 +333,7 @@ describe('QuestionsScreen, a topic’s own screen', () => {
   it('moves focus to the heading on the way in, and back to the topic’s title link on the way out', () => {
     const scrolled = vi.spyOn(window, 'scrollTo').mockImplementation(() => undefined);
     const { view, props } = show();
-    view.rerender(<QuestionsScreen {...props} topics={[]} topic={topics[1]!} />);
+    view.rerender(<QuestionsScreen {...props} topics={[]} topic={topics[1]} />);
     expect(screen.getByRole('heading', { name: 'Is it halal?', level: 1 })).toHaveFocus();
     view.rerender(<QuestionsScreen {...props} />);
     expect(screen.getByRole('link', { name: 'Is it halal?' })).toHaveFocus();
@@ -342,7 +342,7 @@ describe('QuestionsScreen, a topic’s own screen', () => {
 
   it('falls back to the first card when the topic is no longer in the list', () => {
     const { view, props } = show();
-    view.rerender(<QuestionsScreen {...props} topics={[]} topic={topics[1]!} />);
+    view.rerender(<QuestionsScreen {...props} topics={[]} topic={topics[1]} />);
     view.rerender(<QuestionsScreen {...props} topics={[topics[0]!]} />);
     expect(screen.getByRole('link', { name: 'Do you deliver to Klang?' })).toHaveFocus();
   });
