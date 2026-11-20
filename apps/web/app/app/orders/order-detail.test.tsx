@@ -103,10 +103,10 @@ const refundOwed: OrderRow = {
 
 function show(order: OrderRow, move: OrderMove = vi.fn(async () => undefined), act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
-  const warn = vi.fn();
+  const fail = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} move={move} act={act} say={say} warn={warn} onChanged={onChanged} />);
-  return { move, act, say, warn, onChanged };
+  render(<OrderDetail order={order} now={now} move={move} act={act} say={say} fail={fail} onChanged={onChanged} />);
+  return { move, act, say, fail, onChanged };
 }
 
 const next = () => within(screen.getByRole('region', { name: 'What to do next' }));
@@ -114,7 +114,7 @@ const steps = () => within(screen.getByRole('list', { name: 'Order progress' }))
 const lit = () => steps().getAllByRole('listitem').map((li) => li.hasAttribute('data-on'));
 /** The label and value rows, as [label, value] pairs. */
 const kv = () => [...document.querySelectorAll('dl > div')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]);
-const bare = (order: OrderRow) => render(<OrderDetail order={order} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} warn={vi.fn()} onChanged={vi.fn()} />);
+const bare = (order: OrderRow) => render(<OrderDetail order={order} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} fail={vi.fn()} onChanged={vi.fn()} />);
 
 describe('OrderDetail, who and where it is', () => {
   it('says the order and when, names the customer, tags it, and opens WhatsApp to them by first name', () => {
@@ -326,9 +326,9 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(async () => {
       throw new ApiError(409, 'ORDER_STATE', 'This order has already moved on. Refresh to see where it is.');
     });
-    const { say, warn, onChanged } = show(mira, move);
+    const { say, fail, onChanged } = show(mira, move);
     fireEvent.click(next().getByRole('button', { name: 'Mark paid' }));
-    await waitFor(() => expect(warn).toHaveBeenCalledWith('This order has already moved on. Refresh to see where it is.'));
+    await waitFor(() => expect(fail).toHaveBeenCalledWith('This order has already moved on. Refresh to see where it is.'));
     // The error tone, never the ticked success toast.
     expect(say).not.toHaveBeenCalled();
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -340,9 +340,9 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(async () => {
       throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.');
     });
-    const { warn, onChanged } = show(mira, move);
+    const { fail, onChanged } = show(mira, move);
     fireEvent.click(next().getByRole('button', { name: 'Mark paid' }));
-    await waitFor(() => expect(warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    await waitFor(() => expect(fail).toHaveBeenCalledWith('Something failed. Try again.'));
     expect(onChanged).not.toHaveBeenCalled();
   });
 
@@ -351,7 +351,7 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
     const say = vi.fn();
     const onChanged = vi.fn();
-    const props = { now, move, act: vi.fn(), say, warn: vi.fn(), onChanged };
+    const props = { now, move, act: vi.fn(), say, fail: vi.fn(), onChanged };
     const { rerender } = render(<OrderDetail order={mira} {...props} />);
 
     const button = next().getByRole('button', { name: 'Mark paid' });
@@ -426,10 +426,10 @@ describe('OrderDetail, the moves that ask first', () => {
     const move = vi.fn(async () => {
       throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.');
     });
-    const { say, warn } = show(paid, move);
+    const { say, fail } = show(paid, move);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }));
-    await waitFor(() => expect(warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    await waitFor(() => expect(fail).toHaveBeenCalledWith('Something failed. Try again.'));
     expect(say).not.toHaveBeenCalled();
     expect(screen.getByRole('group', { name: 'Cancel order' })).toBeInTheDocument();
   });
@@ -441,22 +441,22 @@ describe('OrderDetail, the moves that ask first', () => {
     const one = show(mira, move);
     fireEvent.click(screen.getByRole('button', { name: 'Not received' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, not received' }));
-    await waitFor(() => expect(one.warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    await waitFor(() => expect(one.fail).toHaveBeenCalledWith('Something failed. Try again.'));
     cleanup();
     const two = show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') }, move);
     fireEvent.click(screen.getByRole('button', { name: 'Mark refunded' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, refunded' }));
-    await waitFor(() => expect(two.warn).toHaveBeenCalledWith('Something failed. Try again.'));
+    await waitFor(() => expect(two.fail).toHaveBeenCalledWith('Something failed. Try again.'));
     expect(screen.getByRole('group', { name: 'Mark refunded' })).toBeInTheDocument();
   });
 
   it('does not let a confirm close as done while another move is still saving', async () => {
     const move = vi.fn(() => new Promise<void>(() => undefined));
-    const { warn } = show(paid, move);
+    const { fail } = show(paid, move);
     fireEvent.click(next().getByRole('button', { name: 'Mark completed' }));
     fireEvent.click(screen.getByRole('button', { name: 'Cancel order' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, cancel' }));
-    await waitFor(() => expect(warn).toHaveBeenCalledWith('One moment: the last change is still saving.'));
+    await waitFor(() => expect(fail).toHaveBeenCalledWith('One moment: the last change is still saving.'));
     expect(move).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('group', { name: 'Cancel order' })).toBeInTheDocument();
   });

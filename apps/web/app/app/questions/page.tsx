@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
-import { getAnswerRate, getMyCurios, getOwnerPage, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals, questionWeekStart, type TopicShow } from '@curios/db-read';
+import { chatAnsweredIds, getAnswerRate, getMyCurios, getOwnerPage, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals, questionWeekStart, type TopicShow } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Questions } from './questions-screen.js';
 
@@ -36,9 +36,11 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   // One moment for the whole screen, handed down, so "12 min ago" and the
   // week of asks read the same on the server and in the browser.
   const now = new Date();
+  // What the chat answered on its own is one scan of the account's asks: read once, for the list and its totals.
+  const chatIds = topicId ? Promise.resolve([]) : chatAnsweredIds(owner.accountId);
   const [topics, week, answerRate, owned, page, totals, choices] = await Promise.all([
     // The topic screen reads its one topic; the list is not on it.
-    getTopics(owner.accountId, topicId ? { now, id: topicId } : { now, show, limit: TOPICS_PER_PAGE, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
+    chatIds.then((ids) => getTopics(owner.accountId, topicId ? { now, id: topicId } : { now, show, limit: TOPICS_PER_PAGE, offset: (pageNumber - 1) * TOPICS_PER_PAGE, chatIds: ids })),
     // The strip's two figures count the same asks over the same window: recorded question asks over the 7
     // Malaysian calendar days ending today. A topic's own screen shows neither, so it reads neither.
     topicId ? NO_WEEK : getQuestionWeek(owner.accountId, now),
@@ -46,12 +48,13 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
     getOwnerPage(owner.accountId),
     // For the chat preview's colours.
     getMyCurios(owner.accountId),
-    // Over every topic, not this screenful: each filter's count and pages, the answered share, what to merge into.
-    getTopicTotals(owner.accountId),
-    getTopicChoices(owner.accountId),
+    // Over every topic, not this screenful: each filter's count and pages, the answered share. The topic screen shows none of it.
+    topicId ? Promise.resolve(undefined) : chatIds.then((ids) => getTopicTotals(owner.accountId, { chatIds: ids })),
+    // What a topic can be merged into, from any page: only the topic screen merges (the list only needs to know if there are none, from the totals).
+    topicId ? getTopicChoices(owner.accountId) : Promise.resolve(undefined),
   ]);
   if (!owned || !page) redirect('/app/onboarding');
-  const pages = Math.max(1, Math.ceil(totals.topics[show] / TOPICS_PER_PAGE));
+  const pages = totals ? Math.max(1, Math.ceil(totals.topics[show] / TOPICS_PER_PAGE)) : 1;
   // Past the last page (topics merged or deleted since the link was made): the first one.
   if (!topicId && pageNumber > pages) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
   // A topic that is gone (deleted or merged away, or never this owner's): the list again.

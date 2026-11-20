@@ -12,7 +12,8 @@ const totals = { topics: { all: 30, needs: 9, chat: 5, answered: 16 }, asks: 60,
 const getTopicTotals = vi.fn(async () => totals);
 const getTopicChoices = vi.fn(async () => [{ id: 't1', title: 'Harga', answer: null }]);
 const questionWeekStart = vi.fn((now: Date) => new Date(now.getTime() - 6 * 86_400_000));
-vi.mock('@curios/db-read', () => ({ questionWeekStart, getTopics, getOwnerPage, getMyCurios, getQuestionWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
+const chatAnsweredIds = vi.fn(async () => ['c1']);
+vi.mock('@curios/db-read', () => ({ chatAnsweredIds, questionWeekStart, getTopics, getOwnerPage, getMyCurios, getQuestionWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -63,6 +64,8 @@ describe('QuestionsPage', () => {
     getTopics.mockResolvedValue([]);
     getQuestionWeek.mockResolvedValue({ thisWeek: 39, lastWeek: 27, days: [3, 5, 4, 8, 6, 7, 6] });
     getTopicChoices.mockClear();
+    getTopicTotals.mockClear();
+    chatAnsweredIds.mockClear();
     getMyCurios.mockResolvedValue({ handle: 'nadia', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null });
   });
 
@@ -88,8 +91,11 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 7, offset: 0 });
-    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3, paging: { page: 1, pages: 5 }, show: 'all', totals, choices: [{ id: 't1', title: 'Harga', answer: null }] });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 7, offset: 0, chatIds: ['c1'] });
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3, paging: { page: 1, pages: 5 }, show: 'all', totals });
+    // Merging happens on the topic screen: the list does not carry every topic's answer to the browser.
+    expect(Topics.mock.calls[0]?.[0]).not.toHaveProperty('choices', expect.anything());
+    expect(getTopicChoices).not.toHaveBeenCalled();
   });
 
   it('shows seven topics a page, counts the pages from the filter’s total, and reads ?page', async () => {
@@ -98,10 +104,17 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage({ searchParams: Promise.resolve({ page: '3' }) }));
 
-    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 7, offset: 14 });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 7, offset: 14, chatIds: ['c1'] });
     const props = Topics.mock.calls[0]![0] as { topics: unknown[]; paging: unknown };
     expect(props.topics).toHaveLength(7);
     expect(props.paging).toEqual({ page: 3, pages: 5 });
+  });
+
+  it('scans what the chat answered once, and hands it to the list and its totals', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'needs' }) }));
+    expect(chatAnsweredIds).toHaveBeenCalledTimes(1);
+    expect(getTopicTotals).toHaveBeenCalledWith('acc1', { chatIds: ['c1'] });
   });
 
   it('pages a filter by its own total', async () => {
@@ -124,7 +137,10 @@ describe('QuestionsPage', () => {
     getTopics.mockResolvedValue([{ id: 't9', title: 'Harga' }]);
     render(await QuestionsPage({ searchParams: Promise.resolve({ topic: 't9', show: 'needs', page: '2' }) }));
     expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), id: 't9' });
-    expect(Topics.mock.lastCall?.[0]).toMatchObject({ topic: { id: 't9', title: 'Harga' }, topics: [], show: 'needs', paging: { page: 2, pages: 2 } });
+    expect(Topics.mock.lastCall?.[0]).toMatchObject({ topic: { id: 't9', title: 'Harga' }, topics: [], show: 'needs', paging: { page: 2, pages: 1 }, choices: [{ id: 't1', title: 'Harga', answer: null }] });
+    // The topic screen shows no figures over every topic, and no scan for them.
+    expect(getTopicTotals).not.toHaveBeenCalled();
+    expect(chatAnsweredIds).not.toHaveBeenCalled();
   });
 
   it('sends a topic that is gone (or not this owner’s) back to the list', async () => {
@@ -149,7 +165,7 @@ describe('QuestionsPage', () => {
     getOwnerPage.mockResolvedValue(business);
     getTopics.mockResolvedValue([{ id: 't1' }]);
     render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'needs', page: '2' }) }));
-    expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), show: 'needs', limit: 7, offset: 7 });
+    expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), show: 'needs', limit: 7, offset: 7, chatIds: ['c1'] });
     expect(Topics.mock.lastCall?.[0]).toMatchObject({ show: 'needs' });
 
     render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'everything' }) }));

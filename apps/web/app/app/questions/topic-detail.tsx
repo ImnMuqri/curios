@@ -7,6 +7,7 @@ import type { themeAttrs } from '../../_bento/BentoPage.js';
 import inbox from '../_ui/inbox.module.css';
 import { InlineConfirm } from '../_ui/inline-confirm.js';
 import { firstName, LeadCard } from '../_ui/lead-card.js';
+import { failureText } from '../_ui/toast.js';
 import { PageHead } from '../_ui/page-head.js';
 import { PageReply } from '../_ui/page-reply.js';
 import { relativeTime } from '../_ui/relative-time.js';
@@ -32,7 +33,7 @@ export interface TopicActions {
 export type ChatLook = Parameters<typeof themeAttrs>[0];
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-export const toMessage = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'Something failed. Try again.');
+export const toMessage = (failure: unknown) => failureText(failure);
 
 /**
  * Two answers, Answered (the owner's), Chat answered (no answer of the

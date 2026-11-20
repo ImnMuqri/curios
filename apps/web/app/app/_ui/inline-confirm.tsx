@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { FAILED } from './toast.js';
 import styles from './inbox.module.css';
 
 /**
@@ -145,7 +146,7 @@ export function InlineConfirm({
           <p>{question}</p>
           {failed ? (
             <p className={styles.confirmError} role="alert">
-              That did not go through. Try again.
+              {FAILED}
             </p>
           ) : null}
           <div className={styles.confirmButtons}>

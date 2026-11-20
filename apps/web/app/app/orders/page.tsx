@@ -31,7 +31,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   if (page.mode === 'PERSONAL') {
     return (
       <>
-        <PageHead title="Orders" />
+        <PageHead kicker="Inbox" title="Orders" summary="Check receipts first. Everything else waits for you below." />
         <div className={panel.body}>
           <Callout tone="info">
             Orders come from a shop, and shops are part of business pages. If you start selling, you can make this a business page from{' '}

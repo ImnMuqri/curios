@@ -10,7 +10,10 @@ export interface StatCard {
   value: ReactNode;
   /** A small green line under the value ("+RM235 today"). */
   line?: ReactNode;
-  /** What the line says about the figure: `up` (the default, green), or `down` / `flat` (muted). Not for a gain-less line to borrow green. */
+  /**
+   * What the line says about the figure: `up` (green), or `down` / `flat` (muted). Left out it is `up`, so a card whose line is
+   * always a gain (Orders' "+RM235 today") need not say so; a line that can be a loss or no change must pass `changeTone(...)`.
+   */
   lineTone?: 'up' | 'down' | 'flat';
   /** The card's own call to action at its foot ("Check it →"). */
   go?: ReactNode;

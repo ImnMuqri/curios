@@ -11,6 +11,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { EmptyPeek } from '../_ui/empty-peek.js';
 import { InboxBack } from '../_ui/inbox-back.js';
 import inbox from '../_ui/inbox.module.css';
+import { useOwnView } from '../_ui/own-view.js';
 import { PageHead } from '../_ui/page-head.js';
 import { StatStrip, type StatCard } from '../_ui/stat-strip.js';
 import { useToast } from '../_ui/toast.js';
@@ -21,8 +22,6 @@ import styles from './orders.module.css';
 type Filter = 'all' | 'check' | 'paid' | 'refund';
 
 const DAY_MS = 86_400_000;
-/** Under this width a picked order takes the screen as its own view (the frame's phone, inbox.module.css). */
-const OWN_VIEW = '(max-width: 1100px)';
 
 /** The board's `match`. */
 function matches(order: OrderRow, filter: Filter): boolean {
@@ -57,14 +56,6 @@ export function orderMatches(order: OrderRow, query: string): boolean {
     (digits.length >= 3 && order.phone.replace(/\D/g, '').includes(digits)) ||
     order.lines.some((line) => line.itemName.toLowerCase().includes(q))
   );
-}
-
-/** Back to the top of the screen: whichever of its ancestors scrolls (the frame's sheet, or the page itself). */
-function scrollToTop(el: HTMLElement | null) {
-  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
-    if (node.scrollTop > 0) node.scrollTop = 0;
-  }
-  if (typeof window !== 'undefined' && window.scrollY > 0) window.scrollTo(0, 0);
 }
 
 /** "#14 · 3 items · Pickup Sat", with the pickup time when the order kept one. */
@@ -122,22 +113,28 @@ export function OrdersScreen({
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [chosenId, setChosenId] = useState<string | null>(selected);
-  // The phone's own view: an order picked from the list (or named by the link) fills the screen.
-  const [open, setOpen] = useState(selected !== null && orders.some((o) => o.id === selected));
   const [copied, setCopied] = useState(false);
-  const { say, fail, toast } = useToast();
+  const { say, note, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
-  // After the own view opens or closes: 'detail', or the id of the row to land back on.
-  const focusAfter = useRef<string | null>(null);
+  // The phone's own view: an order picked from the list (or named by the link) fills the screen. It, and a
+  // move made from the card, hold that order by id (_ui/own-view).
+  const view = useOwnView({
+    screen: screenRef,
+    detail: detailRef,
+    row: (id) => `[data-order-row="${CSS.escape(id)}"]`,
+    firstRow: '[data-order-row]',
+    initialOpen: selected !== null && orders.some((o) => o.id === selected),
+  });
+  const { open } = view;
 
   const shown = orders.filter((o) => matches(o, filter) && orderMatches(o, query));
-  // On a phone the open order keeps the screen, by id, until the owner goes back: after a move it may
-  // leave the filter (a receipt marked paid under To check), and the own view must never go blank or
-  // turn into another customer's order under the same thumb.
+  // The open order keeps the screen, by id, until the owner picks another row, a chip, a card or the search: after a move it
+  // may leave the filter (a receipt marked paid under To check), and the card must never go blank or turn into another
+  // customer's order under the owner's pointer, a wide screen's included.
   // The open order is gone from the list altogether (another tab, a later page): back to the list, saying so.
   const gone = open && chosenId !== null && !orders.some((o) => o.id === chosenId);
-  const pinned = open ? (orders.find((o) => o.id === chosenId) ?? null) : null;
+  const pinned = view.holds(chosenId) ? (orders.find((o) => o.id === chosenId) ?? null) : null;
   const chosen = gone ? null : pinned ?? shown.find((o) => o.id === chosenId) ?? shown[0] ?? null;
   // One count everywhere: the chips say what the cards say (and the sidebar badge, countNavBadges).
   const counts: Record<Filter, number | null> = {
@@ -149,42 +146,14 @@ export function OrdersScreen({
 
   useEffect(() => {
     if (!gone) return;
-    focusAfter.current = null;
-    setOpen(false);
-    say('That order is no longer in this list.');
-    scrollToTop(screenRef.current);
-  }, [gone, say]);
-
-  useEffect(() => {
-    const target = focusAfter.current;
-    if (target === null) return;
-    focusAfter.current = null;
-    scrollToTop(screenRef.current);
-    const el =
-      target === 'detail'
-        ? detailRef.current?.querySelector<HTMLElement>('[data-detail-heading]')
-        : screenRef.current?.querySelector<HTMLElement>(`[data-order-row="${CSS.escape(target)}"]`);
-    el?.focus({ preventScroll: true });
-  }, [open]);
+    view.gone();
+    note('That order is no longer in this list.');
+  }, [gone, note]);
 
   // A filter or search is changed from the list, so no order holds the own view any more (a ?order= link's included).
   function choose(next: Filter) {
     setFilter(next);
-    setOpen(false);
-  }
-
-  function pick(id: string) {
-    setChosenId(id);
-    // Only where the own view shows: on a wide screen the detail is beside the list already.
-    if (typeof window !== 'undefined' && window.matchMedia?.(OWN_VIEW).matches) {
-      focusAfter.current = 'detail';
-      setOpen(true);
-    }
-  }
-
-  function back() {
-    focusAfter.current = chosen?.id ?? null;
-    setOpen(false);
+    view.leave();
   }
 
   async function copyLink() {
@@ -245,7 +214,10 @@ export function OrdersScreen({
         aria-current={chosen?.id === order.id}
         data-order-row={order.id}
         style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
-        onClick={() => pick(order.id)}
+        onClick={() => {
+          setChosenId(order.id);
+          view.pick();
+        }}
       >
         <Initial order={order} />
         <span className={inbox.liText}>
@@ -307,7 +279,7 @@ export function OrdersScreen({
                   </svg>
                   <input type="search" value={query} placeholder="Search name or order" aria-label="Search name or order" onChange={(event) => {
                       setQuery(event.target.value);
-                      setOpen(false);
+                      view.leave();
                     }} />
                 </label>
               </div>
@@ -365,8 +337,12 @@ export function OrdersScreen({
                 </div>
                 {chosen ? (
                   <div ref={detailRef} className={inbox.det}>
-                    <InboxBack noun="orders" onBack={back} />
-                    <OrderDetail key={chosen.id} order={chosen} now={now} move={move} act={act} say={say} warn={fail} onChanged={onChanged} />
+                    <InboxBack noun="orders" onBack={() => view.back(chosen?.id ?? null)} />
+                    <OrderDetail key={chosen.id} order={chosen} now={now} move={move} act={act} say={say} fail={fail} onChanged={() => {
+                        // A move from this card: keep the order on screen, by id, as the list re-reads.
+                        view.hold(chosen.id);
+                        onChanged();
+                      }} />
                   </div>
                 ) : null}
               </div>

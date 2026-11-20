@@ -2,6 +2,7 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 import { ApiError } from '../../../lib/api.js';
+import { failureText } from '../_ui/toast.js';
 import styles from './orders.module.css';
 import type { OrderRow } from './order-detail.js';
 
@@ -70,7 +71,7 @@ export function SentByEmail({
   when,
   act,
   say,
-  warn,
+  fail,
   onChanged,
 }: {
   order: OrderRow;
@@ -79,7 +80,7 @@ export function SentByEmail({
   act: DigitalAct;
   say: (text: string) => void;
   /** The order card's one way of reporting a failure: the toast's error tone. */
-  warn: (text: string) => void;
+  fail: (text: string) => void;
   onChanged: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -99,7 +100,7 @@ export function SentByEmail({
       say(toast);
       onChanged();
     } catch (failure) {
-      warn(failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
+      fail(failureText(failure));
       if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) onChanged();
     } finally {
       inFlight.current = false;

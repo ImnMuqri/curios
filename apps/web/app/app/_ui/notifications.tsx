@@ -33,7 +33,8 @@ export const WAITING: {
   {
     key: 'questions',
     href: '/app/questions',
-    say: (n) => `${n} new ${n === 1 ? 'question' : 'questions'}`,
+    // Topics needing an answer, as the Questions card says ("Needs your answer"), not questions that arrived.
+    say: (n) => `${n} ${n === 1 ? 'question needs' : 'questions need'} your answer`,
     note: 'Answer once, the page uses it every time.',
     icon: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01',
     tag: 'new',

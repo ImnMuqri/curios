@@ -7,6 +7,7 @@ import type { OwnerTopic, QuestionWeek, TopicChoice, TopicTotals } from '@curios
 import { apiFetch } from '../../../lib/api.js';
 import { EmptyPeek } from '../_ui/empty-peek.js';
 import inbox from '../_ui/inbox.module.css';
+import { useRouteView } from '../_ui/own-view.js';
 import { PageHead } from '../_ui/page-head.js';
 import { Pager } from '../_ui/pager.js';
 import { changeTone, StatStrip, type StatCard } from '../_ui/stat-strip.js';
@@ -55,14 +56,6 @@ export function weekLine(thisWeek: number, lastWeek: number): string {
 /** Of the week's asks with a recorded outcome, the share the page answered: 0..1, and 0 (never NaN) when none was recorded (the card then shows a dash). */
 export function answerShare({ answered, recorded }: { answered: number; recorded: number }): number {
   return recorded > 0 ? Math.min(1, Math.max(0, answered / recorded)) : 0;
-}
-
-/** Back to the top of the screen: whichever of its ancestors scrolls (the frame's sheet, or the page itself). */
-function scrollToTop(el: HTMLElement | null) {
-  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
-    if (node.scrollTop > 0) node.scrollTop = 0;
-  }
-  if (typeof window !== 'undefined' && window.scrollY > 0) window.scrollTo(0, 0);
 }
 
 /** The list's address for a filter and page: the first page of All is plain /app/questions. */
@@ -160,33 +153,14 @@ export function QuestionsScreen({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
-  const { say, fail, toast } = useToast(2600);
+  const { say, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
-  // The topic screen that was open at the last render: a change in it is the own view opening or closing.
-  const openId = useRef<string | null>(topic?.id ?? null);
   // A fresh read from the server is the truth again.
   useEffect(() => setSaved({}), [topics]);
 
-  const topicId = topic?.id ?? null;
-  useEffect(() => {
-    const was = openId.current;
-    if (was === topicId) return;
-    openId.current = topicId;
-    const root = screenRef.current;
-    scrollToTop(root);
-    if (topicId !== null) {
-      const heading = root?.querySelector<HTMLElement>('h1');
-      if (heading) {
-        heading.tabIndex = -1;
-        heading.focus({ preventScroll: true });
-      }
-      return;
-    }
-    // Back on the list: the title link of the topic that was open, or the first card's.
-    const link = (was ? root?.querySelector<HTMLElement>(`[data-topic-link="${CSS.escape(was)}"]`) : null) ?? root?.querySelector<HTMLElement>('[data-topic-link]');
-    link?.focus({ preventScroll: true });
-  }, [topicId]);
+  // The topic screen is its own route: scrolled to the top and focused on the way in, back on its card on the way out.
+  useRouteView({ screen: screenRef, openId: topic?.id ?? null, row: (id) => `[data-topic-link="${CSS.escape(id)}"]`, firstRow: '[data-topic-link]' });
 
   const waiting = totals?.topics.needs ?? topics.filter((t) => inFilter('needs', t)).length;
   const answeredTopics = totals?.topics.answered ?? topics.filter((t) => topicState(t) === 'answered').length;
@@ -264,7 +238,8 @@ export function QuestionsScreen({
     },
   ];
 
-  const none = (choices ? choices.length : topics.length) === 0 && topic === null;
+  // Nothing to answer yet: the totals say so over every topic; without them, the topics in hand.
+  const none = (totals ? totals.topics.all : topics.length) === 0 && topic === null;
 
   return (
     <>
@@ -449,7 +424,12 @@ export function Questions(props: Omit<Parameters<typeof QuestionsScreen>[0], 'ac
       actions={actions}
       onChanged={() => router.refresh()}
       onShow={(show) => router.push(listHref(show))}
-      onGo={(href) => router.push(href)}
+      onGo={(href) => {
+        router.push(href);
+        // The move changed what needs the owner, and a navigation re-renders only this screen: the layout's
+        // counts (sidebar, phone menu, More dot, bell) come with a refresh, as after every other move.
+        router.refresh();
+      }}
     />
   );
 }

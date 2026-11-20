@@ -58,7 +58,7 @@ function show({ calls = {}, shown = lead, language = 'en', status = 'NEW', onSta
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onDeleted = vi.fn();
   const say = vi.fn();
-  const warn = vi.fn();
+  const fail = vi.fn();
   render(
     <LeadDetail
       lead={shown}
@@ -70,12 +70,12 @@ function show({ calls = {}, shown = lead, language = 'en', status = 'NEW', onSta
       onStatus={onStatus}
       onDeleted={onDeleted}
       say={say}
-      warn={warn}
+      fail={fail}
       sent={sent}
       onSent={onSent}
     />,
   );
-  return { actions, onDeleted, say, warn, onStatus };
+  return { actions, onDeleted, say, fail, onStatus };
 }
 
 
@@ -116,11 +116,11 @@ describe('LeadDetail, the head', () => {
   });
 
   it('puts a failed status in the error toast, never the success one', async () => {
-    const { say, warn } = show({ onStatus: vi.fn(async () => Promise.reject(new Error('No such lead.'))) });
+    const { say, fail } = show({ onStatus: vi.fn(async () => Promise.reject(new Error('No such lead.'))) });
     await act(async () => {
       fireEvent.click(screen.getByRole('radio', { name: 'Closed' }));
     });
-    expect(warn).toHaveBeenCalledWith('No such lead.');
+    expect(fail).toHaveBeenCalledWith('No such lead.');
     expect(say).not.toHaveBeenCalled();
   });
 });
@@ -390,13 +390,13 @@ describe('LeadDetail, deleting', () => {
   });
 
   it('keeps the confirm open and puts the reason in the error toast when deleting fails', async () => {
-    const { onDeleted, warn, say } = show({ calls: { remove: vi.fn(async () => Promise.reject(new Error('No such lead.'))) } });
+    const { onDeleted, fail, say } = show({ calls: { remove: vi.fn(async () => Promise.reject(new Error('No such lead.'))) } });
     fireEvent.click(screen.getByRole('button', { name: 'Delete lead' }));
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
     });
     expect(onDeleted).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith('No such lead.');
+    expect(fail).toHaveBeenCalledWith('No such lead.');
     expect(say).not.toHaveBeenCalled();
     expect(screen.getByRole('group', { name: 'Delete lead' })).toBeInTheDocument();
   });

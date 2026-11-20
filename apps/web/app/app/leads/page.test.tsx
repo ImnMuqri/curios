@@ -2,11 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 
-const getLeads = vi.fn();
+const getLeadsPage = vi.fn();
 const getOwnerPage = vi.fn();
 const getLeadStats = vi.fn();
 const getMyCurios = vi.fn();
-vi.mock('@curios/db-read', () => ({ getLeads, getOwnerPage, getLeadStats, getMyCurios }));
+vi.mock('@curios/db-read', () => ({ getLeadsPage, getOwnerPage, getLeadStats, getMyCurios }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -49,12 +49,12 @@ const personal: OwnerPage = {
 
 describe('LeadsPage', () => {
   beforeEach(() => {
-    getLeads.mockReset();
+    getLeadsPage.mockReset();
     getOwnerPage.mockReset();
     resolveOwner.mockReset();
     Leads.mockClear();
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
-    getLeads.mockResolvedValue([]);
+    getLeadsPage.mockResolvedValue({ leads: [], older: null });
     getLeadStats.mockClear();
     getLeadStats.mockResolvedValue({ waiting: 1, thisWeek: 1, sold: 0 });
     getMyCurios.mockResolvedValue({ language: 'ms', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null });
@@ -69,6 +69,9 @@ describe('LeadsPage', () => {
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
     // An empty list under that sentence would read as "leads will land here".
     expect(Leads).not.toHaveBeenCalled();
+    // And nothing is read for a list that cannot exist.
+    expect(getLeadsPage).not.toHaveBeenCalled();
+    expect(getLeadStats).not.toHaveBeenCalled();
   });
 
   it('shows a business page its leads', async () => {
@@ -97,27 +100,28 @@ describe('LeadsPage', () => {
     expect(props).not.toHaveProperty('look');
   });
 
-  it('shows fifty, and offers older ones only when a fifty-first came back', async () => {
+  it('hands over what the page read, with every NEW lead on the first page, and the cursor for older ones', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
-    const many = Array.from({ length: 51 }, (_, i) => ({ id: `l${i}` }));
-    getLeads.mockResolvedValue(many);
+    // Fifty-two: two NEW ones kept on the page (the read keeps them there) and fifty others.
+    const many = Array.from({ length: 52 }, (_, i) => ({ id: `l${i}` }));
+    getLeadsPage.mockResolvedValue({ leads: many, older: 'l49' });
 
     render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(getLeads).toHaveBeenCalledWith('acc1', { limit: 51, before: undefined });
+    expect(getLeadsPage).toHaveBeenCalledWith('acc1', { perPage: 50, before: undefined });
     const props = Leads.mock.calls[0]![0] as { leads: unknown[]; paging: unknown };
-    expect(props.leads).toHaveLength(50);
+    expect(props.leads).toHaveLength(52);
     expect(props.paging).toEqual({ older: 'l49', paged: false });
   });
 
   it("hands an enquiry's item photo over as a URL, and a chat lead none", async () => {
     vi.stubEnv('STORAGE_PUBLIC_URL', 'https://files.example/');
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
-    getLeads.mockResolvedValue([
+    getLeadsPage.mockResolvedValue({ older: null, leads: [
       { id: 'e1', enquiry: { name: 'Farah', note: 'Frozen theme.', item: { name: 'Custom birthday cake', photoKey: 'items/cake.webp', fromCents: 18000 } } },
       { id: 'e2', enquiry: { name: 'Aina', note: null, item: null } },
       { id: 'l1', enquiry: null },
-    ]);
+    ] });
 
     render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
@@ -129,16 +133,17 @@ describe('LeadsPage', () => {
 
   it('reads the next page from ?before, and offers no older link at the end', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
-    getLeads.mockResolvedValue([{ id: 'l60' }]);
+    getLeadsPage.mockResolvedValue({ leads: [{ id: 'l60' }], older: null });
 
     render(await LeadsPage({ searchParams: Promise.resolve({ before: 'l49' }) }));
 
-    expect(getLeads).toHaveBeenCalledWith('acc1', { limit: 51, before: 'l49' });
+    expect(getLeadsPage).toHaveBeenCalledWith('acc1', { perPage: 50, before: 'l49' });
     expect((Leads.mock.calls[0]![0] as { paging: unknown }).paging).toEqual({ older: null, paged: true });
   });
 
   it('sends a cursor that pages nothing back to the newest leads', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
+    getLeadsPage.mockResolvedValue(null);
 
     await expect(LeadsPage({ searchParams: Promise.resolve({ before: 'gone' }) })).rejects.toThrow('NEXT_REDIRECT:/app/leads');
   });

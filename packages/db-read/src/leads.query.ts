@@ -1,4 +1,5 @@
 import { malaysiaToday } from '@curios/core/orders';
+import type { Prisma } from '@prisma/client';
 import { prismaRead } from './client.js';
 
 export interface LeadTranscriptLine {
@@ -79,14 +80,52 @@ export async function getLeads(
     ? await prismaRead.lead.findFirst({ where: { id: options.before, page: { accountId } }, select: { id: true, createdAt: true } })
     : null;
   if (options.before && !cursor) return [];
-  const rows = await prismaRead.lead.findMany({
-    where: {
+  return readLeads(
+    {
       page: { accountId },
       ...(cursor ? { OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }] } : {}),
     },
+    Math.min(options.limit ?? 50, 101),
+  );
+}
+
+const newestFirst = (a: { createdAt: Date; id: string }, b: { createdAt: Date; id: string }) =>
+  b.createdAt.getTime() - a.createdAt.getTime() || (a.id < b.id ? 1 : a.id > b.id ? -1 : 0);
+
+/**
+ * The Leads screen a page at a time, newest first, as Orders pages (`getOwnerOrdersPage`): the first
+ * page is every NEW lead, however old (the card, the chip and the sidebar badge count them all, so
+ * none may fall off the list), and the newest `perPage` of the rest. `before` (the last of those
+ * above) is the next `perPage` leads that are not NEW, on their own. `older` is the cursor for the
+ * page after, or null at the end; null altogether when `before` is not one of this owner's leads
+ * that are past NEW.
+ */
+export async function getLeadsPage(
+  accountId: string,
+  options: { before?: string; perPage?: number } = {},
+): Promise<{ leads: OwnerLead[]; older: string | null } | null> {
+  const scope = { page: { accountId } };
+  const perPage = Math.min(Math.max(options.perPage ?? 50, 1), 100);
+  const done: Prisma.LeadWhereInput[] = [scope, { status: { not: 'NEW' } }];
+  if (options.before) {
+    const cursor = await prismaRead.lead.findFirst({ where: { AND: [...done, { id: options.before }] }, select: { id: true, createdAt: true } });
+    if (!cursor) return null;
+    done.push({ OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, id: { lt: cursor.id } }] });
+  }
+  const [fresh, rest] = await Promise.all([
+    options.before ? [] : readLeads({ ...scope, status: 'NEW' }),
+    readLeads({ AND: done }, perPage + 1),
+  ]);
+  const shown = rest.slice(0, perPage);
+  return { leads: [...fresh, ...shown].sort(newestFirst), older: rest.length > perPage ? (shown.at(-1)?.id ?? null) : null };
+}
+
+async function readLeads(where: Prisma.LeadWhereInput, take?: number): Promise<OwnerLead[]> {
+  const rows = await prismaRead.lead.findMany({
+    where,
     // id breaks a tie in createdAt, so a page boundary never skips or repeats a lead.
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-    take: Math.min(options.limit ?? 50, 101),
+    ...(take === undefined ? {} : { take }),
     select: {
       id: true,
       phone: true,

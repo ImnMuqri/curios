@@ -75,10 +75,10 @@ const base: OrderRow = {
 
 function show(order: OrderRow, act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
-  const warn = vi.fn();
+  const fail = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} move={vi.fn()} act={act} say={say} warn={warn} onChanged={onChanged} />);
-  return { act, say, warn, onChanged };
+  render(<OrderDetail order={order} now={now} move={vi.fn()} act={act} say={say} fail={fail} onChanged={onChanged} />);
+  return { act, say, fail, onChanged };
 }
 const card = () => within(screen.getByRole('region', { name: /Sent by email/ }));
 const row = (name: string) => within(card().getByText(name).closest('div')!);
@@ -124,7 +124,7 @@ describe('Sent by email', () => {
   });
 
   it('replaces how it gets to them on a digital-only order, and sits beside it on a mixed one', () => {
-    const { unmount } = render(<OrderDetail order={base} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} warn={vi.fn()} onChanged={vi.fn()} />);
+    const { unmount } = render(<OrderDetail order={base} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} fail={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.queryByText('Getting it to them')).toBeNull();
     expect(screen.queryByText('Pickup')).toBeNull();
     unmount();
@@ -180,9 +180,9 @@ describe('Sent by email', () => {
     const act: DigitalAct = vi.fn(async () => {
       throw new ApiError(409, 'SOLD_OUT', 'Every code for this item is already given out.');
     });
-    const { say, warn, onChanged } = show(base, act);
+    const { say, fail, onChanged } = show(base, act);
     fireEvent.click(card().getByRole('button', { name: 'New code' }));
-    await waitFor(() => expect(warn).toHaveBeenCalledWith('Every code for this item is already given out.'));
+    await waitFor(() => expect(fail).toHaveBeenCalledWith('Every code for this item is already given out.'));
     // One way of reporting a failure in the order card: no second, inline one.
     expect(card().queryByRole('alert')).toBeNull();
     expect(say).not.toHaveBeenCalled();
@@ -233,7 +233,7 @@ describe('a digital-only order in Orders', () => {
     };
     const move = vi.fn(async () => undefined);
     const say = vi.fn();
-    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} warn={vi.fn()} onChanged={vi.fn()} />);
+    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} fail={vi.fn()} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
     // The board gives a receipt to check no hint: the Sent by email card says when it goes.
     expect(screen.queryByText(/the moment you do/)).toBeNull();
@@ -248,7 +248,7 @@ describe('a digital-only order in Orders', () => {
     expect(ownerView(order)).toBe('awaitingPayment');
     const move = vi.fn(async () => undefined);
     const say = vi.fn();
-    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} warn={vi.fn()} onChanged={vi.fn()} />);
+    render(<OrderDetail order={order} now={now} move={move} act={vi.fn()} say={say} fail={vi.fn()} onChanged={vi.fn()} />);
     const box = within(screen.getByRole('region', { name: 'What to do next' }));
     expect(box.queryByRole('button', { name: 'Mark paid' })).toBeNull();
     fireEvent.click(box.getByRole('button', { name: 'Mark paid and send' }));
@@ -263,7 +263,7 @@ describe('a digital-only order in Orders', () => {
   });
 
   it('shows the buyer’s note on a digital-only order, and nothing where there is none', () => {
-    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} warn={vi.fn()} onChanged={vi.fn()} />);
+    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} move={vi.fn()} act={vi.fn()} say={vi.fn()} fail={vi.fn()} onChanged={vi.fn()} />);
     expect(screen.getByText('Note from Mira')).toBeInTheDocument();
     expect(screen.getByText(/Please send it to my work email too\./)).toBeInTheDocument();
     unmount();

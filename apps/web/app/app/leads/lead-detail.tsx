@@ -8,6 +8,7 @@ import inbox from '../_ui/inbox.module.css';
 import { InlineConfirm } from '../_ui/inline-confirm.js';
 import { rovingIndex } from '../_ui/pill-tabs.js';
 import { SheetAction, SheetHint, SideSheet } from '../_ui/side-sheet.js';
+import { failureText } from '../_ui/toast.js';
 import { enquiryItemName } from './enquiry.js';
 import { enquiryFirstMessage, firstMessage, waNumber } from './first-message.js';
 import styles from './leads.module.css';
@@ -122,11 +123,6 @@ const RING = 2 * Math.PI * 18;
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
-/** What a failed move says: the API's words, or a plain try again. */
-export function failureText(failure: unknown, fallback = 'That did not save. Try again.'): string {
-  return failure instanceof Error && failure.message ? failure.message : fallback;
-}
-
 /** One line of the conversation, as the board's sheet draws it: theirs dark on the right, the page's in a card on the left. */
 function Line({ line, name }: { line: OwnerLead['transcript'][number]; name: string }) {
   return line.role === 'USER' ? (
@@ -149,7 +145,7 @@ function Line({ line, name }: { line: OwnerLead['transcript'][number]; name: str
  * number gone is gone.
  *
  * Renders the card's contents; the screen puts them in the kit's `.det`. The heading takes focus
- * (tabIndex -1) when a phone opens the lead as its own view. Every failure goes to `warn`, the
+ * (tabIndex -1) when a phone opens the lead as its own view. Every failure goes to `fail`, the
  * screen's toast in its error tone.
  */
 export function LeadDetail({
@@ -162,7 +158,7 @@ export function LeadDetail({
   onStatus,
   onDeleted,
   say,
-  warn,
+  fail,
   sent = false,
   onSent,
 }: {
@@ -173,13 +169,16 @@ export function LeadDetail({
   language: string;
   now: Date;
   actions: LeadActions;
-  /** Shows a new status at once; the screen puts it back if the save fails. */
-  onStatus: (status: LeadStatus) => Promise<void>;
+  /**
+   * Shows a new status at once; the screen puts it back if the save fails. Resolves false when a newer
+   * choice took over before this one settled (a burst of arrow presses): that one says nothing.
+   */
+  onStatus: (status: LeadStatus) => Promise<boolean | void>;
   onDeleted: () => void;
   /** The screen's toast ("Marked contacted."), which outlives this panel. */
   say: (text: string) => void;
   /** The toast's error tone (no tick, role alert, stays): what failed. */
-  warn: (text: string) => void;
+  fail: (text: string) => void;
   /** Sent on WhatsApp from this card in this visit: the first message stays, its Send turned to the done line. */
   sent?: boolean;
   onSent?: () => void;
@@ -203,10 +202,10 @@ export function LeadDetail({
   async function choose(next: LeadStatus, words: string) {
     if (next === status) return;
     try {
-      await onStatus(next);
-      say(words);
+      const applied = await onStatus(next);
+      if (applied !== false) say(words);
     } catch (failure) {
-      warn(failureText(failure));
+      fail(failureText(failure));
     }
   }
 
@@ -241,7 +240,8 @@ export function LeadDetail({
   const from = enquiry?.item?.fromCents ?? null;
   const note = enquiry?.note?.trim();
   const theirName = enquiry?.name?.trim();
-  // The done line only once the move to Contacted has held (a failed save puts New, and Send, back).
+  // `status` is the screen's, which runs ahead of the server: the done line shows the moment the lead leaves New and
+  // goes again, with Send back in its place, when the screen puts New back after a failed save.
   const done = sent && status !== 'NEW';
   const left = enquiry ? `sent from your shop at ${clock(lead.createdAt)}` : `left their number at ${clock(lead.createdAt)}`;
 
@@ -389,7 +389,7 @@ export function LeadDetail({
           await actions.remove(lead.id);
           onDeleted();
         }}
-        onError={(failure) => warn(failureText(failure, 'Something failed. Try again.'))}
+        onError={(failure) => fail(failureText(failure))}
       />
 
       <SideSheet

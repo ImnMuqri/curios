@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { countNavBadges } from './my-curios.query.js';
-import { getLeadStats, getLeads, TRANSCRIPT_LIMIT } from './leads.query.js';
+import { getLeadStats, getLeads, getLeadsPage, TRANSCRIPT_LIMIT } from './leads.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -194,6 +194,41 @@ afterAll(async () => {
   // Leads, conversations and messages go with their page, pages with their account.
   await write.account.deleteMany({ where: { id: { in: accountIds } } });
   await write.$disconnect();
+});
+
+describe('getLeadsPage', () => {
+  it('keeps every NEW lead on the first page, however old, and pages the rest after it', async () => {
+    const owner = await anOwnerWithAPage();
+    // Two NEW leads from long ago, and four newer ones that are past NEW.
+    const oldNew = await aLead(owner.pageId, '+60120000001', { createdAt: new Date('2026-01-01T10:00:00Z') });
+    const oldNewer = await aLead(owner.pageId, '+60120000002', { createdAt: new Date('2026-01-02T10:00:00Z') });
+    const done: string[] = [];
+    for (const [i, status] of (['CONTACTED', 'SOLD', 'CLOSED', 'CONTACTED'] as const).entries()) {
+      done.push(await aLead(owner.pageId, `+6012000001${i}`, { status, createdAt: new Date(`2026-09-0${i + 1}T10:00:00Z`) }));
+    }
+    const first = await getLeadsPage(owner.accountId, { perPage: 2 });
+    expect(first?.leads.map((l) => l.id)).toEqual([done[3], done[2], oldNewer, oldNew]);
+    expect(first?.older).toBe(done[2]);
+    const next = await getLeadsPage(owner.accountId, { perPage: 2, before: first?.older ?? '' });
+    // The NEW ones are on the first page only.
+    expect(next?.leads.map((l) => l.id)).toEqual([done[1], done[0]]);
+    expect(next?.older).toBeNull();
+    const stats = await getLeadStats(owner.accountId);
+    expect(first?.leads.filter((l) => l.status === 'NEW')).toHaveLength(stats.waiting);
+  });
+
+  it('pages nothing for a cursor that is another owner’s, or a NEW lead', async () => {
+    const owner = await anOwnerWithAPage();
+    const fresh = await aLead(owner.pageId, '+60120000099');
+    const theirsId = (await getLeads(theirs))[0]?.id ?? '';
+    expect(await getLeadsPage(owner.accountId, { before: theirsId })).toBeNull();
+    expect(await getLeadsPage(owner.accountId, { before: fresh })).toBeNull();
+  });
+
+  it('is empty for an owner with no leads', async () => {
+    const owner = await anOwnerWithAPage();
+    expect(await getLeadsPage(owner.accountId)).toEqual({ leads: [], older: null });
+  });
 });
 
 describe('getLeadStats', () => {

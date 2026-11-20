@@ -53,7 +53,7 @@ const ANSWERED = { answer: { not: null }, conflictAnswer: null };
  * owner's answer, the month's fixed reply, asks from before replies were
  * kept), so a topic only leaves "Needs you" on what the chat actually said.
  */
-async function chatAnsweredIds(accountId: string): Promise<string[]> {
+export async function chatAnsweredIds(accountId: string): Promise<string[]> {
   const rows = await prismaRead.$queryRaw<{ topicId: string; answered: boolean }[]>`
     SELECT DISTINCT ON (q."topicId") q."topicId", a."answered"
     FROM "QuestionAsk" a
@@ -82,11 +82,12 @@ function showWhere(show: TopicShow, chatIds: string[]): Prisma.TopicWhereInput {
 export async function getTopics(
   accountId: string,
   // `now` is still accepted: callers hand one moment to the whole screen, and the per-topic week that read it is gone.
-  options: { limit?: number; offset?: number; now?: Date; show?: TopicShow; id?: string } = {},
+  // `chatIds` is `chatAnsweredIds(accountId)` when the caller already has it (one scan per request, not one per read).
+  options: { limit?: number; offset?: number; now?: Date; show?: TopicShow; id?: string; chatIds?: string[] } = {},
 ): Promise<OwnerTopic[]> {
   const show = options.show ?? 'all';
   const topics = await prismaRead.topic.findMany({
-    where: { page: { accountId }, ...(options.id ? { id: options.id } : {}), ...showWhere(show, show === 'needs' || show === 'chat' ? await chatAnsweredIds(accountId) : []) },
+    where: { page: { accountId }, ...(options.id ? { id: options.id } : {}), ...showWhere(show, show === 'needs' || show === 'chat' ? (options.chatIds ?? (await chatAnsweredIds(accountId))) : []) },
     orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }, { id: 'asc' }],
     take: Math.min(Math.max(options.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT),
     skip: Math.max(options.offset ?? 0, 0),
@@ -137,9 +138,9 @@ export interface TopicTotals {
   answeredAsks: number;
 }
 
-export async function getTopicTotals(accountId: string): Promise<TopicTotals> {
+export async function getTopicTotals(accountId: string, options: { chatIds?: string[] } = {}): Promise<TopicTotals> {
   const scope = { page: { accountId } };
-  const chatIds = await chatAnsweredIds(accountId);
+  const chatIds = options.chatIds ?? (await chatAnsweredIds(accountId));
   const count = (show: TopicShow) => prismaRead.topic.count({ where: { ...scope, ...showWhere(show, chatIds) } });
   const [all, needs, answered, asks, answeredAsks] = await Promise.all([
     count('all'),

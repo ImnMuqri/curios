@@ -9,6 +9,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { EmptyPeek } from '../_ui/empty-peek.js';
 import { InboxBack } from '../_ui/inbox-back.js';
 import inbox from '../_ui/inbox.module.css';
+import { useOwnView } from '../_ui/own-view.js';
 import { PageHead } from '../_ui/page-head.js';
 import { changeTone, StatStrip, type StatCard } from '../_ui/stat-strip.js';
 import { useToast } from '../_ui/toast.js';
@@ -19,9 +20,6 @@ import styles from './leads.module.css';
 type Filter = 'all' | LeadStatus;
 
 const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'All' }, ...STATUSES];
-
-/** Under this width a picked lead takes the screen as its own view (the frame's phone, inbox.module.css). */
-const OWN_VIEW = '(max-width: 1100px)';
 
 /** Whether a lead answers the search box: the number's digits, or what they are after (an enquiry's item and name too). */
 export function leadMatches(lead: OwnerLead, query: string): boolean {
@@ -45,14 +43,6 @@ export function weekLine(thisWeek: number, lastWeek: number): string {
 /** Of this week's leads, the share that became a sale: 0..1, and 0 (never NaN) with no leads this week. */
 export function soldRate(soldThisWeek: number, thisWeek: number): number {
   return thisWeek > 0 ? Math.min(1, Math.max(0, soldThisWeek / thisWeek)) : 0;
-}
-
-/** Back to the top of the screen: whichever of its ancestors scrolls (the frame's sheet, or the page itself). */
-function scrollToTop(el: HTMLElement | null) {
-  for (let node = el?.parentElement ?? null; node; node = node.parentElement) {
-    if (node.scrollTop > 0) node.scrollTop = 0;
-  }
-  if (typeof window !== 'undefined' && window.scrollY > 0) window.scrollTo(0, 0);
 }
 
 /**
@@ -100,24 +90,17 @@ export function LeadsScreen({
   const [filter, setFilter] = useState<Filter>('all');
   const [query, setQuery] = useState('');
   const [chosenId, setChosenId] = useState<string | null>(null);
-  // The phone's own view: a lead picked from the list fills the screen.
-  const [open, setOpen] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, LeadStatus>>({});
   // Deleted here, and gone at once, before the server's read lands.
   const [removed, setRemoved] = useState<ReadonlySet<string>>(() => new Set());
-  // Moved from its own card: that lead keeps the detail, by id, on a wide screen too, even after the move takes it
-  // out of the filter (Contacted under New), so the card and the focus in it stay put. A pick, a filter or the search lets go.
-  const [held, setHeld] = useState<string | null>(null);
   // Sent on WhatsApp in this visit: their card keeps the first message, with the done line in place of Send.
   const [sent, setSent] = useState<ReadonlySet<string>>(() => new Set());
   const [copied, setCopied] = useState(false);
-  const { say, fail, toast } = useToast();
+  const { say, note, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
   const detailRef = useRef<HTMLDivElement>(null);
-  // After the own view opens or closes: 'detail', a row's id to land back on, or 'first' for the first row.
-  const focusAfter = useRef<string | null>(null);
-  // Asks for that focus move when the own view's state does not change (a delete on a wide screen).
-  const [nudge, setNudge] = useState(0);
+  const view = useOwnView({ screen: screenRef, detail: detailRef, row: (id) => `[data-lead-row="${CSS.escape(id)}"]`, firstRow: '[data-lead-row]' });
+  const { open } = view;
   // A fresh read from the server is the truth again.
   useEffect(() => setStatuses({}), [leads]);
 
@@ -126,79 +109,63 @@ export function LeadsScreen({
   const shown = listed.filter((lead) => (filter === 'all' || statusOf(lead) === filter) && leadMatches(lead, query));
   // The open lead is gone from the list altogether (another tab deleted it): back to the list, saying so.
   const gone = open && chosenId !== null && !listed.some((lead) => lead.id === chosenId);
-  const pinned = open || (held !== null && held === chosenId) ? (listed.find((lead) => lead.id === chosenId) ?? null) : null;
+  const pinned = view.holds(chosenId) ? (listed.find((lead) => lead.id === chosenId) ?? null) : null;
   const chosen = gone ? null : (pinned ?? shown.find((lead) => lead.id === chosenId) ?? shown[0] ?? null);
   // One count everywhere: the chip says what the card says (and the sidebar badge, countNavBadges).
   const counts: Record<Filter, number | null> = { all: null, NEW: stats.waiting, CONTACTED: null, SOLD: null, CLOSED: null };
 
   useEffect(() => {
     if (!gone) return;
-    focusAfter.current = 'first';
-    setOpen(false);
-    say('That lead is no longer in this list.');
-  }, [gone, say]);
+    view.gone();
+    note('That lead is no longer in this list.');
+  }, [gone, note]);
 
-  useEffect(() => {
-    const target = focusAfter.current;
-    if (target === null) return;
-    focusAfter.current = null;
-    scrollToTop(screenRef.current);
-    if (target === 'detail') {
-      detailRef.current?.querySelector<HTMLElement>('[data-detail-heading]')?.focus({ preventScroll: true });
-      return;
-    }
-    const root = screenRef.current;
-    const row =
-      (target !== 'first' ? root?.querySelector<HTMLElement>(`[data-lead-row="${CSS.escape(target)}"]`) : null) ??
-      root?.querySelector<HTMLElement>('[data-lead-row]');
-    row?.focus({ preventScroll: true });
-  }, [open, nudge]);
+  // The save for each lead's status, in the order the owner chose them: a burst of arrow presses (New,
+  // Contacted, Sold) sends its PATCHes one after another, so the server ends on the last. Only the latest
+  // choice may change the screen, revert it or say anything; an earlier one settling late is dropped.
+  const latest = useRef(new Map<string, number>());
+  const queue = useRef(new Map<string, Promise<unknown>>());
+  // What the server last confirmed for a lead mid-burst: where a failed last choice goes back to.
+  const confirmed = useRef(new Map<string, LeadStatus>());
 
-  async function setStatus(lead: OwnerLead, next: LeadStatus) {
-    const before = statusOf(lead);
-    setChosenId(lead.id);
-    setHeld(lead.id);
-    setStatuses((current) => ({ ...current, [lead.id]: next }));
+  /** Resolves true when this was still the latest choice and saved; false when a newer one took over; rejects when the latest failed. */
+  async function setStatus(lead: OwnerLead, next: LeadStatus): Promise<boolean> {
+    const id = lead.id;
+    const mine = (latest.current.get(id) ?? 0) + 1;
+    latest.current.set(id, mine);
+    if (!confirmed.current.has(id)) confirmed.current.set(id, statusOf(lead));
+    setChosenId(id);
+    view.hold(id);
+    setStatuses((current) => ({ ...current, [id]: next }));
+    const run = (queue.current.get(id) ?? Promise.resolve()).catch(() => undefined).then(() => actions.setStatus(id, next));
+    queue.current.set(id, run.catch(() => undefined));
+    const current = () => latest.current.get(id) === mine;
     try {
-      await actions.setStatus(lead.id, next);
-      onChanged();
+      await run;
+      confirmed.current.set(id, next);
     } catch (failure) {
-      setStatuses((current) => ({ ...current, [lead.id]: before }));
+      if (!current()) return false;
+      const back = confirmed.current.get(id) ?? statusOf(lead);
+      confirmed.current.delete(id);
+      setStatuses((now) => ({ ...now, [id]: back }));
       throw failure;
     }
+    if (!current()) return false;
+    confirmed.current.delete(id);
+    onChanged();
+    return true;
   }
 
   // A filter or search is changed from the list, so no lead holds the own view any more.
   function choose(next: Filter) {
     setFilter(next);
-    setOpen(false);
-    setHeld(null);
-  }
-
-  function pick(id: string) {
-    setChosenId(id);
-    setHeld(null);
-    // Only where the own view shows: on a wide screen the detail is beside the list already.
-    if (typeof window !== 'undefined' && window.matchMedia?.(OWN_VIEW).matches) {
-      focusAfter.current = 'detail';
-      setOpen(true);
-    }
-  }
-
-  function back() {
-    focusAfter.current = chosen?.id ?? 'first';
-    setOpen(false);
-    setHeld(null);
+    view.leave();
   }
 
   function deleted(id: string) {
     setRemoved((current) => new Set(current).add(id));
     setChosenId(null);
-    setHeld(null);
-    // The card it was in is gone: focus lands on the first row left, not the page's foot.
-    focusAfter.current = 'first';
-    setOpen(false);
-    setNudge((n) => n + 1);
+    view.removed();
     say('Lead deleted.');
     onChanged();
   }
@@ -291,8 +258,7 @@ export function LeadsScreen({
                     aria-label="Search number or what they want"
                     onChange={(event) => {
                       setQuery(event.target.value);
-                      setOpen(false);
-                      setHeld(null);
+                      view.leave();
                     }}
                   />
                 </label>
@@ -305,6 +271,14 @@ export function LeadsScreen({
                       <p className={styles.empty}>
                         <b>No match</b>
                         <small>Try part of a number, or what they wanted.</small>
+                      </p>
+                    ) : paging.paged && filter === 'NEW' ? (
+                      // A later page holds leads past New only: every new one is on the first.
+                      <p className={styles.empty}>
+                        <b>Not on this page</b>
+                        <small>
+                          These are older leads. The new ones are on the <Link href="/app/leads">newest page</Link>.
+                        </small>
                       </p>
                     ) : (
                       <p className={styles.empty}>
@@ -324,7 +298,10 @@ export function LeadsScreen({
                               aria-current={chosen?.id === lead.id}
                               data-lead-row={lead.id}
                               style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
-                              onClick={() => pick(lead.id)}
+                              onClick={() => {
+                                setChosenId(lead.id);
+                                view.pick();
+                              }}
                             >
                               <span className={inbox.av} data-tone="red" aria-hidden="true">
                                 #
@@ -357,7 +334,7 @@ export function LeadsScreen({
                 </div>
                 {chosen ? (
                   <div ref={detailRef} className={inbox.det}>
-                    <InboxBack noun="leads" onBack={back} />
+                    <InboxBack noun="leads" onBack={() => view.back(chosen?.id ?? null)} />
                     <LeadDetail
                       key={chosen.id}
                       lead={chosen}
@@ -368,7 +345,7 @@ export function LeadsScreen({
                       actions={actions}
                       onStatus={(next) => setStatus(chosen, next)}
                       say={say}
-                      warn={fail}
+                      fail={fail}
                       sent={sent.has(chosen.id)}
                       onSent={() => setSent((current) => new Set(current).add(chosen.id))}
                       onDeleted={() => deleted(chosen.id)}

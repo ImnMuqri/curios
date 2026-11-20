@@ -8,6 +8,14 @@ import styles from './toast.module.css';
 /** How long a toast stays, as the boards time it. */
 export const TOAST_MS = 2400;
 
+/** The one fallback sentence for a failure with no words of its own: the inbox's moves, saves and confirms. */
+export const FAILED = 'That did not go through. Try again.';
+
+/** What a failed move says: the API's words, or the fallback (a page with something more specific passes its own). */
+export function failureText(failure: unknown, fallback = FAILED): string {
+  return failure instanceof Error && failure.message ? failure.message : fallback;
+}
+
 /** How long a failure stays when nobody dismisses it: long enough to read twice. */
 export const TOAST_ERROR_MS = 10000;
 
@@ -25,42 +33,48 @@ export const TOAST_ERROR_MS = 10000;
  * trap, so a failure raised under a layer can be read and dismissed. A sheet's own failure line is still
  * preferred while the sheet holds focus.
  *
+ * `note` is the neutral tone: the same pill without the tick, for news that is not a success ("That
+ * order is no longer in this list.").
+ *
  * Each live region is always in the page and only its words change, so a
  * screen reader hears each one; a region that appears together with its text
  * is often not read at all. `say` replaces whatever is showing and restarts
  * the clock; `say('')` clears it.
  */
-export function useToast(ms = TOAST_MS): { say: (text: string) => void; fail: (text: string) => void; toast: ReactNode } {
-  const [shown, setShown] = useState<{ text: string; tone: 'ok' | 'error' }>({ text: '', tone: 'ok' });
+export function useToast(ms = TOAST_MS): { say: (text: string) => void; note: (text: string) => void; fail: (text: string) => void; toast: ReactNode } {
+  const [shown, setShown] = useState<{ text: string; tone: 'ok' | 'note' | 'error' }>({ text: '', tone: 'ok' });
   // A new toast with the same words still has to play again.
   const [nth, setNth] = useState(0);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  const show = useCallback((text: string, tone: 'ok' | 'error') => {
+  const show = useCallback((text: string, tone: 'ok' | 'note' | 'error') => {
     clearTimeout(timer.current);
     setShown({ text, tone });
     setNth((n) => n + 1);
     if (text) timer.current = setTimeout(() => setShown({ text: '', tone }), tone === 'error' ? TOAST_ERROR_MS : ms);
   }, [ms]);
   const say = useCallback((next: string) => show(next, 'ok'), [show]);
+  const note = useCallback((next: string) => show(next, 'note'), [show]);
   const fail = useCallback((next: string) => show(next, 'error'), [show]);
   const dismiss = () => {
     clearTimeout(timer.current);
     setShown({ text: '', tone: 'error' });
   };
 
-  const ok = shown.tone === 'ok' && shown.text;
+  const ok = shown.tone !== 'error' && shown.text;
   const error = shown.tone === 'error' && shown.text;
   const toast = (
     <LayerPortal>
       <div className={styles.slot} role="status">
         {ok ? (
           <p key={nth} className={styles.toast}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
+            {shown.tone === 'ok' ? (
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 12.5l4.5 4.5L19 7.5" />
+              </svg>
+            ) : null}
             {shown.text}
           </p>
         ) : null}
@@ -86,5 +100,5 @@ export function useToast(ms = TOAST_MS): { say: (text: string) => void; fail: (t
     </LayerPortal>
   );
 
-  return { say, fail, toast };
+  return { say, note, fail, toast };
 }

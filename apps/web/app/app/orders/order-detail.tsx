@@ -10,6 +10,7 @@ import { ApiError } from '../../../lib/api.js';
 import { Dialog } from '../_ui/dialog.js';
 import inbox from '../_ui/inbox.module.css';
 import { InlineConfirm } from '../_ui/inline-confirm.js';
+import { failureText } from '../_ui/toast.js';
 import { waNumber } from '../leads/first-message.js';
 import styles from './orders.module.css';
 import { SentByEmail, type DigitalAct } from './sent-by-email.js';
@@ -133,10 +134,6 @@ const STEPS = ['Placed', 'Paid', 'Ready', 'Done'] as const;
 type Ask = { button: string; action: OrderAction; toast: string };
 type Confirming = 'not-received' | 'cancel' | 'second' | null;
 
-/** What a failed move says: the API's words, or a plain try again. */
-export function failureText(failure: unknown): string {
-  return failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.';
-}
 
 /**
  * One order, as the calm board's detail card (Dash.html `.det.xd`): the order's number and when,
@@ -154,7 +151,7 @@ export function OrderDetail({
   move,
   act,
   say,
-  warn,
+  fail,
   onChanged,
 }: {
   order: OrderRow;
@@ -165,7 +162,7 @@ export function OrderDetail({
   /** The screen's toast, which outlives this panel: what happened. */
   say: (text: string) => void;
   /** The toast's error tone (no tick, role alert, stays): what failed, for every move in the card. */
-  warn: (text: string) => void;
+  fail: (text: string) => void;
   /** After a move: read the server again, for the list and the figures. */
   onChanged: () => void;
 }) {
@@ -303,7 +300,7 @@ export function OrderDetail({
     say(toast);
     onChanged();
   }
-  const fail = (failure: unknown) => warn(failureText(failure));
+  const failed = (failure: unknown) => fail(failureText(failure));
   const openAs = (which: Exclude<Confirming, null>) => (open: boolean) => setConfirming(open ? which : null);
 
   const isPdf = order.receiptType === 'application/pdf';
@@ -371,7 +368,7 @@ export function OrderDetail({
 
       {hasReceipt && !secondOwed && (!online || paidTwice) ? <div className={styles.block}>{receiptTile(`${uploaded}${opens}`)}</div> : null}
 
-      {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} warn={warn} onChanged={onChanged} /> : null}
+      {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} fail={fail} onChanged={onChanged} /> : null}
 
       {byVoucher ? (
         <div className={styles.soft}>
@@ -410,7 +407,7 @@ export function OrderDetail({
                 open={confirming === 'second'}
                 onOpenChange={openAs('second')}
                 onYes={() => perform('refunded', `#${order.number}: second payment marked refunded.`)}
-                onError={fail}
+                onError={failed}
               />
             </div>
           )}
@@ -444,7 +441,7 @@ export function OrderDetail({
         <section className={styles.next} aria-label={ask ? 'What to do next' : undefined}>
           {hint ? <p className={styles.hint}>{hint}</p> : null}
           {ask ? (
-            <button type="button" className={styles.primary} disabled={busy} onClick={() => void perform(ask.action, ask.toast).catch(fail)}>
+            <button type="button" className={styles.primary} disabled={busy} onClick={() => void perform(ask.action, ask.toast).catch(failed)}>
               {ask.button}
             </button>
           ) : null}
@@ -464,7 +461,7 @@ export function OrderDetail({
           open={confirming === 'not-received'}
           onOpenChange={openAs('not-received')}
           onYes={() => perform('not-received', `#${order.number}: receipt marked not received. ${first} will be asked to pay again.`)}
-          onError={fail}
+          onError={failed}
         />
       ) : null}
       {canCancel ? (
@@ -476,7 +473,7 @@ export function OrderDetail({
           open={confirming === 'cancel'}
           onOpenChange={openAs('cancel')}
           onYes={() => perform('cancel', `#${order.number} cancelled.${order.paidAt && order.totalCents > 0 ? ' A refund is owed.' : ''}`)}
-          onError={fail}
+          onError={failed}
         />
       ) : null}
 
