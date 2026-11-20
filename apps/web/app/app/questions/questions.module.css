@@ -302,10 +302,6 @@
   border-bottom: 1px solid var(--line);
 }
 
-.xrow:first-child {
-  padding-top: 8px;
-}
-
 .xrow[data-last] {
   border-bottom: 0;
 }

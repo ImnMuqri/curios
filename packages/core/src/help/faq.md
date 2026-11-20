@@ -140,7 +140,7 @@ Open: /app/questions
 Source: packages/core/src/faq.ts (FAQ_MIN_ASKS); Questions copy “Hidden from your FAQ. The chat still uses the answer.”
 
 ### q-merge · Two topics are the same question. Can I join them?
-Yes. On the topic, press Same question as…, pick the other topic, then Merge. If both have an answer, the one you merge into keeps its answer. If a wording was grouped wrongly, press Not the same beside it to split it out.
+Yes. Open the topic, and under Same question as… pick the other topic in Merge into, then press Merge and confirm. If both have an answer, the one you merge into keeps its answer. If a wording was grouped wrongly, hover it on the topic and press the split arrow (Not the same question) to split it out.
 Open: /app/questions
 Source: apps/web/app/app/questions/topic-detail.tsx
 
