@@ -77,6 +77,12 @@ button.card:focus-visible {
   color: var(--tag-ok-ink);
 }
 
+/* A change that is not a gain, or no change: muted, since green says good news (rule 4: colour only where it carries meaning). */
+.line[data-tone='down'],
+.line[data-tone='flat'] {
+  color: var(--muted);
+}
+
 .go {
   display: block;
   margin-top: auto;

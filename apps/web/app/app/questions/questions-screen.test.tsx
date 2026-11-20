@@ -117,13 +117,27 @@ describe('QuestionsScreen, the header and the strip', () => {
     expect(chips().getAllByRole('button').map((b) => b.textContent?.replace(/\d+$/, ''))).toEqual(['All', 'Needs you', 'Answered']);
   });
 
-  it('never shows NaN: nothing recorded is 0%, 0 of 0', () => {
+  it('with nothing recorded this week shows a dash and "Nothing asked this week", no bar, never NaN', () => {
     show({ answerRate: { answered: 0, recorded: 0 }, week: { thisWeek: 0, lastWeek: 0, days: [0, 0, 0, 0, 0, 0, 0] } });
     const rate = strip().getByText('Answered by your page').closest('div')!;
-    expect(rate).toHaveTextContent('0%');
-    expect(rate).toHaveTextContent('0 of 0 this week');
+    expect(rate).toHaveTextContent('–');
+    expect(rate).toHaveTextContent('Nothing asked this week');
+    expect(rate).not.toHaveTextContent('0%');
+    expect(rate.querySelector('[aria-hidden="true"] u')).toBeNull();
     expect(screen.queryByText(/NaN/)).toBeNull();
     expect(strip().getByText('Same as last week')).toBeInTheDocument();
+  });
+
+  it('shows 0% only when asks were recorded and none was answered', () => {
+    show({ answerRate: { answered: 0, recorded: 4 } });
+    const rate = strip().getByText('Answered by your page').closest('div')!;
+    expect(rate).toHaveTextContent('0%');
+    expect(rate).toHaveTextContent('0 of 4 this week');
+  });
+
+  it('mutes the week line for a fall or no change, and keeps green for a rise', () => {
+    show({ week: { thisWeek: 5, lastWeek: 9, days: [1, 1, 1, 1, 1, 0, 0] } });
+    expect(strip().getByText('−4 on last week')).toHaveAttribute('data-tone', 'down');
   });
 
   it('signs the week against the last, and gives a 7-bar spark from a longer array', () => {

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Spark, StatStrip, type StatCard } from './stat-strip.js';
+import { changeTone, Spark, StatStrip, type StatCard } from './stat-strip.js';
 import styles from './stat-strip.module.css';
 
 const css = readFileSync(path.resolve(__dirname, './stat-strip.module.css'), 'utf8');
@@ -28,6 +28,30 @@ function Harness({ onFilter }: { onFilter: (f: string | null) => void }) {
     />
   );
 }
+
+describe('the line tone', () => {
+  it('is green for a rise and by default, and muted for a fall or no change', () => {
+    expect(changeTone(3)).toBe('up');
+    expect(changeTone(-2)).toBe('down');
+    expect(changeTone(0)).toBe('flat');
+    render(
+      <StatStrip
+        cards={[
+          { id: 'a', label: 'A', value: 1, line: '+3 on last week', lineTone: 'up' },
+          { id: 'b', label: 'B', value: 1, line: '−2 on last week', lineTone: 'down' },
+          { id: 'c', label: 'C', value: 1, line: 'Same as last week', lineTone: 'flat' },
+          { id: 'd', label: 'D', value: 1, line: 'No tone' },
+        ]}
+      />,
+    );
+    expect(screen.getByText('−2 on last week')).toHaveAttribute('data-tone', 'down');
+    expect(screen.getByText('Same as last week')).toHaveAttribute('data-tone', 'flat');
+    expect(screen.getByText('+3 on last week')).toHaveAttribute('data-tone', 'up');
+    expect(screen.getByText('No tone')).not.toHaveAttribute('data-tone');
+    // Only a fall or no change is muted; the line is green otherwise.
+    expect(css).toMatch(/\.line\[data-tone='down'\],\s*\.line\[data-tone='flat'\] \{\s*color: var\(--muted\);/);
+  });
+});
 
 describe('StatStrip', () => {
   it('makes buttons only of the cards with a filter', () => {

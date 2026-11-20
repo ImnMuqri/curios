@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
-import { getAnswerRate, getMyCurios, getOwnerPage, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals, type TopicShow } from '@curios/db-read';
+import { getAnswerRate, getMyCurios, getOwnerPage, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals, questionWeekStart, type TopicShow } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Questions } from './questions-screen.js';
 
@@ -20,6 +20,9 @@ import { Questions } from './questions-screen.js';
  */
 const TOPICS_PER_PAGE = 7;
 
+const NO_WEEK = { thisWeek: 0, lastWeek: 0, days: [0, 0, 0, 0, 0, 0, 0] };
+const NO_RATE = { answered: 0, recorded: 0 };
+
 const SHOWS = ['all', 'needs', 'answered'] as const satisfies readonly TopicShow[];
 
 export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[]; show?: string | string[]; topic?: string | string[] }> }) {
@@ -36,10 +39,10 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   const [topics, week, answerRate, owned, page, totals, choices] = await Promise.all([
     // The topic screen reads its one topic; the list is not on it.
     getTopics(owner.accountId, topicId ? { now, id: topicId } : { now, show, limit: TOPICS_PER_PAGE, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
-    // Malaysian calendar days: this week, last week and the week's bars.
-    getQuestionWeek(owner.accountId, now),
-    // The card says "this week", so seven days (the default is thirty).
-    getAnswerRate(owner.accountId, now, 7),
+    // The strip's two figures count the same asks over the same window: recorded question asks over the 7
+    // Malaysian calendar days ending today. A topic's own screen shows neither, so it reads neither.
+    topicId ? NO_WEEK : getQuestionWeek(owner.accountId, now),
+    topicId ? NO_RATE : getAnswerRate(owner.accountId, now, 7, { from: questionWeekStart(now) }),
     getOwnerPage(owner.accountId),
     // For the chat preview's colours.
     getMyCurios(owner.accountId),
@@ -52,7 +55,8 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   // Past the last page (topics merged or deleted since the link was made): the first one.
   if (!topicId && pageNumber > pages) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
   // A topic that is gone (deleted or merged away, or never this owner's): the list again.
-  if (topicId && topics.length === 0) redirect('/app/questions');
+  // Back where it was: the same filter and page.
+  if (topicId && topics.length === 0) redirect(`/app/questions${[show === 'all' ? '' : `show=${show}`, pageNumber > 1 ? `page=${pageNumber}` : ''].filter(Boolean).join('&').replace(/^(?=.)/, '?')}`);
 
   // Plain data across the boundary: strings, numbers, booleans and Dates all
   // cross fine. The handlers live inside `Questions`, a client component -- a

@@ -162,7 +162,8 @@ export function TopicDetail({
    * refreshes from the server. A failure is thrown to the caller, which reports it once, in the toast.
    */
   async function go(work: () => Promise<void>, options: { after?: () => void; done?: string; navigate?: string } = {}) {
-    if (inFlight.current) return;
+    // Another change is still saving: say so, as a failure, so a confirm stays open instead of closing as if it had gone through.
+    if (inFlight.current) throw new Error('One moment: the last change is still saving.');
     inFlight.current = true;
     setBusy(true);
     try {

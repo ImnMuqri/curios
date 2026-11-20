@@ -10,7 +10,7 @@ import { EmptyPeek } from '../_ui/empty-peek.js';
 import { InboxBack } from '../_ui/inbox-back.js';
 import inbox from '../_ui/inbox.module.css';
 import { PageHead } from '../_ui/page-head.js';
-import { StatStrip, type StatCard } from '../_ui/stat-strip.js';
+import { changeTone, StatStrip, type StatCard } from '../_ui/stat-strip.js';
 import { useToast } from '../_ui/toast.js';
 import { enquiryItemName, leadSummary } from './enquiry.js';
 import { LeadDetail, LeadTag, STATUSES, type LeadActions, type LeadRow, type LeadStatus } from './lead-detail.js';
@@ -232,6 +232,7 @@ export function LeadsScreen({
       label: 'Left a number this week',
       value: stats.thisWeek,
       line: weekLine(stats.thisWeek, stats.lastWeek),
+      lineTone: changeTone(stats.thisWeek - stats.lastWeek),
       // Exactly the week: seven Malaysian days, today last.
       spark: Array.from({ length: 7 }, (_, i) => stats.days[stats.days.length - 7 + i] ?? 0),
     },
@@ -240,6 +241,7 @@ export function LeadsScreen({
       label: 'Became sales',
       value: stats.soldThisWeek,
       line: `${Math.round(rate * 100)}% of this week’s leads`,
+      lineTone: rate > 0 ? 'up' : 'flat',
       rate,
     },
   ];

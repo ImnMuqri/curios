@@ -11,7 +11,8 @@ const getAnswerRate = vi.fn(async () => ({ answered: 0, recorded: 0 }));
 const totals = { topics: { all: 30, needs: 9, chat: 5, answered: 16 }, asks: 60, answeredAsks: 20 };
 const getTopicTotals = vi.fn(async () => totals);
 const getTopicChoices = vi.fn(async () => [{ id: 't1', title: 'Harga', answer: null }]);
-vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, getQuestionWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
+const questionWeekStart = vi.fn((now: Date) => new Date(now.getTime() - 6 * 86_400_000));
+vi.mock('@curios/db-read', () => ({ questionWeekStart, getTopics, getOwnerPage, getMyCurios, getQuestionWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -130,6 +131,18 @@ describe('QuestionsPage', () => {
     getOwnerPage.mockResolvedValue(business);
     getTopics.mockResolvedValue([]);
     await expect(QuestionsPage({ searchParams: Promise.resolve({ topic: 'nope' }) })).rejects.toThrow('NEXT_REDIRECT:/app/questions');
+    // Back to the list it came from: the same filter and page.
+    await expect(QuestionsPage({ searchParams: Promise.resolve({ topic: 'nope', show: 'needs', page: '2' }) })).rejects.toThrow('NEXT_REDIRECT:/app/questions?show=needs&page=2');
+  });
+
+  it('does not read the week or the rate for a topic screen, which shows neither', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getQuestionWeek.mockClear();
+    getAnswerRate.mockClear();
+    getTopics.mockResolvedValue([{ id: 't9' }]);
+    render(await QuestionsPage({ searchParams: Promise.resolve({ topic: 't9' }) }));
+    expect(getQuestionWeek).not.toHaveBeenCalled();
+    expect(getAnswerRate).not.toHaveBeenCalled();
   });
 
   it('filters with ?show before paging, ignoring a filter it does not know', async () => {
@@ -164,7 +177,8 @@ describe('QuestionsPage', () => {
     const now = getTopics.mock.calls[0]![1].now as Date;
     expect(getQuestionWeek).toHaveBeenCalledWith('acc1', now);
     // The card says "this week": seven days, not the thirty the query defaults to.
-    expect(getAnswerRate).toHaveBeenCalledWith('acc1', now, 7);
+    // The same window as the week card: from the week's first Malaysian midnight, not a rolling 168 hours.
+    expect(getAnswerRate).toHaveBeenCalledWith('acc1', now, 7, { from: questionWeekStart.mock.results.at(-1)!.value });
     expect(props).toMatchObject({
       week: { thisWeek: 39, lastWeek: 27, days: [3, 5, 4, 8, 6, 7, 6] },
       handle: 'nadia',

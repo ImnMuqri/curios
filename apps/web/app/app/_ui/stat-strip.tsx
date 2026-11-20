@@ -10,6 +10,8 @@ export interface StatCard {
   value: ReactNode;
   /** A small green line under the value ("+RM235 today"). */
   line?: ReactNode;
+  /** What the line says about the figure: `up` (the default, green), or `down` / `flat` (muted). Not for a gain-less line to borrow green. */
+  lineTone?: 'up' | 'down' | 'flat';
   /** The card's own call to action at its foot ("Check it →"). */
   go?: ReactNode;
   /** The one thing waiting on the owner: tinted, and put first by the page. */
@@ -20,6 +22,11 @@ export interface StatCard {
   spark?: readonly number[];
   /** 0..1: a thin bar under the value. */
   rate?: number;
+}
+
+/** The tone of a line that reports a change: a rise is `up`, a fall `down`, no change `flat`. */
+export function changeTone(diff: number): 'up' | 'down' | 'flat' {
+  return diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
 }
 
 /**
@@ -47,7 +54,7 @@ export function StatStrip({
           <>
             <small className={styles.label}>{card.label}</small>
             <b className={styles.value}>{card.value}</b>
-            {card.line ? <em className={styles.line}>{card.line}</em> : null}
+            {card.line ? <em className={styles.line} data-tone={card.lineTone}>{card.line}</em> : null}
             {card.rate !== undefined ? (
               <span className={styles.bar} aria-hidden="true">
                 <u style={{ width: `${Math.round(Math.min(1, Math.max(0, card.rate)) * 100)}%` }} />

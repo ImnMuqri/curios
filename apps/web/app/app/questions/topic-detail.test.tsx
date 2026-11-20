@@ -366,6 +366,19 @@ describe('TopicDetail, rename, merge and delete', () => {
     expect(screen.queryByRole('group', { name: 'Merge' })).toBeNull();
   });
 
+  it('keeps a confirm open, and says so, when it is pressed while another change is still saving', async () => {
+    let finish!: () => void;
+    const calls = actions({ withdraw: vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })) });
+    const { fail } = show(halal, { calls });
+    fireEvent.click(screen.getByRole('button', { name: 'Withdraw' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Delete topic' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Yes, delete topic' })); });
+    expect(fail).toHaveBeenCalledWith('One moment: the last change is still saving.');
+    expect(calls.deleteTopic).not.toHaveBeenCalled();
+    expect(screen.getByRole('group', { name: 'Delete topic' })).toBeInTheDocument();
+    await act(async () => finish());
+  });
+
   it('reports a failed delete of the topic in the toast', async () => {
     const { fail, onGo } = show(halal, { calls: actions({ deleteTopic: vi.fn(async () => { throw new Error('Try later.'); }) }) });
     fireEvent.click(screen.getByRole('button', { name: 'Delete topic' }));

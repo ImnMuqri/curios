@@ -9,7 +9,7 @@ import { EmptyPeek } from '../_ui/empty-peek.js';
 import inbox from '../_ui/inbox.module.css';
 import { PageHead } from '../_ui/page-head.js';
 import { Pager } from '../_ui/pager.js';
-import { StatStrip, type StatCard } from '../_ui/stat-strip.js';
+import { changeTone, StatStrip, type StatCard } from '../_ui/stat-strip.js';
 import { useToast } from '../_ui/toast.js';
 import { CHIP_WORDS, plural, toMessage, TopicDetail, topicState, type ChatLook, type TopicActions } from './topic-detail.js';
 import styles from './questions.module.css';
@@ -52,7 +52,7 @@ export function weekLine(thisWeek: number, lastWeek: number): string {
   return `${diff > 0 ? '+' : '−'}${Math.abs(diff)} on last week`;
 }
 
-/** Of the week's asks with a recorded outcome, the share the page answered: 0..1, and 0 (never NaN) when none was recorded. */
+/** Of the week's asks with a recorded outcome, the share the page answered: 0..1, and 0 (never NaN) when none was recorded (the card then shows a dash). */
 export function answerShare({ answered, recorded }: { answered: number; recorded: number }): number {
   return recorded > 0 ? Math.min(1, Math.max(0, answered / recorded)) : 0;
 }
@@ -246,15 +246,19 @@ export function QuestionsScreen({
     {
       id: 'rate',
       label: 'Answered by your page',
-      value: `${Math.round(rate * 100)}%`,
-      line: `${answerRate.answered} of ${answerRate.recorded} this week`,
-      rate,
+      // Nothing recorded this week: no rate to give (a 0% would say the page failed every question).
+      // 0% only when asks were recorded and none was answered.
+      value: answerRate.recorded > 0 ? `${Math.round(rate * 100)}%` : '–',
+      line: answerRate.recorded > 0 ? `${answerRate.answered} of ${answerRate.recorded} this week` : 'Nothing asked this week',
+      lineTone: answerRate.recorded > 0 && rate > 0 ? 'up' : 'flat',
+      rate: answerRate.recorded > 0 ? rate : undefined,
     },
     {
       id: 'week',
       label: 'Asked this week',
       value: week.thisWeek,
       line: weekLine(week.thisWeek, week.lastWeek),
+      lineTone: changeTone(week.thisWeek - week.lastWeek),
       // Exactly the week: seven Malaysian days, today last.
       spark: Array.from({ length: 7 }, (_, i) => week.days[week.days.length - 7 + i] ?? 0),
     },
