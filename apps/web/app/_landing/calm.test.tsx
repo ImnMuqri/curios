@@ -321,6 +321,12 @@ describe('a phone (19 Nov review)', () => {
     expect(phoneRule(read('pricing.module.css'), 760, '.rng')).toMatch(/\/ 100% 6px/);
   });
 
+  it('keeps Who’s send button at the end of the ask field once "asking 5 pages" is hidden', () => {
+    const css = read('who.module.css');
+    expect(phoneRule(css, 700, '.ask em')).toMatch(/display:\s*none/);
+    expect(phoneRule(css, 700, '.ask i')).toMatch(/margin-left:\s*auto/);
+  });
+
   it('shows the hero’s side pages as colour only, so their names never overlap the front page', () => {
     const css = read('page-card.module.css');
     for (const s of ["-1'] .body", "1'] .body", "-1'] .kind", "1'] .kind"]) expect(phoneRule(css, 640, `.pc[data-s='${s}`), s).toMatch(/visibility:\s*hidden/);

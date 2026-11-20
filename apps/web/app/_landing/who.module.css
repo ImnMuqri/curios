@@ -249,6 +249,11 @@
   .ask em {
     display: none;
   }
+
+  /* With "asking 5 pages" hidden, nothing else pushes the send button to the field's end. */
+  .ask i {
+    margin-left: auto;
+  }
 }
 
 /* A phone (19 Nov review): the question chips are 44px targets. */
