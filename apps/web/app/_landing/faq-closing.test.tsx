@@ -39,16 +39,12 @@ describe('the FAQ', () => {
   });
 
   it.each([
-    ['en', 'Asked before.', 'Answered here.'],
-    ['ms', 'Pernah ditanya.', 'Dijawab di sini.'],
-  ] as const)('%s: the heading breaks after its first sentence', (locale, a, b) => {
+    ['en', 'Before', 'you start'],
+    ['ms', 'Sebelum', 'anda mula'],
+  ] as const)('%s: the heading is the 19 Nov board’s two lines', (locale, a, b) => {
     const { container } = render(<Faq copy={COPY[locale].faq} />);
     const h2 = container.querySelector('h2')!;
     expect([...h2.childNodes].map((n) => (n.nodeName === 'BR' ? '|' : n.textContent))).toEqual([a, '|', b]);
-  });
-
-  it('splits the heading without a regex lookbehind, which Safari before 16.4 cannot parse', () => {
-    expect(read('Faq.tsx')).not.toMatch(/\(\?<[=!]/);
   });
 
   it('hides a closed answer from screen readers once it has folded away', () => {

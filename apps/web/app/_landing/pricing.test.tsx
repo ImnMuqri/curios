@@ -37,14 +37,14 @@ describe('pricing', () => {
     expect(range).toHaveValue('5');
   });
 
-  it.each(LOCALES)('%s: the title breaks after the first sentence and carries the price in force', (locale) => {
+  it.each(LOCALES)('%s: the title is two lines, the second carrying the price in force', (locale) => {
     const raised = landingCopy(locale, raisedSettings()).pricing;
     expect(raised.title[1]).toMatch(/^RM59 /);
     const { container } = render(<Pricing locale={locale} terms={raisedSettings()} />);
     const h2 = container.querySelector('h2')!;
     expect(h2.querySelector('br')).not.toBeNull();
     expect(h2).toHaveTextContent(`${raised.title[0]}${raised.title[1]}`);
-    expect(landingCopy('en', TERMS).pricing.title).toEqual(['Free to be asked.', 'RM49 when you’re selling']);
+    expect(landingCopy('en', TERMS).pricing.title).toEqual(['Free for you,', 'RM49 a month for business']);
   });
 
   it('says N months free and the price a month, when yearly is on', () => {
@@ -127,15 +127,15 @@ describe('pricing, at the prices the admin set', () => {
     render(<LandingPage locale="en" terms={RAISED} />);
     const pricing = document.querySelector('#pricing') as HTMLElement;
     expect(within(pricing).getByText('RM59 a month')).toBeInTheDocument();
-    expect(within(pricing).getByRole('heading', { level: 2 })).toHaveTextContent('Free to be asked.RM59 when you’re selling');
-    expect(landingCopy('ms', RAISED).pricing.title).toEqual(['Percuma untuk ditanya.', 'RM59 bila anda menjual']);
+    expect(within(pricing).getByRole('heading', { level: 2 })).toHaveTextContent('Free for you,RM59 a month for business');
+    expect(landingCopy('ms', RAISED).pricing.title).toEqual(['Percuma untuk anda,', 'RM59 sebulan untuk bisnes']);
     expect(landingCopy('en', RAISED).pricing.monthlyRinggit).toBe(59);
   });
 
   it('prints a price with sen to two places, never RM49.5', () => {
     const SEN = { ...defaultSettings(), prices: { MONTHLY: 4950, ANNUAL: 49050 } };
     const p = landingCopy('en', SEN).pricing;
-    expect(p.title[1]).toBe('RM49.50 when you’re selling');
+    expect(p.title[1]).toBe('RM49.50 a month for business');
     expect(p.business.monthly).toBe('RM49.50');
     expect(p.business.yearly).toBe('RM490.50');
     expect(p.business.noteYearly).toBe('RM40.88 a month, paid once a year.');

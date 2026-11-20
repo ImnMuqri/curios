@@ -361,10 +361,9 @@
 :root {
   --cl-text-2: #55534e;
   --cl-text-3: #3e3c38;
-  --cl-faint: #a19e97;
-  --cl-hint: #9b9891;
   --cl-placeholder: #c2bfb8;
-  --cl-ghost: #cdc9c1;
+  /* The ask strip's unlit words: large text, 3:1 on the page (19 Nov review; was #cdc9c1). */
+  --cl-ghost: #928e86;
   --cl-ring-hover: #cfcac0;
   --cl-dot: #e7e3da;
   --cl-hl-green: #dcefe5;
@@ -378,14 +377,15 @@
   --cl-mark-ink: #1d2f99;
   --cl-fact-next: #fbf7f4;
   --cl-amber-ink: #b4541b;
+  /* A marketplace receipt's fee lines: the amber darkened to 4.5:1 on white (19 Nov review). */
+  --cl-fee-ink: #9a4314;
   --cl-paid-wash: #eaf6ef;
   --cl-mint-on-ink: #9fe3bd;
   --cl-hot: #fde6dc;
-  --cl-hot-ink: #c2410c;
+  --cl-hot-ink: #9a3412;
   --cl-miss: #e8a33a;
   --cl-sys: #d9f2e3;
   --cl-sent: #e9eefc;
-  --cl-zone-key: #8d8a83;
   --cl-zone-empty: #b3afa7;
   --cl-receipt-rule: #e4e0d8;
   --cl-mock-line: #e3e6ec;

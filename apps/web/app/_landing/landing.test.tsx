@@ -173,12 +173,21 @@ describe('less template', () => {
     expect(css).not.toMatch(/\.loop\b/);
   });
 
-  it.each(LOCALES)('%s: no label above the hero headline', (locale) => {
+  // The 23 Oct pass dropped the hero's label; the 19 Nov board brings one back, so the first screen
+  // names what Curios is. One plain label, nothing more.
+  it.each(LOCALES)('%s: one label above the hero headline, naming what Curios is', (locale) => {
     const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
     const hero = container.querySelector('section')!;
-    expect(hero.querySelector('[class*="eyebrow"]')).toBeNull();
-    expect(COPY[locale].hero).not.toHaveProperty('eyebrow');
-    expect(hero.querySelector('h1')!.previousElementSibling).toBeNull();
+    const h1 = hero.querySelector('h1')!;
+    expect(h1.previousElementSibling).toHaveTextContent(COPY[locale].hero.eyebrow);
+    expect(h1.previousElementSibling!.previousElementSibling).toBeNull();
+  });
+
+  it.each(LOCALES)('%s: only the hero keeps the two-sentence "X. Y." headline', (locale) => {
+    render(<LandingPage locale={locale} terms={TERMS} />);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/\.\s*\S.*\./);
+    // The ask strip's one sentence ends in a full stop; no section heading has a second sentence.
+    for (const h2 of screen.getAllByRole('heading', { level: 2 })) expect(h2.textContent, h2.textContent).not.toMatch(/[.!?]\s*\S/);
   });
 
   it.each(LOCALES)('%s: no gradient blobs or grain in the hero and the closing section', (locale) => {
@@ -239,12 +248,15 @@ describe('the Malay landing', () => {
   });
 
   it('every new Malay heading matches the appendix', () => {
-    expect(ms.who.title).toEqual(['Soalan sama. Jawapan ', 'mereka sendiri', '.']);
+    expect(ms.who.title).toEqual(['Satu soalan, ', 'lima jawapan berbeza', '']);
     expect(ms.how.title).toBe('Sepuluh minit dari kosong ke link bio');
     expect(ms.how.steps.map((s) => s.title)).toEqual(['Beritahu tentang anda', 'Luluskan yang betul', 'Letak link dalam bio']);
     expect([ms.lands.title, ms.lands.lede]).toEqual(['Apa yang anda dapat', 'Satu chat di halaman anda. Empat perkara yang anda boleh guna.']);
     expect([ms.noCut.title, ms.noCut.sub]).toEqual(['Setiap jualan milik anda', 'Kek RM100 yang sama, dijual dua cara. Baca resitnya.']);
-    expect(ms.pricing.title).toEqual(['Percuma untuk ditanya.', 'RM49 bila anda menjual']);
+    expect(ms.pricing.title).toEqual(['Percuma untuk anda,', 'RM49 sebulan untuk bisnes']);
+    expect(ms.faq.title).toEqual(['Sebelum', 'anda mula']);
+    expect(ms.hero.eyebrow).toBe('Link bio, untuk Malaysia');
+    expect(ms.noCut.incl.map((i) => i.kicker)).toEqual(['Laman web anda', 'Bayaran anda', 'Listing Google anda']);
     expect(ms.closing.label).toBe('Tanya je.');
   });
 });

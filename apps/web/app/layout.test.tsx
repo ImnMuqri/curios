@@ -1,4 +1,6 @@
 import { render } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
+import type { ReactElement } from 'react';
 import { describe, expect, it } from 'vitest';
 import RootLayout from './layout.js';
 
@@ -22,5 +24,20 @@ describe('RootLayout', () => {
     expect(html).toContain('font-plex-mono');
     // IBM Plex Sans still reads the landing and the legal pages (the app and auth moved to Inter), so the root binds it once.
     expect(html).toContain('font-plex-sans');
+  });
+
+  it('marks <html> with `js` from an inline script in <head>, before anything paints', () => {
+    // The landing's scroll reveal hides a block only under `.js`: a page whose scripts never ran shows everything.
+    const html = renderToString(<RootLayout>{null}</RootLayout>);
+    const head = html.match(/<head>([\s\S]*?)<\/head>/)?.[1] ?? '';
+    expect(head).toContain("<script>document.documentElement.classList.add('js')</script>");
+    expect(html.indexOf('<script>')).toBeLessThan(html.indexOf('<body'));
+  });
+
+  it('lets <html> differ by that class at hydration: suppressHydrationWarning is on the element', () => {
+    // The script adds `js` before React hydrates; without this React reports an attribute mismatch on <html>.
+    const html = RootLayout({ children: null }) as ReactElement<{ suppressHydrationWarning?: boolean }>;
+    expect(html.type).toBe('html');
+    expect(html.props.suppressHydrationWarning).toBe(true);
   });
 });

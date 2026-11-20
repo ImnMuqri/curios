@@ -29,6 +29,7 @@ describe('no cut, ever', () => {
     expect(keep(container, 1)).toBe('RM99.00');
     expect(container).toHaveTextContent('0%');
     for (const f of copy.incl) expect(container).toHaveTextContent(f.title);
+    expect(COPY.en.noCut.incl.map((f) => f.kicker)).toEqual(['Your website', 'Your payments', 'Your Google listing']);
   });
 
   it('draws the finished receipts on the server', () => {
@@ -51,7 +52,8 @@ describe('no cut, ever', () => {
     expect(cu).not.toHaveAttribute('data-in');
     await advance(900 + 3 * (250 + 380 + 250) + 50);
     expect(keep(container, 0)).toBe('RM88.84');
-    expect(mk).toHaveAttribute('data-dim');
+    // The 19 Nov board keeps the marketplace receipt at full strength: no dim, so its lines stay readable.
+    expect(mk).not.toHaveAttribute('data-dim');
     await advance(500);
     expect(cu).toHaveAttribute('data-in');
     expect(container.querySelector('[data-stamp][data-in]')).toBeNull();

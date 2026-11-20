@@ -163,7 +163,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  color: var(--cl-zone-key);
+  color: var(--calm-muted);
   font-size: 13px;
   font-weight: 600;
   transition: color 0.4s;
@@ -318,7 +318,7 @@
 
 .kv small {
   display: block;
-  color: var(--cl-faint);
+  color: var(--calm-muted);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.05em;
@@ -594,6 +594,8 @@
 .lcm {
   display: flex;
   flex: 1;
+  /* A flex child's floor is its content: without this, a long chat pushes under the chat header (19 Nov review). */
+  min-height: 0;
   flex-direction: column;
   justify-content: flex-end;
   gap: 9px;
@@ -1513,5 +1515,12 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+/* A phone (19 Nov review): the side switch's buttons are 44px targets. */
+@media (max-width: 760px) {
+  .tog button {
+    min-height: 44px;
   }
 }

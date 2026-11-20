@@ -15,7 +15,7 @@ const ARTS = [PasteArt, FactsArt, BioArt];
 export function How({ locale }: { locale: Locale }) {
   const copy = COPY[locale].how;
   return (
-    <section className={calm.sec} id="how" aria-labelledby="how-title">
+    <section className={`${calm.sec} ${calm.secEnd}`} id="how" aria-labelledby="how-title">
       <div className={calm.wrap}>
         <p className={`${calm.lbl} ${calm.rv}`} data-rv="">
           {copy.eyebrow}

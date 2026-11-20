@@ -25,7 +25,7 @@ pill buttons, a living Peek, and nine sections.
 | Who it's for | `Who.tsx`, `who.module.css` | One question typed into an ask bar, five pages answering in their own words; the chips jump to a question and hold it 15s. |
 | How it works | `How.tsx`, `how-scenes.tsx`, `how.module.css` | Three cards that play: the paste with its facts marked, the facts approved one by one, the link in the bio tapped and the page answering. |
 | For business | `Lands.tsx`, `LandsCheckout.tsx`, `lands-script.ts`, `lands.module.css` | What lands in your hands: one chat in the owner's own look, four zones (the lead or paid order, suggestions, the ping, what people keep asking) landing along dashed connectors. A service side (Studio Hana, with the capture card) and a products side (Kek Lina: basket, checkout and FPX payment inside the phone, in the real checkout's own words via `shopCopy`). Left alone the sides take turns; a visitor's pick stays. |
-| No cut, ever | `NoCut.tsx`, `nocut.module.css` | Two receipts for the same RM100 cake print in turn; the marketplace one loses three fees and dims, the Curios one is stamped 0%. Fixed sample figures (`keepAfter`), never PlanTerms. |
+| No cut, ever | `NoCut.tsx`, `nocut.module.css` | Two receipts for the same RM100 cake print in turn; the marketplace one loses three fees (and stays at full strength, 19 Nov), the Curios one is stamped 0%. Fixed sample figures (`keepAfter`), never PlanTerms. |
 | Pricing | `Pricing.tsx`, `pricing.module.css` | Personal free; Business at the prices in force (`pricingCopy(locale, terms)`), monthly or yearly; the calculator. "One more order and it pays for itself" shows only when it is true. |
 | FAQ | `Faq.tsx`, `faq.module.css` | One open at a time; every answer stays in the page, so FAQPage structured data matches it. |
 | Closing, footer | `Closing.tsx`, `Footer.tsx` (+ modules) | "Tanya je." over "One page for …" with a word pill rolling every 2s while in view, the claim again (no Peek). The footer keeps the legal links and the operator line (DEVIATIONS 138). |
@@ -50,7 +50,9 @@ finished frame.
 `data-rv=""` and an optional `--d` delay. The server never hides anything;
 `RevealWatcher` holds only blocks below the fold after mount
 (`data-rv="wait"`) and releases each as it comes into view. Reduced motion, or
-no IntersectionObserver, holds nothing.
+no IntersectionObserver, holds nothing. The held style is gated on `.js`, which
+the root layout's inline `<head>` script adds to `<html>` (19 Nov review), so a
+failed or blocked script never leaves a section blank.
 
 **Peek.** `_peek/LivePeek.tsx` with `_peek/peek-life.ts`: every live Peek shares
 one pointer listener (pupils follow the pointer) and one habit clock (look,

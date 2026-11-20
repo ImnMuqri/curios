@@ -31,7 +31,7 @@
 
 .ask em {
   margin-left: auto;
-  color: var(--cl-faint);
+  color: var(--calm-muted);
   font-size: 14px;
   font-style: normal;
   white-space: nowrap;
@@ -144,7 +144,7 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 6px;
-  color: var(--cl-faint);
+  color: var(--calm-muted);
   font-size: 11.5px;
   font-weight: 600;
 }
@@ -169,7 +169,7 @@
 }
 
 .fa p > span {
-  color: var(--cl-faint);
+  color: var(--calm-muted);
 }
 
 .fb {
@@ -204,7 +204,7 @@
 .fb em {
   display: block;
   margin-top: 2px;
-  color: var(--cl-faint);
+  color: var(--calm-muted);
   font: 500 11px var(--cl-mono);
   font-style: normal;
 }
@@ -248,5 +248,12 @@
 
   .ask em {
     display: none;
+  }
+}
+
+/* A phone (19 Nov review): the question chips are 44px targets. */
+@media (max-width: 760px) {
+  .sw button {
+    min-height: 44px;
   }
 }

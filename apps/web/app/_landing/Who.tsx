@@ -9,6 +9,12 @@ import calm from './calm.module.css';
 import styles from './who.module.css';
 
 /** How long a question's answers stay up, and after a visitor picks one (Landing2 board, L2:1023). */
+/**
+ * An avatar's initial: the owner's colour mixed 55% toward ink (19 Nov board), so a light accent
+ * like Studio Hana's gold still reads on its warm disc.
+ */
+export const initialInk = (accent: string) => `color-mix(in srgb, ${accent} 55%, var(--calm-ink))`;
+
 export const SQ_HOLD_MS = 4600;
 export const SQ_USER_HOLD_MS = 15000;
 
@@ -91,7 +97,7 @@ export function Who({ locale }: { locale: Locale }) {
   };
 
   return (
-    <section className={calm.sec} id="who" aria-labelledby="who-title">
+    <section className={`${calm.sec} ${calm.secEnd}`} id="who" aria-labelledby="who-title">
       <div className={calm.wrap}>
         <p className={`${calm.lbl} ${calm.rv}`} data-rv="">
           {copy.eyebrow}
@@ -153,7 +159,7 @@ export function Who({ locale }: { locale: Locale }) {
                   )}
                 </div>
                 <div className={styles.fb}>
-                  <span className={styles.av} style={{ background: person.warm, color: person.accent }} aria-hidden="true">
+                  <span className={styles.av} style={{ background: person.warm, color: initialInk(person.accent) }} aria-hidden="true">
                     {person.name.charAt(0)}
                   </span>
                   <div>
