@@ -90,6 +90,13 @@ describe('getTopics', () => {
     expect(pages.flat().map((t) => t.id).sort()).toEqual([...ids].sort());
   });
 
+  it('reads one topic by id, and never another owner’s', async () => {
+    const [first] = await getTopics(ownerA);
+    expect(await getTopics(ownerA, { id: first!.id })).toEqual([first]);
+    const [theirs] = await getTopics(ownerB);
+    expect(await getTopics(ownerA, { id: theirs!.id })).toEqual([]);
+  });
+
   it('orders by askCount, then most recently asked', async () => {
     const topics = await getTopics(ownerA);
     expect(topics.map((t) => t.title)).toEqual(['Berapa harga kek?', 'Ada delivery?', 'Ada halal?', 'Boleh tempah?']);

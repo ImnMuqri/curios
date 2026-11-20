@@ -78,16 +78,17 @@ function showWhere(show: TopicShow, chatIds: string[]): Prisma.TopicWhereInput {
 /**
  * One row per topic, most asked first. Scoped through the page's owner in the query. `offset` skips
  * that many, for the Questions screen's later pages; the id settles a tie, so pages never overlap.
- * `show` filters before paging, so a filtered list pages through every topic it matches.
+ * `show` filters before paging, so a filtered list pages through every topic it matches. `id` reads that one
+ * topic (still this owner's): the topic screen, from any page of the list.
  */
 export async function getTopics(
   accountId: string,
-  options: { limit?: number; offset?: number; now?: Date; show?: TopicShow } = {},
+  options: { limit?: number; offset?: number; now?: Date; show?: TopicShow; id?: string } = {},
 ): Promise<OwnerTopic[]> {
   const now = options.now ?? new Date();
   const show = options.show ?? 'all';
   const topics = await prismaRead.topic.findMany({
-    where: { page: { accountId }, ...showWhere(show, show === 'needs' || show === 'chat' ? await chatAnsweredIds(accountId) : []) },
+    where: { page: { accountId }, ...(options.id ? { id: options.id } : {}), ...showWhere(show, show === 'needs' || show === 'chat' ? await chatAnsweredIds(accountId) : []) },
     orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }, { id: 'asc' }],
     take: Math.min(Math.max(options.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT),
     skip: Math.max(options.offset ?? 0, 0),
