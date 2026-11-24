@@ -4,6 +4,8 @@ import { getSettings } from '@curios/db-read';
 import { connectToApi } from '../../lib/api-hints.js';
 import { AuthShell } from '../_auth/AuthShell.js';
 import { SignUp } from './signup-form.js';
+import { SIGNUP_TITLE } from './signup-title.js';
+import styles from '../auth.module.css';
 
 export const metadata: Metadata = {
   title: 'Create your free page · Curios',
@@ -25,12 +27,11 @@ export default async function SignUpPage(_props: { searchParams: Promise<{ close
 
   if (!switches.signups) {
     return (
-      <AuthShell
-        title="Create your free page"
-        switchTo={{ prompt: 'Already have a page?', label: 'Sign in', href: '/signin' }}
-        scene="signup"
-      >
+      <AuthShell title={SIGNUP_TITLE}>
         <Callout tone="info">Curios is full for now. Try again soon.</Callout>
+        <p className={`${styles.fine} ${styles.phoneOnly}`}>
+          Already have a page? <a href="/signin">Sign in</a>
+        </p>
       </AuthShell>
     );
   }

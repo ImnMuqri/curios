@@ -79,12 +79,11 @@ describe('the laptop scale', () => {
     expect(compensated).toBeGreaterThanOrEqual(20);
   });
 
-  it('the frame, the sidebar and the auth panels fill the window under the zoom', () => {
+  it('the frame, the sidebar and the auth screen fill the window under the zoom', () => {
     const frame = noComments(read('./app/app-frame.module.css'));
     const side = frame.slice(frame.indexOf('\n.side {'), frame.indexOf('\n}', frame.indexOf('\n.side {')));
     expect(side).toContain('height: calc(100vh / var(--page-zoom, 1));');
-    expect(noComments(read('./auth.module.css'))).toContain('height: calc(100dvh / var(--page-zoom, 1));');
-    expect(noComments(read('./_auth/scene.module.css'))).toContain('height: calc(100dvh / var(--page-zoom, 1) - 28px);');
+    expect(noComments(read('./auth.module.css'))).toContain('min-height: calc(100dvh / var(--page-zoom, 1));');
   });
 
   it('turns measured boxes back into CSS pixels where a measurement becomes a length', () => {

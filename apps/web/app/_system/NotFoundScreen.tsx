@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { apiFetch } from '../../lib/api.js';
 import { rememberWantedHandle, tidyHandle } from '../../lib/wanted-handle.js';
 import { SystemShell, systemStyles as styles } from './SystemShell.js';
+import { LivePeek } from '../_peek/LivePeek.js';
 
 /**
  * The address someone tried, when it could have been a page's: one path
@@ -19,9 +20,10 @@ function triedHandle(pathname: string): string | null {
 }
 
 /**
- * 404, from the deleted System board: "Nobody lives here yet." When the address
- * could be a page's, it shows it struck through and offers to claim it, the
- * handle carried to sign-up as the landing page's claim field carries it.
+ * 404, from the Site board: "Nobody lives here yet." beside a tinted panel with
+ * a giant 404, a tilted sign and a sad Peek. When the address could be a page's,
+ * it shows it as a chip and offers to claim it, the handle carried to sign-up as
+ * the landing page's claim field carries it; any other address gets neither.
  */
 export function NotFoundScreen() {
   const handle = triedHandle(usePathname() ?? '');
@@ -46,8 +48,8 @@ export function NotFoundScreen() {
       <div className={styles.nf}>
         <div>
           <p className={styles.kick}>404 · not found</p>
-          <h1 className={styles.nfH}>Nobody lives here yet.</h1>
-          <p className={styles.l}>
+          <h1 className={styles.nfTitle}>Nobody lives here yet.</h1>
+          <p className={styles.led}>
             {handle
               ? 'There’s no Curios page at this address. It might be a typo, or the page was renamed.'
               : 'There’s nothing at this address. It might be a typo, or the page moved.'}
@@ -68,24 +70,15 @@ export function NotFoundScreen() {
             </a>
           </div>
           {near ? (
-            <p className={`${styles.l} ${styles.mean}`}>
+            <p className={styles.mean}>
               Looking for someone? Did you mean <a href={`/${near}`}>curios.my/{near}</a>?
             </p>
           ) : null}
         </div>
-        <div className={styles.art} aria-hidden="true">
-          <div className={styles.ghostcard}>
-            <div className={styles.gscr}>
-              <div className={styles.gb}>
-                <span className={styles.gav} />
-                <span className={styles.gl} />
-                <span className={styles.gl} />
-                <span className={styles.gl} />
-                <span className={styles.gl} />
-              </div>
-            </div>
-          </div>
-          <span className={styles.bub}>Hmm. Nobody’s claimed this page yet.</span>
+        <div className={styles.big} aria-hidden="true">
+          <span className={styles.n}>404</span>
+          {handle ? <span className={styles.sign}>curios.my/{handle}</span> : null}
+          <LivePeek width={150} className={styles.pk} held="sad" />
         </div>
       </div>
     </SystemShell>

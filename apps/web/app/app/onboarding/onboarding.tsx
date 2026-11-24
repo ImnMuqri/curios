@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api.js';
 import { loginWalledSite } from '../../../lib/social-links.js';
 import { forgetWantedHandle, readWantedHandle } from '../../../lib/wanted-handle.js';
+import { AuthPeek } from '../../_auth/AuthPeek.js';
 import { Wordmark } from '../../_landing/Wordmark.js';
 import { KIND_LABELS } from '../knowledge/facts-tab.js';
 import { checkSource, FILE_ACCEPT, fileSize, ingestSource, type IngestionResult, type Source, type SourceWay } from './source-input.js';
-import { PeekBody } from '../_ui/peek.js';
+import { SignOutButton } from '../sign-out-button.js';
 import styles from './onboarding.module.css';
 
 export type Mode = 'PERSONAL' | 'BUSINESS';
@@ -37,37 +38,35 @@ const ICON = {
   text: 'M6 3h9l4 4v14H6zM9 12h7M9 16h5',
   file: 'M12 16V4M7 9l5-5 5 5M5 20h14',
   web: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
-  person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0',
-  shop: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
   check: 'M5 12.5l4.5 4.5L19 7.5',
-  arrow: 'M5 12h14M13 6l6 6-6 6',
 } as const;
 
-const WAYS: { id: SourceWay; label: string; icon: string }[] = [
-  { id: 'link', label: 'Link', icon: ICON.link },
-  { id: 'text', label: 'Paste text', icon: ICON.text },
-  { id: 'file', label: 'A file', icon: ICON.file },
+const WAYS: { id: SourceWay; label: string }[] = [
+  { id: 'link', label: 'A link' },
+  { id: 'text', label: 'Paste text' },
+  { id: 'file', label: 'A file' },
 ];
 
-/** The plan in force, as the modes quote it: "RM49" and the free leads. */
-type Terms = { monthly: string; freeLeads: number };
+/** The plan in force, as the modes quote it: the price and the free leads and orders. */
+type Terms = { monthly: string; freeLeads: number; freeOrders: number };
 
-const MODES: { id: Mode; title: string; price: (terms: Terms) => string; text: (terms: Terms) => string; points: string[]; icon: string }[] = [
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
+const MODES: { id: Mode; title: string; price: (terms: Terms) => string; text: string; points: string[] }[] = [
   {
     id: 'PERSONAL',
     title: 'Personal',
     price: () => 'Free',
-    text: () => 'A page about you. For freelancers, job seekers and creators.',
-    points: ['Answers questions about you and your work', 'Hidden from search engines unless you choose', 'Free, for good'],
-    icon: ICON.person,
+    text: 'A page about you. For freelancers, job seekers and creators.',
+    points: ['Answers about you and your work', 'Hidden from Google unless you switch it on'],
   },
   {
     id: 'BUSINESS',
     title: 'Business',
-    price: ({ freeLeads }) => `${freeLeads} free ${freeLeads === 1 ? 'lead' : 'leads'}`,
-    text: ({ monthly }) => `For selling. Then ${monthly} a month, paid when you want.`,
-    points: ['Takes numbers when the chat can’t answer', 'A shop with orders paid to your QR', 'FAQ pages people find on Google'],
-    icon: ICON.shop,
+    // From the settings in force, never typed here: the price and both free counts are the admin's.
+    price: ({ monthly, freeLeads, freeOrders }) => `${monthly} a month · first ${count(freeLeads, 'lead', 'leads')} and ${count(freeOrders, 'order', 'orders')} free`,
+    text: 'It answers customers, takes their numbers and runs your shop.',
+    points: ['A shop paid by FPX, e-wallet, card or QR', 'FAQ pages Google can find'],
   },
 ];
 
@@ -103,17 +102,20 @@ type Reading = {
 };
 
 /**
- * Onboarding, from the design handoff's More board. Four steps: claim
- * the address (with a live check), say what the page is for, give it
- * something to read, and watch it read. The page is claimed when the owner
- * reads a source or skips, so Back works freely until then; an owner who
- * already has a page starts at the third step.
+ * Onboarding, from the More board (ob1 to ob4): one centred column under a top
+ * bar (the wordmark, four bars, Sign out). Four steps: claim the address (with a
+ * live check), say what the page is for, give it something to read, and see what
+ * it read. The page is claimed when the owner reads a source or skips, so Back
+ * works freely until then, on the third step too (the board draws none there, but
+ * nobody may be trapped in a mis-clicked mode); an owner who already has a page
+ * starts at the third step with no Back, and "Skip for now" is a way out. Peek peeks over the address and the source.
  */
 export function OnboardingFlow({
   page,
   facts,
   monthlyPrice,
   freeLeads,
+  freeOrders,
   pastedTextMax,
   actions,
 }: {
@@ -123,6 +125,8 @@ export function OnboardingFlow({
   monthlyPrice: string;
   /** The free leads in force (`Settings.freeLeads`). */
   freeLeads: number;
+  /** The free orders in force (`Settings.freeOrders`). */
+  freeOrders: number;
   pastedTextMax: number;
   actions: OnboardingActions;
 }) {
@@ -302,21 +306,27 @@ export function OnboardingFlow({
   // What this read found: the newest facts in the queue, once the refresh brings them.
   const justFound = found ? facts.slice(-foundCount) : [];
 
+  const terms: Terms = { monthly: monthlyPrice, freeLeads, freeOrders };
+
   return (
     <div className={styles.ob}>
-      <div className={styles.form}>
-        <div className={styles.top}>
-          <a href="/app/curios" aria-label="Curios">
-            <Wordmark />
-          </a>
-          <span className={styles.steps}>
+      <div className={styles.dots} aria-hidden="true" />
+      <header className={styles.top}>
+        <a href="/app/curios" className={styles.brand} aria-label="Curios">
+          <Wordmark />
+        </a>
+        <span className={styles.prog}>
+          <span className={styles.bars}>
             {[0, 1, 2, 3].map((i) => (
-              <i key={i} data-on={i <= step || undefined} data-now={i === step || undefined} aria-hidden="true" />
+              <i key={i} data-on={i <= step || undefined} aria-hidden="true" />
             ))}
-            <span>Step {step + 1} of 4</span>
           </span>
-        </div>
+          <span>Step {step + 1} of 4</span>
+        </span>
+        <SignOutButton className={styles.signOut} />
+      </header>
 
+      <main className={styles.main}>
         {step === 0 ? (
           <form
             key="claim"
@@ -329,52 +339,51 @@ export function OnboardingFlow({
               }
             }}
           >
-            <h1 className={styles.h}>Claim your page</h1>
+            <h1 className={styles.h}>Claim your page.</h1>
             <p className={styles.lede}>Pick your address. You can change how it looks later, not the address.</p>
-            <label className={styles.lab} htmlFor="ob-handle">
-              Your address
-            </label>
-            <span className={styles.addr}>
-              <span>curios.my/</span>
-              <input
-                id="ob-handle"
-                value={handle}
-                onChange={(event) => setHandle(event.target.value.toLowerCase().replace(/\s+/g, ''))}
-                maxLength={30}
-                autoComplete="off"
-                autoCapitalize="none"
-                spellCheck={false}
-                aria-describedby="ob-handle-hint"
-              />
-              <span className={styles.avail} data-state={status} role="status">
-                {status === 'available' ? (
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d={ICON.check} />
-                  </svg>
-                ) : null}
-                {avail.text}
-              </span>
-            </span>
-            <p className={styles.hint} id="ob-handle-hint">
-              {avail.hint}
-            </p>
-            <label className={styles.lab} htmlFor="ob-name">
-              Name on the page
-            </label>
-            <span className={styles.txt}>
-              <input id="ob-name" value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder="Your name or your business" autoComplete="name" />
-            </span>
-            {claimError ? (
-              <p className={styles.error} role="alert">
-                {claimError}
+            <div className={styles.af}>
+              <div className={styles.w}>
+                <AuthPeek />
+                <div className={`${styles.pil} ${styles.big}`}>
+                  <label htmlFor="ob-handle" className={styles.sr}>
+                    Your address
+                  </label>
+                  <span className={styles.pre} aria-hidden="true">
+                    curios.my/
+                  </span>
+                  <input
+                    id="ob-handle"
+                    className={styles.in}
+                    value={handle}
+                    onChange={(event) => setHandle(event.target.value.toLowerCase().replace(/\s+/g, ''))}
+                    maxLength={30}
+                    autoComplete="off"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    aria-describedby="ob-handle-hint"
+                  />
+                  <span className={styles.avail} data-state={status} role="status">
+                    {status === 'available' ? '✓ ' : ''}
+                    {avail.text}
+                  </span>
+                </div>
+              </div>
+              <p className={styles.hint} id="ob-handle-hint">
+                {avail.hint}
               </p>
-            ) : null}
-            <div className={styles.foot}>
+              <label className={styles.lab} htmlFor="ob-name">
+                Name on the page
+              </label>
+              <div className={styles.pil}>
+                <input id="ob-name" className={styles.in} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder="Your name or your business" autoComplete="name" />
+              </div>
+              {claimError ? (
+                <p className={styles.error} role="alert">
+                  {claimError}
+                </p>
+              ) : null}
               <button type="submit" className={styles.go} disabled={!(canContinue && name.trim())}>
                 Continue
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d={ICON.arrow} />
-                </svg>
               </button>
             </div>
           </form>
@@ -384,161 +393,160 @@ export function OnboardingFlow({
           <div key="mode" className={styles.body}>
             <h1 className={styles.h}>What is this page for?</h1>
             <p className={styles.lede}>You can switch a personal page to business later. Not the other way round.</p>
-            <div className={styles.modes} role="radiogroup" aria-label="What this page is for">
-              {MODES.map((m) => (
-                <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} data-mode={m.id} className={styles.mode} onClick={() => setMode(m.id)}>
-                  <span className={styles.mi} aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d={m.icon} />
-                    </svg>
-                  </span>
-                  <span style={{ minWidth: 0 }}>
-                    <b>
-                      {m.title}
-                      <em>{m.price({ monthly: monthlyPrice, freeLeads })}</em>
-                    </b>
-                    <p>{m.text({ monthly: monthlyPrice, freeLeads })}</p>
+            <div className={styles.af}>
+              <div className={styles.modes} role="radiogroup" aria-label="What this page is for">
+                {MODES.map((m) => (
+                  <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} data-mode={m.id} className={styles.md} onClick={() => setMode(m.id)}>
+                    <span className={styles.tick} aria-hidden="true">
+                      ✓
+                    </span>
+                    <b>{m.title}</b>
+                    <span className={styles.pr}>{m.price(terms)}</span>
+                    <p>{m.text}</p>
                     <ul>
                       {m.points.map((point) => (
                         <li key={point}>{point}</li>
                       ))}
                     </ul>
-                  </span>
-                  <span className={styles.rad} aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d={ICON.check} />
-                    </svg>
-                  </span>
+                  </button>
+                ))}
+              </div>
+              <div className={styles.row}>
+                <button type="button" className={styles.lite} onClick={() => setStep(0)}>
+                  Back
                 </button>
-              ))}
-            </div>
-            <div className={styles.foot}>
-              <button type="button" className={styles.back} onClick={() => setStep(0)}>
-                Back
-              </button>
-              <button type="button" className={styles.go} disabled={mode === null} onClick={() => setStep(2)}>
-                Continue
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d={ICON.arrow} />
-                </svg>
-              </button>
+                <button type="button" className={`${styles.go} ${styles.grow}`} disabled={mode === null} onClick={() => setStep(2)}>
+                  Continue
+                </button>
+              </div>
             </div>
           </div>
         ) : null}
 
         {step === 2 ? (
           <form key="teach" className={styles.body} onSubmit={(event) => void read(event)}>
-            <h1 className={styles.h}>{business ? 'Teach it about your business' : 'Teach it about you'}</h1>
+            <h1 className={styles.h}>{business ? 'Teach it about your business.' : 'Teach it about you.'}</h1>
             <p className={styles.lede}>Give it something to read. The facts it finds wait for you to check, so nothing goes live by surprise.</p>
-            <div className={styles.ways} role="group" aria-label="How to add it">
-              {WAYS.map((w) => (
-                <button
-                  key={w.id}
-                  type="button"
-                  aria-pressed={way === w.id}
-                  onClick={() => {
-                    setWay(w.id);
-                    setError('');
-                  }}
-                >
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d={w.icon} />
-                  </svg>
-                  <span>{w.label}</span>
-                </button>
-              ))}
-            </div>
-            {way === 'link' ? (
-              <>
-                <label className={styles.lab} htmlFor="ob-link">
-                  {business ? 'Your website address' : 'A link about you'}
-                </label>
-                <span className={styles.txt}>
-                  <input id="ob-link" value={link} onChange={(event) => setLink(event.target.value.trim())} placeholder="your-site.com" inputMode="url" autoComplete="off" />
-                </span>
-                <p className={styles.hint}>{business ? 'Your website, online shop, menu or any page about the business.' : 'Your site, Linktree or portfolio.'}</p>
-                {walled ? <p className={styles.note}>Instagram, TikTok, Facebook and LinkedIn don’t let us read profiles. Paste your bio or captions from there instead.</p> : null}
-              </>
-            ) : way === 'text' ? (
-              <>
-                <label className={styles.lab} htmlFor="ob-text">
-                  {business ? 'About your business' : 'About you'}
-                </label>
-                <textarea
-                  id="ob-text"
-                  className={styles.paste}
-                  value={text}
-                  maxLength={pastedTextMax}
-                  onChange={(event) => setText(event.target.value)}
-                  placeholder="A bio, captions, an About section. Whatever says it best."
-                />
-                <p className={styles.hint}>
-                  {text.length.toLocaleString('en-US')} of {pastedTextMax.toLocaleString('en-US')} characters
-                </p>
-              </>
-            ) : (
-              <>
-                <span className={styles.lab}>A file</span>
-                <label
-                  className={styles.drop}
-                  data-dragging={dragging || undefined}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                    setDragging(true);
-                  }}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setDragging(false);
-                    const dropped = event.dataTransfer.files[0];
-                    if (dropped) setFile(dropped);
-                  }}
-                >
-                  <input
-                    type="file"
-                    accept={FILE_ACCEPT}
-                    aria-label="A file to read"
-                    onChange={(event) => {
-                      const chosen = event.target.files?.[0];
-                      if (chosen) setFile(chosen);
+            <div className={styles.af}>
+              <div className={styles.seg} role="group" aria-label="How to add it">
+                {WAYS.map((w) => (
+                  <button
+                    key={w.id}
+                    type="button"
+                    aria-pressed={way === w.id}
+                    onClick={() => {
+                      setWay(w.id);
+                      setError('');
                     }}
-                  />
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d={ICON.file} />
-                  </svg>
-                  <b>{file ? file.name : 'Choose a file, or drop it here'}</b>
-                  <small>
-                    {file
-                      ? `${fileSize(file.size)}. Click to choose a different one.`
-                      : `${business ? 'A menu, a price list, a brochure.' : 'Your resume, a portfolio, a bio.'} PDF, Word or text, up to 5 MB.`}
-                  </small>
-                </label>
-              </>
-            )}
-            {error ? (
-              <p className={styles.error} role="alert">
-                {error}
-              </p>
-            ) : null}
-            <div className={styles.foot}>
+                  >
+                    {w.label}
+                  </button>
+                ))}
+              </div>
+              {way === 'link' ? (
+                <>
+                  <div className={styles.w}>
+                    <AuthPeek />
+                    <div className={styles.pil}>
+                      <label htmlFor="ob-link" className={styles.sr}>
+                        {business ? 'Your website address' : 'A link about you'}
+                      </label>
+                      <span className={styles.lic} aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d={ICON.link} />
+                        </svg>
+                      </span>
+                      <input id="ob-link" className={styles.in} value={link} onChange={(event) => setLink(event.target.value.trim())} placeholder="your-site.com" inputMode="url" autoComplete="off" />
+                    </div>
+                  </div>
+                  <p className={styles.hint}>{business ? 'Your website, online shop, menu or any page about the business.' : 'Your site, Linktree or portfolio.'}</p>
+                  {walled ? <p className={styles.note}>Instagram, TikTok, Facebook and LinkedIn don’t let us read profiles. Paste your bio or captions from there instead.</p> : null}
+                </>
+              ) : way === 'text' ? (
+                <>
+                  <div className={styles.w}>
+                    <AuthPeek />
+                    <label htmlFor="ob-text" className={styles.sr}>
+                      {business ? 'About your business' : 'About you'}
+                    </label>
+                    <textarea
+                      id="ob-text"
+                      className={styles.paste}
+                      value={text}
+                      maxLength={pastedTextMax}
+                      onChange={(event) => setText(event.target.value)}
+                      placeholder="A bio, captions, an About section. Whatever says it best."
+                    />
+                  </div>
+                  <p className={styles.hint}>
+                    {text.length.toLocaleString('en-US')} of {pastedTextMax.toLocaleString('en-US')} characters
+                  </p>
+                </>
+              ) : (
+                <div className={styles.w}>
+                  <AuthPeek />
+                  <label
+                    className={styles.drop}
+                    data-dragging={dragging || undefined}
+                    onDragOver={(event) => {
+                      event.preventDefault();
+                      setDragging(true);
+                    }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      setDragging(false);
+                      const dropped = event.dataTransfer.files[0];
+                      if (dropped) setFile(dropped);
+                    }}
+                  >
+                    <input
+                      type="file"
+                      accept={FILE_ACCEPT}
+                      aria-label="A file to read"
+                      onChange={(event) => {
+                        const chosen = event.target.files?.[0];
+                        if (chosen) setFile(chosen);
+                      }}
+                    />
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d={ICON.file} />
+                    </svg>
+                    <b>{file ? file.name : 'Choose a file, or drop it here'}</b>
+                    <small>
+                      {file
+                        ? `${fileSize(file.size)}. Click to choose a different one.`
+                        : `${business ? 'A menu, a price list, a brochure.' : 'Your resume, a portfolio, a bio.'} PDF, Word or text, up to 5 MB.`}
+                    </small>
+                  </label>
+                </div>
+              )}
+              {error ? (
+                <p className={styles.error} role="alert">
+                  {error}
+                </p>
+              ) : null}
+              <button type="submit" className={styles.go} disabled={!canRead || busy}>
+                {busy ? 'Starting…' : 'Read it'}
+              </button>
+              {/* The board draws no Back here, but until the page is claimed nobody may be stuck with a mis-clicked mode. */}
               {pageId === null ? (
-                <button type="button" className={styles.back} onClick={() => setStep(1)}>
+                <button type="button" className={styles.lite} onClick={() => setStep(1)}>
                   Back
                 </button>
               ) : null}
-              <button type="submit" className={styles.go} disabled={!canRead || busy}>
-                {busy ? 'Starting…' : way === 'link' ? (business ? 'Read my website' : 'Read this link') : way === 'text' ? 'Read what I pasted' : 'Read this file'}
-              </button>
-              <button type="button" className={styles.skip} disabled={busy} onClick={() => void skip()}>
-                Skip for now
-              </button>
+              <p className={styles.fine}>
+                <button type="button" className={styles.link} disabled={busy} onClick={() => void skip()}>
+                  Skip for now
+                </button>
+              </p>
             </div>
           </form>
         ) : null}
 
         {step === 3 && reading ? (
           <div key="reading" className={styles.body}>
-            <h1 className={styles.h}>{found ? 'Done reading' : quiet ? 'That one was quiet' : failed ? 'That didn’t work' : 'Reading it now…'}</h1>
+            <h1 className={styles.h}>{found ? 'Done reading.' : quiet ? 'That one was quiet.' : failed ? 'That didn’t work.' : 'Reading it now…'}</h1>
             <p className={styles.lede} role="status">
               {found
                 ? 'Here is what it picked out.'
@@ -548,297 +556,100 @@ export function OnboardingFlow({
                     ? result.error ?? 'We could not read it.'
                     : 'This usually takes under a minute. You can leave: the facts will wait in Review.'}
             </p>
-            {!done ? (
-              <>
-                <div className={styles.reader}>
-                  <p className={styles.src}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={reading.icon} />
-                    </svg>
-                    {reading.label}
-                  </p>
-                  {reading.lines && reading.lines.length > 0
-                    ? reading.lines.map((line, i) => (
-                        <p key={i} className={styles.rl}>
-                          {line}
-                        </p>
-                      ))
-                    : Array.from({ length: 6 }, (_, i) => <p key={i} className={styles.rl} data-skel="" aria-hidden="true" />)}
-                </div>
-                <div
-                  className={styles.pbar}
-                  role="progressbar"
-                  aria-label="How far it has read"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={progress}
-                >
-                  <i style={{ width: `${Math.max(4, progress)}%` }} />
-                </div>
-              </>
-            ) : null}
-            {justFound.length > 0 ? (
-              <div className={styles.found}>
-                {justFound.map((fact) => (
-                  <span key={fact.id} className={styles.fchip}>
-                    <i className={styles.kind} data-kind={fact.category}>
-                      {KIND_LABELS[fact.category]}
-                    </i>
-                    <span>{fact.claim}</span>
-                  </span>
-                ))}
-              </div>
-            ) : null}
-            {found ? (
-              <>
-                <div className={styles.res}>
-                  <span className={styles.ri} aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d={ICON.check} />
-                    </svg>
-                  </span>
-                  <span>
-                    <b>Found {foundCount === 1 ? '1 fact' : `${foundCount} facts`}</b>
-                    <span>They are waiting in Review. Nothing goes live until you accept each one.</span>
-                  </span>
-                </div>
-                <div className={styles.foot}>
+            <div className={styles.af}>
+              {!done ? (
+                <>
+                  <div className={styles.fnd}>
+                    <div className={styles.fh}>
+                      <span className={styles.lic} aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d={reading.icon} />
+                        </svg>
+                      </span>
+                      <span className={styles.src}>{reading.label}</span>
+                    </div>
+                    {reading.lines && reading.lines.length > 0
+                      ? reading.lines.map((line, i) => (
+                          <p key={i} className={styles.rl}>
+                            {line}
+                          </p>
+                        ))
+                      : Array.from({ length: 5 }, (_, i) => <p key={i} className={styles.rl} data-skel="" aria-hidden="true" />)}
+                  </div>
+                  <div
+                    className={styles.pbar}
+                    role="progressbar"
+                    aria-label="How far it has read"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={progress}
+                  >
+                    <i style={{ width: `${Math.max(4, progress)}%` }} />
+                  </div>
+                </>
+              ) : null}
+              {found ? (
+                <>
+                  <div className={styles.fnd}>
+                    <div className={styles.fh}>
+                      <span className={styles.lic} aria-hidden="true">
+                        <svg viewBox="0 0 24 24">
+                          <path d={reading.icon} />
+                        </svg>
+                      </span>
+                      <span className={styles.src}>{reading.label}</span>
+                      <span className={styles.ok3}>{foundCount === 1 ? '1 fact' : `${foundCount} facts`}</span>
+                    </div>
+                    {justFound.map((fact) => (
+                      <div key={fact.id} className={styles.fr}>
+                        <span className={styles.tag}>{KIND_LABELS[fact.category]}</span>
+                        {fact.claim}
+                      </div>
+                    ))}
+                  </div>
+                  <p className={`${styles.hint} ${styles.mid}`}>They are waiting in Review. Nothing goes live until you accept each one.</p>
                   <a className={styles.go} href="/app/review">
                     Review them
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={ICON.arrow} />
-                    </svg>
                   </a>
-                  <button type="button" className={styles.back} onClick={() => again('link')}>
+                  <button type="button" className={styles.lite} onClick={() => again('link')}>
                     Add another source
                   </button>
-                </div>
-              </>
-            ) : null}
-            {quiet ? (
-              <>
-                <div className={styles.res} data-tone="amber">
-                  <span className={styles.ri} aria-hidden="true">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M12 8v5M12 16.5h.01" />
-                    </svg>
-                  </span>
-                  <span>
+                </>
+              ) : null}
+              {quiet ? (
+                <>
+                  <div className={styles.res}>
                     <b>Nothing to use yet</b>
                     <span>That page didn’t let us read much. Paste a few sentences about what you sell, your prices or your hours instead.</span>
-                  </span>
-                </div>
-                <div className={styles.foot}>
+                  </div>
                   <button type="button" className={styles.go} onClick={() => again('text')}>
                     Paste text instead
                   </button>
-                  <a className={styles.skip} href="/app/curios">
-                    Skip for now
-                  </a>
-                </div>
-              </>
-            ) : null}
-            {failed ? (
-              <div className={styles.foot}>
-                <button type="button" className={styles.go} onClick={() => again('link')}>
-                  Try a different source
-                </button>
-                <a className={styles.skip} href="/app/curios">
-                  Skip for now
-                </a>
-              </div>
-            ) : null}
+                  <p className={styles.fine}>
+                    <a href="/app/curios">Skip for now</a>
+                  </p>
+                </>
+              ) : null}
+              {failed ? (
+                <>
+                  <button type="button" className={styles.go} onClick={() => again('link')}>
+                    Try a different source
+                  </button>
+                  <p className={styles.fine}>
+                    <a href="/app/curios">Skip for now</a>
+                  </p>
+                </>
+              ) : null}
+            </div>
           </div>
         ) : null}
-      </div>
-
-      <OnboardingArt
-        step={step}
-        handle={handle}
-        handleFree={status === 'available'}
-        mode={mode}
-        outcome={found ? 'found' : done ? 'none' : null}
-        foundCount={foundCount}
-        found={justFound.slice(0, 3)}
-      />
+      </main>
     </div>
   );
 }
 
-type Pose = 'claim' | 'business' | 'personal' | 'read' | 'scan' | 'found' | 'none';
-
-/** The panel's two lines, one pair per pose (More.dc.html, paT and paS). */
-function panelCaption(pose: Pose, handleFree: boolean, foundCount: number): [string, string] {
-  switch (pose) {
-    case 'claim':
-      return [handleFree ? 'It’s yours' : 'Pick an address', 'Your page goes live at this address the moment you claim it.'];
-    case 'business':
-      return ['A page that sells', 'It answers customers, takes their numbers and runs your shop.'];
-    case 'personal':
-      return ['A page about you', 'It answers questions about you and your work.'];
-    case 'read':
-      return ['Give it something to read', 'Everything it learns waits for you to check first.'];
-    case 'scan':
-      return ['Reading it now', 'Picking out prices, hours and what you offer.'];
-    case 'found':
-      return [`Found ${foundCount} facts`, 'They wait in Review until you accept them.'];
-    default:
-      // Also what a failed read shows (DEVIATIONS row 89); the form says what went wrong.
-      return ['Nothing to read there', 'Try pasting a few lines instead.'];
-  }
-}
-
-function Hand({ cx, cy, className }: { cx: number; cy: number; className?: string }) {
-  return (
-    <g className={className}>
-      <circle cx={cx} cy={cy} r="9.5" fill="var(--peek-hand)" stroke="var(--peek-edge)" strokeWidth="1.5" />
-    </g>
-  );
-}
-
-function Paper() {
-  return (
-    <g className={styles.paper}>
-      <g transform="rotate(-5 80 124)">
-        <rect x="50" y="106" width="60" height="40" rx="5" fill="var(--card)" stroke="var(--ink)" strokeWidth="2" />
-        <rect x="58" y="115" width="36" height="4" rx="2" fill="var(--ghost-line)" />
-        <rect x="58" y="123" width="44" height="4" rx="2" fill="var(--ghost-line)" />
-        <rect x="58" y="131" width="28" height="4" rx="2" fill="var(--ghost-line)" />
-      </g>
-    </g>
-  );
-}
-
-/**
- * The panel beside the form: Peek, full-body, one pose per step, from the
- * deleted Onboarding board ("onboarding panel: Peek"). It does not stream facts while
- * the read runs and has no phone preview (owner answer 8). Decoration only.
- */
-function OnboardingArt({
-  step,
-  handle,
-  handleFree,
-  mode,
-  outcome,
-  foundCount,
-  found,
-}: {
-  step: number;
-  handle: string;
-  handleFree: boolean;
-  /** Null until the owner picks one; the panel stays on the address until then. */
-  mode: Mode | null;
-  /** How a finished read ended: with facts, or with nothing (quiet or failed). Null while it reads. */
-  outcome: 'found' | 'none' | null;
-  foundCount: number;
-  /** The first three facts it found, shown once the read is done. */
-  found: FoundFact[];
-}) {
-  const clipId = `ob-clip-${useId().replace(/:/g, '')}`;
-  const pose: Pose =
-    step === 0 ? 'claim' : step === 1 ? (mode === 'BUSINESS' ? 'business' : mode === 'PERSONAL' ? 'personal' : 'claim') : step === 2 ? 'read' : outcome === 'found' ? 'found' : outcome === 'none' ? 'none' : 'scan';
-  const [title, line] = panelCaption(pose, handleFree, foundCount);
-
-  return (
-    <aside className={styles.art} aria-hidden="true" data-onboarding-panel="">
-      <div className={styles.pa}>
-        <div className={styles.pstage}>
-          {pose === 'claim' ? (
-            <div className={styles.signw}>
-              <span className={styles.sign}>
-                <small>curios.my/</small>
-                <b>{handle || 'yourname'}</b>
-                {handleFree ? (
-                  <i className={styles.tk} data-peek-tick="">
-                    <svg viewBox="0 0 24 24">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                  </i>
-                ) : null}
-                <em className={styles.hl} />
-                <em className={styles.hr} />
-              </span>
-            </div>
-          ) : null}
-          {pose === 'found' ? (
-            <div className={styles.pops}>
-              {found.map((fact, i) => (
-                <span key={fact.id} data-peek-fact="" style={{ animationDelay: `${i * 250}ms` }}>
-                  <i className={styles.kind} data-kind={fact.category}>
-                    {KIND_LABELS[fact.category]}
-                  </i>
-                  <b>{fact.claim}</b>
-                </span>
-              ))}
-            </div>
-          ) : null}
-          <svg className={styles.svg} viewBox={pose === 'claim' ? '-14 26 188 124' : '-14 -6 188 156'} data-pose={pose}>
-            <defs>
-              <clipPath id={clipId}>
-                <ellipse cx="80" cy="84" rx="54" ry="49" />
-              </clipPath>
-            </defs>
-            <ellipse cx="80" cy="143" rx="44" ry="4.5" className={styles.shadow} />
-            <ellipse cx="63" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
-            <ellipse cx="97" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
-            {pose === 'claim' ? <PeekBody clipId={clipId} look={{ x: 67, y: 81 }} mouth="smile" /> : null}
-            {pose === 'business' ? (
-              <>
-                <PeekBody clipId={clipId} look={{ x: 71, y: 86 }} mouth="smile" />
-                <g className={styles.bagg}>
-                  <path d="M127 98q0-12 9-12t9 12" fill="none" stroke="var(--ink)" strokeWidth="2.4" />
-                  <rect x="118" y="96" width="36" height="34" rx="6" fill="var(--kuning)" stroke="var(--ink)" strokeWidth="2" />
-                  <rect x="118" y="104" width="36" height="5" fill="var(--peek-bag-shade)" />
-                  <circle cx="136" cy="88" r="9.5" fill="var(--peek-hand)" stroke="var(--peek-edge)" strokeWidth="1.5" />
-                </g>
-                <Hand cx={20} cy={104} />
-              </>
-            ) : null}
-            {pose === 'personal' ? (
-              <>
-                <PeekBody clipId={clipId} look={{ x: 67, y: 85 }} mouth="smile" />
-                <Hand cx={20} cy={104} />
-                <Hand cx={141} cy={62} className={styles.wave} />
-              </>
-            ) : null}
-            {pose === 'read' || pose === 'scan' ? (
-              <>
-                <PeekBody clipId={clipId} look={{ x: 67, y: pose === 'read' ? 89 : 90 }} />
-                <Paper />
-                {pose === 'scan' ? (
-                  <rect className={styles.scan} data-peek-scan="" x="49" y="112" width="62" height="3" rx="1.5" fill="var(--peek-body)" transform="rotate(-5 80 124)" />
-                ) : null}
-                <Hand cx={50} cy={124} />
-                <Hand cx={111} cy={120} />
-              </>
-            ) : null}
-            {pose === 'found' ? (
-              <>
-                <PeekBody clipId={clipId} mouth="happy" />
-                <Hand cx={16} cy={78} className={styles.cheer} />
-                <Hand cx={144} cy={78} className={styles.cheer2} />
-              </>
-            ) : null}
-            {pose === 'none' ? (
-              <>
-                <PeekBody clipId={clipId} look={{ x: 62, y: 85 }} mouth="flat" />
-                <Hand cx={18} cy={112} />
-                <Hand cx={142} cy={112} />
-              </>
-            ) : null}
-          </svg>
-        </div>
-        <p className={styles.cap}>
-          <b>{title}</b>
-          <span>{line}</span>
-        </p>
-      </div>
-    </aside>
-  );
-}
-
 /** Supplies the real handlers. A Server Component may not pass functions. */
-export function Onboarding(props: { page: { id: string; handle: string; displayName: string; mode: Mode } | null; facts: FoundFact[]; monthlyPrice: string; freeLeads: number; pastedTextMax: number }) {
+export function Onboarding(props: { page: { id: string; handle: string; displayName: string; mode: Mode } | null; facts: FoundFact[]; monthlyPrice: string; freeLeads: number; freeOrders: number; pastedTextMax: number }) {
   const router = useRouter();
   const [actions] = useState<OnboardingActions>(() => ({
     checkHandle: async (handle) => (await apiFetch<{ status: HandleStatus }>(`/pages/handle-check?handle=${encodeURIComponent(handle)}`)).status,

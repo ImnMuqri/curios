@@ -5,6 +5,16 @@ import { ApiError } from '../../lib/api.js';
 import { ForgotForm } from './forgot-form.js';
 
 describe('ForgotForm', () => {
+  it('is the auth layout: a big headline, an email pill with Peek, and the way back to sign in', () => {
+    const { container } = render(<ForgotForm onSubmit={vi.fn()} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Reset your password.' })).toBeInTheDocument();
+    expect(screen.getByText('We will email you a link to choose a new one.')).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toHaveAttribute('placeholder', 'Email');
+    expect(screen.getByLabelText('Email')).toHaveAttribute('autocomplete', 'email');
+    expect(container.querySelector('[data-auth-peek]')).not.toBeNull();
+    expect(screen.getByText(/Remembered it\?/)).toBeInTheDocument();
+  });
+
   it('holds an address that is not one yet', async () => {
     const onSubmit = vi.fn().mockResolvedValue({});
     render(<ForgotForm onSubmit={onSubmit} />);
@@ -12,6 +22,8 @@ describe('ForgotForm', () => {
     await userEvent.type(screen.getByLabelText('Email'), 'lina@');
     await userEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
     expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Enter your email address.');
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-describedby', screen.getByRole('alert').id);
   });
 
   it('sends, then says the same thing whether or not the address has an account', async () => {
@@ -36,6 +48,6 @@ describe('ForgotForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Too many tries. Wait a minute.');
-    expect(screen.getByRole('heading', { name: 'Reset your password' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Reset your password.' })).toBeInTheDocument();
   });
 });

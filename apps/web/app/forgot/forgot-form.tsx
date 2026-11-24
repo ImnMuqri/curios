@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { SystemCard, SystemShell, systemStyles as styles } from '../_system/SystemShell.js';
-import { ForgotArt, LetterArt } from '../_system/art.js';
+import { useId, useState, type FormEvent } from 'react';
+import { AuthShell } from '../_auth/AuthShell.js';
+import { AuthPeek } from '../_auth/AuthPeek.js';
+import { PillField } from '../_auth/PillField.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles as systemCss } from '../_system/SystemShell.js';
+import { SentArt } from '../_system/art.js';
 import { useCountdown } from '../_system/use-countdown.js';
 import { apiFetch } from '../../lib/api.js';
+import styles from '../auth.module.css';
 
 const looksLikeEmail = (email: string) => /.+@.+\..+/.test(email);
 
 /**
- * Forgot password, and the email-sent screen after it, from the Site board.
+ * Forgot password (the auth layout), and the email-sent screen after it (a system screen), from the Site board.
  *
  * The sent screen reads the same whether or not the address has an account
  * with a password -- the API's response is identical in both cases, and this
@@ -21,6 +25,7 @@ export function ForgotForm({ onSubmit }: { onSubmit: (input: { email: string }) 
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [wait, startWait] = useCountdown();
+  const errorId = useId();
 
   async function send() {
     setError('');
@@ -39,13 +44,14 @@ export function ForgotForm({ onSubmit }: { onSubmit: (input: { email: string }) 
   function submit(event: FormEvent) {
     event.preventDefault();
     if (looksLikeEmail(email)) void send();
+    else setError('Enter your email address.');
   }
 
   if (sent) {
     return (
       <SystemShell>
         <SystemCard
-          art={<LetterArt />}
+          art={<SentArt />}
           title="Check your email"
           lede={
             <>
@@ -53,15 +59,17 @@ export function ForgotForm({ onSubmit }: { onSubmit: (input: { email: string }) 
             </>
           }
         >
-          <a className={`${styles.ghost} ${styles.next}`} href="/signin">
-            Back to sign in
-          </a>
+          <SystemActions>
+            <a className={systemCss.ghost} href="/signin">
+              Back to sign in
+            </a>
+          </SystemActions>
           {error ? (
-            <p className={styles.alert} role="alert">
+            <p className={systemCss.alert} role="alert">
               {error}
             </p>
           ) : null}
-          <p className={styles.again}>
+          <p className={systemCss.again}>
             Nothing yet? Check spam, or{' '}
             <button type="button" disabled={wait > 0 || busy} onClick={() => void send()}>
               {wait > 0 ? `send again in 0:${String(wait).padStart(2, '0')}` : 'send it again'}
@@ -73,37 +81,34 @@ export function ForgotForm({ onSubmit }: { onSubmit: (input: { email: string }) 
   }
 
   return (
-    <SystemShell>
-      <SystemCard art={<ForgotArt />} title="Reset your password" lede="We will email you a link to choose a new one.">
-        <form onSubmit={submit} noValidate>
-          <label className={styles.fld}>
-            <span>Email</span>
-            <span className={styles.inp}>
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value.trim())}
-              />
-            </span>
-          </label>
-          {error ? (
-            <p className={styles.alert} role="alert">
-              {error}
-            </p>
-          ) : null}
-          <button type="submit" className={styles.go} data-ready={looksLikeEmail(email) && !busy} disabled={busy}>
-            {busy ? 'Sending…' : 'Send reset link'}
-          </button>
-        </form>
-        <p className={styles.sw}>
-          Remembered it? <a href="/signin">Sign in</a>
-        </p>
-      </SystemCard>
-    </SystemShell>
+    <AuthShell title="Reset your password." lede="We will email you a link to choose a new one.">
+      <form className={styles.fields} onSubmit={submit} noValidate>
+        <PillField
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          placeholder="Email"
+          required
+          value={email}
+          onChange={(value) => setEmail(value.trim())}
+          describedBy={error ? errorId : undefined}
+          invalid={Boolean(error)}
+          peek={<AuthPeek />}
+        />
+        {error ? (
+          <p className={styles.error} id={errorId} role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>
+          {busy ? 'Sending…' : 'Send reset link'}
+        </button>
+      </form>
+      <p className={styles.fine}>
+        Remembered it? <a href="/signin">Sign in</a>
+      </p>
+    </AuthShell>
   );
 }
 

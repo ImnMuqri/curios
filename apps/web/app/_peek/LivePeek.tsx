@@ -139,6 +139,14 @@ export function LivePeek({
           <ellipse cx="129.5" cy="44.5" rx="3.6" ry="2.8" fill="var(--light-ink)" />
           <ellipse cx="138.5" cy="41" rx="3.6" ry="2.8" fill="var(--light-ink)" />
         </g>
+        <g className={styles.cl}>
+          <circle cx="65" cy="83" r="15.5" fill="var(--biru)" stroke="var(--biru-ink)" strokeWidth="2.6" />
+          <ellipse cx="60" cy="77" rx="4.5" ry="2.6" fill="var(--peek-shine)" transform="rotate(-25 60 77)" />
+        </g>
+        <g className={styles.cr}>
+          <circle cx="97" cy="83" r="15.5" fill="var(--biru)" stroke="var(--biru-ink)" strokeWidth="2.6" />
+          <ellipse cx="92" cy="77" rx="4.5" ry="2.6" fill="var(--peek-shine)" transform="rotate(-25 92 77)" />
+        </g>
         <g className={`${styles.n} ${styles.n2}`}>
           <path d="M154 26V14q6 2 5 8" fill="none" stroke="var(--light-ink)" strokeWidth="2.4" strokeLinecap="round" />
           <ellipse cx="151.5" cy="26.5" rx="3.6" ry="2.8" fill="var(--light-ink)" />

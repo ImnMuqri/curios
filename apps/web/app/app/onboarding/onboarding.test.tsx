@@ -23,7 +23,7 @@ const facts: FoundFact[] = [
 
 function flow(props: Partial<Parameters<typeof OnboardingFlow>[0]> = {}) {
   const a = props.actions ?? actions();
-  const view = render(<OnboardingFlow page={null} facts={[]} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} {...props} />);
+  const view = render(<OnboardingFlow page={null} facts={[]} monthlyPrice="RM49" freeLeads={3} freeOrders={3} pastedTextMax={20000} actions={a} {...props} />);
   return { a, ...view };
 }
 
@@ -37,7 +37,7 @@ async function claimStep(handle = 'keklina', name = 'Kek Lina') {
 describe('OnboardingFlow', () => {
   it('checks the address as it is typed, and holds Continue until it is free and named', async () => {
     const { a } = flow();
-    expect(screen.getByRole('heading', { name: 'Claim your page' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Claim your page.' })).toBeInTheDocument();
     expect(screen.getByText('Step 1 of 4')).toBeInTheDocument();
 
     await userEvent.type(screen.getByLabelText('Your address'), 'Kek Lina');
@@ -59,14 +59,32 @@ describe('OnboardingFlow', () => {
     expect(screen.getByText('Someone has that one. Try aisyahmy or aisyah2.')).toBeInTheDocument();
   });
 
-  it('offers Business at the free leads and price in force', async () => {
-    flow({ monthlyPrice: 'RM59', freeLeads: 5 });
+  it('quotes Business at the price, free leads and free orders in force, never typed in', async () => {
+    flow({ monthlyPrice: 'RM59', freeLeads: 5, freeOrders: 2 });
     await claimStep();
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
 
     const business = screen.getByRole('radio', { name: /Business/ });
-    expect(business).toHaveTextContent('5 free leads');
-    expect(business).toHaveTextContent('For selling. Then RM59 a month, paid when you want.');
+    expect(business).toHaveTextContent('RM59 a month · first 5 leads and 2 orders free');
+    expect(business).toHaveTextContent('It answers customers, takes their numbers and runs your shop.');
+    expect(business).toHaveTextContent('A shop paid by FPX, e-wallet, card or QR');
+    expect(business).toHaveTextContent('FAQ pages Google can find');
+    const personal = screen.getByRole('radio', { name: /Personal/ });
+    expect(personal).toHaveTextContent('Free');
+    expect(personal).toHaveTextContent('Hidden from Google unless you switch it on');
+  });
+
+  it('says the plan in the board words for the default settings, and a singular for one', async () => {
+    const { unmount } = flow();
+    await claimStep();
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('radio', { name: /Business/ })).toHaveTextContent('RM49 a month · first 3 leads and 3 orders free');
+    unmount();
+
+    flow({ freeLeads: 1, freeOrders: 1 });
+    await claimStep();
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    expect(screen.getByRole('radio', { name: /Business/ })).toHaveTextContent('first 1 lead and 1 order free');
   });
 
   it('claims with the mode chosen only when it reads a source, then reads it', async () => {
@@ -82,10 +100,10 @@ describe('OnboardingFlow', () => {
     await userEvent.click(screen.getByRole('radio', { name: /Personal/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByRole('heading', { name: 'Teach it about you' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Teach it about you.' })).toBeInTheDocument();
     expect(a.claim).not.toHaveBeenCalled();
     await userEvent.type(screen.getByLabelText('A link about you'), 'lina.example/about');
-    await userEvent.click(screen.getByRole('button', { name: 'Read this link' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
 
     expect(a.claim).toHaveBeenCalledWith({ handle: 'keklina', displayName: 'Kek Lina', mode: 'PERSONAL' });
     expect(a.ingest).toHaveBeenCalledWith({ pageId: 'p1', sourceUrl: 'lina.example/about' });
@@ -99,25 +117,29 @@ describe('OnboardingFlow', () => {
     await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example/menu');
-    await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
 
-    expect(await screen.findByRole('heading', { name: 'Done reading' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Done reading.' })).toBeInTheDocument();
     expect(a.refresh).toHaveBeenCalled();
 
     // The refresh brings the facts it found.
-    rerender(<OnboardingFlow page={null} facts={facts} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} />);
-    // Once in the form's result, once under Peek.
-    expect(screen.getAllByText('Found 2 facts')).toHaveLength(2);
-    expect(screen.getAllByText('Kek coklat 2kg is RM170').length).toBeGreaterThan(0);
+    rerender(<OnboardingFlow page={null} facts={facts} monthlyPrice="RM49" freeLeads={3} freeOrders={3} pastedTextMax={20000} actions={a} />);
+    // The card is headed by the source and its count, one row per fact with its kind.
+    expect(screen.getByText('keklina.example/menu')).toBeInTheDocument();
+    expect(screen.getByText('2 facts')).toBeInTheDocument();
+    expect(screen.getByText('Kek coklat 2kg is RM170')).toBeInTheDocument();
+    expect(screen.getByText('Price')).toBeInTheDocument();
+    expect(screen.getByText('They are waiting in Review. Nothing goes live until you accept each one.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add another source' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/app/review');
   });
 
   it('turns a quiet read into a paste', async () => {
     flow({ page: { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' }, actions: actions({ fetchStatus: vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 0, progress: 100, error: null })) }) });
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
-    await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
 
-    expect(await screen.findByRole('heading', { name: 'That one was quiet' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'That one was quiet.' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Paste text instead' }));
     expect(screen.getByLabelText('About your business')).toBeInTheDocument();
   });
@@ -130,16 +152,16 @@ describe('OnboardingFlow', () => {
     await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
-    await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('That handle is taken. Pick another.');
-    expect(screen.getByRole('heading', { name: 'Claim your page' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Claim your page.' })).toBeInTheDocument();
     expect(a.ingest).not.toHaveBeenCalled();
   });
 
   it('starts an owner who has a page at the third step, with no way back to claim', () => {
     flow({ page: { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' } });
-    expect(screen.getByRole('heading', { name: 'Teach it about your business' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Teach it about your business.' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull();
   });
 
@@ -160,7 +182,7 @@ describe('OnboardingFlow', () => {
     await userEvent.type(screen.getByLabelText('Your website address'), 'instagram.com/keklina');
 
     expect(screen.getByText(/don’t let us read profiles/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Read my website' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Read it' })).toBeDisabled();
   });
 
   it('shows how far it has read, and asks for each fact as it is written, without listing them while it reads (owner answer 8)', async () => {
@@ -176,12 +198,12 @@ describe('OnboardingFlow', () => {
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
 
       // The first poll: one fact in, so the server is asked for it, and the bar is at 40.
       await waitFor(() => expect(screen.getByRole('progressbar', { name: 'How far it has read' })).toHaveAttribute('aria-valuenow', '40'));
       expect(a.refresh).toHaveBeenCalledTimes(1);
-      rerender(<OnboardingFlow page={page} facts={facts.slice(0, 1)} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} />);
+      rerender(<OnboardingFlow page={page} facts={facts.slice(0, 1)} monthlyPrice="RM49" freeLeads={3} freeOrders={3} pastedTextMax={20000} actions={a} />);
       expect(screen.getByRole('heading', { name: 'Reading it now…' })).toBeInTheDocument();
       expect(screen.queryByText('Kek coklat 2kg is RM170')).toBeNull();
 
@@ -194,109 +216,121 @@ describe('OnboardingFlow', () => {
   });
 });
 
-/** The panel beside the form: Peek, one pose per step (More.dc.html, "onboarding panel: Peek"). Owner answer 8: no phone, no streaming facts. */
-describe('OnboardingFlow panel', () => {
+describe('OnboardingFlow, from the More board', () => {
   const owned = { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' as const };
-  const panel = (container: HTMLElement) => {
-    const el = container.querySelector<HTMLElement>('[data-onboarding-panel]');
-    expect(el).not.toBeNull();
-    return el as HTMLElement;
-  };
-  const pose = (container: HTMLElement) => panel(container).querySelector('[data-pose]')?.getAttribute('data-pose');
-  const never = () => new Promise<never>(() => {});
 
-  it('is decoration: hidden from assistive tech, with no phone, pill or fact list', () => {
+  it('is one centred column with no side panel, under a top bar with the four bars and Sign out', () => {
     const { container } = flow();
-    expect(panel(container)).toHaveAttribute('aria-hidden', 'true');
-    expect(panel(container).querySelector('[class*="phone"], [class*="urlpill"], [class*="flist"], [class*="sat"]')).toBeNull();
+    expect(container.querySelector('aside')).toBeNull();
+    expect(container.querySelector('[data-onboarding-panel]')).toBeNull();
+    expect(screen.getByText('Step 1 of 4')).toBeInTheDocument();
+    expect(container.querySelectorAll('header i')).toHaveLength(4);
+    expect(container.querySelectorAll('header i[data-on]')).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(screen.getByText('Pick your address. You can change how it looks later, not the address.')).toBeInTheDocument();
   });
 
-  it('claim: asks for an address, then says it is theirs with a tick on the sign', async () => {
-    const { container } = flow();
-    expect(pose(container)).toBe('claim');
-    expect(within(panel(container)).getByText('Pick an address')).toBeInTheDocument();
-    expect(within(panel(container)).getByText('Your page goes live at this address the moment you claim it.')).toBeInTheDocument();
-    expect(panel(container).querySelector('[data-peek-tick]')).toBeNull();
-
-    await userEvent.type(screen.getByLabelText('Your address'), 'keklina');
-    await waitFor(() => expect(within(panel(container)).getByText('It’s yours')).toBeInTheDocument());
-    expect(within(panel(container)).getByText('keklina')).toBeInTheDocument();
-    expect(panel(container).querySelector('[data-peek-tick]')).not.toBeNull();
+  it('has Peek over the address pill, and over the source on the third step', () => {
+    const { container, unmount } = flow();
+    expect(container.querySelector('[data-auth-peek]')).not.toBeNull();
+    unmount();
+    const third = flow({ page: owned });
+    expect(third.container.querySelector('[data-auth-peek]')).not.toBeNull();
   });
 
-  it('mode: a bag for a business, a wave for a personal page', async () => {
-    const { container } = flow();
+  it('draws the third step as a segmented A link / Paste text / A file, with "Read it" and "Skip for now", and Back until the page is claimed', () => {
+    flow();
+    // Not yet claimed, and still no Back on step 3: Skip for now is the way out.
+    return (async () => {
+      await claimStep();
+      await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+      await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
+      await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+      const ways = within(screen.getByRole('group', { name: 'How to add it' }));
+      expect(ways.getByRole('button', { name: 'A link' })).toHaveAttribute('aria-pressed', 'true');
+      expect(ways.getByRole('button', { name: 'Paste text' })).toBeInTheDocument();
+      expect(ways.getByRole('button', { name: 'A file' })).toBeInTheDocument();
+      expect(screen.getByLabelText('Your website address')).toHaveAttribute('placeholder', 'your-site.com');
+      expect(screen.getByRole('button', { name: 'Read it' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Skip for now' })).toBeInTheDocument();
+      // Not claimed yet: Back stays, so a mis-clicked mode can be undone.
+      expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument();
+
+      await userEvent.click(ways.getByRole('button', { name: 'Paste text' }));
+      expect(screen.getByLabelText('About your business')).toBeInTheDocument();
+      await userEvent.click(ways.getByRole('button', { name: 'A file' }));
+      expect(screen.getByLabelText('A file to read')).toBeInTheDocument();
+    })();
+  });
+
+  it('keeps Back on the mode step, where the board draws it', async () => {
+    flow();
     await claimStep();
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
-    expect(pose(container)).toBe('claim');
-    await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
-    expect(pose(container)).toBe('business');
-    expect(within(panel(container)).getByText('A page that sells')).toBeInTheDocument();
-    expect(within(panel(container)).getByText('It answers customers, takes their numbers and runs your shop.')).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('radio', { name: /Personal/ }));
-    expect(pose(container)).toBe('personal');
-    expect(within(panel(container)).getByText('A page about you')).toBeInTheDocument();
-    expect(within(panel(container)).getByText('It answers questions about you and your work.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('heading', { name: 'Claim your page.' })).toBeInTheDocument();
   });
 
-  it('source: Peek holds a paper and no scan line', () => {
-    const { container } = flow({ page: owned });
-    expect(pose(container)).toBe('read');
-    expect(within(panel(container)).getByText('Give it something to read')).toBeInTheDocument();
-    expect(within(panel(container)).getByText('Everything it learns waits for you to check first.')).toBeInTheDocument();
-    expect(panel(container).querySelector('[data-peek-scan]')).toBeNull();
+  it('lists what it found in a card headed by the source, "N facts", and a kind tag on each row', async () => {
+    const a = actions();
+    const { rerender } = flow({ page: owned, actions: a });
+    await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example/menu');
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    await screen.findByRole('heading', { name: 'Done reading.' });
+    rerender(<OnboardingFlow page={owned} facts={facts} monthlyPrice="RM49" freeLeads={3} freeOrders={3} pastedTextMax={20000} actions={a} />);
+
+    expect(screen.getByText('Here is what it picked out.')).toBeInTheDocument();
+    expect(screen.getByText('2 facts')).toBeInTheDocument();
+    expect(screen.getByText('Price')).toBeInTheDocument();
+    expect(screen.getByText('Policy')).toBeInTheDocument();
+    expect(screen.getByText('Kek coklat 2kg is RM170')).toBeInTheDocument();
+    expect(screen.getByText('2 days notice')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/app/review');
   });
 
-  it('reading: the scan line runs, and no facts stream in', async () => {
-    const { container } = flow({ page: owned, facts, actions: actions({ fetchStatus: vi.fn(never) }) });
+  it('says "1 fact" for one', async () => {
+    const a = actions({ fetchStatus: vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 1, progress: 100, error: null })) });
+    flow({ page: owned, actions: a, facts: facts.slice(0, 1) });
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
-    await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
-    await screen.findByRole('heading', { name: 'Reading it now…' });
-
-    expect(pose(container)).toBe('scan');
-    expect(panel(container).querySelector('[data-peek-scan]')).not.toBeNull();
-    expect(within(panel(container)).getByText('Reading it now')).toBeInTheDocument();
-    expect(within(panel(container)).getByText('Picking out prices, hours and what you offer.')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(await screen.findByText('1 fact')).toBeInTheDocument();
   });
 
-  async function readUntilDone(extractedCount: number, status: 'SUCCEEDED' | 'FAILED' = 'SUCCEEDED', withFacts: FoundFact[] = facts) {
-    const a = actions({ fetchStatus: vi.fn(async () => ({ status, extractedCount, progress: 100, error: status === 'FAILED' ? 'x' : null })) });
-    const view = flow({ page: owned, actions: a });
+  it('keeps the failed read, offering another source or skipping', async () => {
+    flow({
+      page: owned,
+      actions: actions({ fetchStatus: vi.fn(async () => ({ status: 'FAILED' as const, extractedCount: 0, progress: 0, error: 'We could not open that page.' })) }),
+    });
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
-    await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
-    await screen.findByRole('heading', { name: /Done reading|That one was quiet|That didn’t work/ });
-    view.rerender(<OnboardingFlow page={owned} facts={withFacts} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} />);
-    return view;
-  }
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
 
-  it('found: Peek cheers, with the first three facts as they were found', async () => {
-    const many: FoundFact[] = [
-      ...facts,
-      { id: 'f3', category: 'HOURS', claim: 'Open 9 to 5', question: null },
-      { id: 'f4', category: 'LOCATION', claim: 'Klang', question: null },
-    ];
-    const { container } = await readUntilDone(4, 'SUCCEEDED', many);
-    expect(pose(container)).toBe('found');
-    const scope = within(panel(container));
-    expect(scope.getByText('Found 4 facts')).toBeInTheDocument();
-    expect(scope.getByText('They wait in Review until you accept them.')).toBeInTheDocument();
-    expect(panel(container).querySelectorAll('[data-peek-fact]')).toHaveLength(3);
-    expect(scope.getByText('Kek coklat 2kg is RM170')).toBeInTheDocument();
-    expect(scope.getByText('Open 9 to 5')).toBeInTheDocument();
-    expect(scope.queryByText('Klang')).toBeNull();
+    expect(await screen.findByRole('heading', { name: 'That didn’t work.' })).toBeInTheDocument();
+    expect(screen.getByText('We could not open that page.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try a different source' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Skip for now' })).toHaveAttribute('href', '/app/curios');
   });
 
-  it('nothing found: Peek shrugs', async () => {
-    const { container } = await readUntilDone(0, 'SUCCEEDED', []);
-    expect(pose(container)).toBe('none');
-    expect(within(panel(container)).getByText('Nothing to read there')).toBeInTheDocument();
-    expect(within(panel(container)).getByText('Try pasting a few lines instead.')).toBeInTheDocument();
+  it('keeps the quiet read and the reading state in the board style', async () => {
+    const never = () => new Promise<never>(() => {});
+    flow({ page: owned, actions: actions({ fetchStatus: vi.fn(never) }) });
+    await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(await screen.findByRole('heading', { name: 'Reading it now…' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'How far it has read' })).toBeInTheDocument();
+    expect(screen.getByText('keklina.example')).toBeInTheDocument();
   });
+});
 
-  it('a failed read shows the same shrug (DEVIATIONS row 89)', async () => {
-    const { container } = await readUntilDone(0, 'FAILED', []);
-    expect(pose(container)).toBe('none');
-    expect(within(panel(container)).getByText('Nothing to read there')).toBeInTheDocument();
+describe('reduced motion', () => {
+  it('stills the entrance, the scan and the bar', async () => {
+    const { readFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+    const css = readFileSync(join(import.meta.dirname, 'onboarding.module.css'), 'utf8');
+    const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(block).toMatch(/\.body,\s*\.rl,\s*\.res\s*\{\s*animation: none;/);
+    expect(block).toMatch(/\.pbar i\s*\{\s*transition: none;/);
+    const sys = readFileSync(join(import.meta.dirname, '..', '..', '_system', 'system.module.css'), 'utf8');
+    expect(sys.slice(sys.indexOf('@media (prefers-reduced-motion: reduce)'))).toMatch(/\.sb\s*\{\s*animation: none;/);
   });
 });

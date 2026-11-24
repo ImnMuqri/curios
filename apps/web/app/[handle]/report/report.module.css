@@ -1,15 +1,19 @@
-/* The report form, in the Site board's terms: paper, card fields, Biru. */
+/* The report form, from the Site board (.rp, .rsn, .ta): reasons as 50px rows with a ring, a 96px note. */
 
 .form {
-  margin-top: 24px;
+  width: 100%;
+  max-width: 440px;
+  margin-top: 22px;
   text-align: left;
 }
 
 .reasons {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
-  min-width: 0;
 }
 
 /* The heading above already names the form; the legend is for screen readers. */
@@ -26,63 +30,80 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 52px;
-  margin-top: 8px;
+  height: 50px;
   padding: 0 16px;
   border-radius: 14px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--edge);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: 15px;
   cursor: pointer;
-  transition: box-shadow 160ms;
-}
-
-.reason:first-of-type {
-  margin-top: 0;
+  transition: box-shadow 0.2s;
 }
 
 .reason:has(input:checked) {
-  box-shadow: inset 0 0 0 2px var(--public-blue);
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
 .reason:has(input:focus-visible) {
-  outline: 2px solid var(--public-blue);
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
+/* The radio is the input itself, drawn as a ring that fills when it is picked. */
 .reason input {
+  flex: none;
   width: 18px;
   height: 18px;
   margin: 0;
-  accent-color: var(--public-blue);
+  border-radius: 50%;
+  appearance: none;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--calm-hover-ring);
+  transition: box-shadow 0.2s;
+}
+
+.reason input:checked {
+  box-shadow: inset 0 0 0 5px var(--ink);
 }
 
 .note {
   display: block;
-  margin-top: 20px;
+  margin-top: 16px;
 }
 
 .note > span {
   display: block;
-  margin-bottom: 6px;
-  font-size: 14px;
+  margin-bottom: 7px;
+  color: var(--cl-text-3);
+  font-size: 13.5px;
   font-weight: 600;
 }
 
 .note textarea {
   display: block;
   width: 100%;
-  padding: 12px 16px;
+  height: 96px;
+  padding: 14px 18px;
   border: 0;
   border-radius: 14px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--edge);
-  font: inherit;
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
+  font: inherit;
+  font-size: 15.5px;
   resize: vertical;
   outline: none;
-  transition: box-shadow 160ms;
+  transition: box-shadow 0.2s;
+}
+
+.note textarea::placeholder {
+  color: var(--cl-placeholder);
 }
 
 .note textarea:focus {
-  box-shadow: inset 0 0 0 2px var(--public-blue);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.send {
+  margin-top: 22px;
 }

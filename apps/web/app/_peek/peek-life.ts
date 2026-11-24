@@ -6,7 +6,8 @@
  */
 
 export type PeekPose = 'idle' | 'whistle' | 'wave';
-export type PeekMood = 'happy' | 'hop' | 'tilt' | 'squish' | 'blink2' | 'wave2' | 'hands';
+/** `shy` (hands over the eyes, for a password) and `sad` (a frown, the eyes still) are held, never picked as habits. */
+export type PeekMood = 'happy' | 'hop' | 'tilt' | 'squish' | 'blink2' | 'wave2' | 'hands' | 'shy' | 'sad';
 
 /** What enlist needs of a Peek; LivePeek's handle is one. */
 export interface PeekLife {

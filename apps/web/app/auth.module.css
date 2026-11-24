@@ -1,13 +1,10 @@
 /*
- * Shared by the screens outside the dashboard (sign in, sign up, forgot,
- * reset, verify, and claiming a page). They are one screen with several
- * contents, so they get one stylesheet rather than near-copies that drift.
- *
- * From the design handoff's Site board: the form on paper
- * beside a Peek panel (_auth/scene.module.css), Bricolage 800 for the title,
- * Inter for everything else (the calm redesign), white pill fields with a soft edge, a black
- * pill to submit. The product's Field, Button and Callout keep their
- * behaviour; only their look is restyled inside .content.
+ * Sign in, sign up, forgot and reset, from the Site board's "hero-style auth"
+ * (Site.dc.html: .ha, .hin2, .af, .pil, .apk): the landing's nav over the
+ * dotted ground, one centred column -- a big headline, a line under it, a 400px
+ * form of 56px pill fields with Peek peeking over the first -- and a small
+ * footer. Placeholders carry the words on screen; every field keeps a label for
+ * a screen reader. Light only, like the landing it hangs off.
  */
 .auth {
   /* The calm scope (light): the base tokens take the calm values on the screens outside the dashboard. */
@@ -36,13 +33,38 @@
   --field-area-radius: var(--r-box);
   --field-reveal-radius: 50%;
   --callout-radius: var(--r-box);
+  position: relative;
   display: flex;
+  flex-direction: column;
   min-height: calc(100dvh / var(--page-zoom, 1));
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 16px;
-  line-height: 1.55;
+  line-height: 1.5;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+.auth *,
+.auth *::before,
+.auth *::after {
+  box-sizing: border-box;
+}
+
+.auth :where(h1, p) {
+  margin: 0;
+}
+
+/* Links take the text colour, except the site header's (its buttons keep their own colours). */
+.auth :where(a:not(header a)) {
+  color: inherit;
+  text-decoration: none;
+}
+
+.auth :where(button, input) {
+  font: inherit;
+  color: inherit;
 }
 
 .srOnly {
@@ -56,295 +78,346 @@
   border: 0;
 }
 
-/* ---- The form side ---- */
-
-.panel {
-  display: flex;
-  flex: 1 1 50%;
-  flex-direction: column;
-  min-width: 0;
-  padding: 28px 20px;
+/* The dot grid behind the headline, fading out down the page. */
+.dots {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 620px;
+  background-image: radial-gradient(var(--cl-dot) 1.6px, transparent 1.7px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(black, transparent 92%);
+  mask-image: linear-gradient(black, transparent 92%);
+  pointer-events: none;
 }
 
-.brand {
-  --l-wordmark: 28px;
-  align-self: flex-start;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.body {
-  width: 100%;
-  max-width: 400px;
-  margin: auto;
-  padding: clamp(12px, 3vh, 40px) 0;
+.stage {
+  position: relative;
+  flex: 1;
+  padding: 84px 24px 70px;
+  text-align: center;
 }
 
 .title {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 5.2vh, 2.75rem);
-  font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.035em;
+  font-size: clamp(40px, 4.6vw, 66px);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.03;
   text-wrap: balance;
 }
 
+/* One highlighted word, in the landing's pink (Create your free page). */
+.hl {
+  display: inline-block;
+  padding: 0 0.3em 0.06em;
+  border-radius: 999px;
+  background: var(--pink-muda);
+  color: var(--pink-ink);
+}
+
 .lede {
-  margin: 10px 0 0;
-  color: var(--ink-soft);
+  max-width: 30em;
+  margin: 18px auto 0;
+  color: var(--muted);
+  font-size: 18.5px;
+  line-height: 1.5;
 }
 
-.content {
-  margin-top: clamp(18px, 3.6vh, 32px);
-}
-
-/* The handle typed on the landing page, waiting to be filled in after sign-up. */
-.claimChip {
+/* Sign up: the handle typed on the landing page, waiting to be filled in after sign-up. */
+.chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin: 0 0 24px;
-  padding: 6px 14px 6px 6px;
+  margin: 0 auto 22px;
+  padding: 7px 14px 7px 8px;
   border-radius: 999px;
-  background: var(--biru-muda);
-  color: var(--l-biru-800);
+  background: var(--cl-hl-green);
+  color: var(--cl-hl-green-ink);
   font-size: 13.5px;
   font-weight: 600;
 }
 
-.claimChip i {
+.chip i {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--action);
-  color: var(--action-fg);
-  font-size: 13px;
+  background: var(--cl-ok);
+  color: var(--calm-surface);
+  font-size: 11px;
   font-style: normal;
 }
 
-.google {
+/* The form: 400px, the Peek space above it, a ten pixel gap between its parts. */
+.form {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
   gap: 10px;
-  width: 100%;
-  height: 52px;
-  border-radius: 999px;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--line);
-  color: var(--ink);
-  font-weight: 600;
-  text-decoration: none;
-  transition: box-shadow 160ms ease;
+  width: 400px;
+  max-width: 100%;
+  margin: 72px auto 0;
+  text-align: left;
 }
 
-.google:hover {
-  box-shadow: inset 0 0 0 1.5px var(--ink);
-  color: var(--ink);
+.fields {
+  display: grid;
+  gap: 10px;
 }
 
-/* "Last used": the t-new tag, on the Google button's top edge or after "or with email". */
-.lastUsed {
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: var(--tag-new);
-  color: var(--tag-new-ink);
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 16px;
-  white-space: nowrap;
+/* The wrapper Peek peeks out of: he sits behind the pill (z 0 under its z 1). */
+.w {
+  position: relative;
 }
 
-.google .lastUsed {
+.apk {
   position: absolute;
-  top: -10px;
-  right: 18px;
+  top: -58px;
+  right: 30px;
+  z-index: 0;
+  width: 78px;
+  pointer-events: none;
+  line-height: 0;
 }
 
-.or {
+/* A 56px pill field; its word is the placeholder, its label is for a screen reader. */
+.pil {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin: clamp(12px, 2.4vh, 22px) 0;
-  color: var(--tj-ink-500);
-  font-size: 13px;
-}
-
-.or::before,
-.or::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
-
-/* Fields: the label above, a white field with a soft edge that turns biru on focus. */
-.content form > div {
-  margin-bottom: 14px;
-}
-
-.content label {
-  margin-bottom: 6px;
-  color: var(--ink);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: none;
-}
-
-.content input[type='email'],
-.content input[type='password'],
-.content input[type='text'] {
-  min-height: 52px;
-  padding: 0 16px;
-  border: 0;
-  border-radius: var(--r-pill);
+  gap: 10px;
+  height: 56px;
+  padding: 0 8px 0 22px;
+  border-radius: 999px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--edge);
-  font-family: inherit;
+  box-shadow: inset 0 0 0 1px var(--edge);
   font-size: 16px;
-  transition: box-shadow 160ms ease;
+  transition: box-shadow 0.2s;
 }
 
-.content input:focus,
-.content input:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--sky);
+.pil:focus-within {
+  box-shadow: inset 0 0 0 2px var(--ink);
 }
 
-.content input + button {
-  right: 6px;
+.pil[data-invalid] {
+  box-shadow: inset 0 0 0 2px var(--calm-danger);
 }
 
-/* A second way on, as an outlined pill (verify's "Sign in"). */
-.alternative {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 52px;
-  margin-top: 16px;
-  border-radius: 999px;
-  box-shadow: inset 0 0 0 1.5px var(--line);
-  color: var(--ink);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.alternative:hover {
-  box-shadow: inset 0 0 0 1.5px var(--ink);
-  color: var(--ink);
-}
-
-/* A link beside a field's label: "Forgot your password?". */
-.aside {
-  /* A taller hit area (21 px to 29) that moves nothing around it; .switch and .terms links do the same. */
-  padding-block: 4px;
-  margin-block: -4px;
-  color: var(--biru);
-  font-size: 13.5px;
-  font-weight: 500;
-}
-
-/* The submit: the black action pill, full width. Its hover is the Button hook's (--button-primary-hover), so a busy, disabled submit keeps its fill. */
-.content button[type='submit'] {
-  width: 100%;
-  min-height: 54px;
-  margin-top: 8px;
+.in {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--action);
-  color: var(--action-fg);
-  font-family: inherit;
-  font-size: 16px;
-  font-weight: 600;
-  transition: background-color 160ms ease;
+  background: transparent;
+  outline: none;
 }
 
-.switch {
-  margin: 24px 0 0;
-  color: var(--ink-soft);
-  font-size: 15px;
-  text-align: center;
+.in::placeholder {
+  color: var(--cl-placeholder);
 }
 
-.switch a {
-  padding-block: 4px;
-  margin-block: -4px;
-  color: var(--biru);
-  font-weight: 600;
+/* "Forgot?" inside the password pill. */
+.aside {
+  margin-left: auto;
+  padding: 10px 14px;
+  color: var(--muted);
+  font-size: 14px;
 }
 
-/* Sign up: the board's line under the form, agreeing to the Terms and Privacy Policy. */
-.terms {
-  margin: 16px 0 0;
-  font-size: 12.5px;
-  color: var(--hint);
-  text-align: center;
+.aside:hover {
+  color: var(--ink);
 }
 
-.terms a {
-  padding-block: 4px;
-  margin-block: -4px;
-  color: inherit;
-  text-decoration: underline;
-}
-
-/* "Check your email": the envelope, then where it went. */
-.mail {
+/* Show or hide the password: the eye at the pill's end. */
+.eye {
   display: grid;
   place-items: center;
-  width: 84px;
-  height: 84px;
-  margin-bottom: 22px;
-  border-radius: var(--r-box);
-  background: var(--biru-muda);
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--faint);
+  cursor: pointer;
 }
 
-.mail svg {
+.eye:hover {
+  color: var(--ink);
+}
+
+.eye svg {
+  width: 20px;
+  height: 20px;
   fill: none;
-  stroke: var(--sky);
+  stroke: currentColor;
+  stroke-width: 1.8;
+}
+
+/* "Sent to aisyah@gmail.com", in a pill with an envelope. */
+.sentp {
+  padding: 0 22px 0 8px;
+}
+
+.env {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--tag-new);
+  color: var(--sky);
+}
+
+.env svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.sentTo {
-  margin: 18px 0 0;
-  padding: 14px 16px;
-  border-radius: var(--r-box);
-  background: var(--surface);
-  font-size: 14.5px;
+.go {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  margin-top: 4px;
+  padding: 0 26px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--action);
+  color: var(--action-fg);
+  font-size: 15.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s,
+    box-shadow 0.2s,
+    background 0.2s;
 }
 
-.footnote {
-  margin-top: 20px;
-  font-size: 15px;
-  color: var(--ink-soft);
+.go:hover:not(:disabled) {
+  background: var(--action-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 20px -10px var(--cl-lift);
 }
 
-/* A link that belongs to the field above it, not to the whole form. */
-.inline {
-  display: inline-block;
-  margin: -6px 0 16px;
-  color: var(--biru);
+.go:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: 15.5px;
+  font-weight: 600;
+  transition:
+    transform 0.18s,
+    box-shadow 0.2s;
+}
+
+.google:hover {
+  box-shadow: inset 0 0 0 1px var(--cl-ring-hover);
+  transform: translateY(-1px);
+}
+
+.or {
+  margin: 4px 0;
+  color: var(--faint);
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.fine {
+  margin-top: 10px;
+  color: var(--muted);
   font-size: 14px;
-  font-weight: 500;
+  text-align: center;
 }
 
-@media (min-width: 981px) {
-  .auth {
-    height: calc(100dvh / var(--page-zoom, 1));
-    min-height: 560px;
-    overflow: hidden;
+.fine a {
+  padding-block: 4px;
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--cl-ring-hover);
+}
+
+/* Sign up, on a phone only: the nav hides Sign in there, so the way back to it sits under the form. */
+.phoneOnly {
+  display: none;
+}
+
+/* A failed submit, tied to the field above it. */
+.error {
+  padding: 12px 18px;
+  border-radius: var(--r-box);
+  background: var(--calm-twice);
+  box-shadow: inset 0 0 0 1px var(--calm-twice-ring);
+  color: var(--calm-danger);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Reset: four bars under the password, amber until it is good, then green. */
+.str {
+  display: flex;
+  gap: 5px;
+  margin-top: 2px;
+}
+
+.str i {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--line);
+  transition: background 0.3s;
+}
+
+.str i[data-on] {
+  background: var(--cl-warn);
+}
+
+.str[data-good] i[data-on] {
+  background: var(--cl-ok);
+}
+
+.strt {
+  margin-top: -3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .stage {
+    padding-top: 56px;
   }
 
-  .panel {
-    padding: clamp(20px, 4vh, 36px) 56px;
-    overflow-y: auto;
+  .form {
+    margin-top: 64px;
+  }
+
+  .apk {
+    right: 22px;
+  }
+
+  .phoneOnly {
+    display: block;
   }
 }

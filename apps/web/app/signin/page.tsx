@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { connectToApi } from '../../lib/api-hints.js';
 import { SignIn } from './signin-form.js';
+import { safeNext } from './safe-next.js';
 
 export const metadata: Metadata = {
   title: 'Sign in · Curios',
@@ -18,7 +19,7 @@ export default async function SignInPage({
   return (
     <SignIn
       cancelled={params.cancelled === '1'}
-      next={params.next ?? '/app'}
+      next={safeNext(params.next)}
       error={params.error}
     />
   );

@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { SystemCard, SystemShell, systemStyles as styles } from './_system/SystemShell.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles as styles } from './_system/SystemShell.js';
 import { UnpluggedArt } from './_system/art.js';
 import { reportClientError } from '../lib/report-client-error.js';
 
 /**
- * Something broke on our side, from the deleted System board. "Try again" re-renders
- * the screen that failed; the error ref is Next's digest, which matches the
- * server's log line, so a person quoting it can be helped.
+ * Something broke on our side, from the Site board. "Try again" re-renders
+ * the screen that failed. The error ref is Next's digest, which matches the
+ * server's log line, so a person quoting it can be helped: the board leaves
+ * it out, we keep it as one small muted line (DEVIATIONS 386).
  */
 export default function ErrorScreen({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const [trying, setTrying] = useState(false);
@@ -25,21 +26,23 @@ export default function ErrorScreen({ error, reset }: { error: Error & { digest?
   return (
     <SystemShell>
       <SystemCard art={<UnpluggedArt />} title="Something broke on our side" lede="Not you, us. Nothing you did was lost. Try again in a moment.">
-        <button
-          type="button"
-          className={`${styles.go} ${styles.next}`}
-          disabled={trying}
-          onClick={() => {
-            setTrying(true);
-            reset();
-          }}
-        >
-          {trying ? 'Trying…' : 'Try again'}
-        </button>
-        <a className={styles.ghost} href="/">
-          Go to Curios
-        </a>
-        {error.digest ? <p className={`${styles.again} ${styles.ref}`}>Error ref {error.digest}</p> : null}
+        <SystemActions>
+          <button
+            type="button"
+            className={styles.go}
+            disabled={trying}
+            onClick={() => {
+              setTrying(true);
+              reset();
+            }}
+          >
+            {trying ? 'Trying…' : 'Try again'}
+          </button>
+          <a className={styles.ghost} href="/">
+            Go to Curios
+          </a>
+        </SystemActions>
+        {error.digest ? <p className={styles.ref}>Error ref {error.digest}</p> : null}
       </SystemCard>
     </SystemShell>
   );

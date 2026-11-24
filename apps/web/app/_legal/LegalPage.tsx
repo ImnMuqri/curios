@@ -2,7 +2,11 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { ringgit } from '@curios/core/money';
 import type { PlanTerms } from '@curios/core/settings';
-import { Wordmark } from '../_landing/Wordmark.js';
+import { landingCopy } from '../_landing/copy.js';
+import { Footer } from '../_landing/Footer.js';
+import { SiteNav } from '../_site/SiteNav.js';
+import '../_landing/landing-tokens.css';
+import { LegalToc } from './LegalToc.js';
 import {
   CHROME,
   DOCS,
@@ -35,9 +39,12 @@ export function legalMetadata(doc: LegalDoc, locale: Locale): Metadata {
 }
 
 /**
- * The Terms, Privacy, Refund and Return pages, in either language. No board draws
- * them (DEVIATIONS 137): the Site board's paper and wordmark, with one
- * readable column of text instead of a centred card.
+ * The Terms, Privacy, Refund and Return pages, in either language, from the Site
+ * board: the landing's nav and footer, a "Legal" eyebrow over a 56px title, the
+ * date and an English | Bahasa Melayu toggle, the lede, the four documents as
+ * tabs, then the text beside a sticky table of contents, its sections numbered.
+ * The board abbreviates the text; every section is kept. "Questions about this
+ * page?" stays at the end of it: a legal page needs a way to write to us.
  *
  * `plan` is the prices and free counts in force, read by the page
  * (`getSettings()`), which `{monthly}` and the like are rendered as.
@@ -51,53 +58,79 @@ export function LegalPage({ doc, locale, plan }: { doc: LegalDoc; locale: Locale
     year: 'numeric',
     timeZone: 'Asia/Kuala_Lumpur',
   });
+  const items = sections.map((section, i) => ({ id: `${doc}-${i}`, heading: section.heading }));
 
   return (
-    <div className={styles.legal} data-laptop-scale lang={locale}>
-      <header className={styles.top}>
-        <a className={styles.brand} href={HOME[locale]} aria-label={chrome.home}>
-          <Wordmark />
-        </a>
-        <a className={styles.lang} href={LEGAL_PATH[chrome.other.lang][doc]} hrefLang={chrome.other.lang} lang={chrome.other.lang}>
-          {chrome.other.name}
-        </a>
-      </header>
+    <div className={styles.legal} data-landing data-laptop-scale lang={locale}>
+      <SiteNav locale={locale} />
 
-      <main className={styles.main}>
-        <nav aria-label={chrome.tabsLabel} className={styles.tabs}>
-          {LEGAL_DOCS.map((d) => (
-            <a key={d} href={LEGAL_PATH[locale][d]} aria-current={d === doc ? 'page' : undefined}>
-              {chrome.tab[d]}
-            </a>
-          ))}
-        </nav>
-
-        <h1 className={styles.h}>{title}</h1>
-        <p className={styles.updated}>
-          {chrome.updated} <time dateTime={UPDATED.toISOString().slice(0, 10)}>{updated}</time>
-        </p>
-        <p className={styles.lede}>{rich(lede, locale, plan)}</p>
-
-        {sections.map((section, i) => (
-          <section key={section.heading} className={styles.section}>
-            <h2 className={styles.h2}>
-              <span className={styles.num} aria-hidden="true">
-                {i + 1}
+      <main>
+        <header className={styles.head}>
+          <div className={styles.dots} aria-hidden="true" />
+          <div className={styles.headIn}>
+            <p className={styles.kick}>{chrome.eyebrow}</p>
+            <h1 className={styles.h}>{title}</h1>
+            <div className={styles.meta}>
+              <span>
+                {chrome.updated} <time dateTime={UPDATED.toISOString().slice(0, 10)}>{updated}</time>
               </span>
-              {section.heading}
-            </h2>
-            {section.body.map((block, j) => (
-              <BlockView key={j} block={block} locale={locale} plan={plan} />
-            ))}
-          </section>
-        ))}
+              <span className={styles.langs} role="group" aria-label={chrome.languages}>
+                {(['en', 'ms'] as const).map((l) => (
+                  <LangPill key={l} lang={l} href={LEGAL_PATH[l][doc]} name={l === 'en' ? 'English' : 'Bahasa Melayu'} current={l === locale} />
+                ))}
+              </span>
+            </div>
+            <p className={styles.lede}>{rich(lede, locale, plan)}</p>
+            <nav aria-label={chrome.tabsLabel} className={styles.docs}>
+              {LEGAL_DOCS.map((d) => (
+                <a key={d} href={LEGAL_PATH[locale][d]} aria-current={d === doc ? 'page' : undefined}>
+                  {chrome.tab[d]}
+                </a>
+              ))}
+            </nav>
+          </div>
+        </header>
 
-        <p className={styles.foot}>{rich(chrome.questions, locale, plan)}</p>
-        <a className={styles.back} href={HOME[locale]}>
-          {chrome.back}
-        </a>
+        <div className={styles.body}>
+          <LegalToc label={chrome.contents} items={items} />
+          <div className={styles.text}>
+            {sections.map((section, i) => (
+              <section key={section.heading} id={items[i]!.id} className={styles.section} aria-labelledby={`${items[i]!.id}-h`}>
+                <h2 className={styles.h2} id={`${items[i]!.id}-h`}>
+                  <i className={styles.num} aria-hidden="true">
+                    {String(i + 1).padStart(2, '0')}
+                  </i>
+                  {section.heading}
+                </h2>
+                {section.body.map((block, j) => (
+                  <BlockView key={j} block={block} locale={locale} plan={plan} />
+                ))}
+              </section>
+            ))}
+
+            <p className={styles.foot}>{rich(chrome.questions, locale, plan)}</p>
+          </div>
+        </div>
       </main>
+
+      <Footer copy={landingCopy(locale, plan)} locale={locale} sectionsBase={HOME[locale]} note={chrome.runBy} showOperator={false} />
     </div>
+  );
+}
+
+/** One side of the English | Bahasa Melayu toggle: the language you are reading is a mark, the other a link. */
+function LangPill({ lang, href, name, current = false }: { lang: Locale; href: string; name: string; current?: boolean }) {
+  if (current) {
+    return (
+      <span className={`${styles.lang} ${styles.langOn}`} lang={lang} aria-current="true">
+        {name}
+      </span>
+    );
+  }
+  return (
+    <a className={styles.lang} href={href} hrefLang={lang} lang={lang}>
+      {name}
+    </a>
   );
 }
 

@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { DOCS, LEGAL_DOCS, LEGAL_PATH, OPERATOR, type Block } from './content.js';
 import { LegalPage, legalMetadata } from './LegalPage.js';
 import { defaultSettings } from '@curios/core/settings';
@@ -17,14 +18,19 @@ describe('LegalPage', () => {
     const tabs = screen.getByRole('navigation', { name: 'Policies' });
     expect(within(tabs).getByRole('link', { name: 'Privacy' })).toHaveAttribute('aria-current', 'page');
     expect(within(tabs).getByRole('link', { name: 'Terms' })).not.toHaveAttribute('aria-current');
-    expect(screen.getByRole('link', { name: 'Bahasa Melayu' })).toHaveAttribute('href', '/ms/privacy');
+    // The English | Bahasa Melayu toggle: the language being read is a mark, the other a link to the same page.
+    const toggle = within(screen.getByRole('group', { name: 'Language' }));
+    expect(toggle.getByText('English')).toHaveAttribute('aria-current', 'true');
+    expect(toggle.getByRole('link', { name: 'Bahasa Melayu' })).toHaveAttribute('href', '/ms/privacy');
   });
 
   it('sets the Malay page’s language, and links back to the English one', () => {
     const { container } = render(<LegalPage doc="refunds" locale="ms" plan={PLAN} />);
     expect(container.firstElementChild).toHaveAttribute('lang', 'ms');
     expect(screen.getByRole('heading', { level: 1, name: 'Dasar Bayaran Balik' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute('href', '/refunds');
+    const toggle = within(screen.getByRole('group', { name: 'Bahasa' }));
+    expect(toggle.getByText('Bahasa Melayu')).toHaveAttribute('aria-current', 'true');
+    expect(toggle.getByRole('link', { name: 'English' })).toHaveAttribute('href', '/refunds');
   });
 
   it('turns the support address and the other pages’ names into links', () => {
@@ -114,7 +120,7 @@ describe('LegalPage', () => {
     expect(document.body).toHaveTextContent('Nothing is shipped to you, so there is nothing to return');
     expect(document.body).toHaveTextContent('Return an item to the shop, not to Curios.');
     expect(screen.getByRole('link', { name: 'Refund Policy' })).toHaveAttribute('href', '/refunds');
-    expect(screen.getByRole('link', { name: 'Bahasa Melayu' })).toHaveAttribute('href', '/ms/returns');
+    expect(within(screen.getByRole('group', { name: 'Language' })).getByRole('link', { name: 'Bahasa Melayu' })).toHaveAttribute('href', '/ms/returns');
   });
 
   it('gives each page a canonical address and its other-language alternate', () => {
@@ -122,5 +128,89 @@ describe('LegalPage', () => {
     expect(meta.title).toBe('Terma Perkhidmatan · Curios');
     expect(meta.alternates?.canonical).toBe(LEGAL_PATH.ms.terms);
     expect(meta.alternates?.languages).toMatchObject({ 'en-MY': '/terms', 'ms-MY': '/ms/terms' });
+  });
+});
+
+describe('LegalPage, from the Site board', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('wears the landing nav and footer, with who runs Curios in the footer and the contact line kept', () => {
+    render(<LegalPage doc="terms" locale="en" plan={PLAN} />);
+    // The nav (the footer carries a second "Sections" list).
+    expect(screen.getAllByRole('navigation', { name: 'Sections' })).toHaveLength(2);
+    expect(screen.getByRole('link', { name: 'Make your page' })).toHaveAttribute('href', '/signup');
+    const footer = screen.getByRole('contentinfo');
+    expect(footer).toHaveTextContent('Curios is run by BSYX LABS (202603086039 · TR0339989-A).');
+    expect(within(footer).getByRole('link', { name: 'Refunds' })).toHaveAttribute('href', '/refunds');
+    // The footer's section links point back at the landing, not at this page.
+    expect(within(footer).getByRole('link', { name: 'Pricing' })).toHaveAttribute('href', '/#pricing');
+    // A legal page still says how to write to us.
+    expect(screen.getByText(/Questions about this page\? Write to/)).toBeInTheDocument();
+  });
+
+  it('puts a Legal eyebrow over the title, the date and the toggle, then the lede, then the tabs', () => {
+    render(<LegalPage doc="terms" locale="en" plan={PLAN} />);
+    const eyebrow = screen.getByText('Legal');
+    const title = screen.getByRole('heading', { level: 1 });
+    const lede = screen.getByText(/The agreement between you and Curios when you make a page/);
+    const tabs = screen.getByRole('navigation', { name: 'Policies' });
+    const before = (a: Element, b: Element) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING;
+    expect(before(eyebrow, title)).toBeTruthy();
+    expect(before(title, lede)).toBeTruthy();
+    // The document tabs sit below the lede.
+    expect(before(lede, tabs)).toBeTruthy();
+    expect(screen.getByText('Last updated').closest('span')).toHaveTextContent('Last updated 30 October 2026');
+  });
+
+  it('numbers the sections 01, 02 and links each from the contents', () => {
+    const { container } = render(<LegalPage doc="refunds" locale="en" plan={PLAN} />);
+    const sections = container.querySelectorAll('section');
+    expect(sections).toHaveLength(DOCS.en.refunds.sections.length);
+    expect(sections[0]!.querySelector('h2')).toHaveTextContent(/^01/);
+    expect(sections[1]!.querySelector('h2')).toHaveTextContent(/^02/);
+
+    const contents = within(screen.getByRole('navigation', { name: 'On this page' }));
+    DOCS.en.refunds.sections.forEach((section, i) => {
+      expect(contents.getByRole('link', { name: section.heading })).toHaveAttribute('href', `#${sections[i]!.id}`);
+    });
+  });
+
+  it('lights the section in view in the contents, driven by an IntersectionObserver', () => {
+    let callback: IntersectionObserverCallback = () => {};
+    const observed: Element[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          callback = cb;
+        }
+        observe(el: Element) {
+          observed.push(el);
+        }
+        disconnect() {}
+      },
+    );
+    const { container } = render(<LegalPage doc="terms" locale="en" plan={PLAN} />);
+    expect(observed).toHaveLength(DOCS.en.terms.sections.length);
+
+    const contents = screen.getByRole('navigation', { name: 'On this page' });
+    const current = () => within(contents).getAllByRole('link').filter((a) => a.getAttribute('aria-current') === 'location');
+    expect(current()).toHaveLength(1);
+    expect(current()[0]).toHaveTextContent(DOCS.en.terms.sections[0]!.heading);
+
+    const third = container.querySelectorAll('section')[2]!;
+    act(() => callback([{ target: third, isIntersecting: true } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
+    expect(current()).toHaveLength(1);
+    expect(current()[0]).toHaveTextContent(DOCS.en.terms.sections[2]!.heading);
+  });
+
+  it('folds the contents behind one button for a phone', async () => {
+    render(<LegalPage doc="terms" locale="en" plan={PLAN} />);
+    const contents = screen.getByRole('navigation', { name: 'On this page' });
+    const button = within(contents).getByRole('button', { name: 'On this page' });
+    expect(button).toHaveAttribute('aria-expanded', 'false');
+    await userEvent.click(button);
+    expect(button).toHaveAttribute('aria-expanded', 'true');
+    expect(contents).toHaveAttribute('data-open');
   });
 });
