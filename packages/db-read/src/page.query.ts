@@ -3,7 +3,7 @@ import type { DeliveryMode } from '@curios/core/store';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
-import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
+import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { getSettings } from './settings.query.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
@@ -46,8 +46,13 @@ export interface PublicPage {
   headingFont: HeadingFont;
   /** The picture's object key, or null. apps/web turns it into a URL. */
   avatarKey: string | null;
+  /** The picture's size and whether it wears its ring (Medium with the ring is how every page began). */
+  avatarSize: AvatarSize;
+  avatarBorder: boolean;
   /** The cover: `stock/<name>` or a storage key; null is no cover. apps/web turns it into a URL. */
   coverKey: string | null;
+  /** Top is the cover as a band at the head of the page; Full fills the page behind the content. */
+  coverLayout: CoverLayout;
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
@@ -119,7 +124,10 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       accentColor: true,
       headingFont: true,
       avatarKey: true,
+      avatarSize: true,
+      avatarBorder: true,
       coverKey: true,
+      coverLayout: true,
       background: true,
       backgroundColor: true,
       socials: true,

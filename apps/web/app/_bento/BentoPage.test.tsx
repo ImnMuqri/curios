@@ -433,3 +433,65 @@ describe('the chat dot against the page', () => {
     expect(mark('#2340c8', 'INK')).toBeUndefined();
   });
 });
+
+describe('BentoPage, the picture and the cover layout', () => {
+  const root = (container: HTMLElement) => container.querySelector('[data-bento-page]')!;
+  const css = () => readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+
+  it('draws a page that never chose exactly as before: Medium, the ring, the cover as a band', () => {
+    const { container } = render(<BentoPage {...base} avatarUrl="/a.webp" coverUrl="/covers/bunga.webp" />);
+    expect(root(container)).not.toHaveAttribute('data-avatar-size');
+    expect(root(container)).not.toHaveAttribute('data-avatar-border');
+    expect(root(container)).not.toHaveAttribute('data-cover-layout');
+    expect(container.querySelector('[data-cover-photo]')!.className).not.toMatch(/coverFull/);
+    // Medium is the stylesheet's own 88px, not an override.
+    expect(css()).toMatch(/\.head\s*\{[^}]*--avatar-size:\s*88px;/s);
+  });
+
+  it('marks Small and Big, and Medium as nothing, and sizes them 64px and 120px', () => {
+    const small = render(<BentoPage {...base} avatarUrl="/a.webp" avatarSize="SMALL" />);
+    expect(root(small.container)).toHaveAttribute('data-avatar-size', 'SMALL');
+    small.unmount();
+    const big = render(<BentoPage {...base} avatarUrl="/a.webp" avatarSize="LARGE" />);
+    expect(root(big.container)).toHaveAttribute('data-avatar-size', 'LARGE');
+    big.unmount();
+    const medium = render(<BentoPage {...base} avatarUrl="/a.webp" avatarSize="MEDIUM" />);
+    expect(root(medium.container)).not.toHaveAttribute('data-avatar-size');
+    expect(css()).toMatch(/\[data-avatar-size='SMALL'\] \.head\s*\{\s*--avatar-size:\s*64px;/);
+    expect(css()).toMatch(/\[data-avatar-size='LARGE'\] \.head\s*\{\s*--avatar-size:\s*120px;/);
+  });
+
+  it('takes the ring off the picture when the border is off, and only then', () => {
+    const off = render(<BentoPage {...base} avatarUrl="/a.webp" avatarBorder={false} />);
+    expect(root(off.container)).toHaveAttribute('data-avatar-border', 'off');
+    off.unmount();
+    const on = render(<BentoPage {...base} avatarUrl="/a.webp" avatarBorder />);
+    expect(root(on.container)).not.toHaveAttribute('data-avatar-border');
+    expect(css()).toMatch(/\[data-avatar-border='off'\] \.avatar\s*\{\s*box-shadow:\s*none;/);
+  });
+
+  it('fills the whole page with the cover under a wash of the page colour on Full page', () => {
+    const { container } = render(<BentoPage {...base} coverUrl="/covers/bunga.webp" coverLayout="FULL" />);
+    expect(root(container)).toHaveAttribute('data-cover-layout', 'FULL');
+    expect(container.querySelector('[data-cover-photo]')!.className).toMatch(/coverFull/);
+    // The wash is the page's own colour, the one its text already reads on.
+    expect(css()).toMatch(/\.coverFull::after\s*\{[^}]*var\(--page-bg\)/s);
+    // Ask keeps the photo behind it; only the band folds away.
+    expect(css()).toMatch(/\[data-mode='chat'\] :is\(\.cover:not\(\.coverFull\)/);
+  });
+
+  it('keeps the Full-page photo one screen tall and still, and gives the head the phone runway', () => {
+    expect(css()).toMatch(/\.coverFull img\s*\{[^}]*position:\s*sticky;[^}]*height:\s*100lvh;/s);
+    expect(css()).toMatch(/\.coverFull\s*\{[^}]*overflow:\s*clip;/s);
+    expect(css()).toMatch(/\[data-cover-layout='FULL'\] \.head\s*\{\s*padding-top:[^;]*var\(--runway, 0px\)/);
+    // Ask's own rule for the head comes after, so it wins.
+    const css2 = css();
+    expect(css2.indexOf("[data-cover-layout='FULL'] .head")).toBeLessThan(css2.indexOf(".page[data-mode='chat'] .head"));
+  });
+
+  it('is the same page with Full page and no photo: there is nothing to fill it with', () => {
+    const { container } = render(<BentoPage {...base} coverLayout="FULL" />);
+    expect(root(container)).not.toHaveAttribute('data-cover-layout');
+    expect(container.querySelector('[data-cover-photo]')).toBeNull();
+  });
+});

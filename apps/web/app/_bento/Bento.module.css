@@ -242,14 +242,14 @@
   text-align: center;
 }
 
-.cover + .head {
+.cover:not(.coverFull) + .head {
   margin-top: -29cqi;
   padding-top: 0;
 }
 
 /* Over a cover the picture rises into the photo by its own height and the gap, so the name sits
    exactly where it does without one rather than being pushed down. */
-.cover + .head > .avatar {
+.cover:not(.coverFull) + .head > .avatar {
   margin-top: calc(-1 * (var(--avatar-size) + var(--head-gap)));
 }
 
@@ -260,6 +260,79 @@
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 0 0 5px var(--page-bg);
+}
+
+/*
+ * The picture's size and border (My Curios, "Your picture"). Medium, 88px with its ring, is how every
+ * page began, so a page that never chose is unchanged. Small and Big are 64px and 120px: the Big one
+ * still sits inside a 390px page's photo with its name where it always was.
+ */
+.page[data-avatar-size='SMALL'] .head {
+  --avatar-size: 64px;
+}
+
+.page[data-avatar-size='LARGE'] .head {
+  --avatar-size: 120px;
+}
+
+.page[data-avatar-border='off'] .avatar {
+  box-shadow: none;
+}
+
+/*
+ * The cover as the whole page's background (My Curios, "Cover photo", Full page). The photo fills the
+ * page behind everything, under a wash of the page's own colour: the text colour is already the one
+ * that reads on that colour (readableOn), so the wash is what keeps it readable on any photo. The wash
+ * is lighter at the top, where only the picture is, and deepens under the links.
+ */
+.page[data-cover-layout='FULL'] {
+  isolation: isolate;
+}
+
+.coverFull {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  height: auto;
+  /* Clip, not hidden: hidden would make this the scroller and the sticky photo below would not stick. */
+  overflow: clip;
+}
+
+/* The photo is one screen tall and stays put as the page scrolls, so its crop is the screen's, sharp
+   and the same however long the content grows. */
+.coverFull img {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100lvh;
+  mask-image: none;
+}
+
+/* The wash is deepest from a fixed distance down (a screen's worth, not a share of the page), so a long
+   page does not change how readable the top is. */
+.coverFull::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    color-mix(in srgb, var(--page-bg) 70%, transparent),
+    color-mix(in srgb, var(--page-bg) 84%, transparent) calc(100vh * 0.55)
+  );
+}
+
+@supports (height: 100lvh) {
+  .coverFull::after {
+    background: linear-gradient(
+      color-mix(in srgb, var(--page-bg) 70%, transparent),
+      color-mix(in srgb, var(--page-bg) 84%, transparent) calc(100lvh * 0.55)
+    );
+  }
+}
+
+/* On a phone the page opens scrolled by the runway (page.tsx's OPEN_SCROLLED), which Full adds no
+   photo height for: the head makes the room instead, so the picture is not under the status bar. */
+.page[data-cover-layout='FULL'] .head {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px) + var(--runway, 0px));
 }
 
 .name {
@@ -691,7 +764,7 @@
  * Asking collapses the header to the name (More board, .cu-hd.sm): the cover, the picture, the address,
  * the profiles and the bio fold away, and the name drops to 26px over the tabs.
  */
-.page[data-mode='chat'] :is(.cover, .avatar, .handle, .socials, .bio) {
+.page[data-mode='chat'] :is(.cover:not(.coverFull), .avatar, .handle, .socials, .bio) {
   display: none;
 }
 

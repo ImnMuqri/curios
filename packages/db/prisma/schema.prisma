@@ -121,6 +121,19 @@ enum PageBackground {
   CUSTOM
 }
 
+/// How big the picture is on the public page. MEDIUM (88px) is the size every page had before there was a choice.
+enum AvatarSize {
+  SMALL
+  MEDIUM
+  LARGE
+}
+
+/// Where the cover sits. TOP is the band at the head of the page every page had; FULL fills the whole page behind the content.
+enum CoverLayout {
+  TOP
+  FULL
+}
+
 enum HeadingFont {
   JAKARTA
   BRICOLAGE
@@ -281,6 +294,10 @@ model Page {
   headingFont         HeadingFont         @default(JAKARTA)
   /// The object key of the uploaded picture in storage. Null is no picture.
   avatarKey           String?
+  /// The picture's size on the public page (My Curios, "Your picture").
+  avatarSize          AvatarSize          @default(MEDIUM)
+  /// Whether the picture wears the ring of the page's own colour round it, as every page's did.
+  avatarBorder        Boolean             @default(true)
   /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
   coverKey            String?
   /// An uploaded cover's colours at its top and foot (six-digit hex), worked out when it was uploaded, for
@@ -288,6 +305,8 @@ model Page {
   /// for a cover from before this was kept.
   coverTop            String?
   coverBottom         String?
+  /// TOP is the cover as a band at the head of the page; FULL fills the whole page behind the content.
+  coverLayout         CoverLayout         @default(TOP)
   background          PageBackground      @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.

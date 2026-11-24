@@ -273,6 +273,47 @@
   margin-top: 10px;
 }
 
+/* The picture's size and its border, under the buttons. */
+.pictureLook {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  margin-top: 14px;
+}
+
+.pictureHint {
+  flex-basis: 100%;
+}
+
+.borderRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* The cover's layout: its label, the choice, and a line on what each does. */
+.layoutRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-top: 18px;
+}
+
+.layoutRow b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.layoutRow small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .changeButton {
   height: 34px;
   padding: 0 16px;
@@ -767,16 +808,6 @@ input.youField {
   margin-top: 12px;
 }
 
-.colorWell {
-  width: 44px;
-  height: 34px;
-  padding: 2px;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  background: var(--card);
-  cursor: pointer;
-}
-
 .swatches {
   display: flex;
   flex-wrap: wrap;
@@ -851,10 +882,6 @@ input.youField {
   color: var(--ink);
   font: inherit;
   outline: none;
-}
-
-.customBg .hex input {
-  width: 72px;
 }
 
 .hex:focus-within {

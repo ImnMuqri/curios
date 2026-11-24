@@ -3,6 +3,8 @@ import {
   isHexColor,
   accentShowsOn,
   readableOn,
+  type AvatarSize,
+  type CoverLayout,
   type CoverTint,
   type HeadingFont,
   type PageBackground,
@@ -55,6 +57,12 @@ export interface BentoPageProps {
   backgroundColor?: string | null;
   /** The cover photo's URL (stock or uploaded), or null for none. */
   coverUrl?: string | null;
+  /** The cover as a band at the top (the look every page had), or filling the whole page behind the content. With no photo, both read the same. */
+  coverLayout?: CoverLayout;
+  /** The picture's size; Medium (88px) when left out. */
+  avatarSize?: AvatarSize;
+  /** Whether the picture wears the ring of the page's colour round it; on when left out. */
+  avatarBorder?: boolean;
   /** The page's language, for its own words (tabs, FAQ, footer). Anything but 'ms' reads English. */
   language?: string;
   /** The most asked answered questions, opened in place, and how many there are in all. */
@@ -199,11 +207,14 @@ export function BentoPage(props: BentoPageProps) {
       data-bento-page
       data-style={props.style}
       data-cover={props.coverUrl ? 'yes' : 'no'}
+      data-cover-layout={props.coverUrl && props.coverLayout === 'FULL' ? 'FULL' : undefined}
+      data-avatar-size={props.avatarSize && props.avatarSize !== 'MEDIUM' ? props.avatarSize : undefined}
+      data-avatar-border={props.avatarBorder === false ? 'off' : undefined}
       data-mode={props.mode}
       data-basket={props.basketBar ? 'yes' : undefined}
       {...theme}
     >
-      {props.coverUrl ? <Cover src={props.coverUrl} /> : null}
+      {props.coverUrl ? <Cover src={props.coverUrl} full={props.coverLayout === 'FULL'} /> : null}
       <header className={styles.head}>
         {props.avatarUrl ? <Avatar src={props.avatarUrl} name={props.displayName} /> : null}
         <Name className={styles.name}>{props.displayName}</Name>

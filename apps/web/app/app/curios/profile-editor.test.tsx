@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../../lib/api.js';
 import { ProfileEditor } from './profile-editor.js';
@@ -17,14 +17,14 @@ function Controlled({
   uploadAvatar = async () => null,
   removeAvatar = async () => undefined,
 }: {
-  save: (patch: { displayName?: string; bio?: string | null }) => Promise<unknown>;
+  save: (patch: { displayName?: string; bio?: string | null; avatarSize?: 'SMALL' | 'MEDIUM' | 'LARGE'; avatarBorder?: boolean }) => Promise<unknown>;
   uploadsEnabled?: boolean;
   avatarUrl?: string | null;
   onAvatar?: (url: string | null) => void;
   uploadAvatar?: (file: File) => Promise<string | null>;
   removeAvatar?: () => Promise<void>;
 }) {
-  const [state, setState] = useState({ displayName: 'Iman', bio: null as string | null });
+  const [state, setState] = useState({ displayName: 'Iman', bio: null as string | null, avatarSize: 'MEDIUM' as 'SMALL' | 'MEDIUM' | 'LARGE', avatarBorder: true });
   return (
     <ProfileEditor
       {...state}
@@ -139,7 +139,7 @@ describe('ProfileEditor', () => {
   });
 });
 
-const base = { displayName: 'Iman', bio: null, onChange: vi.fn(), save: vi.fn(async () => undefined), avatarUrl: null, onAvatar: vi.fn(), removeAvatar: vi.fn(async () => undefined) };
+const base = { displayName: 'Iman', bio: null, avatarSize: 'MEDIUM' as 'SMALL' | 'MEDIUM' | 'LARGE', avatarBorder: true, onChange: vi.fn(), save: vi.fn(async () => undefined), avatarUrl: null, onAvatar: vi.fn(), removeAvatar: vi.fn(async () => undefined) };
 
 describe('ProfileEditor picture', () => {
   it('shows the upload disabled, with the reason, when storage is off', () => {
@@ -258,5 +258,72 @@ describe('ProfileEditor picture', () => {
     fireEvent.error(img as HTMLImageElement);
 
     expect(container.querySelector('img')).toBeNull();
+  });
+});
+
+describe('ProfileEditor picture size and border', () => {
+  const withPicture = { ...base, avatarUrl: '/a.webp', uploadsEnabled: true, uploadAvatar: vi.fn() };
+
+  it('shows Medium and the border on, and saves a new size at once with the preview following', async () => {
+    const onChange = vi.fn();
+    const save = vi.fn(async () => undefined);
+    render(<ProfileEditor {...withPicture} onChange={onChange} save={save} />);
+    const sizes = screen.getByRole('radiogroup', { name: 'Picture size' });
+    expect(within(sizes).getByRole('radio', { name: 'Medium' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Border' })).toHaveAttribute('aria-checked', 'true');
+
+    await userEvent.click(within(sizes).getByRole('radio', { name: 'Big' }));
+    expect(onChange).toHaveBeenCalledWith({ avatarSize: 'LARGE' });
+    expect(save).toHaveBeenCalledWith({ avatarSize: 'LARGE' });
+  });
+
+  it('moves and chooses with the arrow keys', async () => {
+    const save = vi.fn(async () => undefined);
+    render(<ProfileEditor {...withPicture} save={save} />);
+    screen.getByRole('radio', { name: 'Medium' }).focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(save).toHaveBeenCalledWith({ avatarSize: 'LARGE' });
+    expect(screen.getByRole('radio', { name: 'Big' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'Small' })).toHaveAttribute('tabindex', '-1');
+  });
+
+  it('switches the border off and on, saving each', async () => {
+    const save = vi.fn(async () => undefined);
+    const onChange = vi.fn();
+    render(<ProfileEditor {...withPicture} onChange={onChange} save={save} />);
+    await userEvent.click(screen.getByRole('switch', { name: 'Border' }));
+    expect(onChange).toHaveBeenCalledWith({ avatarBorder: false });
+    expect(save).toHaveBeenCalledWith({ avatarBorder: false });
+  });
+
+  it('puts the size back and says so when the save fails', async () => {
+    const onChange = vi.fn();
+    const save = vi.fn(async () => { throw new Error('offline'); });
+    render(<ProfileEditor {...withPicture} onChange={onChange} save={save} />);
+    await userEvent.click(screen.getByRole('radio', { name: 'Small' }));
+    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+    expect(onChange).toHaveBeenLastCalledWith({ avatarSize: 'MEDIUM' });
+  });
+
+  it('does not undo a newer choice when an older save fails afterwards', async () => {
+    const onChange = vi.fn();
+    let failFirst!: () => void;
+    const save = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise((_, reject) => { failFirst = () => reject(new Error('offline')); }))
+      .mockResolvedValueOnce(undefined);
+    render(<ProfileEditor {...withPicture} onChange={onChange} save={save} />);
+    await userEvent.click(screen.getByRole('radio', { name: 'Small' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Big' }));
+    await act(async () => failFirst());
+    expect(onChange).not.toHaveBeenCalledWith({ avatarSize: 'MEDIUM' });
+    expect(screen.queryByText('That did not save. Try again.')).toBeNull();
+  });
+
+  it('leaves size and border off, with a line why, while there is no picture', () => {
+    render(<ProfileEditor {...base} uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByRole('radio', { name: 'Big' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Border' })).toBeDisabled();
+    expect(screen.getByText(/Add a picture first/)).toBeInTheDocument();
   });
 });

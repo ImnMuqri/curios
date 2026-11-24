@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
-import type { HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
+import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
@@ -29,6 +29,9 @@ export type AppearancePatch = Partial<{
   style: PageStyle;
   accentColor: string;
   headingFont: HeadingFont;
+  avatarSize: AvatarSize;
+  avatarBorder: boolean;
+  coverLayout: CoverLayout;
   displayName: string;
   bio: string | null;
   socials: Socials;
@@ -194,6 +197,8 @@ export function MyCuriosEditor({
             <ProfileEditor
               displayName={page.displayName}
               bio={page.bio}
+              avatarSize={page.avatarSize}
+              avatarBorder={page.avatarBorder}
               onChange={update}
               save={api.saveAppearance}
               avatarUrl={page.avatarUrl}
@@ -210,6 +215,9 @@ export function MyCuriosEditor({
               coverUrl={page.coverUrl}
               uploadsEnabled={uploadsEnabled}
               look={page}
+              coverLayout={page.coverLayout}
+              onLayout={update}
+              saveLayout={api.saveAppearance}
               onCover={update}
               chooseStock={api.chooseStockCover}
               uploadCover={api.uploadCover}

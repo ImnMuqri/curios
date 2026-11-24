@@ -130,6 +130,8 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         // rework removed its duplicate header, which left Ask (below) with
         // no remaining use for it.
         avatarUrl={avatarUrl(page.avatarKey)}
+        avatarSize={page.avatarSize}
+        avatarBorder={page.avatarBorder}
         links={page.links}
         shop={shop}
         style={page.style}
@@ -138,6 +140,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         background={page.background}
         backgroundColor={page.backgroundColor}
         coverUrl={coverUrl(page.coverKey)}
+        coverLayout={page.coverLayout}
         language={page.language}
         socials={page.socials}
         faq={faq}

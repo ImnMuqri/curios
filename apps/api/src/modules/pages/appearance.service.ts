@@ -4,6 +4,8 @@ import {
   charCount,
   DISPLAY_NAME_MAX,
   isHexColor,
+  type AvatarSize,
+  type CoverLayout,
   type HeadingFont,
   type PageBackground,
   type PageStyle,
@@ -26,6 +28,9 @@ export interface Appearance {
   backgroundColor: string | null;
   accentColor: string;
   headingFont: HeadingFont;
+  avatarSize: AvatarSize;
+  avatarBorder: boolean;
+  coverLayout: CoverLayout;
   displayName: string;
   bio: string | null;
   /** The filled-in profiles, by kind. */
@@ -63,6 +68,9 @@ export async function updateAppearance(
     if (!stored?.backgroundColor) throw new InvalidAppearanceError('Pick a background colour first.');
   }
   if (input.headingFont !== undefined) data.headingFont = input.headingFont;
+  if (input.avatarSize !== undefined) data.avatarSize = input.avatarSize;
+  if (input.avatarBorder !== undefined) data.avatarBorder = input.avatarBorder;
+  if (input.coverLayout !== undefined) data.coverLayout = input.coverLayout;
   if (input.accentColor !== undefined) {
     if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #2340c8.');
     data.accentColor = input.accentColor.toLowerCase();
@@ -103,7 +111,7 @@ export async function updateAppearance(
   }
   const page = await prisma.page.findUnique({
     where: { accountId },
-    select: { style: true, background: true, backgroundColor: true, accentColor: true, headingFont: true, displayName: true, bio: true, socials: true },
+    select: { style: true, background: true, backgroundColor: true, accentColor: true, headingFont: true, avatarSize: true, avatarBorder: true, coverLayout: true, displayName: true, bio: true, socials: true },
   });
   if (!page) throw new NoPageError();
   return { ...page, socials: asSocials(page.socials) };

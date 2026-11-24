@@ -38,6 +38,9 @@ const page: PublicPage = {
   bio: 'Kek butter, Shah Alam',
   language: 'ms',
   mode: 'BUSINESS',
+  avatarSize: 'MEDIUM',
+  avatarBorder: true,
+  coverLayout: 'TOP',
   paidUntil: null,
   leadsCaptured: 0,
   links: [
