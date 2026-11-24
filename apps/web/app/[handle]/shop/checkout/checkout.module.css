@@ -26,8 +26,8 @@
   max-width: 460px;
   min-height: 100vh;
   margin: 0 auto;
-  /* On a phone the page starts below its status bar; a preview's phone sets this inset. */
-  padding: calc(20px + var(--phone-inset-top, 0px)) 0 0;
+  /* The bar is sticky and draws its own status-bar inset (top-bar.module.css). */
+  padding: 0;
   color: var(--page-fg);
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 15px;
@@ -35,15 +35,15 @@
   animation: rise 320ms ease both;
 }
 
-/* The board's .ck-sheet: white, rounded at the top, to the foot of the screen. */
+/* The light sheet under the owner-themed top bar (../../sheet.module.css gives the colours and the corners). */
 .sheet {
-  box-sizing: border-box;
   flex: 1;
-  margin-top: 18px;
   padding: 4px 20px 120px;
-  border-radius: 24px 24px 0 0;
-  background: var(--card);
-  color: var(--ink);
+}
+
+.barTitle {
+  margin: 0;
+  font: inherit;
 }
 
 @keyframes rise {
@@ -121,7 +121,7 @@
 }
 
 .head a {
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font-size: 13.5px;
   font-weight: 500;
   text-decoration: none;
@@ -277,7 +277,7 @@
 }
 
 .method[aria-checked='true'] .radio {
-  box-shadow: inset 0 0 0 6px var(--accent);
+  box-shadow: inset 0 0 0 6px var(--sheet-accent, var(--accent));
 }
 
 .methodText {
@@ -390,7 +390,7 @@
 
 .field input:focus,
 .field textarea:focus {
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--sheet-accent, var(--accent));
 }
 
 .field input[aria-invalid='true'],
@@ -406,7 +406,7 @@
 }
 
 .tel:focus-within {
-  box-shadow: inset 0 0 0 1.5px var(--accent);
+  box-shadow: inset 0 0 0 1.5px var(--sheet-accent, var(--accent));
 }
 
 .tel em {
@@ -577,7 +577,7 @@
   height: 32px;
   margin-bottom: 8px;
   border: 3px solid var(--lp-line);
-  border-top-color: var(--accent);
+  border-top-color: var(--sheet-accent, var(--accent));
   border-radius: 50%;
   animation: handoffSpin 800ms linear infinite;
 }
@@ -596,7 +596,7 @@
   margin-bottom: 6px;
   border-radius: 16px;
   background: var(--lp-tint);
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
 }
 
 .emptyIcon svg {
@@ -635,107 +635,39 @@
 .copy:focus-visible,
 .pay:focus-visible,
 .sendLink:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
 /* ---- Placed ---- */
 
 .placedColumn {
+  /* The result screens are Curios' own light sheet (More board, .res): the owner's colours stay on the button. */
+  --page-bg: var(--calm-bg);
+  --page-fg: var(--calm-ink);
+  --lp-line: var(--calm-ring);
+  --lp-soft: var(--calm-muted);
+  --lp-tint: var(--calm-soft);
   display: block;
-  padding: 18px 18px 120px;
-  background: var(--lp-bg);
-  color: var(--ink);
+  padding: 54px 22px 120px;
+  background: var(--calm-bg);
+  color: var(--calm-ink);
   box-shadow: 0 0 80px rgb(0 0 0 / 35%);
 }
 
 .placed {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding-top: 60px;
+  align-items: stretch;
+  gap: 10px;
   text-align: center;
-}
-
-.burst {
-  position: relative;
-  width: 96px;
-  height: 96px;
-  margin-bottom: 18px;
-}
-
-.burst span {
-  position: absolute;
-  top: 44px;
-  left: 44px;
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--accent);
-  animation: burst 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.burst span:nth-child(4n + 2) {
-  background: var(--public-blue);
-}
-
-.burst span:nth-child(4n + 3) {
-  background: var(--kuning);
-}
-
-.burst span:nth-child(4n + 4) {
-  background: var(--hijau);
-}
-
-@keyframes burst {
-  from {
-    transform: rotate(var(--a)) translateY(0);
-    opacity: 1;
-  }
-
-  to {
-    transform: rotate(var(--a)) translateY(-70px) rotate(200deg);
-    opacity: 0;
-  }
-}
-
-.burst svg {
-  position: relative;
-  animation: pop 520ms cubic-bezier(0.34, 1.6, 0.64, 1) both;
-}
-
-.burst circle {
-  fill: var(--hijau);
-}
-
-@keyframes pop {
-  from {
-    transform: scale(0.4);
-  }
-}
-
-.tick {
-  fill: none;
-  stroke: var(--paper);
-  stroke-width: 7;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-dasharray: 60;
-  stroke-dashoffset: 60;
-  animation: draw 500ms 250ms ease forwards;
-}
-
-@keyframes draw {
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 .placedTitle {
   margin: 0;
-  font-size: 26px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.03em;
   line-height: 1.15;
 }
 
@@ -746,57 +678,50 @@
 }
 
 .placedSub {
-  margin: 6px 0 0;
+  margin: 0;
   color: var(--lp-soft);
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .codebox {
   box-sizing: border-box;
   width: 100%;
-  margin-top: 22px;
-  padding: 20px;
-  border-radius: 24px;
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--lp-line);
+  margin: 8px 0;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--calm-surface);
+  box-shadow: inset 0 0 0 1px var(--lp-line);
 }
 
 .codebox small {
+  display: block;
   color: var(--lp-soft);
   font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
 }
 
 .codebox p {
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   color: var(--lp-soft);
   font-size: 13.5px;
 }
 
 .codebox p b {
-  color: var(--ink);
+  color: var(--calm-ink);
 }
 
 .code {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-top: 10px;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
 }
 
 .code span {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 64px;
-  border-radius: 14px;
-  background: var(--deep);
-  color: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 30px;
-  font-weight: 600;
+  display: inline-block;
   animation: flip 520ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
@@ -814,7 +739,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--lp-tint);
-  color: var(--accent);
+  color: var(--calm-ink);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -829,7 +754,7 @@
   gap: 8px;
   width: 100%;
   height: 54px;
-  margin-top: 18px;
+  margin-top: 4px;
   border-radius: 999px;
   background: var(--accent);
   color: var(--on-accent, var(--paper));
@@ -947,7 +872,7 @@
 
 .pick[aria-checked='true'] {
   background: color-mix(in srgb, var(--accent) 6%, var(--card));
-  box-shadow: inset 0 0 0 2px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--sheet-accent, var(--accent));
 }
 
 .pick i {
@@ -1016,15 +941,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .column,
-  .burst span,
-  .burst svg,
-  .tick,
   .code span {
     animation: none;
-  }
-
-  .tick {
-    stroke-dashoffset: 0;
   }
 
   /* Still turning, slowly: it is the only sign the page is working. */
@@ -1055,7 +973,7 @@
   height: 20px;
   margin-top: 1px;
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--sheet-accent, var(--accent));
   stroke-width: 1.9;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -1094,7 +1012,7 @@
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font: inherit;
   font-size: 13.5px;
   font-weight: 500;
@@ -1102,7 +1020,7 @@
 }
 
 .codeLink:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -1137,7 +1055,7 @@
 }
 
 .codeRow button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -1148,7 +1066,7 @@
 }
 
 .summary > .discount {
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font-weight: 600;
 }
 
@@ -1178,14 +1096,14 @@ span.method {
 .mapLink {
   flex: none;
   margin-right: 14px;
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font-size: 13px;
   font-weight: 600;
   text-decoration: none;
 }
 
 .mapLink:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -1211,4 +1129,92 @@ span.method {
 .day:disabled {
   cursor: default;
   opacity: 0.45;
+}
+
+/* ---- The placed screen's summary (More board, .sumc) ---- */
+.sumc {
+  margin: 0;
+  padding: 0;
+  border-radius: 16px;
+  background: var(--calm-surface);
+  box-shadow: inset 0 0 0 1px var(--lp-line);
+  list-style: none;
+  text-align: left;
+}
+
+.sumc li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  font-size: 14px;
+}
+
+.sumc li + li {
+  border-top: 1px solid var(--calm-line);
+}
+
+.sumc li > span {
+  color: var(--lp-soft);
+}
+
+.sumc li > b {
+  min-width: 0;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sumThumbs {
+  display: inline-flex;
+  align-items: center;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.sumThumbs i {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 14%, var(--calm-surface));
+  box-shadow: 0 0 0 2px var(--calm-surface);
+  color: var(--calm-ink);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.sumThumbs i + i {
+  margin-left: -8px;
+}
+
+.sumThumbs img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.placedHint {
+  margin: 0;
+  color: var(--lp-soft);
+  font-size: 13.5px;
+}
+
+.placedLite {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  border-radius: 999px;
+  background: var(--calm-surface);
+  box-shadow: inset 0 0 0 1px var(--lp-line);
+  color: var(--calm-ink);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
 }

@@ -109,6 +109,8 @@ export function themeAttrs(theme: {
       '--accent': theme.accentColor,
       // The chat's dot sits on the page itself: where the accent would vanish into it, the text colour.
       ...(accentShowsOn(theme.accentColor, background, custom) ? {} : { '--accent-mark': 'var(--page-fg)' }),
+      // The accent where it is text, a stroke or a ring on the light sheet (checkout, order, basket): the sheet is paper, so a pale accent gives way to ink.
+      '--sheet-accent': accentShowsOn(theme.accentColor, 'PAPER', null) ? 'var(--accent)' : 'var(--calm-ink)',
       '--font-heading': HEADING_FONT_VAR[theme.headingFont],
       ...(custom ? { '--custom-bg': custom } : {}),
     } as CSSProperties,
@@ -302,8 +304,14 @@ export function BentoPage(props: BentoPageProps) {
                   <a href={faqHref}>{copy.questions}</a> ·{' '}
                 </>
               ) : null}
-              <a href="/">{copy.madeWith}</a> ·{' '}
-              <a href={`${home}/report`}>{copy.report}</a>
+              <a className={styles.made} href="/">
+                {copy.madeWith}
+              </a>
+              {/* Safety, so it stays; the board's footer has no room for it, so it sits quietly beneath. */}
+              <br />
+              <a className={styles.report} href={`${home}/report`}>
+                {copy.report}
+              </a>
             </p>
           ) : null}
         </div>

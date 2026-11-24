@@ -79,6 +79,58 @@ describe('GET /[handle]/order/[token]/calendar', () => {
   });
 });
 
+const pickup = (patch: Partial<PublicOrder> = {}) =>
+  order({
+    id: 'o1',
+    method: 'PICKUP',
+    day: '2026-11-21',
+    status: 'PAID',
+    pickupFrom: 840,
+    pickupTo: 1080,
+    pickupPlaceName: 'Rumah Lina',
+    pickupPlaceAddress: 'No. 12, Jalan Kenanga 7/3, Seksyen 7, Shah Alam',
+    ...patch,
+  } as Partial<PublicOrder>);
+
+describe('GET /[handle]/order/[token]/calendar?pickup=1', () => {
+  it('sends an .ics for the pickup window, in Malaysia time, at the place', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(pickup());
+    const response = await call('?pickup=1');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/calendar; charset=utf-8');
+    expect(response.headers.get('content-disposition')).toBe('attachment; filename="pickup-21.ics"');
+    const text = (await response.text()).replace(/\r\n /g, '');
+    // 2pm and 6pm in Malaysia (UTC+8).
+    expect(text).toContain('DTSTART:20261121T060000Z\r\n');
+    expect(text).toContain('DTEND:20261121T100000Z\r\n');
+    expect(text).toContain('UID:o1@curios\r\n');
+    expect(text).toContain('SUMMARY:Pickup from Kek Lina\r\n');
+    expect(text).toContain('LOCATION:Rumah Lina\\, No. 12\\, Jalan Kenanga 7/3\\, Seksyen 7\\, Shah Alam\r\n');
+  });
+
+  it('is an all-day event when the order kept no window', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(pickup({ pickupFrom: null, pickupTo: null }));
+    const text = await (await call('?pickup=1')).text();
+    expect(text).toContain('DTSTART;VALUE=DATE:20261121\r\n');
+    expect(text).toContain('DTEND;VALUE=DATE:20261122\r\n');
+  });
+
+  it('is there before it is paid, because the day is the customer’s to add', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(pickup({ status: 'PLACED' }));
+    expect((await call('?pickup=1')).status).toBe(200);
+  });
+
+  it.each([
+    ['cancelled', pickup({ status: 'CANCELLED' })],
+    ['a delivery order', pickup({ method: 'DELIVERY' })],
+    ['an order with no day', pickup({ day: null })],
+    ['an unknown token', null],
+  ])('is a 404 for %s', async (_name, found) => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(found);
+    expect((await call('?pickup=1')).status).toBe(404);
+  });
+});
+
 describe('ics text', () => {
   it('escapes commas, semicolons, backslashes and new lines', () => {
     expect(icsText('a, b; c\\d\ne')).toBe('a\\, b\\; c\\\\d\\ne');

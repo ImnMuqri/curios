@@ -84,59 +84,104 @@ afterEach(() => {
 });
 
 describe('OrderView', () => {
-  it("the order page's number and status sit on the background", () => {
+  it('sits on the light sheet under the owner-themed top bar: kicker, heading and status inside it, no bookmark label', () => {
     render(<OrderView {...base} />);
     const sheet = screen.getByTestId('sheet');
-    const title = screen.getByRole('heading', { level: 1, name: copy.orderTitle(14) });
-    expect(sheet).not.toContainElement(title);
-    expect(sheet).not.toContainElement(screen.getByText(copy.statusWaiting));
-    expect(sheet).not.toContainElement(screen.getByText(copy.bookmark));
-    expect(sheet).toContainElement(screen.getByText('7Q4M'));
-    expect(sheet).toContainElement(screen.getByRole('heading', { name: copy.yourOrder }));
+    expect(sheet).toContainElement(screen.getByText(copy.orderKicker(14, '7Q4M'), { exact: false }));
+    expect(sheet).toContainElement(screen.getByRole('heading', { level: 1, name: copy.yourOrder }));
+    expect(sheet).toContainElement(screen.getByText(copy.statusWaiting));
+    expect(screen.queryByText(copy.bookmark)).toBeNull();
+    // The bar above it carries the way back and the page's name.
+    expect(sheet).not.toContainElement(screen.getByRole('link', { name: copy.backToShop }));
+    expect(screen.getByText('Kek Lina')).toBeInTheDocument();
+  });
+
+  it('draws progress as bars, and says the footer: keep this page, ask for the code any time', () => {
+    render(<OrderView {...base} />);
+    expect(screen.getByText(copy.keepPage)).toBeInTheDocument();
+    expect(screen.getByText(copy.askLater('Kek Lina', '7Q4M'))).toBeInTheDocument();
   });
 
   it('says where and when to collect, in the page’s language', () => {
     const at = { pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home' };
     const { unmount } = render(<OrderView {...withOrder(at)} />);
-    expect(within(screen.getByRole('region', { name: copy.yourOrder })).getByText('Pickup · Sat 17 Oct, 10am–12pm · Home')).toBeInTheDocument();
+    expect(screen.getByText('Pickup · Sat 17 Oct, 10am–12pm')).toBeInTheDocument();
+    expect(screen.getByText('Home')).toBeInTheDocument();
     unmount();
     const ms = shopCopy('ms');
     render(<OrderView {...withOrder(at, { language: 'ms' })} />);
-    expect(screen.getByText(`${ms.pickupLabel} · ${ms.dayLong('2026-10-17')}, 10am–12pm · Home`)).toBeInTheDocument();
+    expect(screen.getByText(`${ms.pickupLabel} · ${ms.dayLong('2026-10-17')}, 10am–12pm`)).toBeInTheDocument();
   });
 
-  it('puts the pickup place’s address under the pickup line, when the order kept one', () => {
+  it('puts the pickup place and its address under the pickup line, when the order kept them, with Add to calendar', () => {
     const { unmount } = render(<OrderView {...withOrder({ pickupFrom: 600, pickupTo: 720, pickupPlaceName: 'Home', pickupPlaceAddress: 'No 12, Jalan Mawar, Seksyen 7' })} />);
-    const order = screen.getByRole('region', { name: copy.yourOrder });
-    const line = within(order).getByText('Pickup · Sat 17 Oct, 10am–12pm · Home');
-    const address = within(order).getByText('No 12, Jalan Mawar, Seksyen 7');
+    const line = screen.getByText('Pickup · Sat 17 Oct, 10am–12pm');
+    const address = screen.getByText('Home · No 12, Jalan Mawar, Seksyen 7');
     expect(line.compareDocumentPosition(address) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByRole('link', { name: copy.addToCalendar })).toHaveAttribute('href', '/keklina/order/tok_abc/calendar?pickup=1');
     unmount();
     render(<OrderView {...withOrder({ pickupPlaceName: 'Home', pickupPlaceAddress: null })} />);
     expect(screen.queryByText('No 12, Jalan Mawar, Seksyen 7')).toBeNull();
   });
 
+  it('has no pickup card, and no calendar, for a delivery order', () => {
+    render(<OrderView {...withOrder({ method: 'DELIVERY', deliveryCents: 1000, totalCents: 22500 })} />);
+    expect(screen.queryByRole('link', { name: copy.addToCalendar })).toBeNull();
+  });
+
   it('shows the order, its code and its total', () => {
     render(<OrderView {...base} />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
-    expect(screen.getByText('7Q4M')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: copy.yourOrder })).toBeInTheDocument();
+    expect(screen.getByText(copy.orderKicker(14, '7Q4M'), { exact: false })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: copy.copyCode })).toBeInTheDocument();
-    expect(screen.getByText(copy.bookmark)).toBeInTheDocument();
     expect(screen.getByText('Kek Lina')).toBeInTheDocument();
-    const order = screen.getByRole('region', { name: copy.yourOrder });
-    expect(within(order).getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
-    expect(within(order).getByText('1× Kek coklat moist')).toBeInTheDocument();
+    expect(screen.getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
+    const order = screen.getByRole('list', { name: copy.whatYouOrdered });
+    expect(within(order).getByText('Kek coklat moist')).toBeInTheDocument();
     expect(within(order).getByText('2kg')).toBeInTheDocument();
     expect(within(order).getByText('RM170')).toBeInTheDocument();
-    expect(within(order).getByText('1× Kek batik')).toBeInTheDocument();
+    expect(within(order).getByText('Kek batik')).toBeInTheDocument();
     expect(within(order).getByText('RM45')).toBeInTheDocument();
     expect(within(order).getByText(copy.total).nextSibling).toHaveTextContent('RM215');
   });
 
+  it('draws each line with its photo as a thumbnail, and its initial when it has none', () => {
+    const lines = [
+      { itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1, photoUrl: 'https://cdn.test/cake.webp' },
+      { itemName: 'Kek batik', optionLabel: null, unitPriceCents: 2250, quantity: 2 },
+    ];
+    render(<OrderView {...withOrder({ lines })} />);
+    const list = screen.getByRole('list', { name: copy.whatYouOrdered });
+    expect(list.querySelector('img')).toHaveAttribute('src', 'https://cdn.test/cake.webp');
+    expect(within(list).getByText('K', { selector: 'i' })).toBeInTheDocument();
+    // More than one of a line says so.
+    expect(within(list).getByText('2×')).toBeInTheDocument();
+  });
+
+  it('says Ready for pickup, with the window, once the day has come', () => {
+    render(<OrderView {...withOrder({ status: 'PAID', paidAt: '2026-10-15T03:00:00.000Z', pickupFrom: 840, pickupTo: 1080 }, { now: '2026-10-17T02:00:00.000Z' })} />);
+    expect(screen.getByText(copy.readyPickupTitle)).toBeInTheDocument();
+    expect(screen.getByText(copy.readyPickupBody('Sat 17 Oct, 2pm–6pm'))).toBeInTheDocument();
+  });
+
+  it('says Picked up, with the time it was marked, when done', () => {
+    render(<OrderView {...withOrder({ status: 'COMPLETED', paidAt: '2026-10-15T03:00:00.000Z', completedAt: '2026-10-17T07:10:00.000Z' }, { now: '2026-10-18T02:00:00.000Z' })} />);
+    expect(screen.getByText(copy.pickedUp)).toBeInTheDocument();
+    expect(screen.getByText(copy.paidTime('2026-10-17T07:10:00.000Z'))).toBeInTheDocument();
+    // Nothing left to collect: no pickup card.
+    expect(screen.queryByRole('link', { name: copy.addToCalendar })).toBeNull();
+  });
+
+  it('says a refund is owed, and what the page will say once it is sent', () => {
+    render(<OrderView {...withOrder({ status: 'CANCELLED', paidAt: '2026-10-15T03:00:00.000Z', refundedAt: null })} />);
+    expect(screen.getByText(copy.refundTitle('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByText(copy.refundBody('RM215', 'Kek Lina'))).toBeInTheDocument();
+  });
+
   it('adds a flat delivery fee as its own line, so the total adds up', () => {
     render(<OrderView {...withOrder({ method: 'DELIVERY', deliveryCents: 1000, totalCents: 22500 })} />);
-    const order = screen.getByRole('region', { name: copy.yourOrder });
-    expect(within(order).getByText('Delivery · Sat 17 Oct')).toBeInTheDocument();
+    const order = screen.getByRole('list', { name: copy.whatYouOrdered });
+    expect(screen.getByText('Delivery · Sat 17 Oct')).toBeInTheDocument();
     expect(within(order).getByText(copy.deliveryLabel).closest('li')).toHaveTextContent('RM10');
     expect(within(order).getByText(copy.total).nextSibling).toHaveTextContent('RM225');
   });
@@ -349,10 +394,10 @@ describe('OrderView', () => {
 
   // A FLAT fee is always above RM0, so a delivery with none added is a rider's,
   // paid to the rider: said on the delivery line, as checkout says it.
-  it('says a rider delivery’s fee is paid separately, on the delivery line, and adds no fee line', () => {
+  it('says a rider delivery’s fee is paid separately, on the delivery card, and adds no fee line', () => {
     render(<OrderView {...withOrder({ method: 'DELIVERY', deliveryCents: 0 })} />);
-    const order = screen.getByRole('region', { name: copy.yourOrder });
-    expect(within(order).getByText('Delivery · Sat 17 Oct · Rider fee paid separately')).toBeInTheDocument();
+    const order = screen.getByRole('list', { name: copy.whatYouOrdered });
+    expect(screen.getByText('Delivery · Sat 17 Oct · Rider fee paid separately')).toBeInTheDocument();
     expect(within(order).queryByText(copy.deliveryLabel)).toBeNull();
     expect(within(order).getByText(copy.total).nextSibling).toHaveTextContent('RM215');
   });
@@ -364,7 +409,8 @@ describe('OrderView', () => {
 
   it('speaks Malay on a Malay page', () => {
     render(<OrderView {...base} language="ms" />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Tempahan #14' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Tempahan anda' })).toBeInTheDocument();
+    expect(screen.getByText('Tempahan #14 · kod 7Q4M', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Menunggu bayaran')).toBeInTheDocument();
   });
 });
@@ -736,12 +782,13 @@ describe('/[handle]/order/[token]', () => {
   it('draws the order in the page’s theme, with its QR, receipt and WhatsApp', async () => {
     vi.mocked(getOrderByToken).mockResolvedValueOnce(order);
     render(await OrderPage(params('KekLina', 'tok')));
-    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: copy.yourOrder })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p1/abc.jpg');
     expect(screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
     expect(screen.getByRole('main').closest('[data-on-accent]')).not.toBeNull();
     // The pickup place and time the order kept.
-    expect(within(screen.getByRole('region', { name: copy.yourOrder })).getByText('Pickup · Sat 17 Oct, 10am–12pm · Home')).toBeInTheDocument();
+    expect(screen.getByText('Pickup · Sat 17 Oct, 10am–12pm')).toBeInTheDocument();
+    expect(screen.getByText('Home', { exact: false })).toBeInTheDocument();
   });
 
   it('for a suspended page shows the order and the unavailable line, but nothing to pay with', async () => {
@@ -751,7 +798,7 @@ describe('/[handle]/order/[token]', () => {
     });
     render(await OrderPage(params('keklina', 'tok')));
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: copy.yourOrder })).toBeInTheDocument();
     expect(screen.getByText(/Kek batik/)).toBeInTheDocument();
     expect(screen.getByText('This page is unavailable')).toBeInTheDocument();
     expect(screen.getByText(/taken down for now/)).toBeInTheDocument();
@@ -797,7 +844,7 @@ describe('/[handle]/order/[token]', () => {
       page: { ...order.page, paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, links: [], chipMethods: ['fpx'] },
     });
     render(await OrderPage(params('keklina', 'tok')));
-    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: copy.yourOrder })).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
     vi.unstubAllGlobals();

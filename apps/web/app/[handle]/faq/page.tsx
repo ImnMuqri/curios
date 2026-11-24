@@ -3,6 +3,10 @@ import { notFound } from 'next/navigation';
 import { getFaqIndex } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../_system/unavailable.js';
 import { PageTheme } from '../../_bento/BentoPage.js';
+import { TopBar } from '../top-bar.js';
+import sheet from '../sheet.module.css';
+import { AskBar } from './ask-bar.js';
+import { faqCopy } from './faq-copy.js';
 import { FaqList } from './faq-list.js';
 import styles from './faq.module.css';
 
@@ -41,8 +45,8 @@ export async function generateMetadata({
   const index = await getFaqIndex(handle);
   if (!index) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   return {
-    title: `Questions about ${index.displayName}`,
-    description: `What people ask ${index.displayName}, answered by ${index.displayName}.`,
+    title: faqCopy(index.language).indexTitle(index.displayName),
+    description: faqCopy(index.language).indexLede(index.displayName),
   };
 }
 
@@ -70,21 +74,21 @@ export default async function FaqIndexPage({
   // here just to satisfy the schema would trade invalid markup for deceptive
   // markup. The entry pages, where the answer is actually visible, carry
   // FAQPage -- and a specific question is what should rank there anyway.
+  const copy = faqCopy(index.language);
   return (
     <PageTheme theme={index.theme} className={styles.stage} paintDocument>
       <main className={styles.page}>
-        <div className={styles.top}>
-          <a className={styles.back} href={`/${index.handle}`} aria-label={`Back to ${index.displayName}`}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
+        <TopBar title={index.displayName} back={{ href: `/${index.handle}`, label: copy.backTo(index.displayName) }} />
+        <div className={`${sheet.sheet} ${styles.sheet}`}>
+          <p className={styles.kicker}>{copy.kicker(index.displayName)}</p>
+          <h1 className={styles.heading}>{copy.indexTitle(index.displayName)}</h1>
+          <p className={styles.lede}>{copy.indexLede(index.displayName)}</p>
+          <FaqList handle={index.handle} displayName={index.displayName} entries={index.entries} language={index.language} />
+          <a className={styles.back} href={`/${index.handle}`}>
+            ‹ {copy.backTo(index.displayName)}
           </a>
-          <a className={styles.who} href={`/${index.handle}`}>
-            {index.displayName}
-          </a>
+          <AskBar handle={index.handle} placeholder={copy.askPlaceholder(index.displayName)} send={copy.askSend} />
         </div>
-        <h1 className={styles.heading}>What people ask {index.displayName}</h1>
-        <FaqList handle={index.handle} displayName={index.displayName} entries={index.entries} />
       </main>
     </PageTheme>
   );

@@ -673,7 +673,36 @@
   text-decoration: underline;
 }
 
+/* "Made with Curios" is the board's bold half of the footer; "Report this page" is the quiet line under it. */
+.made {
+  font-weight: 600;
+}
+
+.report {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  opacity: 0.7;
+}
+
 /* ---- Ask tab ---- */
+
+/*
+ * Asking collapses the header to the name (More board, .cu-hd.sm): the cover, the picture, the address,
+ * the profiles and the bio fold away, and the name drops to 26px over the tabs.
+ */
+.page[data-mode='chat'] :is(.cover, .avatar, .handle, .socials, .bio) {
+  display: none;
+}
+
+.page[data-mode='chat'] .head {
+  margin-top: 0;
+  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+}
+
+.page[data-mode='chat'] .name {
+  font-size: 26px;
+}
 
 /* The ask bar gives way to chat mode's composer. */
 .page[data-mode='chat'] [data-ask-bar] {

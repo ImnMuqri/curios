@@ -9,6 +9,7 @@ import type { PublicPickupPlace, ShopItem } from '@curios/db-read';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
 import {
   basketMessage,
+  basketNote,
   defaultStorageKey,
   priceBasket,
   QUANTITY_MAX,
@@ -23,6 +24,8 @@ import { payingKey, retryKey } from './paying.js';
 import { payButtonText, PayWays, useOnlineOffer, usePayChoice } from './pay-ways.js';
 import { PickupTime, PickupWhere } from './pickup-picker.js';
 import { Placed } from './placed.js';
+import { TopBar } from '../../top-bar.js';
+import sheet from '../../sheet.module.css';
 import styles from './checkout.module.css';
 
 type ViewItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null };
@@ -83,6 +86,8 @@ interface PlacedOrder {
   holds: boolean;
   /** The order came to RM0: it is paid already, with nothing to pay. */
   free: boolean;
+  /** What the placed screen's summary card shows, read from the basket as it was placed. */
+  summary: { how: { label: string; value: string } | null; count: number; thumbs: { name: string; url: string | null }[] };
 }
 
 const goTo = (url: string) => window.location.assign(url);
@@ -193,7 +198,10 @@ export function Checkout(props: CheckoutProps) {
 
   // Read after mount: storage is the browser's, and the server rendered no basket.
   useEffect(() => {
-    setLines(readBasket(key));
+    const saved = readBasket(key);
+    setLines(saved);
+    // The notes written on the item pages start the order note; the visitor can still change it here.
+    setNote((typed) => typed || basketNote(saved, props.items, ORDER_NOTE_MAX));
     setLoaded(true);
   }, [key]);
 
@@ -394,6 +402,17 @@ export function Checkout(props: CheckoutProps) {
         onlineUnavailable,
         digitalNote: anyDigital ? copy.digitalPlacedNote(result.totalCents === 0, email.trim()) : null,
         free: result.totalCents === 0,
+        summary: {
+          how:
+            !digitalOnly && method && day
+              ? {
+                  label: method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel,
+                  value: [copy.dayLong(day), method === 'PICKUP' ? pickupPlace?.name : null].filter(Boolean).join(' · '),
+                }
+              : null,
+          count: priced.lines.reduce((sum, line) => sum + line.quantity, 0),
+          thumbs: priced.lines.map((line) => ({ name: line.name, url: items.find((i) => i.id === line.itemId)?.photoUrl ?? null })),
+        },
         holds: priced.lines.some((l) => l.digital && ['CODES', 'SESSION'].includes(items.find((i) => i.id === l.itemId)?.delivery ?? '')),
       });
       top.current?.scrollIntoView?.();
@@ -457,6 +476,7 @@ export function Checkout(props: CheckoutProps) {
           digitalNote={placed.digitalNote}
           holds={placed.holds}
           free={placed.free}
+          summary={placed.summary}
           payByQr={payByQr}
           whatsapp={props.whatsapp}
         />
@@ -475,17 +495,10 @@ export function Checkout(props: CheckoutProps) {
 
   return (
     <main className={styles.column}>
-      <div ref={top} className={styles.top}>
-        <a className={styles.back} href={shopHref} aria-label={copy.backToShop}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-        </a>
-        <span>{props.displayName}</span>
-      </div>
-      <h1 className={styles.title}>{copy.checkout}</h1>
+      <div ref={top} />
+      <TopBar title={<h1 className={styles.barTitle}>{copy.checkout}</h1>} back={{ href: shopHref, label: copy.backToShop }} />
 
-      <div className={styles.sheet} data-testid="sheet">
+      <div className={`${sheet.sheet} ${styles.sheet}`} data-testid="sheet">
       {!loaded ? null : priced.lines.length === 0 && sending ? (
         // Placed, so the basket is cleared, and on its way to CHIP's page (sending stays on until it opens).
         <div className={styles.empty} role="status">

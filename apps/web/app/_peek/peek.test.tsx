@@ -48,13 +48,16 @@ describe('Peek', () => {
     }
   });
 
-  it('the email field carries Peek on sign in and sign up', () => {
+  it('the email pill carries Peek on sign in and sign up, and the password pill none', () => {
     for (const ui of [<SignInForm key="in" onSubmit={async () => undefined} />, <SignUpForm key="up" onSubmit={async () => undefined} wantedHandle="" />]) {
       const { container, unmount } = render(ui);
       const email = container.querySelector('#email') as HTMLElement;
-      const field = email.closest('div[class*="field"]') as HTMLElement;
-      expect(field.querySelectorAll('[data-peek]')).toHaveLength(2);
-      expect(container.querySelector('#password')?.closest('div[class*="field"]')?.querySelector('[data-peek]')).toBeNull();
+      // Full body, in the pill's wrapper (the Site board's `.apk`), not the claim field's two layers.
+      const wrapper = email.parentElement?.parentElement as HTMLElement;
+      expect(wrapper.querySelectorAll('[data-auth-peek]')).toHaveLength(1);
+      expect(wrapper.querySelector('svg[viewBox="0 0 160 150"]')).not.toBeNull();
+      const password = container.querySelector('#password') as HTMLElement;
+      expect(password.parentElement?.parentElement?.querySelector('[data-auth-peek]')).toBeNull();
       unmount();
     }
   });
@@ -71,10 +74,16 @@ describe('Peek', () => {
     }
   });
 
-  it('no file under app/[handle] imports Peek', () => {
+  it('only the paid and failed screens import Peek under app/[handle]', () => {
     const files = tsxUnder(join(__dirname, '..', '[handle]'));
     expect(files.length).toBeGreaterThan(0);
+    // A shop's page is the owner's, not ours; the one exception is the paid/failed result mark (owner, 25 Nov 2026).
+    const allowed = join('shop', 'checkout', 'result-mark.tsx');
     for (const file of files) {
+      if (file.endsWith(allowed)) {
+        expect(readFileSync(file, 'utf8'), file).toMatch(/_peek\/LivePeek/);
+        continue;
+      }
       expect(readFileSync(file, 'utf8'), file).not.toMatch(/_peek|Peek/);
     }
   });

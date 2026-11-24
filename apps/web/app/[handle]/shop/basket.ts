@@ -12,6 +12,8 @@ export interface BasketLine {
   quantity: number;
   /** The class time picked, for a session item; absent on every other line. */
   sessionId?: string | null;
+  /** What the visitor wrote on the item's page ("Note for Kek Lina"); checkout starts its own note field with it. */
+  note?: string;
 }
 
 /** One line's identity: the same item, size and time. */
@@ -28,7 +30,8 @@ export const QUANTITY_MAX = 99;
 export function addToBasket(lines: BasketLine[], line: BasketLine): BasketLine[] {
   const same = lines.find((l) => sameLine(l, line));
   if (!same) return [...lines, { ...line, quantity: Math.min(QUANTITY_MAX, line.quantity) }];
-  return lines.map((l) => (l === same ? { ...l, quantity: Math.min(QUANTITY_MAX, l.quantity + line.quantity) } : l));
+  // The same line added again keeps the note it has, and takes a new one if the visitor wrote one this time.
+  return lines.map((l) => (l === same ? { ...l, quantity: Math.min(QUANTITY_MAX, l.quantity + line.quantity), ...(line.note ? { note: line.note } : {}) } : l));
 }
 
 /** Where a shop's basket is kept, so the shelf and checkout read the same one. */
@@ -44,7 +47,8 @@ function isBasketLine(value: unknown): value is BasketLine {
     typeof line.quantity === 'number' &&
     Number.isInteger(line.quantity) &&
     line.quantity > 0 &&
-    (line.sessionId === undefined || line.sessionId === null || typeof line.sessionId === 'string')
+    (line.sessionId === undefined || line.sessionId === null || typeof line.sessionId === 'string') &&
+    (line.note === undefined || typeof line.note === 'string')
   );
 }
 
@@ -61,6 +65,9 @@ export function readBasket(key: string): BasketLine[] {
 
 /** Fired on `window` whenever a basket is written, so a bar elsewhere on the same page follows it (sessionStorage's own event only reaches other tabs). */
 export const BASKET_EVENT = 'curios-basket';
+
+/** Fired by a top bar's basket button: the basket bar on the same page opens its sheet (it does nothing while the basket is empty). */
+export const OPEN_BASKET_EVENT = 'curios-open-basket';
 
 export function writeBasket(key: string, lines: BasketLine[]) {
   try {
@@ -109,6 +116,25 @@ export function priceBasket(lines: BasketLine[], items: PricedItem[]): { lines: 
     priced.push({ ...line, name: item.name, optionLabel, unitCents, lineCents: unitCents * line.quantity, digital: item.kind === 'DIGITAL', soldOut: item.soldOut === true });
   }
   return { lines: priced, totalCents: priced.reduce((sum, line) => sum + line.lineCents, 0) };
+}
+
+/**
+ * The notes written on the items' pages, as checkout's one order note starts out: the note alone when
+ * every note is the same, else each on its own line under its item's name. A line whose item is gone
+ * from `names` is left out. Never longer than `max`.
+ */
+export function basketNote(lines: BasketLine[], names: { id: string; name: string }[], max: number): string {
+  const noted = lines.flatMap((line) => {
+    const item = names.find((candidate) => candidate.id === line.itemId);
+    return item && line.note?.trim() ? [{ name: item.name, note: line.note.trim() }] : [];
+  });
+  const distinct = [...new Set(noted.map((n) => n.note))];
+  if (distinct.length === 0) return '';
+  if (distinct.length === 1) return distinct[0]!.slice(0, max);
+  return noted
+    .map((n) => `${n.name}: ${n.note}`)
+    .join(String.fromCharCode(10))
+    .slice(0, max);
 }
 
 /** The page's WhatsApp number, from a wa.me or api.whatsapp.com/send link; null when it has neither. */

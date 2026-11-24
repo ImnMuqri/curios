@@ -55,8 +55,8 @@ describe('shopCopy', () => {
     expect(en.productNotice(0, null, true)).toBeNull();
     expect(ms.productNotice(2, 'Sab 17 Okt', true)).toBe('Perlu 2 hari. Awal ambil Sab 17 Okt.');
     expect(ms.productNotice(2, null, false)).toBe('Perlu 2 hari.');
-    expect(en.addToBasket('RM95')).toBe('Add to basket · RM95');
-    expect(ms.addToBasket('RM95')).toBe('Masuk bakul · RM95');
+    expect(en.addToBasket('RM95')).toBe('Add · RM95');
+    expect(ms.addToBasket('RM95')).toBe('Tambah · RM95');
     expect(en.askPrefill('Kek')).toBe('I have a question about Kek.');
     expect(ms.askPrefill('Kek')).toBe('Saya ada soalan tentang Kek.');
   });

@@ -399,6 +399,27 @@ describe('People often ask', () => {
     expect(screen.queryByRole('link', { name: 'Questions' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Made with Curios' })).toBeInTheDocument();
   });
+
+  it('keeps the footer as drawn, "Questions · Made with Curios", with Report this page quietly beneath it', () => {
+    const { container } = render(<BentoPage {...base} faq={faq} />);
+    const foot = container.querySelector('p[class*="foot"]') as HTMLElement;
+    expect(foot.textContent).toContain('Questions · Made with Curios');
+    const report = screen.getByRole('link', { name: 'Report this page' });
+    expect(report).toHaveAttribute('href', '/imnmuqri/report');
+    expect(foot).toContainElement(report);
+    expect(screen.getByRole('link', { name: 'Made with Curios' }).className).not.toBe(report.className);
+  });
+});
+
+describe('the accent on the light sheet', () => {
+  const sheetAccent = (accentColor: string, background: 'PAPER' | 'INK' | 'BIRU') =>
+    (themeAttrs({ accentColor, headingFont: 'JAKARTA', background }).style as Record<string, string>)['--sheet-accent'];
+
+  it('gives way to ink where the accent would vanish on paper, whatever the page band is', () => {
+    expect(sheetAccent('#ffe14d', 'PAPER')).toBe('var(--calm-ink)');
+    expect(sheetAccent('#ffe14d', 'INK')).toBe('var(--calm-ink)');
+    expect(sheetAccent('#2340c8', 'BIRU')).toBe('var(--accent)');
+  });
 });
 
 describe('the chat dot against the page', () => {

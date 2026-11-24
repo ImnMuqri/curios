@@ -6,6 +6,7 @@ import { pickVoucher, type VoucherTerms } from '@curios/core/vouchers';
 import {
   BASKET_EVENT,
   basketMessage,
+  OPEN_BASKET_EVENT,
   defaultStorageKey,
   priceBasket,
   QUANTITY_MAX,
@@ -74,6 +75,14 @@ export function BasketBar(props: {
   // A paused shop's basket goes to WhatsApp, where no voucher is honoured: it shows none.
   const deal = useMemo(() => (paused ? null : pickVoucher(props.vouchers ?? [], priced.lines)), [paused, props.vouchers, priced.lines]);
   const totalCents = priced.totalCents - (deal?.savingCents ?? 0);
+
+  // The top bar's basket button opens the sheet, while there is something in it.
+  useEffect(() => {
+    if (props.preview || empty) return;
+    const show = () => setOpen(true);
+    window.addEventListener(OPEN_BASKET_EVENT, show);
+    return () => window.removeEventListener(OPEN_BASKET_EVENT, show);
+  }, [props.preview, empty]);
 
   // The last line taken out closes the sheet: there is nothing left in it to show.
   useEffect(() => {

@@ -1,9 +1,8 @@
 /*
- * /[handle]/shop, copied from the deleted Public board's .sp-* rules (Public.dc.html
- * ~99-131). The board is drawn on one dark page; here every colour is the
- * owner's: the page's own background and text (--page-bg, --page-fg, set by
- * PageTheme from Bento.module.css) and their accent. Surfaces are the page's
- * text at a low strength, so one rule set reads on a pale page and a dark one.
+ * /[handle]/shop as the More board draws it (cshop, 24 Nov): the owner-themed top bar (top-bar.tsx) over a
+ * light Curios sheet (../sheet.module.css, which redefines --page-bg / --page-fg / --veil-* for everything
+ * inside it). The owner's accent still colours the basket count, the open + buttons and the item photos'
+ * fallback; their page colour is only the bar and the column behind it.
  */
 
 .stage {
@@ -27,7 +26,7 @@
   max-width: 460px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 0 0 110px;
+  padding: 0;
   background: var(--page-bg);
   color: var(--page-fg);
   font-family: var(--font-body);
@@ -40,60 +39,6 @@
   position: relative;
   display: block;
   isolation: isolate;
-}
-
-.top {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 60px;
-  /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
-  padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
-  background: var(--page-bg);
-}
-
-.top > span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  opacity: 0.85;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ib {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--veil-2);
-  color: inherit;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.ib svg,
-.facts svg {
-  flex: none;
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.ib svg {
-  width: 18px;
-  height: 18px;
-  stroke-width: 2.2;
 }
 
 .toast {
@@ -113,73 +58,34 @@
 
 .sign {
   position: relative;
-  padding: 6px 20px 0;
-}
-
-.open {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
-  font-size: 12.5px;
-  font-weight: 600;
-}
-
-.open i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--hijau);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hijau) 18%, transparent);
-}
-
-/* Paused: the same sign, quiet. */
-.open[data-paused] {
-  background: var(--veil-2);
-  color: var(--page-fg);
-}
-
-.open[data-paused] i {
-  background: var(--faint);
-  box-shadow: 0 0 0 3px var(--veil-1);
-}
-
-.promo {
-  display: block;
-  width: fit-content;
-  max-width: 100%;
-  margin: 8px 0 0;
-  padding: 4px 12px;
-  border-radius: 999px;
-  background: var(--veil-2);
-  color: var(--page-fg);
-  font-size: 12.5px;
-  font-weight: 600;
-  line-height: 1.35;
+  padding: 22px 20px 0;
 }
 
 .name {
-  margin: 12px 0 0;
+  margin: 0;
   font-family: var(--font-heading), var(--font-display);
-  font-size: 40px;
-  font-weight: 800;
-  line-height: 1.02;
-  letter-spacing: -0.02em;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
 }
 
+.sub {
+  margin: 4px 0 0;
+  color: var(--page-soft);
+  font-size: 13.5px;
+}
+
+/* The shop's state and its facts, in one calm line under the subtitle. */
 .facts {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 14px;
-  margin: 10px 0 0;
+  gap: 2px 14px;
+  margin: 8px 0 0;
   padding: 0;
-  font-size: 13px;
+  color: var(--page-soft);
+  font-size: 12.5px;
   list-style: none;
-  opacity: 0.82;
 }
 
 .facts li {
@@ -188,11 +94,29 @@
   gap: 6px;
 }
 
-.facts svg {
-  width: 15px;
-  height: 15px;
-  stroke-width: 2;
-  opacity: 0.8;
+.state i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hijau);
+}
+
+.state[data-paused] i {
+  background: var(--faint);
+}
+
+.promo {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 10px 0 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--veil-2);
+  color: var(--page-fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
 }
 
 .own {
@@ -259,7 +183,8 @@
   padding: 0 15px;
   border: 0;
   border-radius: 999px;
-  background: var(--veil-2);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--sheet-ring);
   color: inherit;
   font: inherit;
   font-size: 13px;
@@ -269,6 +194,7 @@
 
 .cats button[aria-pressed='true'] {
   background: var(--page-fg);
+  box-shadow: none;
   color: var(--page-bg);
 }
 
@@ -279,85 +205,6 @@
   opacity: 0.55;
 }
 
-/*
- * The page's own colour at the top bar and at the basket bar, so the strips a phone shows past the top
- * and the foot match them (owner, 8 Nov 2026: the cover behind the whole shop put a different colour at
- * the top, the middle and the foot).
- *
- * With a cover, the middle wears it blurred, as before, but faded into the page's colour above and
- * below (owner, 8 Nov 2026). It is pinned to the screen, not the shelf: the fades sit under the top bar
- * and over the basket bar however far the shop is scrolled, so no edge of the picture ever meets a bar.
- * The wrapper spans the shop and clips the blur's soft edges; the pin inside it sticks at the top.
- */
-.backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: clip;
-  pointer-events: none;
-}
-
-.backdropPin {
-  position: sticky;
-  top: 0;
-  height: min(100dvh, 100%);
-  -webkit-mask-image: linear-gradient(transparent 60px, black 230px, black calc(100% - 210px), transparent calc(100% - 90px));
-  mask-image: linear-gradient(transparent 60px, black 230px, black calc(100% - 210px), transparent calc(100% - 90px));
-}
-
-.backdropPin img {
-  display: block;
-  width: 100%;
-  height: 100%;
-  max-width: none;
-  object-fit: cover;
-  filter: blur(22px) saturate(1.1);
-  transform: scale(1.3);
-}
-
-/* Under the page's colour, so the shelf's words read on any photo. */
-.backdropPin::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: color-mix(in srgb, var(--page-bg) 45%, transparent);
-}
-
-/*
- * The category bar over a cover is clear and frosted, so it draws no band across the picture at rest,
- * and blurs the cards that pass under it once stuck. Not the top bar: at the top edge, iOS 26 Safari
- * reads no colour from a frosted bar and paints its status bar's strip white.
- */
-.shop[data-cover] .cats {
-  background: transparent;
-  -webkit-backdrop-filter: blur(16px);
-  backdrop-filter: blur(16px);
-}
-
-/*
- * With no cover, soft glows of the accent sit behind the sign and the shelf, on past the cards to the
- * "not listed" card, each faded out before the bars and the foot. The cards cover most of the shelf, so
- * its glow is strong enough to read in the gaps.
- */
-.shop:not([data-cover]) .sign::before,
-.shop:not([data-cover]) .grid::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  pointer-events: none;
-}
-
-.shop:not([data-cover]) .sign::before {
-  inset: 24px 0 -40px;
-  background: radial-gradient(65% 60% at 88% 55%, color-mix(in srgb, var(--accent) 34%, transparent), transparent 72%);
-}
-
-.shop:not([data-cover]) .grid::before {
-  inset: 0 0 -150px;
-  background:
-    radial-gradient(70% 45% at 12% 40%, color-mix(in srgb, var(--accent) 38%, transparent), transparent 72%),
-    radial-gradient(65% 40% at 92% 78%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 72%);
-}
 
 .grid {
   position: relative;
@@ -453,9 +300,9 @@
   padding: 0 11px;
   border: 0;
   border-radius: 999px;
-  background: var(--card);
-  box-shadow: 0 6px 16px -8px rgb(0 0 0 / 60%);
-  color: var(--ink);
+  background: var(--page-fg);
+  box-shadow: 0 6px 16px -8px rgb(0 0 0 / 45%);
+  color: var(--page-bg);
   font-family: var(--font-body);
   font-size: 20px;
   font-weight: 600;
@@ -518,6 +365,10 @@
   margin-left: 8px;
   font-weight: 700;
   opacity: 1;
+}
+
+.sheet {
+  display: block;
 }
 
 .foot {
@@ -589,7 +440,6 @@
   opacity: 0.75;
 }
 
-.ib:focus-visible,
 .cats button:focus-visible,
 .add:focus-visible,
 .cn:focus-visible,

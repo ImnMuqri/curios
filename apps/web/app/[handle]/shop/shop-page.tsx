@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
-import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
+import { addToBasket, BASKET_EVENT, defaultStorageKey, OPEN_BASKET_EVENT, priceBasket, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
+import { TopBar } from '../top-bar.js';
+import sheet from '../sheet.module.css';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from './copy.js';
 import { itemPromo, minText, offText, shopPromo } from './promo.js';
@@ -10,12 +12,6 @@ import type { ViewItem } from './shop-view.js';
 import styles from './shop-page.module.css';
 
 const ICON = {
-  back: 'M15 6l-6 6 6 6',
-  share: 'M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6',
-  area: 'M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
-  truck: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
-  calendar: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5',
-  halal: 'M5 13l4 4L19 7',
   store: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
   chat: 'M5 18.5V6.5A1.5 1.5 0 0 1 6.5 5h11A1.5 1.5 0 0 1 19 6.5v8a1.5 1.5 0 0 1-1.5 1.5H9z',
 };
@@ -29,10 +25,11 @@ function Icon({ d }: { d: string }) {
 }
 
 /**
- * /[handle]/shop as the More board draws it: its own top bar, the sign, the
- * owner's note, category chips, two-column cards and the "not listed?" card.
- * The page's theme comes from the wrapper (PageTheme), so everything here
- * follows the owner's background and accent. The basket bar is the page's own
+ * /[handle]/shop as the More board draws it: the owner-themed top bar (back, the
+ * page's name, a basket with its count, share), then on a light sheet the "Shop"
+ * heading with its one line, the shop's state and facts, the owner's note,
+ * category chips, two-column cards and the "not listed?" card. The page's theme
+ * comes from the wrapper (PageTheme): its colours are the bar's, its accent the buttons'. The basket bar is the page's own
  * BasketBar, which reads the same sessionStorage basket this writes.
  */
 export function ShopPageView(props: {
@@ -52,8 +49,8 @@ export function ShopPageView(props: {
   /** The owner's picture beside their note; null for none, and the note keeps the initial. */
   avatarUrl?: string | null;
   /**
-   * The page's cover photo (stock or uploaded), worn blurred behind the shop's middle and faded into the
-   * page's colour above and below (owner, 8 Nov 2026); null for none, and the shelf has the accent's glow.
+   * The page's cover photo. No longer drawn: since the 25 Nov 2026 light sheet the shop sits on Curios' own
+   * surface under the owner-themed bar, and the cover stays on the main page. Still accepted, so callers need no change.
    */
   coverUrl?: string | null;
   /** The shop's live automatic vouchers; none when absent, and none shown while the shop cannot take orders. */
@@ -136,34 +133,39 @@ export function ShopPageView(props: {
     }
   }
 
+  const count = useMemo(() => priceBasket(basket, props.items).lines.reduce((sum, line) => sum + line.quantity, 0), [basket, props.items]);
   const delivers = props.deliveryMode !== 'NONE';
   const how = props.pickupEnabled ? (delivers ? copy.pickupOrDelivery : copy.pickupOnly) : delivers ? copy.deliveryOnly : null;
   const day = props.nextDay ? copy.dayLong(props.nextDay) : null;
   const [firstPlace, ...morePlaces] = props.pickupEnabled ? props.pickupPlaces : [];
   const area = firstPlace ? copy.placesMore(firstPlace.name, morePlaces.length) : null;
+  // The board's one line under the heading: where, and how.
+  const subtitle = [area, how].filter(Boolean).join(' · ');
   // A paused shop honours no voucher, so it advertises none.
   const vouchers = props.canTakeOrders ? props.vouchers : undefined;
   const promo = shopPromo(vouchers);
   const initial = props.displayName.trim().charAt(0).toUpperCase();
 
   return (
-    <div className={styles.shop} data-cover={props.coverUrl ? '' : undefined}>
-      {props.coverUrl ? (
-        <div className={styles.backdrop} aria-hidden="true">
-          <div className={styles.backdropPin}>
-            <img src={props.coverUrl} alt="" />
-          </div>
-        </div>
-      ) : null}
-      <div className={styles.top}>
-        <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)} onClick={stay()}>
-          <Icon d={ICON.back} />
-        </a>
-        <span>curios.my/{props.handle}/shop</span>
-        <button type="button" className={styles.ib} aria-label={copy.shareShop} onClick={() => void share()}>
-          <Icon d={ICON.share} />
-        </button>
-      </div>
+    <div className={styles.shop}>
+      <TopBar
+        title={props.displayName}
+        back={{ href: `/${props.handle}`, label: copy.backTo(props.displayName), onClick: stay() }}
+        basket={{
+          label: count > 0 ? `${copy.basketLabel} (${count})` : copy.basketLabel,
+          count,
+          onClick: () => {
+            if (preview) return;
+            if (count > 0) window.dispatchEvent(new Event(OPEN_BASKET_EVENT));
+            else {
+              // Cleared first, so the same words are read again on every tap.
+              setAnnounce('');
+              requestAnimationFrame(() => setAnnounce(copy.basketEmpty));
+            }
+          },
+        }}
+        share={{ label: copy.shareShop, onClick: () => void share() }}
+      />
       <p className={styles.sr} role="status">
         {announce}
       </p>
@@ -173,41 +175,21 @@ export function ShopPageView(props: {
         </p>
       ) : null}
 
+      <div className={`${sheet.sheet} ${styles.sheet}`}>
       <div className={styles.sign}>
-        <span className={styles.open} data-paused={props.canTakeOrders ? undefined : ''}>
-          <i aria-hidden="true" />
-          {props.canTakeOrders ? copy.openForOrders : copy.ordersPaused}
-        </span>
+        <h1 className={styles.name}>{copy.shop}</h1>
+        {subtitle ? <p className={styles.sub}>{subtitle}</p> : null}
+        <ul className={styles.facts}>
+          <li className={styles.state} data-paused={props.canTakeOrders ? undefined : ''}>
+            <i aria-hidden="true" />
+            {props.canTakeOrders ? copy.openForOrders : copy.ordersPaused}
+          </li>
+          {day ? <li>{props.pickupEnabled ? copy.factNextPickup(day) : copy.factNextDelivery(day)}</li> : null}
+          {props.halal ? <li>{copy.halal}</li> : null}
+        </ul>
         {promo ? (
           <p className={styles.promo}>{copy.promoOff(promo.kind === 'PERCENT', offText(promo), minText(promo), promo.label)}</p>
         ) : null}
-        <h1 className={styles.name}>{props.displayName}</h1>
-        <ul className={styles.facts}>
-          {area ? (
-            <li>
-              <Icon d={ICON.area} />
-              {area}
-            </li>
-          ) : null}
-          {how ? (
-            <li>
-              <Icon d={ICON.truck} />
-              {how}
-            </li>
-          ) : null}
-          {day ? (
-            <li>
-              <Icon d={ICON.calendar} />
-              {props.pickupEnabled ? copy.factNextPickup(day) : copy.factNextDelivery(day)}
-            </li>
-          ) : null}
-          {props.halal ? (
-            <li>
-              <Icon d={ICON.halal} />
-              {copy.halal}
-            </li>
-          ) : null}
-        </ul>
       </div>
 
       {props.description ? (
@@ -329,7 +311,7 @@ export function ShopPageView(props: {
           </a>
         </div>
       )}
-
+      </div>
     </div>
   );
 }

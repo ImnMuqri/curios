@@ -1,5 +1,6 @@
 import { getOrderByToken } from '@curios/db-read';
-import { sessionCalendar } from './ics.js';
+import { shopCopy } from '../../../shop/copy.js';
+import { pickupCalendar, sessionCalendar } from './ics.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,15 +10,43 @@ const notFound = () => new Response('Not found', { status: 404, headers: { 'Cach
 /**
  * "Add to calendar" for a class: an .ics for one SESSION line of a paid order,
  * `?line=<orderLineId>`, from the booked time and the minutes the buyer was sold.
- * The order token is the credential, as on the order page; an unpaid order, or a
+ * Or, with `?pickup=1`, "Add to calendar" for a pickup order: its day and window at its place
+ * (any order that is not cancelled, paid or not: the customer may add the day before paying).
+ * The order token is the credential, as on the order page; an unpaid order's class, or a
  * line that is not a session of that order, is a plain 404.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ handle: string; token: string }> }) {
   const { handle, token } = await params;
-  const lineId = new URL(request.url).searchParams.get('line');
-  if (!lineId) return notFound();
+  const query = new URL(request.url).searchParams;
+  const lineId = query.get('line');
+  const pickup = query.get('pickup') === '1';
+  if (!lineId && !pickup) return notFound();
   const order = await getOrderByToken(token);
   if (!order || order.page.handle !== handle.toLowerCase()) return notFound();
+  if (pickup) {
+    if (order.method !== 'PICKUP' || !order.day || order.status === 'CANCELLED') return notFound();
+    const body = pickupCalendar({
+      uid: `${order.id}@curios`,
+      now: new Date(),
+      day: order.day,
+      from: order.pickupFrom,
+      to: order.pickupTo,
+      title: shopCopy(order.page.language).pickupCalTitle(order.page.displayName),
+      where: [order.pickupPlaceName, order.pickupPlaceAddress].filter(Boolean).join(', ') || null,
+      shopName: order.page.displayName,
+      orderUrl: `${new URL(request.url).origin}/${order.page.handle}/order/${encodeURIComponent(token)}`,
+    });
+    return new Response(body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/calendar; charset=utf-8',
+        'Content-Disposition': `attachment; filename="pickup-${order.number}.ics"`,
+        'Cache-Control': 'private, no-store',
+        'Referrer-Policy': 'no-referrer',
+      },
+    });
+  }
+  if (!lineId) return notFound();
   if (order.status !== 'PAID' && order.status !== 'COMPLETED') return notFound();
   const line = order.lines.find((l) => l.id === lineId);
   if (!line || line.delivery !== 'SESSION' || !line.sessionStartsAt || !line.sessionMinutes) return notFound();

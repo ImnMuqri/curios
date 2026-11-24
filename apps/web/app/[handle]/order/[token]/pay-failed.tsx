@@ -8,6 +8,7 @@ import { ApiError, apiFetch } from '../../../../lib/api.js';
 import { defaultStorageKey, writeBasket, type BasketLine } from '../../shop/basket.js';
 import type { ShopCopy } from '../../shop/copy.js';
 import { payOrder, RetryPay } from './retry-pay.js';
+import { ResultMark } from '../../shop/checkout/result-mark.js';
 import checkout from '../../shop/checkout/checkout.module.css';
 import styles from './order.module.css';
 
@@ -103,11 +104,7 @@ export function PayFailed(props: {
 
   return (
     <div className={`${checkout.placed} ${styles.pf}`}>
-      <span className={styles.pfIcon} aria-hidden="true">
-        <svg viewBox="0 0 24 24">
-          <path d="M7 7l10 10M17 7L7 17" />
-        </svg>
-      </span>
+      <ResultMark tone="bad" />
       <h1 ref={heading} className={checkout.placedTitle} tabIndex={-1}>
         {copy.payFailedTitle}
       </h1>

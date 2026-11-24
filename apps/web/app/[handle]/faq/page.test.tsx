@@ -18,6 +18,7 @@ const FaqIndexPage = (await import('./page.js')).default;
 const index: FaqIndex = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
+  language: 'en',
   theme: { accentColor: '#2340c8', headingFont: 'JAKARTA', background: 'PAPER', backgroundColor: null },
   entries: [
     { slug: 'berapa-harga', question: 'Berapa harga kek lapis?', answer: 'RM12 sekotak.', askCount: 9 },
@@ -38,10 +39,33 @@ describe('the FAQ index', () => {
     // follows.
     const first = screen.getByRole('link', { name: /Berapa harga kek lapis\?/ });
     expect(first).toHaveAttribute('href', '/nadia/faq/berapa-harga');
-    // How often each was asked, beside it.
-    expect(first).toHaveTextContent('9 asked');
-    // One per entry, plus the two ways back to the page itself (the arrow and the name).
+    // The start of the owner's answer beside it, and no count of how often it was asked.
+    expect(first).toHaveTextContent('RM12 sekotak.');
+    expect(first).not.toHaveTextContent('asked');
+    // One per entry, plus the two ways back to the page itself (the arrow and "Back to").
     expect(screen.getAllByRole('link')).toHaveLength(4);
+  });
+
+  it('cuts a long answer to an excerpt at a word, with an ellipsis', async () => {
+    getFaqIndex.mockResolvedValueOnce({
+      ...index,
+      entries: [{ slug: 'panjang', question: 'Panjang?', answer: `${'perkataan '.repeat(30)}akhir`, askCount: 1 }],
+    });
+    render(await FaqIndexPage(params('nadia')));
+    const link = screen.getByRole('link', { name: /Panjang\?/ });
+    expect(link).toHaveTextContent(/perkataan…$/);
+    expect(link.textContent).not.toContain('akhir');
+  });
+
+  it('has an ask bar that opens the page’s chat with the question typed in', async () => {
+    getFaqIndex.mockResolvedValueOnce(index);
+    render(await FaqIndexPage(params('nadia')));
+    const field = screen.getByRole('textbox', { name: 'Ask Nadia Bakes anything' });
+    expect(field).toHaveAttribute('name', 'q');
+    const form = field.closest('form');
+    expect(form).toHaveAttribute('method', 'get');
+    expect(form).toHaveAttribute('action', '/nadia#ask');
+    expect(screen.getByRole('button', { name: 'Ask' })).toHaveAttribute('type', 'submit');
   });
 
   it('narrows the list as the visitor searches, and offers to ask when nothing matches', async () => {
@@ -62,10 +86,9 @@ describe('the FAQ index', () => {
 
     render(await FaqIndexPage(params('nadia')));
 
-    expect(screen.getByRole('link', { name: /back to nadia bakes/i })).toHaveAttribute(
-      'href',
-      '/nadia',
-    );
+    for (const link of screen.getAllByRole('link', { name: /back to nadia bakes/i })) {
+      expect(link).toHaveAttribute('href', '/nadia');
+    }
   });
 
   it('404s a page with no FAQ pages rather than showing an empty index', async () => {

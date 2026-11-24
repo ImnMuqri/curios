@@ -181,6 +181,7 @@ describe('People often ask, and the way to /[handle]/faq', () => {
     vi.mocked(getFaqIndex).mockResolvedValue({
       handle: 'nadia',
       displayName: 'Nadia Bakes',
+      language: 'en',
       theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null },
       entries: [{ slug: 'berapa-harga', question: 'Berapa harga?', answer: 'RM95 sekilo.', askCount: 4 }],
       total: 7,
@@ -198,7 +199,7 @@ describe('People often ask, and the way to /[handle]/faq', () => {
 
   it('tells the ask bar how many answers there are to browse', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
-    vi.mocked(getFaqIndex).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null }, entries: [{ slug: 'berapa-harga', question: 'Berapa harga?', answer: 'RM95 sekilo.', askCount: 4 }], total: 7 });
+    vi.mocked(getFaqIndex).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', language: 'en', theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null }, entries: [{ slug: 'berapa-harga', question: 'Berapa harga?', answer: 'RM95 sekilo.', askCount: 4 }], total: 7 });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
@@ -207,7 +208,7 @@ describe('People often ask, and the way to /[handle]/faq', () => {
 
   it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
-    vi.mocked(getFaqIndex).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null }, entries: [], total: 0 });
+    vi.mocked(getFaqIndex).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', language: 'en', theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null }, entries: [], total: 0 });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 

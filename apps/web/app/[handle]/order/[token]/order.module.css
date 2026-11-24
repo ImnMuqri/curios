@@ -5,15 +5,18 @@
  * owner's (--accent from PageTheme); green means paid, as everywhere.
  */
 
-/* No fixed bar at the foot here, so none of checkout's room for one. */
+/* No fixed bar at the foot here, so none of checkout's room for one. The sheet is Curios' light one (../../sheet.module.css). */
 .sheet:is(div) {
-  padding-bottom: 48px;
+  padding: 18px 20px 48px;
 }
 
-.bookmark {
-  margin-left: auto;
-  color: color-mix(in srgb, var(--page-fg) 85%, transparent);
-  font-size: 12.5px;
+/* The board's .co: a column of cards, a gap apart. */
+.sheet:is(div) > * {
+  margin-top: 12px;
+}
+
+.sheet:is(div) > :first-child {
+  margin-top: 0;
 }
 
 .titleRow {
@@ -21,13 +24,30 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  margin-top: 18px;
-  padding: 0 20px;
 }
 
 .titleRow > :first-child {
   margin: 0;
   padding: 0;
+}
+
+.heading {
+  font-size: 30px;
+  font-weight: 600;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+}
+
+/* "Order #14 · code 7Q4M": the kicker over the heading. */
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--calm-faint);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /*
@@ -76,123 +96,15 @@
   --dot: var(--merah);
 }
 
-.code {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 13.5px;
-}
-
-.code b {
-  color: var(--ink);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  letter-spacing: 0.06em;
-}
-
 .textButton {
   padding: 0;
   border: 0;
   background: none;
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font: inherit;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-}
-
-/* ---- Progress ---- */
-
-/* One even column per step, however many: three for a digital order, four for one to collect. */
-.steps {
-  display: grid;
-  grid-auto-columns: 1fr;
-  grid-auto-flow: column;
-  margin: 22px 0 4px;
-  padding: 0;
-  list-style: none;
-}
-
-.step {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: var(--hint);
-  font-size: 12.5px;
-}
-
-/* The line from the step before, drawn behind this step's circle. */
-.step::before {
-  content: '';
-  position: absolute;
-  top: 10px;
-  right: 50%;
-  left: -50%;
-  height: 2px;
-  background: var(--ghost-b);
-}
-
-.step:first-child::before {
-  display: none;
-}
-
-/* Over the lines: the next step's line starts at this circle's centre and would cut through it. */
-.step i {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: var(--card);
-  box-shadow: inset 0 0 0 2px var(--line);
-}
-
-.step svg {
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: var(--paper);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.step:is([data-state='done'], [data-state='now']) {
-  color: var(--ink);
-  font-weight: 500;
-}
-
-/* The line runs green up to the last step done; the one into the step now is only on its way. */
-.step[data-state='done']::before {
-  background: var(--hijau);
-}
-
-.step[data-state='now']::before {
-  background: linear-gradient(90deg, var(--hijau), var(--ghost-b));
-}
-
-.step[data-state='done'] i {
-  background: var(--hijau);
-  box-shadow: none;
-}
-
-/* The step now: a hijau ring with a dot in it and a soft halo, the same family as the ticks. */
-.step[data-state='now'] i {
-  box-shadow: inset 0 0 0 2px var(--hijau), 0 0 0 4px color-mix(in srgb, var(--hijau) 16%, transparent);
-}
-
-.step[data-state='now'] i::after {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--hijau);
 }
 
 /* ---- Pay ---- */
@@ -361,7 +273,7 @@
 }
 
 .upload:has(.file:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -370,7 +282,7 @@
   height: 20px;
   flex: none;
   fill: none;
-  stroke: var(--accent);
+  stroke: var(--sheet-accent, var(--accent));
   stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -422,7 +334,7 @@
 }
 
 .replace:has(.file:focus-visible) {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -450,50 +362,6 @@
   margin: 8px 0 0;
   color: var(--merah-deep);
   font-size: 12.5px;
-}
-
-/* ---- Your order ---- */
-
-.lines {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.line {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 6px 0;
-  font-size: 14px;
-}
-
-.line b {
-  display: block;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
-
-.line > span:first-child > span {
-  display: block;
-  color: var(--hint);
-  font-size: 12.5px;
-}
-
-.line > span:last-child {
-  flex: none;
-  color: var(--ink);
-  font-weight: 500;
-}
-
-.total {
-  display: flex;
-  justify-content: space-between;
-  margin-top: 8px;
-  padding-top: 12px;
-  border-top: 1px solid var(--ghost-b);
-  font-size: 16px;
-  font-weight: 700;
 }
 
 .whatsapp {
@@ -524,7 +392,7 @@
 .textButton:focus-visible,
 .save:focus-visible,
 .whatsapp:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -691,7 +559,7 @@
 
 .dgButton:focus-visible,
 .dgCode button:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -757,7 +625,7 @@
   border: 0;
   border-radius: 999px;
   background: var(--card);
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -794,58 +662,16 @@
   --pf-red: var(--merah-deep);
 }
 
-.pfIcon {
-  display: grid;
-  place-items: center;
-  width: 76px;
-  height: 76px;
-  margin: 0 auto 14px;
-  border-radius: 50%;
-  background: var(--merah-muda);
-  color: var(--pf-red);
-  animation: pfPop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
-}
-
-.pfIcon svg {
-  width: 34px;
-  height: 34px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-}
-
-@keyframes pfPop {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-  }
-
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-
-/* The code is the order's, but it is not going anywhere yet: grey tiles, and still. */
+/* The code is the order's, but it is not going anywhere yet: plain, and still. */
 .pfCode {
   display: flex;
   justify-content: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.pfCode span {
-  display: grid;
-  place-items: center;
-  width: 54px;
-  height: 64px;
-  border-radius: 14px;
-  background: var(--muted);
-  color: var(--paper);
+  margin-top: 2px;
+  color: var(--calm-muted);
   font-family: var(--font-mono);
   font-size: 30px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.14em;
 }
 
 .pfLines {
@@ -911,7 +737,7 @@
 }
 
 .pfAlt:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--sheet-accent, var(--accent));
   outline-offset: 2px;
 }
 
@@ -928,8 +754,220 @@
   font-size: 12.5px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .pfIcon {
-    animation: none;
-  }
+
+
+/* ---- Progress: top-border bars (More board, .co-st) ---- */
+.bars {
+  display: flex;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bar {
+  flex: 1;
+  padding-top: 7px;
+  border-top: 3px solid var(--calm-line);
+  color: var(--calm-faint);
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.bar:is([data-state='done'], [data-state='now']) {
+  color: var(--calm-ink);
+}
+
+.bar[data-state='done'] {
+  border-color: var(--sheet-accent, var(--accent));
+}
+
+.bar[data-state='now'] {
+  border-color: color-mix(in srgb, var(--sheet-accent, var(--accent)) 45%, var(--calm-line));
+}
+
+/* ---- State cards (.co-paid): paid, ready, done, refund due ---- */
+.state {
+  display: grid;
+  gap: 3px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--tag-ok);
+}
+
+.state b {
+  color: var(--tag-ok-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.state small {
+  color: var(--tag-ok-ink);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.state[data-tone='bad'] {
+  background: var(--merah-muda);
+}
+
+.state[data-tone='bad'] b,
+.state[data-tone='bad'] small {
+  color: var(--calm-danger);
+}
+
+/* ---- Pickup or delivery card (.co-get) ---- */
+.get {
+  display: grid;
+  gap: 3px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--calm-surface);
+  box-shadow: inset 0 0 0 1px var(--calm-ring);
+}
+
+.get b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.get span {
+  color: var(--calm-muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.cal {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: var(--sheet-accent, var(--calm-ink));
+  font-size: 13px;
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.cal svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+/* ---- What you ordered (.co-lab, .co-items) ---- */
+.lab {
+  margin: 6px 0 0;
+  color: var(--calm-faint);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.items {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--calm-surface);
+  box-shadow: inset 0 0 0 1px var(--calm-ring);
+  list-style: none;
+}
+
+.ln {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.ln + .ln,
+.ln + .row {
+  border-top: 1px solid var(--calm-line);
+}
+
+.ln i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 14%, var(--calm-surface));
+  color: var(--calm-ink);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.ln img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ln > span {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+.ln b {
+  overflow-wrap: anywhere;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ln small {
+  color: var(--calm-muted);
+  font-size: 12.5px;
+}
+
+.ln em {
+  flex: none;
+  font-size: 14px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--calm-line);
+  font-size: 13.5px;
+}
+
+.row > span {
+  color: var(--calm-muted);
+}
+
+.totalRow > b {
+  font-size: 17px;
+}
+
+.foot {
+  margin: 14px 0 0;
+  color: var(--calm-muted);
+  font-size: 14px;
+  text-align: center;
+}
+
+.foot b {
+  color: var(--calm-ink);
+  font-weight: 600;
+}
+
+.paidNote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 8px;
+  color: var(--calm-muted);
+  font-size: 12.5px;
 }

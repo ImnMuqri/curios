@@ -1,0 +1,26 @@
+/*
+ * The light sheet the customer sub-pages (shop, item, checkout, FAQ, order) sit on, under the owner-themed
+ * top bar (More board, `.shp, .ck, .faq2, .prd, .res, .co`; the 24 Nov override sets the sheet to the calm page colour).
+ * Only the surface is Curios': it redefines the page's own colour tokens for everything inside it, so every
+ * rule below it that reads --page-bg / --page-fg / --veil-* turns light with it, while the owner's accent
+ * (--accent, --on-accent) and heading font carry through. The top bar stays outside, in the owner's colours.
+ */
+.sheet {
+  --page-bg: var(--calm-bg);
+  --page-fg: var(--calm-ink);
+  --page-soft: var(--calm-muted);
+  --veil-1: color-mix(in srgb, var(--calm-ink) 4%, transparent);
+  --veil-2: color-mix(in srgb, var(--calm-ink) 7%, transparent);
+  --veil-3: color-mix(in srgb, var(--calm-ink) 10%, transparent);
+  --warm: color-mix(in srgb, var(--accent) 14%, var(--calm-surface));
+  --sheet-line: var(--calm-line);
+  --sheet-ring: var(--calm-ring);
+  --sheet-soft: var(--calm-soft);
+  position: relative;
+  box-sizing: border-box;
+  min-height: calc(100dvh - 60px);
+  padding-bottom: 110px;
+  border-radius: 20px 20px 0 0;
+  background: var(--page-bg);
+  color: var(--page-fg);
+}

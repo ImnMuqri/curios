@@ -30,13 +30,10 @@ beforeEach(() => window.sessionStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 
 describe('ShopPageView', () => {
-  it('wears the page cover blurred behind its middle, hidden from a screen reader, and nothing when the page has none', () => {
-    const { container, rerender } = render(<ShopPageView {...base} coverUrl="https://cdn.example/cover.webp" />);
-    expect(container.firstElementChild).toHaveAttribute('data-cover');
-    expect(container.querySelector('[aria-hidden="true"] img')).toHaveAttribute('src', 'https://cdn.example/cover.webp');
-    rerender(<ShopPageView {...base} coverUrl={null} />);
-    expect(container.firstElementChild).not.toHaveAttribute('data-cover');
+  it('draws no cover: the shop sits on the light sheet, whatever the page wears', () => {
+    const { container } = render(<ShopPageView {...base} coverUrl="https://cdn.example/cover.webp" />);
     expect(container.querySelector('img[src="https://cdn.example/cover.webp"]')).toBeNull();
+    expect(container.firstElementChild).not.toHaveAttribute('data-cover');
   });
 
   it("puts the owner's picture beside their note, and their initial when there is none", () => {
@@ -48,11 +45,38 @@ describe('ShopPageView', () => {
     expect(container.textContent).toContain(base.displayName.charAt(0).toUpperCase());
   });
 
-  it('has the top bar: back to the page, the shop address, share', () => {
+  it('has the top bar: back to the page, its name, the basket and share, and no address', () => {
     render(<ShopPageView {...base} />);
     expect(screen.getByRole('link', { name: 'Back to Kek Lina' })).toHaveAttribute('href', '/keklina');
-    expect(screen.getByText('curios.my/keklina/shop')).toBeInTheDocument();
+    // The name sits in the bar (and again under the owner's note).
+    expect(screen.getAllByText('Kek Lina').length).toBeGreaterThan(0);
+    expect(screen.queryByText('curios.my/keklina/shop')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Basket' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Share the shop' })).toBeInTheDocument();
+  });
+
+  it('counts the basket on its icon, and opens the basket bar’s sheet from it', async () => {
+    writeBasket(key, [{ itemId: 'tart', optionId: null, quantity: 2 }, { itemId: 'cookie', optionId: null, quantity: 1 }]);
+    const opened = vi.fn();
+    window.addEventListener('curios-open-basket', opened);
+    const user = userEvent.setup();
+    render(<ShopPageView {...base} />);
+    const basket = await screen.findByRole('button', { name: 'Basket (3)' });
+    expect(basket).toHaveTextContent('3');
+    await user.click(basket);
+    expect(opened).toHaveBeenCalledTimes(1);
+    window.removeEventListener('curios-open-basket', opened);
+  });
+
+  it('says the basket is empty, rather than opening nothing, when it is', async () => {
+    const opened = vi.fn();
+    window.addEventListener('curios-open-basket', opened);
+    const user = userEvent.setup();
+    render(<ShopPageView {...base} />);
+    await user.click(screen.getByRole('button', { name: 'Basket' }));
+    expect(opened).not.toHaveBeenCalled();
+    expect(await screen.findByText('Basket is empty')).toBeInTheDocument();
+    window.removeEventListener('curios-open-basket', opened);
   });
 
   it('shares through the Web Share API when there is one', async () => {
@@ -75,18 +99,22 @@ describe('ShopPageView', () => {
     expect(await screen.findByText('Link copied')).toBeInTheDocument();
   });
 
-  it('draws the sign: open for orders, the name, area, pickup or delivery, next pickup day', () => {
+  it('draws the heading and its one line, then the shop’s state and next pickup day, calmly', () => {
     render(<ShopPageView {...base} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Shop' })).toBeInTheDocument();
+    expect(screen.getByText('Seksyen 7, Shah Alam · Pickup or delivery')).toBeInTheDocument();
     expect(screen.getByText('Open for orders')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Kek Lina' })).toBeInTheDocument();
-    expect(screen.getByText('Seksyen 7, Shah Alam')).toBeInTheDocument();
-    expect(screen.getByText('Pickup or delivery')).toBeInTheDocument();
     expect(screen.getByText('Next pickup Sat 17 Oct')).toBeInTheDocument();
+  });
+
+  it('keeps the halal line among the facts', () => {
+    render(<ShopPageView {...base} halal />);
+    expect(screen.getByText(shopCopy('en').halal)).toBeInTheDocument();
   });
 
   it('names the first pickup place and how many more', () => {
     render(<ShopPageView {...base} pickupPlaces={[{ name: 'Seksyen 7, Shah Alam' }, { name: 'Bangi' }]} />);
-    expect(screen.getByText('Seksyen 7, Shah Alam +1 more')).toBeInTheDocument();
+    expect(screen.getByText('Seksyen 7, Shah Alam +1 more · Pickup or delivery')).toBeInTheDocument();
   });
 
   it('leaves the area out when there is none, and says Pickup alone or Delivery alone', () => {

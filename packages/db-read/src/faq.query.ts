@@ -21,6 +21,8 @@ export interface FaqListEntry {
 export interface FaqIndex {
   handle: string;
   displayName: string;
+  /** The page's language, for the FAQ pages' own words. */
+  language: string;
   theme: FaqTheme;
   entries: FaqListEntry[];
   /** Every entry the index would list without a limit. */
@@ -30,11 +32,15 @@ export interface FaqIndex {
 export interface FaqAnswer {
   handle: string;
   displayName: string;
+  /** The page's language, for the FAQ pages' own words. */
+  language: string;
   theme: FaqTheme;
   question: string;
   answer: string;
   askCount: number;
-  /** The page's other answers, most asked first ("People also ask"). */
+  /** When the owner last wrote or changed the answer; null on an answer from before it was kept. */
+  answeredAt: Date | null;
+  /** The page's other answers, most asked first (the entry page's "More questions"). */
   related: { slug: string; question: string }[];
 }
 
@@ -54,7 +60,7 @@ const MAX_LIMIT = 100;
 function publishedBusinessPage(handle: string) {
   return prismaRead.page.findFirst({
     where: { handle: handle.toLowerCase(), ...PUBLIC_PAGE_WHERE, mode: 'BUSINESS' },
-    select: { id: true, handle: true, displayName: true, accentColor: true, headingFont: true, background: true, backgroundColor: true },
+    select: { id: true, handle: true, displayName: true, language: true, accentColor: true, headingFont: true, background: true, backgroundColor: true },
   });
 }
 
@@ -94,6 +100,7 @@ export async function getFaqIndex(
   return {
     handle: page.handle,
     displayName: page.displayName,
+    language: page.language,
     theme: themeOf(page),
     // The slug and answer are non-null by the query above; this narrows them for the type.
     entries: topics.map((t) => ({ slug: t.faqSlug as string, question: t.title, answer: t.answer as string, askCount: t.askCount })),
@@ -118,7 +125,7 @@ export async function getFaqEntry(handle: string, slug: string): Promise<FaqAnsw
   // of this slice.
   const topic = await prismaRead.topic.findFirst({
     where: { pageId: page.id, faqSlug: slug.toLowerCase(), faqSuppressed: false, answer: { not: null } },
-    select: { id: true, title: true, answer: true, askCount: true },
+    select: { id: true, title: true, answer: true, answeredAt: true, askCount: true },
   });
   if (!topic || topic.answer === null) return null;
 
@@ -132,10 +139,12 @@ export async function getFaqEntry(handle: string, slug: string): Promise<FaqAnsw
   return {
     handle: page.handle,
     displayName: page.displayName,
+    language: page.language,
     theme: themeOf(page),
     question: topic.title,
     answer: topic.answer,
     askCount: topic.askCount,
+    answeredAt: topic.answeredAt,
     related: related.map((t) => ({ slug: t.faqSlug as string, question: t.title })),
   };
 }

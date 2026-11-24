@@ -31,6 +31,7 @@ export interface ShopCopy {
   factNextDelivery: (day: string) => string;
   backTo: (name: string) => string;
   shareShop: string;
+  shareItem: string;
   linkCopied: string;
   openForOrders: string;
   ordersPaused: string;
@@ -278,6 +279,22 @@ export interface ShopCopy {
   copyCode: string;
   copied: string;
   keepCode: string;
+  /** The order page's footer opens with this, then `askLater`. */
+  keepPage: string;
+  /** The placed screen's button to the shop's WhatsApp. */
+  whatsappShop: (name: string) => string;
+  /** The order page (More board): the kicker, the section label, the state cards and the pickup file. */
+  orderKicker: (number: number, code: string) => string;
+  whatYouOrdered: string;
+  readyPickupTitle: string;
+  readyPickupBody: (when: string) => string;
+  readyDeliveryTitle: string;
+  readyDeliveryBody: (day: string) => string;
+  pickedUp: string;
+  deliveredDone: string;
+  refundTitle: (name: string) => string;
+  refundBody: (total: string, name: string) => string;
+  pickupCalTitle: (name: string) => string;
   askLater: (name: string, code: string) => string;
   payNow: (total: string) => string;
   sendLink: string;
@@ -358,7 +375,7 @@ export interface ShopCopy {
   dgLockTitle: (what: string) => string;
   dgLockCheck: (name: string) => string;
   dgLockPay: string;
-  dgTitle: (onlyFiles: boolean) => string;
+  dgTitle: (onlyFiles?: boolean) => string;
   alsoSentTo: (email: string) => string;
   download: string;
   downloadsLeft: (n: number) => string;
@@ -438,6 +455,7 @@ const EN: ShopCopy = {
   factNextDelivery: (day) => `Next delivery ${day}`,
   backTo: (name) => `Back to ${name}`,
   shareShop: 'Share the shop',
+  shareItem: 'Share this item',
   linkCopied: 'Link copied',
   openForOrders: 'Open for orders',
   ordersPaused: 'Orders paused',
@@ -460,7 +478,7 @@ const EN: ShopCopy = {
   askAboutThis: 'Ask about this',
   askSamples: 'What’s in it? Is it OK for kids?',
   askPrefill: (name) => `I have a question about ${name}.`,
-  addToBasket: (total) => `Add to basket · ${total}`,
+  addToBasket: (total) => `Add · ${total}`,
   askPill: 'Ask',
   askPillNamed: (name) => `Ask about ${name}`,
   askFrom: (price) => `From ${price} · ask`,
@@ -572,7 +590,7 @@ const EN: ShopCopy = {
   payNote: (name) => `You pay ${name} directly on the next step, then upload your receipt.`,
   howYoullPay: 'How you’ll pay',
   onlineBanking: 'Online banking',
-  onlineBankingSub: 'FPX · Maybank2u, CIMB Clicks, RHB and more',
+  onlineBankingSub: 'FPX · Maybank2u, CIMB Clicks and more',
   eWallet: 'E-wallet',
   card: 'Card',
   cardSub: 'Debit or credit card',
@@ -644,7 +662,20 @@ const EN: ShopCopy = {
   copyCode: 'Copy code',
   copied: 'Copied',
   keepCode: 'Keep this code.',
-  askLater: (name, code) => `Ask ${name}’s page “where is my order ${code}?” any time and it shows you the status.`,
+  keepPage: 'Keep this page.',
+  whatsappShop: (name) => `WhatsApp ${name}`,
+  orderKicker: (number, code) => `Order #${number} · code ${code}`,
+  whatYouOrdered: 'What you ordered',
+  readyPickupTitle: 'Ready for pickup',
+  readyPickupBody: (when) => `Come any time on ${when}.`,
+  readyDeliveryTitle: 'Ready for delivery',
+  readyDeliveryBody: (day) => `It goes out on ${day}.`,
+  pickedUp: 'Picked up. Thank you!',
+  deliveredDone: 'Delivered. Thank you!',
+  refundTitle: (name) => `${name} cancelled this order`,
+  refundBody: (total, name) => `You paid ${total}, so ${name} owes you a refund. This page says Refunded once it’s sent. Ask through WhatsApp if you have questions.`,
+  pickupCalTitle: (name) => `Pickup from ${name}`,
+  askLater: (name, code) => `Ask ${name}’s page “where is my order ${code}?” any time.`,
   payNow: (total) => `Pay ${total} now`,
   sendLink: 'Send the link to my WhatsApp',
   bookmark: 'Bookmark this page',
@@ -730,8 +761,9 @@ const EN: ShopCopy = {
   dgLockTitle: (what) => `Your ${what} unlock once you’ve paid`,
   dgLockCheck: (name) => `${name} is checking your receipt. You’ll get an email the moment it’s confirmed.`,
   dgLockPay: 'Pay above, and they come straight to this page and your email.',
-  dgTitle: (onlyFiles) => (onlyFiles ? 'Your downloads' : 'Your downloads and access'),
-  alsoSentTo: (email) => `Also sent to ${email}`,
+  // The board's label for the whole section, whatever is in it (More board, co_digital).
+  dgTitle: () => 'Digital items',
+  alsoSentTo: (email) => `Sent to ${email}. It’s on your order page too.`,
   download: 'Download',
   downloadsLeft: (n) => (n === 1 ? '1 download left' : `${n} downloads left`),
   usedUp: '0 left',
@@ -780,6 +812,7 @@ const MS: ShopCopy = {
   factNextDelivery: (day) => `Hantar seterusnya ${day}`,
   backTo: (name) => `Kembali ke ${name}`,
   shareShop: 'Kongsi kedai',
+  shareItem: 'Kongsi barang ini',
   linkCopied: 'Pautan disalin',
   openForOrders: 'Buka untuk tempahan',
   ordersPaused: 'Tempahan ditangguhkan',
@@ -802,7 +835,7 @@ const MS: ShopCopy = {
   askAboutThis: 'Tanya tentang ini',
   askSamples: 'Apa kandungannya? Sesuai untuk kanak-kanak?',
   askPrefill: (name) => `Saya ada soalan tentang ${name}.`,
-  addToBasket: (total) => `Masuk bakul · ${total}`,
+  addToBasket: (total) => `Tambah · ${total}`,
   askPill: 'Tanya',
   askPillNamed: (name) => `Tanya tentang ${name}`,
   askFrom: (price) => `Dari ${price} · tanya`,
@@ -914,7 +947,7 @@ const MS: ShopCopy = {
   payNote: (name) => `Anda bayar terus kepada ${name} pada langkah seterusnya, kemudian muat naik resit anda.`,
   howYoullPay: 'Cara anda bayar',
   onlineBanking: 'Perbankan dalam talian',
-  onlineBankingSub: 'FPX · Maybank2u, CIMB Clicks, RHB dan lain-lain',
+  onlineBankingSub: 'FPX · Maybank2u, CIMB Clicks dan lain-lain',
   eWallet: 'E-dompet',
   card: 'Kad',
   cardSub: 'Kad debit atau kredit',
@@ -986,7 +1019,20 @@ const MS: ShopCopy = {
   copyCode: 'Salin kod',
   copied: 'Disalin',
   keepCode: 'Simpan kod ini.',
-  askLater: (name, code) => `Tanya halaman ${name} “mana tempahan saya ${code}?” bila-bila masa dan ia tunjukkan statusnya.`,
+  keepPage: 'Simpan halaman ini.',
+  whatsappShop: (name) => `WhatsApp ${name}`,
+  orderKicker: (number, code) => `Tempahan #${number} · kod ${code}`,
+  whatYouOrdered: 'Yang anda tempah',
+  readyPickupTitle: 'Sedia untuk diambil',
+  readyPickupBody: (when) => `Datang bila-bila masa pada ${when}.`,
+  readyDeliveryTitle: 'Sedia untuk dihantar',
+  readyDeliveryBody: (day) => `Ia dihantar pada ${day}.`,
+  pickedUp: 'Sudah diambil. Terima kasih!',
+  deliveredDone: 'Sudah dihantar. Terima kasih!',
+  refundTitle: (name) => `${name} membatalkan tempahan ini`,
+  refundBody: (total, name) => `Anda sudah bayar ${total}, jadi ${name} perlu memulangkan wang anda. Halaman ini akan tunjuk Dipulangkan sebaik sahaja ia dihantar. Tanya melalui WhatsApp jika ada soalan.`,
+  pickupCalTitle: (name) => `Ambil tempahan di ${name}`,
+  askLater: (name, code) => `Tanya halaman ${name} “mana tempahan saya ${code}?” bila-bila masa.`,
   payNow: (total) => `Bayar ${total} sekarang`,
   sendLink: 'Hantar pautan ke WhatsApp saya',
   bookmark: 'Tandakan halaman ini',
@@ -1071,8 +1117,8 @@ const MS: ShopCopy = {
   dgLockTitle: (what) => `${what.charAt(0).toUpperCase()}${what.slice(1)} anda dibuka sebaik anda membayar`,
   dgLockCheck: (name) => `${name} sedang menyemak resit anda. Anda akan terima e-mel sebaik ia disahkan.`,
   dgLockPay: 'Bayar di atas, dan ia terus datang ke halaman ini dan e-mel anda.',
-  dgTitle: (onlyFiles) => (onlyFiles ? 'Muat turun anda' : 'Muat turun dan akses anda'),
-  alsoSentTo: (email) => `Juga dihantar ke ${email}`,
+  dgTitle: () => 'Barang digital',
+  alsoSentTo: (email) => `Dihantar ke ${email}. Ia ada di halaman tempahan anda juga.`,
   download: 'Muat turun',
   downloadsLeft: (n) => `${n} muat turun lagi`,
   usedUp: '0 lagi',

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit } from '@curios/core/store';
+import { ORDER_NOTE_MAX } from '@curios/core/orders';
 import type { DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
@@ -9,6 +10,8 @@ import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from '../copy.js';
 import { itemPromo, minText, offText } from '../promo.js';
 import { writeEnquiryHandoff, type EnquiryHandoff } from '../enquiry.js';
+import { TopBar } from '../../top-bar.js';
+import sheet from '../../sheet.module.css';
 import { EnquirySheet } from './enquiry-sheet.js';
 import { ProductGallery } from './product-gallery.js';
 import styles from './product.module.css';
@@ -81,6 +84,8 @@ export function ProductView(props: {
   const [sessionId, setSessionId] = useState<string | null>(times.find((t) => t.seatsLeft > 0)?.id ?? null);
   const [announce, setAnnounce] = useState('');
   const [enquiring, setEnquiring] = useState(false);
+  const [note, setNote] = useState('');
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     const read = () => setBasket(readBasket(key));
@@ -92,6 +97,12 @@ export function ProductView(props: {
       window.removeEventListener('pageshow', read);
     };
   }, [key]);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 2200);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
 
   const count = useMemo(() => priceBasket(basket, props.items).lines.reduce((sum, line) => sum + line.quantity, 0), [basket, props.items]);
 
@@ -122,9 +133,24 @@ export function ProductView(props: {
     else window.location.assign(`/${props.handle}#ask`);
   }
 
+  async function share() {
+    if (props.inline) return;
+    const url = `${window.location.origin}/${props.handle}/shop/${item.slug}`;
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({ title: item.name, url });
+        return;
+      }
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+    } catch {
+      // A dismissed share sheet rejects; nothing to say.
+    }
+  }
+
   function add() {
     if (unitCents === null || soldOut || (session && sessionId === null)) return;
-    const line: BasketLine = { itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity: Math.min(quantity, maxQuantity), ...(session ? { sessionId } : {}) };
+    const line: BasketLine = { itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity: Math.min(quantity, maxQuantity), ...(session ? { sessionId } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
     const next = addToBasket(readBasket(key), line);
     writeBasket(key, next);
     setAnnounce(
@@ -141,19 +167,22 @@ export function ProductView(props: {
 
   return (
     <div className={styles.view} data-inline={props.inline || undefined}>
-      <div className={styles.top}>
-        <a className={styles.ib} href={shopHref} aria-label={copy.backToShop} onClick={back}>
-          <Icon d={ICON.back} />
-        </a>
-        <span>{copy.shopOf(props.displayName)}</span>
-        <a className={`${styles.ib} ${styles.bk}`} href={`${shopHref}/checkout`} aria-label={copy.basketLabel} onClick={stay}>
-          <Icon d={ICON.basket} />
-          {count > 0 ? <i>{count}</i> : null}
-        </a>
-      </div>
+      <TopBar
+        title={props.displayName}
+        back={{ href: shopHref, label: copy.backToShop, onClick: back }}
+        basket={{ label: count > 0 ? `${copy.basketLabel} (${count})` : copy.basketLabel, count, href: `${shopHref}/checkout`, onClick: stay }}
+        share={{ label: copy.shareItem, onClick: () => void share() }}
+      />
       <p className={styles.sr} role="status">
         {announce}
       </p>
+      {copied ? (
+        <p className={styles.toast} role="status">
+          {copy.linkCopied}
+        </p>
+      ) : null}
+
+      <div className={sheet.sheet}>
 
       <ProductGallery name={item.name} urls={item.photoUrls?.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : []} copy={copy} />
 
@@ -259,6 +288,22 @@ export function ProductView(props: {
           </div>
         ) : null}
 
+        {ask || soldOut || unitCents === null ? null : (
+          <>
+            <label className={styles.lbl} htmlFor="product-note">
+              {copy.noteFor(props.displayName)}
+            </label>
+            <input
+              id="product-note"
+              className={styles.noteInput}
+              value={note}
+              maxLength={ORDER_NOTE_MAX}
+              placeholder={copy.notePlaceholder(props.displayName)}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </>
+        )}
+
         {ask ? null : (
           <a className={styles.askit} href={`/${props.handle}?q=${q}#ask`} onClick={stay}>
             <Icon d={ICON.chat} />
@@ -320,6 +365,7 @@ export function ProductView(props: {
           onSent={sent}
         />
       ) : null}
+      </div>
     </div>
   );
 }

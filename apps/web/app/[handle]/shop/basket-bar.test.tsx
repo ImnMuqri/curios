@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { BasketBar } from './basket-bar.js';
-import { defaultStorageKey, writeBasket } from './basket.js';
+import { defaultStorageKey, OPEN_BASKET_EVENT, writeBasket } from './basket.js';
 
 const items = [
   { id: 'cake', name: 'Kek Batik', priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }] },
@@ -12,6 +12,24 @@ const base = { handle: 'nadia', displayName: 'Kek Lina', language: 'en', items, 
 beforeEach(() => window.sessionStorage.clear());
 
 describe('BasketBar', () => {
+  it('opens its sheet when a top bar’s basket button asks, once there is something in it', () => {
+    writeBasket(defaultStorageKey('nadia'), [{ itemId: 'cookie', optionId: null, quantity: 2 }]);
+    render(<BasketBar {...base} />);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_BASKET_EVENT));
+    });
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('ignores that request while the basket is empty', () => {
+    const { container } = render(<BasketBar {...base} />);
+    act(() => {
+      window.dispatchEvent(new Event(OPEN_BASKET_EVENT));
+    });
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it('draws nothing while the basket is empty', () => {
     const { container } = render(<BasketBar {...base} />);
     expect(container).toBeEmptyDOMElement();

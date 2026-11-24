@@ -214,6 +214,65 @@ describe('Checkout', () => {
     expect(saved()).toEqual([]);
   });
 
+  it('starts the note with what was written on the item page, and still lets the visitor change it', async () => {
+    window.sessionStorage.setItem(
+      KEY,
+      JSON.stringify([
+        { itemId: 'cake', optionId: 'k2', quantity: 1, note: 'Write Selamat Hari Jadi Mak' },
+        { itemId: 'batik', optionId: null, quantity: 1 },
+      ]),
+    );
+    const user = userEvent.setup();
+    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    const field = screen.getByLabelText(new RegExp(copy.noteFor('Kek Lina')));
+    expect(field).toHaveValue('Write Selamat Hari Jadi Mak');
+    await user.type(field, ' and no nuts');
+    await fillDetails(user);
+    await user.click(placeButton('RM215'));
+    const sent = JSON.parse((fetch.mock.calls[0] as [string, RequestInit])[1].body as string) as { note: string; lines: object[] };
+    expect(sent.note).toBe('Write Selamat Hari Jadi Mak and no nuts');
+    // The note is the order's, not the line's: lines carry none to the API.
+    expect(sent.lines).toEqual([
+      { itemId: 'cake', optionId: 'k2', quantity: 1 },
+      { itemId: 'batik', optionId: null, quantity: 1 },
+    ]);
+  });
+
+  it('names each item with its note when several items have one', async () => {
+    window.sessionStorage.setItem(
+      KEY,
+      JSON.stringify([
+        { itemId: 'cake', optionId: 'k2', quantity: 1, note: 'Name on the cake' },
+        { itemId: 'batik', optionId: null, quantity: 1, note: 'Less sweet' },
+      ]),
+    );
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    expect(screen.getByLabelText(new RegExp(copy.noteFor('Kek Lina')))).toHaveValue('Kek coklat moist: Name on the cake\nKek batik: Less sweet');
+  });
+
+  it('puts the mascot with a tick on the placed screen, and a summary of how it is got and what it holds', async () => {
+    const user = userEvent.setup();
+    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    const { container } = render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.click(placeButton('RM215'));
+    await screen.findByRole('heading', { name: copy.orderPlaced });
+    expect(container.querySelector('svg[viewBox="0 0 160 150"]')).not.toBeNull();
+    const summary = screen.getByRole('list', { name: copy.items });
+    expect(within(summary).getByText(copy.pickupLabel)).toBeInTheDocument();
+    expect(within(summary).getByText('Sat 17 Oct · Home')).toBeInTheDocument();
+    expect(within(summary).getByText(copy.itemCount(2))).toBeInTheDocument();
+    expect(within(summary).getByText('RM215')).toBeInTheDocument();
+    // The item with a photo shows it.
+    expect(summary.querySelector('img')).toHaveAttribute('src', 'https://cdn.test/items/b.webp');
+    expect(screen.getByText(copy.keepCode)).toBeInTheDocument();
+    expect(screen.getByText(copy.askLater('Kek Lina', '7Q4M'))).toBeInTheDocument();
+  });
+
   it('puts the drawn +60 on a number typed without its 0', async () => {
     const user = userEvent.setup();
     const fetch = reply(201, { number: 4, code: 'WXYZ', token: 't', totalCents: 21500 });

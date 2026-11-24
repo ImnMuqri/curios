@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { isFailReason, type FailReason } from '@curios/core/chip-status';
 import { customerSteps, isRiderDelivery, orderView, type OrderStatus } from '@curios/core/orders';
-import { pickupLine } from '@curios/core/pickup';
+import { windowLabel } from '@curios/core/pickup';
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
@@ -11,6 +11,8 @@ import { payingKey, retryKey } from '../../shop/checkout/paying.js';
 import { Placed } from '../../shop/checkout/placed.js';
 import { unavailableCopy } from '../../../_system/unavailable-copy.js';
 import { apiFetch } from '../../../../lib/api.js';
+import { TopBar } from '../../top-bar.js';
+import sheet from '../../sheet.module.css';
 import { DigitalSection, type DigitalLineView } from './digital-section.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { PayFailed } from './pay-failed.js';
@@ -56,7 +58,9 @@ export interface OrderViewProps {
     paidRef?: string | null;
     /** Placed, with a CHIP purchase started for it: the page asks the API how it went. */
     chipPending?: boolean;
-    lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; digital?: DigitalLineView | null }[];
+    lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; digital?: DigitalLineView | null; /** The item's photo, for the thumbnail; absent for a letter. */ photoUrl?: string | null }[];
+    /** When the order was marked done (ISO), said on the Done card. */
+    completedAt?: string | null;
     /** Where the digital items were sent, and when they were (ISO). */
     email?: string | null;
     sentAt?: string | null;
@@ -322,9 +326,22 @@ export function OrderView(props: OrderViewProps) {
           handle={props.handle}
           displayName={name}
           copy={copy}
+          number={order.number}
           code={order.code}
           token={props.token}
           totalCents={order.totalCents}
+          whatsapp={props.whatsapp}
+          summary={{
+            how:
+              order.method !== null && order.day !== null
+                ? {
+                    label: order.method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel,
+                    value: [copy.dayLong(order.day), order.method === 'PICKUP' ? order.pickupPlaceName : null].filter(Boolean).join(' · '),
+                  }
+                : null,
+            count: order.lines.reduce((sum, line) => sum + line.quantity, 0),
+            thumbs: order.lines.map((line) => ({ name: line.itemName, url: line.photoUrl ?? null })),
+          }}
           onSeeOrder={seeOrder}
           paidDigital={digitalOnly ? { what: copy.digWhat(kinds) } : null}
           digitalNote={hasDigital && order.email ? copy.digitalPlacedNote(true, order.email) : null}
@@ -333,58 +350,72 @@ export function OrderView(props: OrderViewProps) {
     );
   }
 
+  const pickup = order.method === 'PICKUP';
+  // The board's state cards: ready, done, refund due. Each replaces the paid line it supersedes.
+  const readyCard = !stopped && steps.ready && !steps.done && (view === 'paid' || view === 'paidOnline') && order.method !== null;
+  const doneCard = view === 'completed' && order.method !== null;
+  const refundCard = view === 'refundOwed';
+  const dayLabel = order.day ? copy.dayLong(order.day) : null;
+  const slot = order.pickupFrom != null && order.pickupTo != null ? windowLabel(order.pickupFrom, order.pickupTo) : null;
+  const when = [dayLabel, slot].filter(Boolean).join(', ');
+  const placeLine = [order.pickupPlaceName, order.pickupPlaceAddress].filter(Boolean).join(' · ');
+  const showGet = !stopped && !doneCard && !refundCard && order.method !== null && order.day !== null;
+
   return (
     <Root className={checkout.column}>
-      <div className={checkout.top}>
-        {/* Back to the shop, as checkout's top bar has it: a paid order is not a dead end (owner, 12 Nov 2026). */}
-        <a className={checkout.back} href={preview ? undefined : `/${props.handle}/shop`} aria-label={copy.backToShop}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M15 6l-6 6 6 6" />
-          </svg>
-        </a>
-        <span>{name}</span>
-        <span className={styles.bookmark}>{copy.bookmark}</span>
-      </div>
+      {/* Back to the shop, as checkout's top bar has it: a paid order is not a dead end (owner, 12 Nov 2026). */}
+      <TopBar title={name} back={{ href: preview ? undefined : `/${props.handle}/shop`, label: copy.backToShop }} />
 
+      <div className={`${sheet.sheet} ${checkout.sheet} ${styles.sheet}`} data-testid="sheet">
+      <p className={styles.kicker}>
+        {copy.orderKicker(order.number, order.code)}
+        <button type="button" className={styles.textButton} onClick={preview ? undefined : () => copyCode(order.code)}>
+          {codeCopied ? copy.copied : copy.copyCode}
+        </button>
+      </p>
       <div className={styles.titleRow}>
-        <Title className={checkout.title}>{copy.orderTitle(order.number)}</Title>
+        <Title className={styles.heading}>{copy.yourOrder}</Title>
         <span className={styles.pill} data-tone={status.tone}>
           <i aria-hidden="true" />
           {status.text}
         </span>
       </div>
 
-      <div className={`${checkout.sheet} ${styles.sheet}`} data-testid="sheet">
-      <p className={styles.code}>
-        {copy.orderCode} <b>{order.code}</b>
-        <button type="button" className={styles.textButton} onClick={preview ? undefined : () => copyCode(order.code)}>
-          {codeCopied ? copy.copied : copy.copyCode}
-        </button>
-      </p>
-
       {stopped ? null : (
-        <ol className={styles.steps} aria-label={copy.orderProgress}>
+        <ol className={styles.bars} aria-label={copy.orderProgress}>
           {stepList.map((step, i) => {
             const state = step.done ? 'done' : i === nowAt ? 'now' : undefined;
             return (
-              <li key={step.label} className={styles.step} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
-                <i aria-hidden="true">
-                  {step.done ? (
-                    <svg viewBox="0 0 24 24">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                  ) : null}
-                </i>
-                <span>
-                  {step.label}
-                  {/* The tick says it to the eye; this says it to a screen reader. */}
-                  {step.done ? <span className={styles.srOnly}>{`, ${copy.stepDone}`}</span> : null}
-                </span>
+              <li key={step.label} className={styles.bar} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
+                {step.label}
+                {/* The bar says it to the eye; this says it to a screen reader. */}
+                {step.done ? <span className={styles.srOnly}>{`, ${copy.stepDone}`}</span> : null}
               </li>
             );
           })}
         </ol>
       )}
+
+      {readyCard ? (
+        <div className={styles.state} role="status">
+          <b>{pickup ? copy.readyPickupTitle : copy.readyDeliveryTitle}</b>
+          <small>{pickup ? copy.readyPickupBody(when) : copy.readyDeliveryBody(dayLabel ?? '')}</small>
+        </div>
+      ) : null}
+
+      {doneCard ? (
+        <div className={styles.state}>
+          <b>{pickup ? copy.pickedUp : copy.deliveredDone}</b>
+          {order.completedAt ? <small>{copy.paidTime(order.completedAt)}</small> : null}
+        </div>
+      ) : null}
+
+      {refundCard ? (
+        <div className={styles.state} data-tone="bad">
+          <b>{copy.refundTitle(name)}</b>
+          <small>{copy.refundBody(total, name)}</small>
+        </div>
+      ) : null}
 
       {inFlight ? (
         <section className={checkout.section}>
@@ -401,20 +432,18 @@ export function OrderView(props: OrderViewProps) {
         </section>
       ) : null}
 
-      {paidOnline ? (
-        <section className={checkout.section}>
-          <div className={`${styles.upload} ${styles.sent}`}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
-            <span>
-              <b>{copy.paidBy(total, copy.methodLabel(order.paidMethodLabel ?? 'CHIP'))}</b>
-              {order.paidAt ? (
-                <span>{order.paidRef ? copy.paidWhen(copy.paidTime(order.paidAt), order.paidRef) : copy.paidTime(order.paidAt)}</span>
-              ) : null}
-            </span>
-          </div>
-        </section>
+      {paidOnline && !readyCard && !doneCard ? (
+        <div className={styles.state}>
+          <b>{copy.paidBy(total, copy.methodLabel(order.paidMethodLabel ?? 'CHIP'))}</b>
+          {order.paidAt ? <small>{order.paidRef ? copy.paidWhen(copy.paidTime(order.paidAt), order.paidRef) : copy.paidTime(order.paidAt)}</small> : null}
+        </div>
+      ) : null}
+      {paidOnline && (readyCard || doneCard) ? (
+        // The state card says where the order is; how it was paid stays as a quiet line under it.
+        <p className={styles.paidNote}>
+          <span>{copy.paidBy(total, copy.methodLabel(order.paidMethodLabel ?? 'CHIP'))}</span>
+          {order.paidAt ? <span>{order.paidRef ? copy.paidWhen(copy.paidTime(order.paidAt), order.paidRef) : copy.paidTime(order.paidAt)}</span> : null}
+        </p>
       ) : null}
 
       {paidByVoucher ? (
@@ -539,65 +568,66 @@ export function OrderView(props: OrderViewProps) {
         />
       ) : null}
 
-      <section className={checkout.section} aria-labelledby="order-lines">
-        <div className={checkout.head}>
-          <h2 id="order-lines">{copy.yourOrder}</h2>
-          <span>
-            {order.method === null || order.day === null ? (
-              copy.byEmail
-            ) : (
-              <>
-                {pickupLine({
-                  method: order.method,
-                  dayLabel: copy.dayLong(order.day),
-                  pickupFrom: order.pickupFrom ?? null,
-                  pickupTo: order.pickupTo ?? null,
-                  pickupPlaceName: order.pickupPlaceName ?? null,
-                  label: copy.pickupLabel,
-                }) ?? `${copy.deliveryLabel} · ${copy.dayLong(order.day)}`}
-                {isRiderDelivery({ method: order.method, deliveryCents: order.deliveryCents }) ? ` · ${copy.riderPaidSeparately}` : null}
-              </>
-            )}
-          </span>
+      {showGet ? (
+        <div className={styles.get}>
+          <b>
+            {pickup
+              ? `${copy.pickupLabel} · ${when}`
+              : `${copy.deliveryLabel} · ${dayLabel}${isRiderDelivery({ method: 'DELIVERY', deliveryCents: order.deliveryCents }) ? ` · ${copy.riderPaidSeparately}` : ''}`}
+          </b>
+          {pickup && placeLine ? <span>{placeLine}</span> : null}
+          {pickup ? (
+            <a className={styles.cal} href={preview ? undefined : `/${props.handle}/order/${encodeURIComponent(props.token)}/calendar?pickup=1`}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5" />
+              </svg>
+              {copy.addToCalendar}
+            </a>
+          ) : null}
         </div>
-        {order.method === 'PICKUP' && order.pickupPlaceAddress ? <p className={styles.pickupAddress}>{order.pickupPlaceAddress}</p> : null}
-        <ul className={styles.lines}>
-          {order.lines.map((line, i) => (
-            <li key={i} className={styles.line}>
+      ) : null}
+      {order.method === null ? <p className={styles.lab}>{copy.byEmail}</p> : null}
+
+      <h2 id="order-lines" className={styles.lab}>
+        {copy.whatYouOrdered}
+      </h2>
+      <ul className={styles.items} aria-labelledby="order-lines">
+        {order.lines.map((line, i) => {
+          const small = [
+            line.quantity > 1 ? `${line.quantity}×` : null,
+            line.digital
+              ? copy.digitalSub({ delivery: line.digital.delivery, format: lineFormat(line.digital), minutes: line.digital.minutes, place: line.digital.place }, line.digital.startsAt ? copy.sessionTime(line.digital.startsAt) : null)
+              : line.optionLabel,
+          ]
+            .filter(Boolean)
+            .join(' · ');
+          return (
+            <li key={i} className={styles.ln}>
+              <i aria-hidden="true">{line.photoUrl ? <img src={line.photoUrl} alt="" /> : line.itemName.trim().charAt(0).toUpperCase()}</i>
               <span>
-                <b>
-                  {line.quantity}× {line.itemName}
-                </b>
-                {line.digital ? (
-                  <span>{copy.digitalSub({ delivery: line.digital.delivery, format: lineFormat(line.digital), minutes: line.digital.minutes, place: line.digital.place }, line.digital.startsAt ? copy.sessionTime(line.digital.startsAt) : null)}</span>
-                ) : line.optionLabel ? (
-                  <span>{line.optionLabel}</span>
-                ) : null}
+                <b>{line.itemName}</b>
+                {small ? <small>{small}</small> : null}
               </span>
-              <span>{formatRinggit(line.unitPriceCents * line.quantity)}</span>
+              <em>{formatRinggit(line.unitPriceCents * line.quantity)}</em>
             </li>
-          ))}
-          {order.deliveryCents > 0 ? (
-            <li className={styles.line}>
-              <span>
-                <b>{copy.deliveryLabel}</b>
-              </span>
-              <span>{formatRinggit(order.deliveryCents)}</span>
-            </li>
-          ) : null}
-          {(order.discountCents ?? 0) > 0 ? (
-            <li className={styles.line}>
-              <span>
-                <b>{copy.voucherApplied(order.voucherLabel ?? 'Voucher', formatRinggit(order.discountCents ?? 0))}</b>
-              </span>
-            </li>
-          ) : null}
-        </ul>
-        <div className={styles.total}>
+          );
+        })}
+        {order.deliveryCents > 0 ? (
+          <li className={styles.row}>
+            <span>{copy.deliveryLabel}</span>
+            <span>{formatRinggit(order.deliveryCents)}</span>
+          </li>
+        ) : null}
+        {(order.discountCents ?? 0) > 0 ? (
+          <li className={styles.row}>
+            <span>{copy.voucherApplied(order.voucherLabel ?? 'Voucher', formatRinggit(order.discountCents ?? 0))}</span>
+          </li>
+        ) : null}
+        <li className={`${styles.row} ${styles.totalRow}`}>
           <span>{copy.total}</span>
-          <span>{total}</span>
-        </div>
-      </section>
+          <b>{total}</b>
+        </li>
+      </ul>
 
       {props.whatsapp ? (
         <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(order.number, order.code))} rel="noopener noreferrer">
@@ -607,6 +637,9 @@ export function OrderView(props: OrderViewProps) {
           {copy.whatsappAbout(name)}
         </a>
       ) : null}
+      <p className={styles.foot}>
+        <b>{copy.keepPage}</b> {copy.askLater(name, order.code)}
+      </p>
       </div>
     </Root>
   );
