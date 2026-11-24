@@ -311,7 +311,7 @@ export function SourceList({
   return (
     <div className={styles.wrap}>
       <div className={styles.introRow}>
-        <p className={styles.intro}>Links and text Curios read to learn about you. New facts go to Review first.</p>
+        <p className={styles.intro}>Links and text Curios reads to learn about you. New facts go to Review first.</p>
         {adding || sources.length === 0 ? null : (
           <button type="button" className={styles.addLink} onClick={() => setAdding(true)}>
             + Add a source
@@ -496,6 +496,8 @@ export function SourceList({
           })}
         </ul>
       )}
+
+      {sources.length > 0 ? <p className={styles.note}>Some sites, Instagram and TikTok especially, do not let us read them. Paste the text instead.</p> : null}
     </div>
   );
 }

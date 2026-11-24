@@ -7,6 +7,7 @@ import type { KnowledgeFact } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { sourcePlace } from '../_ui/source-place.js';
 import { useToast } from '../_ui/toast.js';
+import { RowMenu } from './row-menu.js';
 import styles from './knowledge.module.css';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
@@ -42,11 +43,41 @@ export function sourceKind(label: string): 'web' | 'instagram' | 'tiktok' | 'tex
   return 'web';
 }
 
-function origin(fact: KnowledgeFact): { label: string; icon: string } {
-  if (fact.origin === 'OWNER') return { label: 'Added by you', icon: ICONS.you };
-  if (fact.origin === 'UNTRACKED') return { label: 'Before tracking', icon: ICONS.before };
-  const label = fact.sourceLabel ?? 'A source';
-  return { label: sourcePlace(label), icon: ICONS[sourceKind(label)] };
+/** Sent on the window by the header's "+ Add a fact": the open Facts tab shows its add line. */
+export const ADD_FACT_EVENT = 'curios:add-fact';
+
+/** A file's name, as a source label shows one (pasted text is labelled by its first line). */
+const FILE_NAME = /\.(pdf|docx?|txt|rtf|csv|xlsx?|pptx?|png|jpe?g|webp|heic)$/i;
+/** A whole path segment that says the page lists what the owner sells ("/menu", "/harga"), not a word inside one ("/border"). */
+const MENU_SEGMENT = /^(menu|menus|harga|price|prices|pricing|katalog|catalog|catalogue)$/i;
+
+/**
+ * Where a fact came from, in the board's words. The app records the source's address, file name or the
+ * first line of pasted text, not what kind of page it was, so the kind is read from the address:
+ * an Instagram or TikTok profile, a page whose address says menu or prices, else the page's own address
+ * (host and path). A source that has since been removed leaves "Source removed"; a fact from before
+ * sources were tracked has no recorded source and says so.
+ */
+export function factSource(fact: KnowledgeFact): { label: string; href?: string; hint?: string } {
+  if (fact.origin === 'OWNER') return { label: 'You wrote this' };
+  if (fact.origin === 'UNTRACKED') return { label: 'Source not recorded', hint: 'Added before Curios kept track of where facts came from' };
+  const raw = fact.sourceLabel;
+  if (!raw) return { label: 'Source removed', hint: 'The source this came from has been removed' };
+  if (!/^https?:\/\//i.test(raw)) return { label: FILE_NAME.test(raw) ? raw : 'Pasted text', hint: raw };
+  let url: URL | null = null;
+  try {
+    url = new URL(raw);
+  } catch {
+    url = null;
+  }
+  const place = sourcePlace(raw);
+  const segments = url ? url.pathname.split('/').filter(Boolean) : [];
+  let label = place;
+  if (place.startsWith('instagram.com')) label = segments.length <= 1 ? 'Instagram bio' : 'Instagram post';
+  else if (place.startsWith('tiktok.com')) label = segments.length <= 1 ? 'TikTok profile' : 'TikTok video';
+  else if (segments.some((segment) => MENU_SEGMENT.test(segment))) label = 'Menu page';
+  // A label is cut at SOURCE_LABEL_MAX with an ellipsis: that address is not the page's, so it is not linked.
+  return url && !raw.endsWith('…') ? { label, href: url.href, hint: place } : { label, hint: place };
 }
 
 function FactRow({
@@ -64,13 +95,25 @@ function FactRow({
   const [draft, setDraft] = useState(fact.claim);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const from = origin(fact);
+  const from = factSource(fact);
+  const row = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+  /** Back in view after a Keep or Cancel, focus returns to the row's menu button. */
+  const refocus = useRef(false);
+
+  useEffect(() => {
+    if (mode === 'view' && refocus.current) {
+      refocus.current = false;
+      row.current?.querySelector<HTMLElement>('[aria-haspopup]')?.focus();
+    }
+  }, [mode]);
 
   async function run(action: () => Promise<void>) {
     setBusy(true);
     setError('');
     try {
       await action();
+      refocus.current = true;
       setMode('view');
     } catch (failure) {
       setError(toMessage(failure));
@@ -79,10 +122,18 @@ function FactRow({
     }
   }
 
+  function toView() {
+    refocus.current = true;
+    setError('');
+    setMode('view');
+  }
+
+  const menuLabel = 'More actions for this fact';
+
   return (
-    <li className={styles.row}>
+    <div ref={row} className={styles.frow} role="row" data-fact={fact.id} data-mode={mode} data-menu={menuOpen || undefined}>
       {mode === 'edit' ? (
-        <>
+        <div className={styles.fspan} role="cell">
           <input
             className={styles.edit}
             aria-label="Edit fact"
@@ -94,8 +145,7 @@ function FactRow({
               if (event.key === 'Enter' && draft.trim()) void run(() => onEdit(fact.id, draft.trim()));
               if (event.key === 'Escape') {
                 setDraft(fact.claim);
-                setError('');
-                setMode('view');
+                toView();
               }
             }}
           />
@@ -107,68 +157,69 @@ function FactRow({
             className={styles.btn2}
             onClick={() => {
               setDraft(fact.claim);
-              setError('');
-              setMode('view');
+              toView();
             }}
           >
             Cancel
           </button>
-        </>
+        </div>
       ) : mode === 'confirm' ? (
-        <>
+        <div className={styles.fspan} role="cell">
           <p className={`${styles.claim} ${styles.warn}`}>Remove it? The chat stops using it, and a re-read won’t bring it back.</p>
           <span className={styles.confirm} role="group" aria-label="Confirm removal">
-            <button type="button" disabled={busy} onClick={() => void run(() => onRemove(fact.id))}>
+            <button type="button" disabled={busy} autoFocus onClick={() => void run(() => onRemove(fact.id))}>
               Remove
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setError('');
-                setMode('view');
-              }}
-            >
+            <button type="button" onClick={toView}>
               Keep
             </button>
           </span>
-        </>
+        </div>
       ) : (
         <>
-          <p className={styles.claim}>{fact.claim}</p>
-          <span className={styles.origin} title={from.label}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d={from.icon} />
-            </svg>
-            <span>{from.label}</span>
+          <span className={styles.kindTag} role="cell">
+            {KIND_LABELS[fact.category]}
           </span>
-          <span className={styles.acts}>
-            <button type="button" className={styles.icb} title="Edit" aria-label="Edit fact" onClick={() => setMode('edit')}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d={ICONS.edit} />
-              </svg>
-            </button>
-            <button type="button" className={styles.icb} title="Remove" aria-label="Remove fact" onClick={() => setMode('confirm')}>
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d={ICONS.remove} />
-              </svg>
-            </button>
+          <p className={styles.claim} role="cell">
+            {fact.claim}
+          </p>
+          <span className={styles.origin} role="cell" title={from.hint}>
+            {from.href ? (
+              <a href={from.href} target="_blank" rel="noreferrer">
+                {from.label}
+              </a>
+            ) : (
+              from.label
+            )}
+          </span>
+          <span className={styles.menuCell} role="cell">
+            <RowMenu
+              label={menuLabel}
+              onOpenChange={setMenuOpen}
+              items={[
+                { label: 'Edit', onSelect: () => setMode('edit') },
+                { label: 'Remove', danger: true, onSelect: () => setMode('confirm') },
+              ]}
+            />
           </span>
         </>
       )}
 
       {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
+        <div className={styles.fspan} role="cell">
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        </div>
       ) : null}
-    </li>
+    </div>
   );
 }
 
 /**
- * Every accepted fact, grouped by kind, with a search and a filter by kind;
- * each one can be edited in place or removed. "+ Add a fact" opens a line to
- * write one, trusted straight away. Presentational: handlers are injected,
+ * Every accepted fact as one table (Topic, Fact, From) with a filter by kind and a search;
+ * each one can be edited in place or removed from its "···" menu. The header's "+ Add a fact"
+ * (ADD_FACT_EVENT) opens a line to write one, trusted straight away. Presentational: handlers are injected,
  * and `onChanged` is the one place a success asks the server to re-read.
  */
 export function FactList({
@@ -200,6 +251,9 @@ export function FactList({
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FactCategory | 'all'>('all');
   const field = useRef<HTMLInputElement>(null);
+  const table = useRef<HTMLDivElement>(null);
+  /** After a removal: the rows to give focus to, next first, then previous. */
+  const after = useRef<string[] | null>(null);
 
   useEffect(() => {
     if (adding) field.current?.focus();
@@ -210,6 +264,18 @@ export function FactList({
     setError('');
     setAdding(true);
   }
+
+  // The header's "+ Add a fact" (page.tsx) sits outside this tab: it asks for the add line by event.
+  const showAdd = useRef(openAdd);
+  showAdd.current = openAdd;
+  useEffect(() => {
+    const show = () => {
+      showAdd.current();
+      field.current?.focus();
+    };
+    window.addEventListener(ADD_FACT_EVENT, show);
+    return () => window.removeEventListener(ADD_FACT_EVENT, show);
+  }, []);
 
   async function add(event: FormEvent) {
     event.preventDefault();
@@ -235,8 +301,21 @@ export function FactList({
 
   const needle = query.trim().toLowerCase();
   const shown = facts.filter((f) => (filter === 'all' || f.category === filter) && (!needle || f.claim.toLowerCase().includes(needle)));
-  const groups = categories.map((c) => ({ category: c, facts: shown.filter((f) => f.category === c) })).filter((g) => g.facts.length > 0);
+  // The order of the kinds, then the order the facts came in.
+  const ordered = categories.flatMap((c) => shown.filter((f) => f.category === c));
   const counts = categories.map((c) => ({ category: c, n: facts.filter((f) => f.category === c).length })).filter((c) => c.n > 0);
+
+  // The removed row is gone once the server's read arrives: focus the next row's menu button, else the previous, else the search.
+  useEffect(() => {
+    const ids = after.current;
+    if (!ids) return;
+    after.current = null;
+    for (const id of ids) {
+      const button = table.current?.querySelector<HTMLElement>(`[data-fact="${CSS.escape(id)}"] [aria-haspopup]`);
+      if (button) return button.focus();
+    }
+    document.querySelector<HTMLElement>('input[aria-label="Search facts"]')?.focus();
+  }, [facts]);
 
   // Each row's own handlers wrap onChanged, so a success re-reads the server.
   const edit = async (id: string, text: string) => {
@@ -246,35 +325,14 @@ export function FactList({
   };
   const remove = async (id: string) => {
     await onRemove(id);
+    const at = ordered.findIndex((f) => f.id === id);
+    after.current = [ordered[at + 1]?.id, ordered[at - 1]?.id].filter((x): x is string => Boolean(x));
     say('Removed. The chat no longer uses it.');
     onChanged();
   };
 
   return (
     <div className={styles.wrap}>
-      <div className={styles.tool}>
-        <label className={styles.search}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" />
-            <path d="M16 16l4 4" />
-          </svg>
-          <input type="search" aria-label="Search facts" placeholder="Search your facts" value={query} onChange={(event) => setQuery(event.target.value)} />
-        </label>
-        <button type="button" className={styles.prim} aria-expanded={adding} onClick={() => (adding ? setAdding(false) : openAdd())}>
-          + Add a fact
-        </button>
-      </div>
-
-      {facts.length > 0 ? (
-        <div className={styles.chips} role="group" aria-label="Show">
-          {[{ category: 'all' as const, n: facts.length }, ...counts].map((c) => (
-            <button key={c.category} type="button" className={styles.chip} aria-pressed={filter === c.category} onClick={() => setFilter(c.category)}>
-              {c.category === 'all' ? 'All' : KIND_LABELS[c.category]} <i>{c.n}</i>
-            </button>
-          ))}
-        </div>
-      ) : null}
-
       {adding ? (
         <form className={styles.add} onSubmit={(event) => void add(event)}>
           <div className={styles.chips} role="radiogroup" aria-label="Kind of fact">
@@ -308,6 +366,25 @@ export function FactList({
           ) : null}
           <span>Facts you add are trusted straight away. No review needed.</span>
         </form>
+      ) : null}
+
+      {facts.length > 0 ? (
+        <div className={styles.ftb}>
+          <div className={styles.chips} role="group" aria-label="Show">
+            {[{ category: 'all' as const, n: facts.length }, ...counts].map((c) => (
+              <button key={c.category} type="button" className={styles.chip} aria-pressed={filter === c.category} onClick={() => setFilter(c.category)}>
+                {c.category === 'all' ? 'All' : KIND_LABELS[c.category]} <i>{c.n}</i>
+              </button>
+            ))}
+          </div>
+          <label className={styles.search}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16l4 4" />
+            </svg>
+            <input type="search" aria-label="Search facts" placeholder="Search your facts" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </label>
+        </div>
       ) : null}
 
       {toast}
@@ -351,22 +428,24 @@ export function FactList({
             </div>
           </div>
         )
-      ) : groups.length === 0 ? (
+      ) : ordered.length === 0 ? (
         <p className={styles.noMatch}>
-          <b>No match</b>
-          Nothing in your facts says that. Add it, and the chat can use it.
+          No facts match. Try another word.
         </p>
       ) : (
-        groups.map((group) => (
-          <section key={group.category} className={styles.group} data-kind={group.category}>
-            <h2>{KIND_LABELS[group.category]}</h2>
-            <ul className={styles.rows}>
-              {group.facts.map((fact) => (
-                <FactRow key={fact.id} fact={fact} ownerFactMax={ownerFactMax} onEdit={edit} onRemove={remove} />
-              ))}
-            </ul>
-          </section>
-        ))
+        <div ref={table} className={styles.tbl} role="table" aria-label="Your facts">
+          <div className={styles.thead} role="row">
+            <span role="columnheader">Topic</span>
+            <span role="columnheader">Fact</span>
+            <span role="columnheader">From</span>
+            <span role="columnheader">
+              <span className={styles.sr}>Actions</span>
+            </span>
+          </div>
+          {ordered.map((fact) => (
+            <FactRow key={fact.id} fact={fact} ownerFactMax={ownerFactMax} onEdit={edit} onRemove={remove} />
+          ))}
+        </div>
       )}
     </div>
   );
@@ -384,6 +463,11 @@ export function Facts({
   startAdding?: boolean;
 }) {
   const router = useRouter();
+  // "?add=1" opened the add line once; a refresh should not open it again.
+  useEffect(() => {
+    if (startAdding) router.replace('/app/knowledge?tab=facts', { scroll: false });
+    // Once, on arrival.
+  }, []);
   return (
     <FactList
       facts={facts}

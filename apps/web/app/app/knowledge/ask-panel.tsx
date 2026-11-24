@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
 import { Thinking } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
+import { SideSheet } from '../_ui/side-sheet.js';
 import { PageReply } from '../_ui/page-reply.js';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
 import styles from './knowledge.module.css';
@@ -85,12 +86,23 @@ function PeekWhistling() {
  * A normal AI chat on the dashboard's neutral panel (Dashboard v2), not the
  * page's own colours: this is the owner's tool, so it follows the dashboard
  * into dark mode, and its send button is the brand's.
+ *
+ * It lives in the dashboard's side sheet (the Dash board's `data-sh="ask"`), opened by the header's
+ * "Try your page". The sheet stays mounted while closed, so the chat is still there when it is
+ * reopened; the ask field is the sheet's footer.
  */
 export function AskPanel({
+  open,
+  onClose,
+  returnFocusTo,
   pageName,
   suggestions,
   onAsk,
 }: {
+  open: boolean;
+  onClose: () => void;
+  /** Where focus goes on close if the opener is gone. */
+  returnFocusTo?: RefObject<HTMLElement | null> | string;
   /** The page's display name, for the "{Name}’s page" label above its answers. */
   pageName?: string;
   suggestions: string[];
@@ -129,10 +141,30 @@ export function AskPanel({
   }
 
   return (
-    <aside className={styles.tester} aria-label="Try your page">
-      <h2>Ask your page</h2>
-      <p>Test what the chat says, using only what&apos;s here.</p>
-
+    <SideSheet
+      open={open}
+      onClose={onClose}
+      title="Ask your page"
+      subtitle="Test what the chat says, using only what’s here."
+      closeLabel="Close Ask your page"
+      returnFocusTo={returnFocusTo}
+      footer={
+        <form
+          className={styles.tin}
+          onSubmit={(event: FormEvent) => {
+            event.preventDefault();
+            void send(ask);
+          }}
+        >
+          <input data-autofocus aria-label="Ask your page" placeholder="Ask like a customer would" maxLength={500} value={ask} onChange={(event) => setAsk(event.target.value)} />
+          <button type="submit" aria-label="Send" disabled={thinking || !ask.trim()}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+        </form>
+      }
+    >
       <div ref={chat} className={styles.tchat} role="log" aria-live="polite" aria-label="Your page's answers">
         {turns.length === 0 && !thinking ? (
           <div className={styles.tempty}>
@@ -176,42 +208,45 @@ export function AskPanel({
       </div>
 
       {suggestions.length > 0 ? (
-        <div className={styles.sugg} role="group" aria-label="Try asking">
-          {suggestions.map((q) => (
-            <button key={q} type="button" disabled={thinking} onClick={() => void send(q)}>
-              {q}
-            </button>
-          ))}
-        </div>
+        <>
+          <p className={styles.tlabel}>Try asking</p>
+          <div className={styles.sugg} role="group" aria-label="Try asking">
+            {suggestions.map((q) => (
+              <button key={q} type="button" disabled={thinking} onClick={() => void send(q)}>
+                {q}
+              </button>
+            ))}
+          </div>
+        </>
       ) : null}
-
-      <form
-        className={styles.tin}
-        onSubmit={(event: FormEvent) => {
-          event.preventDefault();
-          void send(ask);
-        }}
-      >
-        <input aria-label="Ask your page" placeholder="Ask like a customer would" maxLength={500} value={ask} onChange={(event) => setAsk(event.target.value)} />
-        <button type="submit" aria-label="Send" disabled={thinking || !ask.trim()}>
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M12 19V5M5 12l7-7 7 7" />
-          </svg>
-        </button>
-      </form>
       {error ? (
         <p className={styles.error} role="alert">
           {error}
         </p>
       ) : null}
-    </aside>
+    </SideSheet>
   );
 }
 
 /** The real `onAsk`. A server component cannot pass functions. */
-export function Ask({ pageName, suggestions }: { pageName?: string; suggestions: string[] }) {
+export function Ask({
+  open,
+  onClose,
+  returnFocusTo,
+  pageName,
+  suggestions,
+}: {
+  open: boolean;
+  onClose: () => void;
+  returnFocusTo?: RefObject<HTMLElement | null> | string;
+  pageName?: string;
+  suggestions: string[];
+}) {
   return (
     <AskPanel
+      open={open}
+      onClose={onClose}
+      returnFocusTo={returnFocusTo}
       pageName={pageName}
       suggestions={suggestions}
       onAsk={(question, history) =>

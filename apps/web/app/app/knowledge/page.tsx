@@ -16,21 +16,18 @@ import { Sources } from './sources-tab.js';
 import { Facts } from './facts-tab.js';
 import { Pinned } from './pinned-tab.js';
 import { NeverSay } from './never-say-tab.js';
-import { Ask } from './ask-panel.js';
+import { HeadActions } from './head-actions.js';
 import { PageHead } from '../_ui/page-head.js';
 import { STARTERS } from '../_ui/starters.js';
 import styles from './knowledge.module.css';
 
 /**
  * Everything the chat answers from, in one place, and the way to remove any
- * of it; beside it, "Ask your page" to hear what the chat says with it. The
+ * of it. The header carries "Try your page" (opens "Ask your page" as a side
+ * sheet, to hear what the chat says with it) and "+ Add a fact". The
  * tab is in the address (`?add=1` opens a tab's add form). Constants the
  * client tabs need cross as props: a client component may not import the
  * core barrel.
- *
- * The header sits at the top of the left column only: "Ask your page" runs
- * the full height of the sheet beside it, split off by one thin line
- * (Dashboard v2).
  */
 export default async function KnowledgePage({
   searchParams,
@@ -57,7 +54,9 @@ export default async function KnowledgePage({
     <div className={styles.kb}>
       <div className={styles.kmain}>
         <div className={styles.head}>
-          <PageHead title="Facts & sources" summary="Everything your page knows, and where it learned it." />
+          <PageHead kicker="Knowledge" title="Facts & sources" summary="Everything your page knows, and where it learned it.">
+            <HeadActions tab={tab} pageName={page.displayName} suggestions={suggestions} />
+          </PageHead>
         </div>
         <KnowledgeTabs
           current={tab}
@@ -78,7 +77,6 @@ export default async function KnowledgePage({
           <NeverSay entries={knowledge.neverSay} max={NEVER_SAY_MAX} maxChars={NEVER_SAY_MAX_CHARS} />
         )}
       </div>
-      <Ask pageName={page.displayName} suggestions={suggestions} />
     </div>
   );
 }

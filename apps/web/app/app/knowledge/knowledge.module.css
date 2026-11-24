@@ -1,9 +1,8 @@
 /*
  * Facts & sources, from the design handoff's Dash board: the screen's
- * header and four tabs (Facts, Sources, Pinned answers, Never say) over a
- * column of plain rows, and beside them, running the full height of the
- * sheet, "Ask your page": a normal AI chat on the dashboard's neutral panel
- * that answers only from what is here (Dashboard v2).
+ * header ("Try your page", "+ Add a fact") and four tabs (Facts, Sources,
+ * Pinned answers, Never say) over one column; "Ask your page" is a normal AI
+ * chat in the dashboard's side sheet that answers only from what is here.
  */
 
 @keyframes fadeUp {
@@ -91,12 +90,10 @@
   border: 0;
 }
 
-/* ---- The two columns ---- */
+/* ---- The column ---- */
 
 .kb {
   flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
   min-height: 0;
 }
 
@@ -109,11 +106,16 @@
    40px sides, so the header keeps only its top and bottom. Its alert, if any, follows it. */
 .head > header {
   --head-x: 0px;
-  padding: 28px 0 20px;
+  padding: 0 0 20px;
 }
 
 .head > div {
   padding: 0 0 20px;
+}
+
+/* The header's two buttons, 38px as the board's .btn.sm. */
+.headBtn {
+  height: 38px;
 }
 
 /* ---- Tabs ---- */
@@ -354,15 +356,23 @@
 
 /* ---- Facts ---- */
 
-.tool {
+/* The kind chips on the left, the search on the right (the board's .xftb). */
+.ftb {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 10px 16px;
+  margin-top: 20px;
+}
+
+.ftb .chips {
+  margin-top: 0;
 }
 
 .search {
   display: flex;
-  flex: 1;
+  flex: 0 1 280px;
   align-items: center;
   gap: 8px;
   height: 40px;
@@ -397,10 +407,6 @@
   font: inherit;
   color: var(--ink);
   outline: none;
-}
-
-.tool .prim {
-  height: 40px;
 }
 
 .chips {
@@ -513,46 +519,65 @@
   --dot: var(--muted);
 }
 
-.group {
-  margin-top: 22px;
+/* The facts as one table (the board's .tbl): Topic | Fact | From | the row menu. */
+.tbl {
+  position: relative;
+  margin-top: 14px;
 }
 
-/* The kind's name in plain case over its rows (boards' v3), no colour dot. */
-.group > h2 {
-  margin: 0 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-
-/* Plain rows, each with a hairline under it, no box around them. */
-.rows {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.rows > li {
+.thead,
+.frow {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) minmax(0, 190px) 32px;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
 
-.row {
+.thead {
+  padding: 6px 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.frow {
+  min-height: 52px;
+  animation: fadeUp 300ms ease both;
+  /* A page can know hundreds of facts: the rows off screen are laid out (and animated) only as
+     they scroll near, which took a fifth off opening this screen, measured with 300 facts. An open
+     row menu hangs below its row, so that row is laid out in full. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+
+.frow[data-menu] {
+  content-visibility: visible;
+}
+
+/* The row being edited or removed: one cell across the whole row. */
+.fspan {
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  min-height: 46px;
-  padding: 8px 0;
-  animation: fadeUp 300ms ease both;
-  /* A page can know hundreds of facts: the rows off screen are laid out (and animated) only as
-     they scroll near, which took a fifth off opening this screen, measured with 300 facts. */
-  content-visibility: auto;
-  contain-intrinsic-size: auto 46px;
 }
 
-.row:hover .acts,
-.row:focus-within .acts {
-  opacity: 1;
+/* The topic: the board's grey tag. */
+.kindTag {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .claim {
@@ -560,37 +585,102 @@
   min-width: 0;
   margin: 0;
   font-size: 14px;
+  font-weight: 500;
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
-/* Where a fact came from: quiet text with its icon. */
+/* Where a fact came from, in plain words; a web page is a quiet link that underlines on hover. */
 .origin {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 6px;
-  max-width: 210px;
-  height: 26px;
-  color: var(--faint);
-  font-size: 12px;
-  white-space: nowrap;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
 }
 
-.origin span {
-  overflow: hidden;
-  text-overflow: ellipsis;
+.origin a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 200ms, color 200ms;
 }
 
-.origin svg {
-  width: 12px;
-  height: 12px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.origin a:hover {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
+.menuCell {
+  justify-self: end;
+}
+
+/* The "···" row menu. */
+.menuRoot {
+  position: relative;
+}
+
+.more {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.more:hover,
+.more[aria-expanded='true'] {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.more:focus-visible,
+.menuItem:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: grid;
+  min-width: 150px;
+  padding: 6px;
+  border-radius: var(--r-box);
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 32px -12px var(--soft-shadow);
+}
+
+.menuItem {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menuItem:hover,
+.menuItem:focus {
+  background: var(--surface);
+}
+
+.menuItem[data-danger] {
+  color: var(--tag-red-ink);
 }
 
 .edit {
@@ -606,16 +696,16 @@
   outline: none;
 }
 
-.row > .prim {
+.fspan > .prim {
   height: 38px;
 }
 
-.row > .btn2 {
+.fspan > .btn2 {
   height: 38px;
 }
 
-.row > .error {
-  flex-basis: 100%;
+.frow > .error {
+  grid-column: 1 / -1;
   margin: 0;
 }
 
@@ -1274,26 +1364,11 @@
 
 /* ---- Ask your page ---- */
 
-/* On white beside the left column, split from it by one thin line, the full height of the sheet. */
-.tester {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 0;
-  padding: 28px 32px;
-  border-left: 1px solid var(--line);
-  background: var(--card);
-}
-
-.tester h2 {
-  margin: 0;
-  font-size: 15px;
+/* "Try asking" over the starter questions, the board's .lab2. */
+.tlabel {
+  margin: 8px 0 -4px;
+  font-size: 12.5px;
   font-weight: 600;
-}
-
-.tester > p {
-  margin: -8px 0 0;
-  font-size: 13px;
   color: var(--muted);
 }
 
@@ -1423,6 +1498,7 @@
 
 .tin {
   display: flex;
+  flex: 1;
   align-items: center;
   gap: 6px;
   padding: 5px 5px 5px 14px;
@@ -1476,49 +1552,11 @@
   stroke-linejoin: round;
 }
 
-.tester .error {
-  margin: -6px 0 0;
-}
-
 /* ---- Narrower ---- */
 
 @media (hover: none) {
   .acts {
     opacity: 1;
-  }
-}
-
-@media (min-width: 1201px) and (max-width: 1400px) {
-  .kb {
-    grid-template-columns: minmax(0, 1fr) 360px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .kb {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .tester {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-}
-
-/* Beside the column, Ask your page stays in view as the facts scroll, under the frame's top bar. */
-@media (min-width: 1201px) {
-  .tester {
-    position: sticky;
-    top: 0;
-    align-self: start;
-    height: calc(100vh / var(--page-zoom, 1) - 64px);
-    min-height: 600px;
-  }
-
-  .tchat {
-    flex: 1;
-    min-height: 0;
-    max-height: none;
   }
 }
 
@@ -1529,11 +1567,7 @@
 
   .head > header {
     --head-x: 0px;
-    padding: 20px 0 14px;
-  }
-
-  .tester {
-    padding: 20px 16px;
+    padding: 0 0 14px;
   }
 }
 
@@ -1543,21 +1577,46 @@
 }
 
 @container (max-width: 680px) {
-  .tool {
-    flex-wrap: wrap;
-  }
-
   .search {
     flex: 1 1 100%;
   }
 
-  .claim {
-    flex: 1 1 100%;
+  /* One card per fact: the topic and its menu on a line, then the fact, then where it came from. */
+  /* Hidden to the eye only: the headers stay for a screen reader. */
+  .thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 
-  .origin {
-    max-width: 100%;
-    margin-right: auto;
+  .frow {
+    grid-template-columns: minmax(0, 1fr) 32px;
+    grid-template-areas:
+      'kind menu'
+      'claim claim'
+      'from from';
+  }
+
+  .frow > .kindTag {
+    grid-area: kind;
+  }
+
+  .frow > .claim {
+    grid-area: claim;
+  }
+
+  .frow > .origin {
+    grid-area: from;
+  }
+
+  .frow > .menuCell {
+    grid-area: menu;
   }
 
   .src {
@@ -1576,7 +1635,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .wrap,
-  .row,
+  .frow,
   .add,
   .es,
   .esRows > span,

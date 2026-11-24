@@ -25,8 +25,8 @@ vi.mock('./sources-tab.js', () => ({ Sources }));
 vi.mock('./facts-tab.js', () => ({ Facts }));
 vi.mock('./pinned-tab.js', () => ({ Pinned }));
 vi.mock('./never-say-tab.js', () => ({ NeverSay }));
-const Ask = vi.fn((_p: object): ReactElement | null => null);
-vi.mock('./ask-panel.js', () => ({ Ask }));
+const HeadActions = vi.fn((_p: object): ReactElement | null => <button type="button">Try your page</button>);
+vi.mock('./head-actions.js', () => ({ HeadActions }));
 
 const KnowledgePage = (await import('./page.js')).default;
 
@@ -130,37 +130,38 @@ describe('KnowledgePage', () => {
   });
 
   // What customers ask most, to try; a page nobody has asked yet gets starters for its kind.
-  it('suggests what customers ask most in Ask your page', async () => {
+  it('suggests what customers ask most in Ask your page (the sheet the header opens)', async () => {
     getTopics.mockResolvedValue([{ title: 'Berapa kek coklat 2kg?' }, { title: 'Ada delivery?' }]);
     render(await open());
     expect(getTopics).toHaveBeenCalledWith('acc1', { limit: 4 });
-    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['Berapa kek coklat 2kg?', 'Ada delivery?'] });
+    expect(HeadActions.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['Berapa kek coklat 2kg?', 'Ada delivery?'] });
   });
 
   it('suggests starters when nobody has asked yet', async () => {
     getOwnerPage.mockResolvedValue({ ...page, mode: 'PERSONAL' });
     render(await open());
-    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['What do you do?', 'How can I reach you?', 'Where are you based?', 'What have you worked on?'] });
+    expect(HeadActions.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['What do you do?', 'How can I reach you?', 'Where are you based?', 'What have you worked on?'] });
   });
 
   // Dashboard v2: Ask your page is a normal AI chat on the dashboard's neutral panel, so it takes
   // the page's name for its replies but not the page's colours.
   it('gives Ask your page the page name, not its colours', async () => {
     render(await open());
-    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ pageName: 'Nadia' });
-    expect(Ask.mock.calls[0]?.[0]).not.toHaveProperty('look');
+    expect(HeadActions.mock.calls[0]?.[0]).toMatchObject({ pageName: 'Nadia' });
+    expect(HeadActions.mock.calls[0]?.[0]).not.toHaveProperty('look');
   });
 
-  // Dashboard v2: "Ask your page" runs the full height of the sheet, so the
-  // header sits over the left column only, with the tabs under it.
-  it('puts the header over the left column, with the tabs', async () => {
-    Ask.mockImplementationOnce(() => <aside aria-label="Try your page" />);
-    render(await open());
+  // The Dash board's header: kicker "Knowledge", the title, and the two actions; "Ask your page" is a
+  // side sheet the header opens, not a column beside the tabs.
+  it('draws the header with its kicker and actions, over the tabs', async () => {
+    render(await open('sources'));
     const title = screen.getByRole('heading', { level: 1, name: 'Facts & sources' });
-    const side = screen.getByRole('complementary', { name: 'Try your page' });
-    expect(side.contains(title)).toBe(false);
-    expect(side.previousElementSibling).toContainElement(title);
-    expect(side.previousElementSibling).toContainElement(screen.getByRole('navigation', { name: 'Knowledge' }));
+    const head = title.closest('header') as HTMLElement;
+    expect(head).toHaveTextContent('Knowledge');
+    expect(head).toContainElement(screen.getByRole('button', { name: 'Try your page' }));
+    expect(HeadActions.mock.calls[0]?.[0]).toMatchObject({ tab: 'sources' });
+    expect(screen.queryByRole('complementary')).toBeNull();
+    expect(screen.getByRole('navigation', { name: 'Knowledge' })).toBeInTheDocument();
   });
 
   // AppFrame renders its own main around every screen it wraps, this one

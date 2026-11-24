@@ -7,6 +7,8 @@ import { AskPanel } from './ask-panel.js';
 
 function panel(overrides: Partial<Parameters<typeof AskPanel>[0]> = {}) {
   const props = {
+    open: true,
+    onClose: vi.fn(),
     suggestions: ['Berapa kek coklat 2kg?', 'Ada delivery?'],
     onAsk: vi.fn().mockResolvedValue({ reply: 'Kek coklat 2kg RM170.', from: 'facts' as const }),
     ...overrides,
@@ -18,6 +20,19 @@ function panel(overrides: Partial<Parameters<typeof AskPanel>[0]> = {}) {
 const log = () => screen.getByRole('log', { name: "Your page's answers" });
 
 describe('AskPanel', () => {
+  // The Dash board's side sheet: a dialog the header opens; shut, nothing in it can be reached.
+  it('is the dashboard’s side sheet, closing on Escape and inert while shut', async () => {
+    const props = panel();
+    expect(screen.getByRole('dialog', { name: 'Ask your page' })).toHaveTextContent('Test what the chat says, using only what’s here.');
+    await userEvent.keyboard('{Escape}');
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it('hides from the page while closed', () => {
+    panel({ open: false });
+    expect(screen.queryByRole('dialog', { name: 'Ask your page' })).toBeNull();
+  });
+
   it('says what it is for before anything is asked', () => {
     panel();
     expect(within(log()).getByText(/the way a customer would/i)).toBeInTheDocument();
@@ -45,7 +60,7 @@ describe('AskPanel', () => {
   it('draws the chat as a dashboard chat, not in the page’s colours', () => {
     panel();
     expect(log()).not.toHaveAttribute('data-island');
-    expect(screen.getByRole('complementary', { name: 'Try your page' })).not.toHaveAttribute('data-on-accent');
+    expect(screen.getByRole('dialog', { name: 'Ask your page' })).not.toHaveAttribute('data-on-accent');
     const css = readFileSync(join(import.meta.dirname, 'knowledge.module.css'), 'utf8').replace(/\r/g, '');
     const body = /\n\.tchat \{([^}]*)\}/.exec(css)?.[1] ?? '';
     expect(body).toMatch(/background: var\(--chat\);/);
