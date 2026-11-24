@@ -58,7 +58,7 @@
   margin: 0;
 }
 
-.sy :where(a:not(header a)) {
+:where(.sy a) {
   color: inherit;
   text-decoration: none;
 }

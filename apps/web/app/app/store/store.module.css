@@ -1278,6 +1278,13 @@
   list-style: none;
 }
 
+/* No room below the field: the list opens above it instead of stretching the page (bank-picker.tsx). */
+.bankList[data-up] {
+  top: auto;
+  bottom: calc(100% + 6px);
+  box-shadow: 0 0 0 1px var(--edge), 0 -12px 32px rgb(0 0 0 / 16%);
+}
+
 .bankList li {
   display: flex;
   align-items: center;

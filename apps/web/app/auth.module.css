@@ -56,8 +56,8 @@
   margin: 0;
 }
 
-/* Links take the text colour, except the site header's (its buttons keep their own colours). */
-.auth :where(a:not(header a)) {
+/* Links take the text colour, at zero specificity: any link with its own styles (the nav's buttons) keeps them. */
+:where(.auth a) {
   color: inherit;
   text-decoration: none;
 }
