@@ -456,3 +456,10 @@ describe('the address row', () => {
     expect(css).toMatch(/\.addr \.viewLink\s*{[^}]*height:\s*44px/);
   });
 });
+
+describe('the preview follows the page cover layout', () => {
+  it('anchors a Full-page cover to the page inside the phone', () => {
+    const css = readFileSync(join(import.meta.dirname, '../_ui/editor.module.css'), 'utf8');
+    expect(css).toMatch(/\.scroll > \[data-bento-page\]\[data-cover-layout='FULL'\]\s*\{\s*position:\s*relative;/);
+  });
+});

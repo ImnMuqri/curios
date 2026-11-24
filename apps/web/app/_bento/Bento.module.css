@@ -761,11 +761,26 @@
 /* ---- Ask tab ---- */
 
 /*
- * Asking collapses the header to the name (More board, .cu-hd.sm): the cover, the picture, the address,
- * the profiles and the bio fold away, and the name drops to 26px over the tabs.
+ * Asking collapses the header (More board, .cu-hd.sm): the cover band, the address, the profiles and the
+ * bio fold away, and the name drops to 26px over the tabs. The picture stays, small and fixed (the
+ * owner's size choice is for the Links header), above the name, with the owner's border choice.
  */
-.page[data-mode='chat'] :is(.cover:not(.coverFull), .avatar, .handle, .socials, .bio) {
+.page[data-mode='chat'] :is(.cover:not(.coverFull), .handle, .socials, .bio) {
   display: none;
+}
+
+.page[data-mode='chat'] .head {
+  --avatar-size: 42px;
+  --head-gap: 8px;
+}
+
+.page[data-mode='chat'] .head > .avatar {
+  margin-top: 0;
+  box-shadow: 0 0 0 3px var(--page-bg);
+}
+
+.page[data-mode='chat'][data-avatar-border='off'] .head > .avatar {
+  box-shadow: none;
 }
 
 .page[data-mode='chat'] .head {

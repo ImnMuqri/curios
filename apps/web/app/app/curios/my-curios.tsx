@@ -304,6 +304,7 @@ export function MyCuriosEditor({
             askPage={api.askPage}
             accent={page.accentColor}
             name={page.displayName}
+            avatarUrl={page.avatarUrl}
           />
         </BentoPage>
       </PreviewFrame>
@@ -319,7 +320,7 @@ export function MyCuriosEditor({
  * never shows a sample answer the page would not give, and a model call is
  * spent only when asked for.
  */
-function PreviewAsk({ question, askPage, accent, name }: { question: string; askPage: CuriosApi['askPage']; accent: string; name: string }) {
+function PreviewAsk({ question, askPage, accent, name, avatarUrl }: { question: string; askPage: CuriosApi['askPage']; accent: string; name: string; avatarUrl: string | null }) {
   const [state, setState] = useState<{ kind: 'idle' } | { kind: 'asking' } | { kind: 'answered'; reply: string } | { kind: 'failed' }>({ kind: 'idle' });
 
   async function ask() {
@@ -335,9 +336,9 @@ function PreviewAsk({ question, askPage, accent, name }: { question: string; ask
     <span className={styles.pvChat} style={{ '--accent': accent } as CSSProperties}>
       <VisitorQuestion onPage>{question}</VisitorQuestion>
       {state.kind === 'answered' ? (
-        <PageReply name={name} onPage>{state.reply}</PageReply>
+        <PageReply name={name} avatarUrl={avatarUrl} onPage>{state.reply}</PageReply>
       ) : state.kind === 'asking' ? (
-        <PageReply name={name} label="Inquiring" onPage>
+        <PageReply name={name} avatarUrl={avatarUrl} label="Inquiring" onPage>
           <Thinking />
         </PageReply>
       ) : (
@@ -356,6 +357,7 @@ function PreviewTabBody({
   askPage,
   accent,
   name,
+  avatarUrl,
 }: {
   tab: PreviewTab;
   hasLinks: boolean;
@@ -363,7 +365,8 @@ function PreviewTabBody({
   askPage: CuriosApi['askPage'];
   accent: string;
   name: string;
+  avatarUrl: string | null;
 }) {
   if (tab === 'links') return hasLinks ? null : <span className={styles.previewEmpty}>Your links show here</span>;
-  return <PreviewAsk question={question} askPage={askPage} accent={accent} name={name} />;
+  return <PreviewAsk question={question} askPage={askPage} accent={accent} name={name} avatarUrl={avatarUrl} />;
 }

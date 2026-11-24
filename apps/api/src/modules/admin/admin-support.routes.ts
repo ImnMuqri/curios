@@ -70,7 +70,7 @@ export const adminSupportRoutes: FastifyPluginAsyncZod<AdminSupportRouteOptions>
 
   app.post(
     '/admin/support/threads/:id/status',
-    { schema: { params, body: z.object({ status: z.enum(['OPEN', 'DONE']) }) } },
+    { schema: { params, body: z.object({ status: z.enum(['OPEN', 'DONE', 'SPAM']) }) } },
     async (request, res) => {
       await setStatus(await deps(), adminActor(request), request.params.id, request.body.status);
       return res.status(204).send();

@@ -140,9 +140,14 @@
 }
 
 .wrap {
-  max-width: 820px;
+  /* Full column: Facts and Sources are tables and lists that use the width. */
   padding-top: 22px;
   animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Pinned answers and Never say are prose, so they keep a reading width. */
+.wrapRead {
+  max-width: 820px;
 }
 
 .intro {
@@ -517,7 +522,7 @@
 .thead,
 .frow {
   display: grid;
-  grid-template-columns: 96px minmax(0, 1fr) minmax(0, 190px) 32px;
+  grid-template-columns: 120px minmax(0, 1fr) minmax(0, 220px) 32px;
   align-items: center;
   gap: 4px 16px;
   padding: 8px 0;

@@ -276,10 +276,20 @@ export async function markRead(deps: AdminSupportDeps, id: string): Promise<void
  */
 const SUPPORT_AUDIT_TARGET = { targetType: 'SupportThread', targetLabel: 'Support conversation' } as const;
 
-export async function setStatus(deps: AdminSupportDeps, actor: AdminActor, id: string, status: 'OPEN' | 'DONE'): Promise<void> {
+/**
+ * Marking a thread spam is what makes its address spam: the mail worker files a new thread from an
+ * address with a SPAM thread straight into Spam. So Not spam clears the address, not only the one
+ * thread: its other SPAM threads come back to Open too, or the next mail would land in Spam again
+ * and the click would have done nothing. Reopening a Done thread touches nothing else.
+ */
+export async function setStatus(deps: AdminSupportDeps, actor: AdminActor, id: string, status: 'OPEN' | 'DONE' | 'SPAM'): Promise<void> {
   await deps.prisma.$transaction(async (tx) => {
-    const done = await tx.supportThread.updateMany({ where: { id }, data: { status } });
-    if (done.count === 0) throw new SupportNotFoundError();
+    const thread = await tx.supportThread.findUnique({ where: { id }, select: { address: true, status: true } });
+    if (!thread) throw new SupportNotFoundError();
+    await tx.supportThread.update({ where: { id }, data: { status } });
+    if (status === 'OPEN' && thread.status === 'SPAM') {
+      await tx.supportThread.updateMany({ where: { address: thread.address, status: 'SPAM' }, data: { status: 'OPEN' } });
+    }
     await writeAudit(tx, {
       adminUserId: actor.adminId,
       action: ADMIN_ACTIONS.CHANGED_SUPPORT_STATUS,

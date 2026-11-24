@@ -360,6 +360,27 @@ describe('SupportScreen', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it('marks an open conversation as spam', async () => {
+    const user = await openFirst();
+
+    await user.click(screen.getByRole('button', { name: 'Mark as spam' }));
+
+    const posted = calls('POST', '/admin/support/threads/t1/status');
+    expect(JSON.parse(posted[0]![1].body)).toEqual({ status: 'SPAM' });
+    expect(await screen.findByRole('status')).toHaveTextContent('Moved to Spam.');
+    expect(screen.getByRole('button', { name: 'Not spam' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark as spam' })).not.toBeInTheDocument();
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it('offers Mark as spam on a done conversation, beside Reopen', async () => {
+    const user = await openFirst();
+    await user.click(screen.getByRole('button', { name: 'Mark done' }));
+    await screen.findByRole('button', { name: 'Reopen' });
+
+    expect(screen.getByRole('button', { name: 'Mark as spam' })).toBeInTheDocument();
+  });
+
   it('offers Not spam instead of Mark done on a spam conversation, which moves it back to Open', async () => {
     const spam = thread({ id: 't3', subject: 'You won', status: 'SPAM', unread: false, owner: null, address: 'win@spam.example', name: null });
     threads = [spam];
@@ -370,6 +391,7 @@ describe('SupportScreen', () => {
     await screen.findByRole('heading', { name: 'You won', level: 2 });
 
     expect(screen.queryByRole('button', { name: 'Mark done' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Mark as spam' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Not spam' }));
 
     const posted = calls('POST', '/admin/support/threads/t3/status');

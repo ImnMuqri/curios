@@ -26,4 +26,16 @@ describe('store.module.css, after the owner review of 24 Nov 2026', () => {
     expect(phone).toMatch(/\.shelf \.addTop \{\s*display: inline-flex;/);
     expect(phone).toMatch(/\.cardAdd \{\s*display: none;/);
   });
+
+  it('puts About your shop and Halal above the items, after the ready box', () => {
+    const src = readFileSync(join(import.meta.dirname, 'store-editor.tsx'), 'utf8');
+    const ready = src.indexOf('Ready to take orders');
+    const about = src.indexOf('id="about-title"');
+    const halal = src.indexOf('<b>Halal shop</b>');
+    const list = src.indexOf('<ItemsList');
+    expect(ready).toBeGreaterThan(0);
+    expect(about).toBeGreaterThan(ready);
+    expect(halal).toBeGreaterThan(about);
+    expect(list).toBeGreaterThan(halal);
+  });
 });

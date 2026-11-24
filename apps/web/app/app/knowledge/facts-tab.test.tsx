@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -313,5 +315,21 @@ describe('the row menu', () => {
     await choose('Kek RM95.', 'Edit');
     await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(button('Kek RM95.')).toHaveFocus();
+  });
+});
+
+describe('knowledge.module.css widths', () => {
+  const css = readFileSync(join(import.meta.dirname, 'knowledge.module.css'), 'utf8').replace(/\r/g, '');
+  const rule = (name: string) => css.slice(css.indexOf('\n' + name + ' {')).split('}')[0] ?? '';
+
+  it('lets the facts table span the whole column, the Fact column taking the extra', () => {
+    expect(rule('.wrap')).not.toMatch(/max-width/);
+    expect(css).toMatch(/grid-template-columns: 120px minmax\(0, 1fr\) minmax\(0, 220px\) 32px;/);
+  });
+
+  it('keeps a reading width only for the prose tabs', () => {
+    expect(rule('.wrapRead')).toMatch(/max-width: 820px;/);
+    for (const f of ['pinned-tab.tsx', 'never-say-tab.tsx']) expect(readFileSync(join(import.meta.dirname, f), 'utf8')).toContain('styles.wrapRead');
+    for (const f of ['facts-tab.tsx', 'sources-tab.tsx']) expect(readFileSync(join(import.meta.dirname, f), 'utf8')).not.toContain('wrapRead');
   });
 });

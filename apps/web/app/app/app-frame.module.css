@@ -559,8 +559,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  /* The same white as the ground in light (one surface, no hairline round it); dark keeps its lifted card. */
-  background: var(--card);
+  /* The ground itself, so the top bar, the sidebar and the page are one surface in light and dark alike
+     (owner, 25 Nov: the lifted dark sheet read as a separate bar). Cards on the page keep --card. */
+  background: var(--ground);
   border-radius: 0;
 }
 

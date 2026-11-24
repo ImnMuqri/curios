@@ -209,6 +209,21 @@
   background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--sky))) 10.5px, transparent 11px) no-repeat;
 }
 
+/* The owner's picture over the dot: the dot stays under it, so a picture that fails to load leaves the dot. */
+.who {
+  position: relative;
+}
+
+.whoPic {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 /* The product card: the deleted Public board's .sp-pc. */
 .productCard {
   display: flex;

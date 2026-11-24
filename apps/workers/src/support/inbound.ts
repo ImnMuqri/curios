@@ -76,12 +76,14 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
 
       let threadId = joined?.id;
       if (!threadId) {
+        // An address the admin has marked spam stays spam: any thread of it in SPAM files this one there.
+        const marked = spam || (await tx.supportThread.findFirst({ where: { address: replyAddress, status: 'SPAM' }, select: { id: true } })) !== null;
         const owner = await tx.account.findFirst({
           where: { email: { equals: from.address, mode: 'insensitive' } },
           select: { id: true },
         });
         const thread = await tx.supportThread.create({
-          data: { address: replyAddress, name: from.name, subject, accountId: owner?.id ?? null, lastMessageAt: now, status: spam ? 'SPAM' : 'OPEN' },
+          data: { address: replyAddress, name: from.name, subject, accountId: owner?.id ?? null, lastMessageAt: now, status: marked ? 'SPAM' : 'OPEN' },
         });
         threadId = thread.id;
       } else {

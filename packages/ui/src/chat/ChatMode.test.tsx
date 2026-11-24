@@ -996,3 +996,29 @@ describe('ChatMode, styling', () => {
     expect(panelBlock).not.toMatch(/position:/);
   });
 });
+
+describe('ChatMode, the speaker line', () => {
+  const ask = async (avatarUrl?: string | null) => {
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"text","text":"RM45."}\n\n'));
+    const { container } = render(
+      <ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={['Berapa harga?']} avatarUrl={avatarUrl} />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa harga?' }));
+    await waitFor(() => expect(screen.getByText(/RM45\./)).toBeInTheDocument());
+    return container.ownerDocument.body;
+  };
+
+  it('shows the picture, small and with no alt, beside the label', async () => {
+    const body = await ask('/a.webp');
+    const who = screen.getByText('Nadia Bakes’s page');
+    const img = who.querySelector('img');
+    expect(img).toHaveAttribute('src', '/a.webp');
+    expect(img).toHaveAttribute('alt', '');
+    expect(body).toBeTruthy();
+  });
+
+  it('keeps the dot when there is no picture', async () => {
+    await ask(null);
+    expect(screen.getByText('Nadia Bakes’s page').querySelector('img')).toBeNull();
+  });
+});

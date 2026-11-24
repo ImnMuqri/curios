@@ -327,6 +327,15 @@ describe('processInbound', () => {
     expect(await prisma.supportThread.count({ where: { address, status: 'OPEN' } })).toBe(0);
   });
 
+  it('files a new thread from an address the admin marked spam as spam, though it passes authentication', async () => {
+    const address = unique('marked');
+    await prisma.supportThread.create({ data: { address, subject: 'Old junk', status: 'SPAM', unread: false, lastMessageAt: new Date() } });
+    const emailId = newEmailId();
+    await processInbound(deps(aResend(anEmail({ from: address, subject: 'A different subject' }))), emailId);
+
+    expect((await messageOf(emailId))?.thread.status).toBe('SPAM');
+  });
+
   it('keeps a spam thread spam when a reply that passes arrives', async () => {
     const address = unique('stillspam');
     const first = newEmailId();

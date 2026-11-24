@@ -67,7 +67,7 @@ export function NeverSayList({
   }
 
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} ${styles.wrapRead}`}>
       <div className={styles.nsNote}>
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 9v4M12 17h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />

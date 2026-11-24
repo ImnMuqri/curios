@@ -270,7 +270,7 @@ export function SupportScreen() {
     );
   }
 
-  async function move(status: 'OPEN' | 'DONE', done: string) {
+  async function move(status: 'OPEN' | 'DONE' | 'SPAM', done: string) {
     if (!detail) return;
     const id = detail.thread.id;
     setBusy(true);
@@ -501,14 +501,21 @@ export function SupportScreen() {
                       <button type="button" className={styles.ghost} disabled={busy} onClick={() => void move('OPEN', 'Moved to Open.')}>
                         Not spam
                       </button>
-                    ) : thread.status === 'DONE' ? (
-                      <button type="button" className={styles.ghost} disabled={busy} onClick={() => void move('OPEN', 'Reopened.')}>
-                        Reopen
-                      </button>
                     ) : (
-                      <button type="button" className={styles.ghost} disabled={busy} onClick={() => void move('DONE', 'Marked done.')}>
-                        Mark done
-                      </button>
+                      <>
+                        <button type="button" className={styles.ghost} disabled={busy} onClick={() => void move('SPAM', 'Moved to Spam.')}>
+                          Mark as spam
+                        </button>
+                        {thread.status === 'DONE' ? (
+                          <button type="button" className={styles.ghost} disabled={busy} onClick={() => void move('OPEN', 'Reopened.')}>
+                            Reopen
+                          </button>
+                        ) : (
+                          <button type="button" className={styles.ghost} disabled={busy} onClick={() => void move('DONE', 'Marked done.')}>
+                            Mark done
+                          </button>
+                        )}
+                      </>
                     )}
                     <button type="submit" className={styles.prim} disabled={busy || !draft.trim()}>
                       Send reply
