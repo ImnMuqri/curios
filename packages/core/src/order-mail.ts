@@ -5,7 +5,7 @@ import { formatMalaysianPhone } from './phone.js';
 import { formatRinggit } from './store.js';
 
 /**
- * The emails about a shop's orders, from the Emails board's "New order". The
+ * The emails about a shop's orders, from the More board's "New order". The
  * owner's, so the footer says where to switch them off (Page.notifyOrders).
  */
 
@@ -163,7 +163,7 @@ export interface PaidOrderMailInput extends Omit<NewOrderMailInput, 'note' | 'me
 
 /**
  * Sent to the owner when CHIP confirms a customer's online payment, unless they
- * switched order emails off. The Emails board's "Paid order": nothing to check.
+ * switched order emails off. The More board's "Paid order": nothing to check.
  */
 export function paidOrderMail(o: PaidOrderMailInput): Mail {
   const total = formatRinggit(o.totalCents);

@@ -5,7 +5,7 @@ import { formatRinggit } from './store.js';
 /**
  * The emails about digital items: what the buyer gets once the order is paid
  * (files, a link, codes, a class time), the reminder the day before a class, and
- * the owner's "Paid and sent". Laid out as the Emails board draws them; the
+ * the owner's "Paid and sent". Laid out as the More board draws them; the
  * customer's two are sent as "{Shop} via Curios" (MailJobData.fromName).
  */
 

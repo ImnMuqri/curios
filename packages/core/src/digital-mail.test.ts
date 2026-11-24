@@ -124,7 +124,7 @@ describe('the shop colour', () => {
     expect(green.html).not.toContain('#b5294e');
     // A pale accent gets dark text.
     const pale = sessionReminderMail({ lang: 'en', number: 1, shopName: 'K', itemName: 'C', session: { startsAt: new Date('2026-11-07T12:00:00Z'), minutes: 60, place: 'ONLINE', where: 'https://m.example/x' }, files: [], orderUrl: null, accent: '#ffe08a' });
-    expect(pale.html).toContain('background:#ffe08a;color:#191f2c');
+    expect(pale.html).toContain('background:#ffe08a;color:#1d1d1b');
   });
 
   it('falls back to the board crimson when the accent is absent or not a colour', () => {

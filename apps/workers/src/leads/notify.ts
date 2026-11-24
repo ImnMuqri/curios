@@ -176,10 +176,10 @@ export function buildNotification(input: {
     ``,
   ].join('\n');
 
-  // The Emails board's subject: the number itself, so the inbox line alone is enough to call back.
+  // The More board's subject: the number itself, so the inbox line alone is enough to call back.
   const subject = `New lead · ${formatMalaysianPhone(phone)}`;
 
-  // The same email laid out, and worded, as the design handoff's Emails board
+  // The same email laid out, and worded, as the More board (design/boards/More.dc.html)
   // draws it: the number, what they are after, the conversation, and one tap
   // to reply.
   const leads = `${(input.appUrl ?? 'http://localhost:3000').replace(/\/+$/, '')}/app/leads`;

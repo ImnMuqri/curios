@@ -5,7 +5,7 @@ import type { OrderState } from './plan.js';
 /**
  * The emails about an owner's plan and its limits: the free leads used up,
  * the month's conversations used up, and a plan ending (three days before, and
- * on the day). Named on the design handoff's Alerts board ("Where else it
+ * on the day). Named on the Dash board's Alerts screen (design/boards/Dash.dc.html) ("Where else it
  * shows"); the words are written in its banners' voice, since the board draws
  * these emails only by their subjects.
  *

@@ -6,7 +6,7 @@ const appUrl = () => (process.env.APP_URL ?? 'http://localhost:3000').replace(/\
 
 /**
  * The three account emails, laid out and worded as the design handoff's
- * Emails board draws them: one button and a plain-link fallback.
+ * More board (design/boards/More.dc.html) draws them: one button and a plain-link fallback.
  */
 export function verifyMail(token: string): Mail {
   const url = `${appUrl()}/verify?token=${token}`;
