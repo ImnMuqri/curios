@@ -180,7 +180,7 @@ shows date, plan, amount and "Paid by card / FPX" with no link **(call)**.
 
 ### Copy
 
-Board copy wins where a board speaks; the Billing board names Billplz, so every Billplz
+Board copy wins where a board speaks; the Billing board (now in Dash.dc.html; the old one is in git history before 58a531e) names Billplz, so every Billplz
 mention becomes CHIP and each departure gets a DEVIATIONS row:
 
 - Billing: "FPX, card or e-wallet, through CHIP." "You'll go to CHIP to pay, then come
@@ -342,5 +342,5 @@ yet, and shows "Checking your payment…" until it has **(call)**.
 - Whether the CHIP client is hand-written (recommended: about six calls) or generated from
   the spec.
 - The exact UI layout of the auto-renew checkbox and the pay-online block, within the
-  Billing and Public boards' style.
+  the Billing and Public boards' style (now Dash and More).
 - Retry and timeout values for calls to CHIP (Billplz's are a fair start).

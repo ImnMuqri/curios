@@ -241,6 +241,21 @@ export interface OwnerItem extends ShopItem {
   sessions: { id: string; startsAt: Date; seats: number; booked: number; seatsLeft: number }[];
 }
 
+/** The window the Store cards count over: "12 sold in 30 days". */
+export const ITEM_STATS_DAYS = 30;
+
+/**
+ * What the Store's item cards say about an item, computed for the whole shelf at once.
+ * `sold` is units on paid, not cancelled, orders paid in the last 30 days; `enquiries` the Ask
+ * enquiries (leads that name the item) made in them; `seats` the next session still to run (or
+ * running) of a session item, with the seats booked and its capacity. A count of 0 is 0: the screen shows nothing for it.
+ */
+export interface ItemStats {
+  sold: number;
+  enquiries: number;
+  seats: { startsAt: Date; taken: number; total: number } | null;
+}
+
 export interface OwnerStore {
   mode: 'PERSONAL' | 'BUSINESS';
   settings: {
@@ -261,6 +276,8 @@ export interface OwnerStore {
     tileSize: TileSize | null;
   };
   items: OwnerItem[];
+  /** What each item has done lately, by item id: every item has an entry. See ItemStats. */
+  itemStats: Record<string, ItemStats>;
   /**
    * The owner's own CHIP account, as Store -> Payment shows it. Never the key: it is
    * not selected here, and this role cannot read that column anyway (readonly-role.sql).
@@ -269,7 +286,7 @@ export interface OwnerStore {
 }
 
 /** The owner's Store screen: every item, available or not, and the settings. */
-export async function getOwnerStore(accountId: string): Promise<OwnerStore | null> {
+export async function getOwnerStore(accountId: string, now: Date = new Date()): Promise<OwnerStore | null> {
   const page = await prismaRead.page.findUnique({
     where: { accountId },
     select: {
@@ -331,7 +348,40 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
         : [],
     };
   });
-  return { mode, items: ownerItems, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest }, chip };
+  const itemStats = await getItemStats(ownerItems, now);
+  return { mode, items: ownerItems, itemStats, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest }, chip };
+}
+
+/** Two grouped reads for the whole shelf (never one per item), and the seats from the sessions already loaded. */
+async function getItemStats(items: OwnerItem[], now: Date): Promise<Record<string, ItemStats>> {
+  const ids = items.map((item) => item.id);
+  const since = new Date(now.getTime() - ITEM_STATS_DAYS * 24 * 60 * 60 * 1000);
+  const [sold, asked] = ids.length
+    ? await Promise.all([
+        prismaRead.orderLine.groupBy({
+          by: ['itemId'],
+          where: { itemId: { in: ids }, order: { status: { in: ['PAID', 'COMPLETED'] }, paidAt: { gte: since, lte: now } } },
+          _sum: { quantity: true },
+        }),
+        prismaRead.lead.groupBy({ by: ['itemId'], where: { itemId: { in: ids }, createdAt: { gte: since, lte: now } }, _count: { _all: true } }),
+      ])
+    : [[], []];
+  const soldBy = new Map(sold.map((row) => [row.itemId, row._sum.quantity ?? 0]));
+  const askedBy = new Map(asked.map((row) => [row.itemId, row._count._all]));
+  return Object.fromEntries(
+    items.map((item) => {
+      // The next time that has not finished: sessions come soonest first.
+      const next = item.sessions.find((s) => s.startsAt.getTime() + (item.sessionMinutes ?? 0) * 60_000 >= now.getTime());
+      return [
+        item.id,
+        {
+          sold: soldBy.get(item.id) ?? 0,
+          enquiries: askedBy.get(item.id) ?? 0,
+          seats: next ? { startsAt: next.startsAt, taken: next.booked, total: next.seats } : null,
+        },
+      ];
+    }),
+  );
 }
 
 /** One of the owner's pickup places, with its times in minutes after midnight (Malaysia time). */

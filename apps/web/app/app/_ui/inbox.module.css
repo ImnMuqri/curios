@@ -36,7 +36,7 @@
 }
 
 .search:focus-within {
-  box-shadow: inset 0 0 0 1.5px var(--biru);
+  box-shadow: inset 0 0 0 1.5px var(--sky);
 }
 
 .search svg {
@@ -228,13 +228,13 @@
 
 .chip[aria-pressed='true'],
 .chip[aria-current='true'] {
-  background: var(--action);
+  background: var(--select);
   box-shadow: none;
-  color: var(--action-fg);
+  color: var(--select-fg);
 }
 
 .chip:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -301,7 +301,7 @@
 }
 
 .li:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: -2px;
 }
 
@@ -389,10 +389,15 @@
   color: var(--tag-ok-ink);
 }
 
-.av[data-tone='wait'],
-.tag[data-tone='wait'] {
+.av[data-tone='wait'] {
   background: var(--tag-wait);
   color: var(--tag-wait-ink);
+}
+
+/* The waiting tag is hot pink (attention); its row avatar stays amber (Dash.dc .t-wait vs .av). */
+.tag[data-tone='wait'] {
+  background: var(--tag-attn);
+  color: var(--tag-attn-ink);
 }
 
 .av[data-tone='new'],
@@ -623,7 +628,7 @@
 .confirmTrigger:focus-visible,
 .confirmYes:focus-visible,
 .confirmNo:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 

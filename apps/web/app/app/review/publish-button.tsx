@@ -62,35 +62,44 @@ export function PublishButton({
   if (published || done) {
     // The address without its scheme, as an owner would write it in a bio.
     return (
-      <>
-        <div className={styles.gl1}>
-          <i aria-hidden="true" />
-          Your page is live
-          <a href={publicUrl}>{sourcePlace(publicUrl)}</a>
+      <div className={styles.xpub}>
+        <span className={styles.xok} aria-hidden="true">
+          <svg viewBox="0 0 24 24">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+        </span>
+        <div>
+          <b>Your page is live</b>
+          <small>Accepted facts show up on it straight away. There is nothing to publish.</small>
         </div>
-        <p>Accepted facts show up on it straight away. There is nothing to publish.</p>
-      </>
+        {/* Not on the board; kept, so the owner can open the page from here. */}
+        <a className={styles.xurl} href={publicUrl}>
+          {sourcePlace(publicUrl)}
+        </a>
+      </div>
     );
   }
 
-  // Not on the board, which only draws a page that is already public. Before
-  // that, this is the one place an owner makes it public.
+  // The board draws this too (its "not public yet" notice, with Publish): before the page is
+  // public, this is the one place an owner makes it public.
   return (
-    <>
-      <div className={styles.gl1} data-off="">
-        <i aria-hidden="true" />
-        Your page is not public yet
+    <div className={styles.xpub}>
+      <span className={`${styles.xok} ${styles.xdot}`} aria-hidden="true">
+        !
+      </span>
+      <div>
+        <b>Your page is not public yet</b>
+        <small>Publish it when you are ready. After that, facts you accept show up on it straight away.</small>
+        {error ? (
+          <small className={styles.error} role="alert">
+            {error}
+          </small>
+        ) : null}
       </div>
-      <p>Publish it when you are ready. After that, facts you accept show up on it straight away.</p>
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
       <button type="button" className={styles.publish} disabled={busy} onClick={() => void handlePublish()}>
         {busy ? 'Publishing…' : 'Publish'}
       </button>
-    </>
+    </div>
   );
 }
 

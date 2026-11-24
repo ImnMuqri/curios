@@ -48,7 +48,7 @@ export function landingMetadata(locale: Locale): Metadata {
 }
 
 /**
- * The landing page, in either language, from the design handoff's TanyaJe
+ * The landing page, in either language, from the design handoff's Landing2
  * board: who can ask what (the hero and the strip under it), who it is for,
  * how it works, what a business gets (what lands in an owner's hands,
  * then the order played out), that we take no cut of a sale, what it costs,

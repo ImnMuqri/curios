@@ -72,8 +72,9 @@ export function SocialsEditor({
   save: (patch: { socials: Socials }) => Promise<unknown>;
 }) {
   return (
-    <section className={ui.section} aria-labelledby="socials-title">
+    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="socials-title">
       <SectionHead id="socials-title" title="Social profiles" note="Shown as icons under your name." />
+      <div>
       <div className={styles.socials}>
         {SOCIAL_KINDS.map((kind) => (
           <SocialField
@@ -84,6 +85,7 @@ export function SocialsEditor({
             save={(value) => save({ socials: { [kind]: value } })}
           />
         ))}
+      </div>
       </div>
     </section>
   );

@@ -17,13 +17,13 @@
 
 .ring {
   fill: none;
-  stroke: var(--mo-ring, var(--biru));
+  stroke: var(--mo-ring, var(--sky));
   stroke-width: 7.6;
 }
 
 /* Looking one way, then the other: searching, where the wordmark's o only idles. */
 .eyes {
-  fill: var(--mo-eye, var(--mo-ring, var(--biru)));
+  fill: var(--mo-eye, var(--mo-ring, var(--sky)));
   transform-box: view-box;
   transform-origin: 20px 16px;
   animation: moSearch 1.6s ease-in-out infinite;

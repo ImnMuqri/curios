@@ -1,10 +1,8 @@
 /*
- * Review, from the design handoff's Review board: the screen's header, then
- * the facts as a stack of cards, one at a time, with how far through you are
- * above them; beside it, running the full height of the sheet, whether the
- * page is live, what the chat can say once a fact is accepted, and this
- * session's decisions (Dashboard v2: the header covers the left column only,
- * and the two columns are split by one thin line, on white).
+ * Review, from the 24 Nov Dash board: one column. The header, then the page's live / not-public
+ * notice (with Publish), how far through you are, and the fact to check with an "Up next / Done"
+ * list beside it (under it when the column is narrow). Fix it, Skip and Accept are the card's
+ * three buttons, on F, S and A; Reject is a quiet text button below them.
  */
 
 @keyframes fadeUp {
@@ -61,22 +59,13 @@
   border: 0;
 }
 
-/* ---- The two columns ---- */
+/* ---- The column ---- */
 
 .rv {
-  flex: 1;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 420px;
-  min-height: 0;
-}
-
-.stage {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex: 1;
+  min-width: 0;
   padding: 0 40px 48px;
-  overflow: hidden;
   /* The sheet's own corner (app-frame .sheet, 16px): a square white column here filled it in, so a
      strip of white stood out past the rounded corner (owner, 12 Nov 2026). */
   border-top-left-radius: 16px;
@@ -84,29 +73,119 @@
   container-type: inline-size;
 }
 
-/* The screen's header (PageHead) at the top of the left column: the column already gives the
-   40px sides, so the header keeps only its top and bottom. Its alert, if any, follows it. */
-.head {
-  align-self: stretch;
-}
-
+/* The screen's header (PageHead): the column already gives the 40px sides, so the header keeps
+   only its top and bottom. Its alert, if any, follows it. */
 .head > header {
   --head-x: 0px;
-  padding: 28px 0 20px;
+  padding: 0 0 20px;
 }
 
 .head > div {
   padding: 0 0 20px;
 }
 
-/* "Add another source": the boards' v3 header button, 38px. */
+/* "+ Add another source": the board's header button, 38px. */
 .headLink {
   height: 38px;
   font-weight: 600;
 }
 
-.stage > * {
-  position: relative;
+/* ---- Whether the page is live ---- */
+
+.golive {
+  margin: 0 0 4px;
+}
+
+.xpub {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.xpub > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.xpub b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.xpub small {
+  display: block;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.xok {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--hijau-muda);
+  color: color-mix(in srgb, var(--hijau) 65%, var(--ink));
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.xok svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.xdot {
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.xurl {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--biru);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.xurl:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.publish {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--action);
+  color: var(--action-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.publish:hover:not(:disabled) {
+  background: var(--action-hover);
+}
+
+.publish:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 /* ---- How far through ---- */
@@ -114,87 +193,72 @@
 .prog {
   display: flex;
   align-items: center;
-  gap: 14px;
-  width: 100%;
-  max-width: 640px;
-  font-size: 13px;
+  gap: 12px;
+  margin-top: 22px;
+  font-size: 14px;
   color: var(--muted);
 }
 
 .prog b {
-  font-size: 15px;
   font-weight: 600;
+  color: var(--ink);
+}
+
+.prog > span {
   white-space: nowrap;
 }
 
-.doneText {
-  white-space: nowrap;
-}
-
-.pbar {
+.prog > i {
   flex: 1;
-  display: flex;
-  gap: 6px;
-  min-width: 60px;
-}
-
-.pbar > i {
-  flex: 1;
-  height: 6px;
-  border-radius: 3px;
-  background: var(--edge);
-  transition: background 400ms;
-}
-
-.pbar > i[data-state='accept'],
-.track > i[data-state='accept'] {
-  background: var(--hijau);
-}
-
-.pbar > i[data-state='reject'],
-.track > i[data-state='reject'] {
-  background: var(--merah);
-}
-
-.pbar > i[data-state='now'] {
-  background: var(--action);
-}
-
-/* Past a couple of dozen facts: one bar, accepted then rejected. */
-.track {
-  flex: 1;
-  display: flex;
+  max-width: 240px;
   height: 6px;
   overflow: hidden;
   border-radius: 3px;
-  background: var(--edge);
+  background: var(--surface);
 }
 
-.track > i {
+.prog > i > span {
+  display: block;
+  height: 100%;
+  background: var(--select);
   transition: width 400ms;
 }
 
-/* ---- The stack ---- */
+.prog small {
+  font-size: 13px;
+  white-space: nowrap;
+}
 
-/* Every card in one grid cell, so the stack is as tall as its tallest card. */
+/* ---- The fact, and what is beside it ---- */
+
+.rv2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 24px;
+  margin-top: 22px;
+  align-items: start;
+}
+
+@container (min-width: 820px) {
+  .rv2 {
+    grid-template-columns: minmax(0, 1fr) 300px;
+  }
+}
+
 .deck {
   display: grid;
-  width: 100%;
-  max-width: 640px;
-  margin-top: 22px;
-  padding-bottom: 40px;
+  min-width: 0;
 }
 
 .fc {
-  grid-area: 1 / 1;
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 500px;
-  padding: 26px 28px 22px;
-  border-radius: 24px;
+  min-width: 0;
+  padding: 28px;
+  border-radius: 16px;
   background: var(--card);
-  box-shadow: 0 0 0 1px rgb(25 31 44 / 6%), 0 30px 60px -36px rgb(25 31 44 / 45%);
+  box-shadow: inset 0 0 0 1px var(--edge);
   transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease;
 }
 
@@ -202,22 +266,26 @@
   outline: none;
 }
 
-.behind {
-  overflow: hidden;
-  pointer-events: none;
+.fc:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 3px;
 }
 
-.top {
+/* "Price" tag, then where it came from. */
+.srcLine {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .cat {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 26px;
+  height: 24px;
   padding: 0 10px;
   border-radius: 999px;
   background: var(--surface);
@@ -226,94 +294,36 @@
   font-weight: 600;
 }
 
-.cat[data-tone='amber'] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
-}
-
-.cat[data-tone='biru'] {
-  background: var(--biru-muda);
-  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
-}
-
-.cat[data-tone='hijau'] {
-  background: var(--hijau-muda);
-  color: color-mix(in srgb, var(--hijau) 65%, var(--ink));
-}
-
-.cat[data-tone='rose'] {
-  background: var(--rose-muda);
-  color: var(--rose);
-}
-
-.cat svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-/* How clearly the claim was read: a word and a short meter. */
-.conf {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.conf > i {
-  position: relative;
-  display: block;
-  width: 60px;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 3px;
-  background: var(--surface);
-}
-
-.conf > i > i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 3px;
-  background: var(--hijau);
-}
-
-.conf[data-tone='kuning'] > i > i {
-  background: var(--kuning);
-}
-
-.conf[data-tone='merah'] > i > i {
-  background: var(--merah);
-}
-
-.fq {
-  margin: 22px 0 0;
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.fq b {
-  font-weight: 500;
-  color: var(--ink);
-}
-
 .claim {
-  margin: 8px 0 0;
-  font-size: 26px;
+  margin: 14px 0 6px;
+  font-size: 34px;
   font-weight: 600;
-  line-height: 1.3;
-  letter-spacing: -0.015em;
+  line-height: 1.2;
+  letter-spacing: -0.035em;
   overflow-wrap: anywhere;
 }
 
-.top + .claim {
-  margin-top: 22px;
+.reading {
+  margin: 0;
+  font-size: 15px;
+  color: var(--muted);
+}
+
+/* "A customer might ask", on the soft ground. */
+.qx {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  font-size: 14.5px;
+  overflow-wrap: anywhere;
+}
+
+.qx small {
+  display: block;
+  margin-bottom: 4px;
+  font-size: 12.5px;
+  color: var(--faint);
 }
 
 .edited {
@@ -332,11 +342,7 @@
 }
 
 .ced {
-  margin-top: 12px;
-}
-
-.top + .ced {
-  margin-top: 22px;
+  margin: 14px 0 6px;
 }
 
 .ced textarea {
@@ -344,9 +350,9 @@
   width: 100%;
   height: 110px;
   padding: 12px 14px;
-  border: 1.5px solid var(--biru);
+  border: 1.5px solid var(--sky);
   border-radius: 10px;
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 14%, transparent);
   resize: none;
   font: inherit;
   font-size: 17px;
@@ -355,56 +361,22 @@
   outline: none;
 }
 
-/* Where it was found, and the line itself. */
+/* The line it was read from, and a way to open the page. */
 .src {
-  margin-top: 22px;
-  padding-top: 16px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid var(--line);
 }
 
-.sl {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.sl svg {
-  width: 14px;
-  height: 14px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.sl a {
-  margin-left: auto;
-  padding-left: 12px;
-  font-weight: 500;
-  color: var(--biru);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.sl a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
 .src p {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 14px;
   line-height: 1.6;
   color: var(--ink-soft);
   overflow-wrap: anywhere;
 }
 
-/* With its line around it: the line faint, the excerpt in ink, as the board has it. */
+/* With its line around it: the line faint, the excerpt in ink. */
 .src p[data-picked] {
   color: var(--faint);
 }
@@ -414,47 +386,49 @@
   color: var(--ink);
 }
 
+.src a {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--biru);
+  text-decoration: none;
+}
+
+.src a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .error {
   margin: 14px 0 0;
   font-size: 13px;
   color: var(--merah-deep);
 }
 
-/* ---- The three things to do ---- */
+/* ---- Fix it, Skip, Accept ---- */
 
 .facts {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: auto;
-  padding-top: 22px;
+  gap: 8px;
+  margin-top: 22px;
 }
 
-.rj,
 .ed2,
 .ac {
   display: inline-flex;
+  flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 48px;
-  padding: 0 22px;
+  min-height: 44px;
+  padding: 0 18px;
   border: 0;
   border-radius: 999px;
   font: inherit;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 160ms, transform 160ms, box-shadow 160ms;
-}
-
-.rj {
-  background: var(--card);
-  color: var(--merah-deep);
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--merah) 35%, var(--card));
-}
-
-.rj:hover:not(:disabled) {
-  background: var(--merah-muda);
+  transition: background 160ms, transform 160ms, opacity 160ms;
 }
 
 .ed2 {
@@ -464,30 +438,18 @@
 }
 
 .ed2:hover:not(:disabled) {
-  background: var(--paper);
+  background: var(--surface);
 }
 
 .ac {
-  margin-left: auto;
-  padding: 0 28px;
-  background: var(--hijau);
-  color: var(--card);
+  background: var(--action);
+  color: var(--action-fg);
 }
 
 .ac:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--hijau) 85%, var(--ink));
-}
-
-/* Saving a correction is not accepting it: blue, not green. */
-.save {
-  background: var(--action);
-}
-
-.save:hover:not(:disabled) {
   background: var(--action-hover);
 }
 
-.rj:active:not(:disabled),
 .ed2:active:not(:disabled),
 .ac:active:not(:disabled) {
   transform: scale(0.97);
@@ -498,23 +460,65 @@
   cursor: default;
 }
 
-.facts svg {
-  width: 17px;
-  height: 17px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+/* The keys, as the board draws them; a phone has none. */
+.keys {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
 }
 
-.facts .ed2 svg {
-  stroke-width: 2;
+.keys kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 10px;
+  padding: 0 5px;
+  border-radius: 6px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge), 0 1px 0 var(--edge);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.keys kbd:first-child {
+  margin-left: 0;
+}
+
+/* Throwing a fact away: quieter than the three, a text button with no key. */
+.rj {
+  align-self: center;
+  min-height: 36px;
+  margin-top: 6px;
+  padding: 0 10px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.rj:hover:not(:disabled) {
+  color: var(--merah-deep);
+}
+
+.rj:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 .stamp {
   position: absolute;
-  top: 30px;
+  top: 26px;
   left: 28px;
   padding: 6px 14px;
   border: 3px solid currentColor;
@@ -536,11 +540,9 @@
 }
 
 .rule {
-  max-width: 640px;
-  margin: 14px 0 0;
+  margin: 22px 0 0;
   font-size: 12.5px;
   color: var(--muted);
-  text-align: center;
 }
 
 /* ---- Everything checked ---- */
@@ -550,7 +552,7 @@
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  margin-top: 70px;
+  margin-top: 50px;
   text-align: center;
   animation: fadeUp 420ms ease both;
 }
@@ -566,6 +568,10 @@
 .alldone p {
   margin: 0;
   color: var(--muted);
+}
+
+.alldone .btn2 {
+  margin-top: 12px;
 }
 
 .burst {
@@ -785,255 +791,69 @@
   color: var(--ink);
 }
 
-/* ---- Beside the stack ---- */
+/* ---- Up next, and done ---- */
 
 .side {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  gap: 10px;
   min-width: 0;
-  padding: 28px 24px 40px;
-  border-left: 1px solid var(--line);
-  background: var(--card);
 }
 
-.side h3 {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin: 0 0 10px;
+.sh {
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-soft);
 }
 
-.side h3 span {
-  font-size: 12.5px;
+.sh:not(:first-child) {
+  margin-top: 6px;
+}
+
+.sh u {
+  margin-left: 4px;
   font-weight: 400;
-  color: var(--muted);
-}
-
-/* What the chat would say, as a normal AI chat on the dashboard's neutral panel (Dashboard v2):
-   not the page's own colours, so it follows the dashboard into dark mode. The question's bubble
-   and the reply's label are PageReply's and VisitorQuestion's own. */
-.chat {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  overflow: hidden;
-  border-radius: 10px;
-  background: var(--chat);
-  color: var(--ink);
-}
-
-.chatLabel {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.chatLabel i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--hijau);
-}
-
-
-.log {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.log li {
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--paper);
-  font-size: 13px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  animation: fadeUp 320ms ease both;
-}
-
-.log li b {
-  font-weight: 600;
-}
-
-.log i {
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  flex: none;
-  margin-top: 1px;
-  border-radius: 50%;
-  background: var(--hijau);
-  color: var(--card);
-}
-
-.log i[data-kind='reject'] {
-  background: var(--merah);
-}
-
-.log svg {
-  width: 11px;
-  height: 11px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.noLog {
-  margin: 0;
-  padding: 12px;
-  border: 1.5px dashed var(--edge);
-  border-radius: 10px;
-  font-size: 13px;
-  color: var(--muted);
-  text-align: center;
-}
-
-/* Eight decisions to a page, newest first. */
-.pager {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 10px;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
-.pager button {
-  min-height: 36px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.pager button:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-/* Whether the page is live, at the top of the panel. */
-.golive {
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--line);
-}
-
-.gl1 {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.gl1 i {
-  width: 7px;
-  height: 7px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--hijau);
-  box-shadow: 0 0 0 3px var(--hijau-muda);
-}
-
-.gl1[data-off] i {
-  background: var(--faint);
-  box-shadow: 0 0 0 3px var(--surface);
-}
-
-.gl1 a {
-  margin-left: auto;
-  font-weight: 500;
-  color: var(--biru);
   text-decoration: none;
-  overflow-wrap: anywhere;
-}
-
-.gl1 a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.golive p {
-  margin: 6px 0 0;
-  font-size: 12.5px;
-  line-height: 1.5;
   color: var(--muted);
 }
 
-.golive .error {
+.mini {
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.mini small {
+  display: block;
+  font-size: 12.5px;
+  color: var(--faint);
+}
+
+.mini b {
+  font-weight: 600;
+}
+
+/* A decision already made: the label says which, the words step back. */
+.dim small {
+  color: color-mix(in srgb, var(--hijau) 70%, var(--ink));
+}
+
+.dim[data-kind='reject'] small {
   color: var(--merah-deep);
 }
 
-.publish {
-  display: inline-flex;
-  align-items: center;
-  height: 38px;
-  margin-top: 12px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--action);
-  color: var(--action-fg);
-  font: inherit;
+.dim b {
   font-weight: 500;
-  cursor: pointer;
-}
-
-.publish:hover:not(:disabled) {
-  background: var(--action-hover);
-}
-
-.publish:disabled {
-  opacity: 0.7;
-  cursor: default;
+  color: var(--muted);
 }
 
 /* ---- Narrower ---- */
 
-@media (min-width: 1201px) and (max-width: 1400px) {
-  .rv {
-    grid-template-columns: minmax(0, 1fr) 360px;
-  }
-}
-
-@media (max-width: 1200px) {
-  .rv {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .side {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-}
-
 @media (max-width: 760px) {
-  .stage {
+  .rv {
     padding: 0 16px 32px;
   }
 
@@ -1042,50 +862,53 @@
     padding: 20px 0 14px;
   }
 
-  .side {
-    padding: 20px 16px 32px;
+  .keys {
+    display: none;
   }
 }
 
-/* The stage can be narrow on a wide screen too, so the card follows its own width. */
+/* The column can be narrow on a wide screen too, so the card follows its own width. */
 @container (max-width: 600px) {
   .prog {
     flex-wrap: wrap;
   }
 
+  .prog small {
+    display: none;
+  }
+
   .fc {
-    padding: 20px 18px;
+    padding: 22px;
   }
 
   .claim {
-    font-size: 21px;
+    font-size: 28px;
   }
 
+  .xpub {
+    flex-wrap: wrap;
+  }
+}
+
+@container (max-width: 420px) {
   .facts {
     flex-wrap: wrap;
   }
 
-  .rj,
-  .ed2 {
-    padding: 0 16px;
-  }
-
   .ac {
     flex: 1 1 100%;
-    margin-left: 0;
+    order: -1;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .fc,
-  .pbar > i,
-  .track > i {
+  .prog > i > span {
     transition: none;
   }
 
   .stamp,
   .burst span,
-  .log li,
   .alldone,
   .es,
   .esRows > span,

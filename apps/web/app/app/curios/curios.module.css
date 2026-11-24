@@ -1,5 +1,5 @@
 /*
- * My Curios' own parts, from the design handoff's MyCurios board. The parts it
+ * My Curios' own parts, from the design handoff's Dash board. The parts it
  * shares with Store (header, tabs, sections, fields, switches, tiles, the
  * empty state, the phone preview) are in ../_ui/editor.module.css.
  */
@@ -14,6 +14,33 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* ---- The header's address row and the Profile / Links tabs (the board's .addr and .tabs2) ---- */
+
+.addr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+/* The board's .addr: 44px tall, and kept on a phone (the shared .url hides under 760px; the doubled selector wins over it). */
+.addr .addrPill {
+  display: flex;
+  height: 44px;
+  font-size: 14px;
+}
+
+.addr .viewLink {
+  height: 44px;
+  font-size: 14px;
+}
+
+/* The controls get the room the board's .ed gives them. */
+.wide {
+  --panel-max: 880px;
 }
 
 /* ---- Cover photo: a row of 84px squares (v3), the chosen one ringed ---- */
@@ -42,7 +69,7 @@
 }
 
 .galleryTile[aria-pressed='true'] {
-  outline: 2.5px solid var(--biru);
+  outline: 2.5px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -64,7 +91,7 @@
 }
 
 .galleryTile:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -106,7 +133,7 @@
 }
 
 .deleteCover:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -179,34 +206,33 @@
 
 /* ---- You ---- */
 
-/* The picture on the left, the name and bio stacked beside it (v3). */
-.idRow {
+/* The picture on its own row, then the name and the bio stacked full width (Dash.dc .you2, 24 Nov). */
+.you {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  flex-direction: column;
+  min-width: 0;
 }
 
-.avatarCell {
+.youTop {
   display: flex;
-  flex: none;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
+  gap: 18px;
+  padding-bottom: 22px;
 }
 
 .avatar {
-  position: relative;
   display: grid;
   place-items: center;
+  flex: none;
   width: 72px;
   height: 72px;
-  padding: 0;
-  border: 0;
   border-radius: 50%;
   overflow: hidden;
   background: var(--surface);
   color: var(--muted);
-  cursor: pointer;
+  box-shadow:
+    0 0 0 4px var(--card),
+    0 0 0 5px var(--line);
 }
 
 /* Behind a photo the fill blended into its round edge as a pale fringe. */
@@ -227,55 +253,153 @@
   stroke-linecap: round;
 }
 
-.avatar > span {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  background: rgb(25 31 44 / 55%);
-  color: var(--on-photo);
-  font-size: 12px;
+.youAct b {
+  display: block;
+  font-size: 14.5px;
   font-weight: 600;
-  opacity: 0;
-  transition: opacity 160ms ease;
 }
 
-.avatar:hover:not(:disabled) > span,
-.avatar:focus-visible > span {
-  opacity: 1;
+.youAct small {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 13px;
 }
 
-.avatar:focus-visible {
-  outline: 2px solid var(--biru);
+.youBtns {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.changeButton {
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease;
+}
+
+.changeButton:hover:not(:disabled) {
+  /* A step darker than the resting fill, in both themes (--pick is paler, so hover read as fading). */
+  background: color-mix(in srgb, var(--surface), var(--ink) 8%);
+}
+
+.changeButton:focus-visible,
+.quietButton:focus-visible {
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
-.avatar:disabled {
+.changeButton:disabled {
   cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .quietButton {
-  padding: 2px 6px;
+  padding: 0;
   border: 0;
-  border-radius: 6px;
   background: none;
   color: var(--muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .quietButton:hover {
-  color: var(--merah-deep);
+  color: var(--calm-danger);
 }
 
-.idField {
-  flex: 1;
-  min-width: 0;
+.youLabel {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.bio {
-  margin-top: 10px;
+.youField {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  outline: none;
+  transition: box-shadow 200ms ease;
+}
+
+.youField:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--edge) 65%, var(--sky));
+}
+
+.youField:focus,
+.youField:focus-within {
+  box-shadow:
+    inset 0 0 0 1px var(--sky),
+    0 0 0 3px color-mix(in srgb, var(--sky) 12%, transparent);
+}
+
+input.youField {
+  margin-bottom: 18px;
+}
+
+.youBio {
+  min-height: 104px;
+  margin-bottom: 8px;
+  padding: 0;
+}
+
+.youBio textarea {
+  display: block;
+  width: 100%;
+  min-height: 104px;
+  padding: 13px 15px 30px;
+  border: 0;
+  border-radius: 12px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  line-height: 1.5;
+  outline: none;
+  resize: none;
+}
+
+.youBio em {
+  position: absolute;
+  right: 13px;
+  bottom: 9px;
+  color: var(--muted);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.youBio em[data-over] {
+  color: var(--calm-danger);
+}
+
+.youHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 
 /* ---- Social profiles ---- */
@@ -304,8 +428,8 @@
 }
 
 .social:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sky) 12%, transparent);
 }
 
 .social[data-refused='true'] {
@@ -397,7 +521,7 @@
   height: 34px;
   border-radius: 8px;
   background: var(--biru-muda);
-  color: var(--biru);
+  color: var(--biru-ink);
 }
 
 .linkKind[data-kind='whatsapp'] {
@@ -483,7 +607,7 @@
 }
 
 .linkText:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -623,7 +747,7 @@
 }
 
 .dot:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 6px;
 }
 
@@ -702,7 +826,7 @@
 }
 
 .swatch:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 6px;
 }
 
@@ -734,7 +858,7 @@
 }
 
 .hex:focus-within {
-  border-color: var(--biru);
+  border-color: var(--sky);
 }
 
 .shapeFont {
@@ -863,13 +987,13 @@
 }
 
 .fontTile[aria-pressed='true'] {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 1px var(--biru);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 1px var(--sky);
   background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
 }
 
 .fontTile:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -964,14 +1088,15 @@
 
 /* ---- Narrower ---- */
 
-@container (max-width: 520px) {
+/* Measured on the controls' own column (editor.module.css makes each .sectionRow child a container). */
+@container (max-width: 400px) {
   .socials {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* The board's phone: the covers wrap as 64px squares, the colours stack, the fonts go two across. */
-@media (min-width: 761px) {
+@container (min-width: 520px) {
   .styleTiles {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

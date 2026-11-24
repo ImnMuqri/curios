@@ -81,7 +81,17 @@
 }
 
 .plan.bz {
-  box-shadow: 0 0 0 2px var(--calm-ink);
+  box-shadow: 0 0 0 2px var(--pink);
+}
+
+/* Business is the pink card (Landing2 board, 24 Nov): its button is pink deep, ink on hover. */
+.plan.bz .bzBtn {
+  background: var(--pink-deep);
+}
+
+.plan.bz .bzBtn:hover {
+  background: var(--pink-ink);
+  box-shadow: 0 10px 20px -10px color-mix(in srgb, var(--pink-ink) 50%, transparent);
 }
 
 .pk {
@@ -112,8 +122,8 @@
 }
 
 .chip.o {
-  background: var(--cl-art-peach);
-  color: var(--cl-amber-ink);
+  background: var(--pink-muda);
+  color: var(--pink-ink);
 }
 
 .pr {

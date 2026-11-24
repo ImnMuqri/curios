@@ -145,7 +145,7 @@ export type OrderView =
   | 'cancelled';
 
 /**
- * The badge the Orders board shows. Refund owed and refunded are not
+ * The badge the Dash board shows. Refund owed and refunded are not
  * statuses: they are a cancelled order that had been paid, told apart by
  * whether the owner has marked the money back. `paidOnline` is a paid order
  * CHIP confirmed (no receipt, nothing for the owner to check); one the owner

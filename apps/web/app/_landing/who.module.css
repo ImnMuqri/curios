@@ -19,7 +19,7 @@
   background: var(--calm-surface);
   box-shadow:
     0 0 0 1px var(--calm-line),
-    0 20px 40px -30px rgba(40, 30, 10, 0.4);
+    0 20px 40px -30px rgba(6, 40, 58, 0.4);
   font-size: 21px;
   font-weight: 500;
 }
@@ -125,7 +125,7 @@
   transform: translateY(-4px);
   box-shadow:
     0 0 0 1px var(--calm-line),
-    0 24px 40px -28px rgba(40, 30, 10, 0.3);
+    0 24px 40px -28px rgba(6, 40, 58, 0.3);
 }
 
 .fa {

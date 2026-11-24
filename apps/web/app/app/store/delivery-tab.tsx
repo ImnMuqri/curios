@@ -137,7 +137,7 @@ export function DeliveryTab({
 
   return (
     <>
-      <section className={ui.section} aria-labelledby="pickup-title">
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="pickup-title">
         <SectionHead id="pickup-title" title="Pickup" note="Customers collect from you." />
         <div className={styles.row}>
           <span className={styles.rowText}>
@@ -165,7 +165,7 @@ export function DeliveryTab({
         ) : null}
       </section>
 
-      <section className={ui.section} aria-labelledby="delivery-title">
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="delivery-title">
         <SectionHead id="delivery-title" title="Delivery" note="How orders reach customers who can't come." />
         <div className={styles.deliveryTiles} role="group" aria-labelledby="delivery-title">
           {MODES.map((option) => (
@@ -219,7 +219,7 @@ export function DeliveryTab({
         {error ? <Callout tone="error">{error}</Callout> : null}
       </section>
 
-      <section className={ui.section} aria-labelledby="notice-title">
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="notice-title">
         <SectionHead id="notice-title" title="Notice" note="How far ahead customers must order." />
         <span className={styles.stepper}>
           <button type="button" aria-label="One day less" disabled={notice <= 0} onClick={() => step(-1)}>

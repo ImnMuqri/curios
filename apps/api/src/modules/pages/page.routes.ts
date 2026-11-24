@@ -120,7 +120,13 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
       schema: {
         // Each switch on its own, so a tap on one never rewrites another; at least one.
         body: z
-          .object({ leads: z.boolean().optional(), orders: z.boolean().optional(), receipts: z.boolean().optional() })
+          .object({
+            leads: z.boolean().optional(),
+            orders: z.boolean().optional(),
+            receipts: z.boolean().optional(),
+            questions: z.boolean().optional(),
+            planEnding: z.boolean().optional(),
+          })
           .strict()
           .refine((body) => Object.keys(body).length > 0, { message: 'Say which email to switch.' }),
       },

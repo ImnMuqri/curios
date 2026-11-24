@@ -32,6 +32,11 @@ describe('PageHead', () => {
     expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.title \{\s*font-size: 32px;/);
   });
 
+  it('sits at the top of the screen: no top padding, on a desktop or a phone (the board .pg, 24 Nov)', () => {
+    expect(css).toMatch(/\.head \{[^}]*padding: 0 var\(--head-x\) 20px;/);
+    expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.head \{[^}]*padding: 0 var\(--head-x\) 14px;/);
+  });
+
   it('sets the kicker, the summary and the actions as the board does', () => {
     expect(css).toMatch(
       /\.kicker \{[^}]*font-size: 12\.5px;[^}]*font-weight: 600;[^}]*letter-spacing: 0\.06em;[^}]*text-transform: uppercase;[^}]*var\(--muted\)/,

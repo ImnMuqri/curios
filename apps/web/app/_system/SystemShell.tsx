@@ -7,7 +7,7 @@ export { styles as systemStyles };
 /**
  * The frame for the account and system screens -- forgot and reset password,
  * email confirmation, not found, something broke -- from the design
- * handoff's System board: the wordmark on flat paper, and the screen centred in what
+ * handoff's Site board: the wordmark on flat paper, and the screen centred in what
  * is left.
  *
  * Server-safe, so client screens render it directly.

@@ -21,8 +21,8 @@ body{margin:0;background:#ffffff}
 .mark{display:inline-block;white-space:nowrap;font-family:var(--d);font-size:21px;font-weight:700;line-height:1;letter-spacing:-.03em;color:#fafbfc}
 .mark .mo{display:inline-block;width:.6em;height:.6em;margin:0 .012em;vertical-align:-.015em}
 .mark .mo svg{display:block;width:100%;height:100%;overflow:visible}
-.mo-r{fill:none;stroke:#86a2ea;stroke-width:7.6}
-.mo-e{fill:#86a2ea}
+.mo-r{fill:none;stroke:#7FD0EE;stroke-width:7.6}
+.mo-e{fill:#7FD0EE}
 
 /* sidebar: dark, so admin never looks like the owner app */
 .ad-side{position:sticky;top:0;align-self:flex-start;display:flex;flex-direction:column;flex:none;width:224px;height:100vh;min-height:900px;padding:18px 12px 14px;background:#191f2c;color:#c9ccd3}
@@ -70,8 +70,8 @@ body{margin:0;background:#ffffff}
 /* chart */
 .ad-chart{padding:18px 18px 10px}
 .ad-bars{display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:1px solid var(--line)}
-.ad-bars>span{flex:1;min-width:0;border-radius:3px 3px 0 0;background:#c9d6fb}
-.ad-bars>span.on{background:#2340c8}
+.ad-bars>span{flex:1;min-width:0;border-radius:3px 3px 0 0;background:#C4E6F3}
+.ad-bars>span.on{background:#0593C6}
 .ad-axis{display:flex;justify-content:space-between;margin-top:6px;font-size:11.5px;color:var(--soft)}
 .ad-key{display:flex;gap:16px;margin-top:10px;font-size:12.5px;color:#4b5060}
 .ad-key i{display:inline-block;width:9px;height:9px;margin-right:6px;border-radius:2px;vertical-align:-1px}
@@ -106,7 +106,7 @@ body{margin:0;background:#ffffff}
 .ad-r>.h.r{align-items:center;justify-content:flex-end}
 .ad-r.row{cursor:pointer}
 .ad-r.row:hover{background:#fafbfc}
-.ad-r.row[aria-selected="true"]{background:#f3f6ff}
+.ad-r.row[aria-selected="true"]{background:#F0F9FC}
 .ad-log .ad-r.row{cursor:default}
 .ad-log .ad-r>.c:last-child{white-space:normal}
 .ad-pg{display:block;min-width:0;max-width:100%}
@@ -151,7 +151,7 @@ body{margin:0;background:#ffffff}
 .ad-btn>small{color:var(--soft);font-weight:400;font-size:12px}
 .ad-btn.bad{color:#b4321f}
 .ad-btn.bad:hover{border-color:#f0b4a8;background:#fef6f4}
-.ad-note{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:#f6f8ff;color:#122686;font-size:12.5px}
+.ad-note{margin:10px 0 0;padding:10px 12px;border-radius:8px;background:#F3FAFD;color:#035A7A;font-size:12.5px}
 
 /* controls */
 .ad-ctl{display:flex;align-items:center;gap:16px;padding:16px 18px}
@@ -163,7 +163,7 @@ body{margin:0;background:#ffffff}
 .ad-sw>i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform 200ms}
 .ad-in{display:flex;align-items:center;gap:6px;flex:none}
 .ad-in input{width:84px;height:34px;padding:0 10px;border:1px solid var(--line);border-radius:7px;font:inherit;font-variant-numeric:tabular-nums;text-align:right}
-.ad-in input:focus{outline:2px solid #2340c8;outline-offset:-1px;border-color:transparent}
+.ad-in input:focus{outline:2px solid #0593C6;outline-offset:-1px;border-color:transparent}
 .ad-in>span{font-size:12.5px;color:var(--soft)}
 .ad-save{display:flex;align-items:center;gap:12px;margin-top:14px}
 .ad-prim{height:36px;padding:0 16px;border:0;border-radius:8px;background:#191f2c;color:#fafbfc;font-size:13px;font-weight:600}
@@ -247,7 +247,7 @@ body{margin:0;background:#ffffff}
 <div class="ad-box ad-chart">
 <div class="ad-bars" aria-label="Conversations per day"><sc-for list="{{ ov.bars }}" as="b" hint-placeholder-count="30"><span class="{{b.cls}}" style="height: {{b.h}}%" title="{{b.t}}"></span></sc-for></div>
 <div class="ad-axis"><span>{{ov.from}}</span><span>Today</span></div>
-<div class="ad-key"><span><i style="background: #2340c8"></i>Today</span><span><i style="background: #c9d6fb"></i>Earlier days</span></div>
+<div class="ad-key"><span><i style="background: #0593C6"></i>Today</span><span><i style="background: #C4E6F3"></i>Earlier days</span></div>
 </div>
 <h2 class="ad-h2" style="margin-top: 28px">New pages<span>Newest first</span></h2>
 <div class="ad-box ad-tw"><div class="ad-t" role="table" style="--cols: minmax(170px,2fr) 1fr 1fr 70px 1fr; --minw: 620px"><div class="ad-r ad-hd" role="row"><div class="h" role="columnheader">Page</div><div class="h" role="columnheader">Kind</div><div class="h" role="columnheader">Signed up</div><div class="h" role="columnheader">Facts</div><div class="h" role="columnheader">First question</div></div>
@@ -470,7 +470,7 @@ class Component extends DCLogic {
     const sel = this.pages.find((p) => p.id === st.sel) || this.pages[0];
     const statusOf = (p) => st.susp[p.id] ? 'Suspended' : p.status;
     const sCol = (s) => ({ Live: '#1d9a6c', Lapsed: '#f2a33c', Hidden: '#f2a33c', Suspended: '#d8452f' }[s] || '#9aa0ab');
-    const uCol = (u) => (u >= 200 ? '#d8452f' : u >= 160 ? '#f2a33c' : '#2340c8');
+    const uCol = (u) => (u >= 200 ? '#d8452f' : u >= 160 ? '#f2a33c' : '#0593C6');
     const openPage = (id) => () => self.setState({ r: 'pages', sel: id, q: '', pfil: 'all' });
 
     // pages
@@ -493,7 +493,7 @@ class Component extends DCLogic {
       ['j6', 'Klinik Aina', 'klinikaina', 'klinikaina.example/faq', 'Failed', 'Page returned 403', 0, '3h ago'],
       ['j7', 'Aisyah', 'aisyahdraws', 'What you pasted', 'Done', '', 9, '5h ago']
     ].map((j) => { const fixed = (j[4] === 'Failed' || j[4] === 'Walled') && !st.failed[j[0]]; return { id: j[0], name: j[1], handle: j[2], src: j[3], status: fixed ? 'Queued' : j[4], err: fixed ? '' : j[5], hasErr: !fixed && !!j[5], facts: j[6], when: fixed ? 'Just now' : j[7], raw: fixed ? 'Queued' : j[4] }; });
-    const jsc = { Reading: '#2340c8', Done: '#1d9a6c', Walled: '#f2a33c', Failed: '#d8452f', Queued: '#9aa0ab' };
+    const jsc = { Reading: '#0593C6', Done: '#1d9a6c', Walled: '#f2a33c', Failed: '#d8452f', Queued: '#9aa0ab' };
     const jfil = { all: () => true, running: (j) => j.raw === 'Reading' || j.raw === 'Queued', failed: (j) => j.raw === 'Failed' || j.raw === 'Walled', done: (j) => j.raw === 'Done' };
 
     // reports
@@ -599,7 +599,7 @@ class Component extends DCLogic {
           ['#9aa0ab', '6 Business plans end this week', 'Owners get a reminder 3 days before', 'See payments', go('money')]
         ].filter((n) => !/^0 /.test(n[1])).map((n) => ({ c: n[0], t: n[1], s: n[2], btn: n[3], go: n[4] })),
         pagesTotal: fmt(1284),
-        mix: [['Personal, free', 1072, '#c9d6fb'], ['Business, paying', 212, '#2340c8']].map((m) => ({ l: m[0], v: fmt(m[1]), w: (m[1] / 1284 * 100).toFixed(1), c: m[2] }))
+        mix: [['Personal, free', 1072, '#C4E6F3'], ['Business, paying', 212, '#0593C6']].map((m) => ({ l: m[0], v: fmt(m[1]), w: (m[1] / 1284 * 100).toFixed(1), c: m[2] }))
       },
       q: st.q, setQ: (e) => self.setState({ q: String(e.target.value || '') }),
       pf: [['all', 'All'], ['business', 'Business'], ['personal', 'Personal'], ['lapsed', 'Lapsed'], ['flagged', 'Hidden or suspended']].map((f) => ({ l: f[1], n: self.pages.filter((p) => fil[f[0]](p)).length, on: st.pfil === f[0], go: () => self.setState({ pfil: f[0] }) })),

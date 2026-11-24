@@ -103,7 +103,7 @@ type Reading = {
 };
 
 /**
- * Onboarding, from the design handoff's Onboarding board. Four steps: claim
+ * Onboarding, from the design handoff's More board. Four steps: claim
  * the address (with a live check), say what the page is for, give it
  * something to read, and watch it read. The page is claimed when the owner
  * reads a source or skips, so Back works freely until then; an owner who
@@ -667,7 +667,7 @@ export function OnboardingFlow({
 
 type Pose = 'claim' | 'business' | 'personal' | 'read' | 'scan' | 'found' | 'none';
 
-/** The panel's two lines, one pair per pose (Onboarding.dc.html, paT and paS). */
+/** The panel's two lines, one pair per pose (More.dc.html, paT and paS). */
 function panelCaption(pose: Pose, handleFree: boolean, foundCount: number): [string, string] {
   switch (pose) {
     case 'claim':
@@ -711,7 +711,7 @@ function Paper() {
 
 /**
  * The panel beside the form: Peek, full-body, one pose per step, from the
- * Onboarding board ("onboarding panel: Peek"). It does not stream facts while
+ * deleted Onboarding board ("onboarding panel: Peek"). It does not stream facts while
  * the read runs and has no phone preview (owner answer 8). Decoration only.
  */
 function OnboardingArt({

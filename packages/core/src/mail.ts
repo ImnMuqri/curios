@@ -17,20 +17,20 @@ import { readableOn, tintOf } from './bento.js';
  * from packages/ui/src/tokens.css, the one home of these colours; change both.
  */
 const C = {
-  ink: '#191f2c',
-  inkSoft: '#4b5060',
-  body: '#3c4150',
-  muted: '#696e7b',
-  faint: '#8a8f9b',
-  line: '#e9ebef',
-  edge: '#d5d9e1',
-  field: '#f1f3f6',
-  well: '#f5f6f9',
-  card: '#ffffff',
-  paper: '#fafbfc',
-  biru: '#2340c8',
-  biruDeep: '#1a31a8',
-  biruMuda: '#eaf0ff',
+  ink: '#1d1d1b',
+  inkSoft: '#36414b',
+  body: '#36414b',
+  muted: '#5e6b75',
+  faint: '#5e6b75',
+  line: '#e2eef3',
+  edge: '#d3e5ee',
+  field: '#edf6fa',
+  well: '#edf6fa',
+  card: '#fcffff',
+  paper: '#fcffff',
+  biru: '#0479a3',
+  biruDeep: '#046c92',
+  biruMuda: '#e2f4fb',
   hijau: '#1d6f5f',
   hijauDeep: '#123b33',
   hijauMuda: '#e8f3ef',
@@ -38,7 +38,7 @@ const C = {
   amberMuda: '#fdf0dc',
   merah: '#d8452f',
   merahMuda: '#fdecea',
-  /** A shop's own colour in the emails to its customers (the Emails board's Kek Lina). */
+  /** A shop's own colour in the emails to its customers (the More board's Kek Lina). */
   shop: '#b5294e',
 } as const;
 
@@ -143,7 +143,7 @@ function button(b: MailButton): string {
 }
 
 function quietButton(b: { label: string; href: string }): string {
-  return `<a href="${safeHref(b.href)}" style="display:inline-block;padding:12px 20px;margin:10px 0 4px 0;border-radius:999px;border:1px solid ${C.edge};background:#ffffff;color:${C.ink};font-family:${FONT};font-size:15px;font-weight:600;line-height:20px;text-decoration:none;">${escapeHtml(b.label)}</a>`;
+  return `<a href="${safeHref(b.href)}" style="display:inline-block;padding:12px 20px;margin:10px 0 4px 0;border-radius:999px;border:1px solid ${C.edge};background:#fcffff;color:${C.ink};font-family:${FONT};font-size:15px;font-weight:600;line-height:20px;text-decoration:none;">${escapeHtml(b.label)}</a>`;
 }
 
 function pill(label: string, href: string, ghost = false): string {
@@ -187,7 +187,7 @@ function block(b: MailBlock): string {
         .map((line) =>
           line.from === 'visitor'
             ? `<div style="text-align:right;margin:0 0 6px;"><span style="display:inline-block;max-width:86%;padding:8px 12px;border-radius:14px 14px 4px 14px;background:${C.ink};color:${C.paper};font-family:${FONT};font-size:13.5px;line-height:20px;text-align:left;">${lines(line.text)}</span></div>`
-            : `<div style="text-align:left;margin:0 0 6px;"><span style="display:inline-block;max-width:86%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:#ffffff;border:1px solid ${C.line};color:${C.ink};font-family:${FONT};font-size:13.5px;line-height:20px;">${lines(line.text)}</span></div>`,
+            : `<div style="text-align:left;margin:0 0 6px;"><span style="display:inline-block;max-width:86%;padding:8px 12px;border-radius:14px 14px 14px 4px;background:#fcffff;border:1px solid ${C.line};color:${C.ink};font-family:${FONT};font-size:13.5px;line-height:20px;">${lines(line.text)}</span></div>`,
         )
         .join('')}</td></tr></table>`;
     case 'card':
@@ -236,7 +236,7 @@ export function renderMailHtml(mail: MailContent): string {
 <body style="margin:0;padding:0;background:${C.field};">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${C.field};">
 <tr><td align="center" class="outer" style="padding:36px 12px 48px;">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="paper" style="max-width:600px;border-collapse:separate;border-radius:18px;background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="paper" style="max-width:600px;border-collapse:separate;border-radius:18px;background:#fcffff;">
 <tr><td class="px" style="padding:28px 36px 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
 ${mail.shop ? `<td style="font-family:'Bricolage Grotesque',${FONT};font-size:20px;font-weight:700;letter-spacing:-0.4px;color:${C.ink};"><span style="display:inline-block;width:32px;height:32px;margin-right:10px;border-radius:16px;background:${accent.bg};color:${accent.fg};font-size:15px;line-height:32px;text-align:center;vertical-align:middle;">${escapeHtml([...mail.shop][0]?.toUpperCase() ?? '')}</span><span style="vertical-align:middle;">${escapeHtml(mail.shop)}</span></td>` : `<td><img src="${escapeHtml(appUrl)}/email/wordmark@2x.png" width="${WORDMARK_W}" height="28" alt="curios" style="display:block;border:0"></td>`}
@@ -259,4 +259,4 @@ ${mail.blocks.map(block).join('\n')}
 /** Why an account email came: someone used this address on Curios. */
 export const ACCOUNT_MAIL_FOOTER = 'You get this because someone used this address on Curios.';
 /** Why an owner email came, and where to turn it off. */
-export const OWNER_MAIL_FOOTER = 'You get this because this email is on in Settings, under Notifications.';
+export const OWNER_MAIL_FOOTER = 'You get this because this email is on in Settings, under Email me when.';

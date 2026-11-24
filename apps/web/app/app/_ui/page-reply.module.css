@@ -8,11 +8,11 @@
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   /* Thinking's o, while the reply is on its way: the colour of the dot, or biru beside Peek. */
-  --mo-ring: var(--accent-mark, var(--accent, var(--biru)));
+  --mo-ring: var(--accent-mark, var(--accent, var(--sky)));
 }
 
 .reply:not([data-on-page]) {
-  --mo-ring: var(--biru);
+  --mo-ring: var(--sky);
 }
 
 .who {
@@ -47,7 +47,7 @@
 }
 
 .peekFace {
-  fill: var(--biru);
+  fill: var(--sky);
 }
 
 .peekWhite {
@@ -65,7 +65,7 @@
   height: 12px;
   flex: none;
   border-radius: 50%;
-  background: var(--accent-mark, var(--accent, var(--biru)));
+  background: var(--accent-mark, var(--accent, var(--sky)));
 }
 
 .words {

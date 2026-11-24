@@ -138,7 +138,7 @@ export function senderFor(fromName: string | undefined, configured: string): str
  * above this line knows which, so the choice stays reversible.
  *
  * Plain text always, and HTML alongside when the sender laid the email out
- * (renderMailHtml in @curios/core, the design handoff's Emails board). The
+ * (renderMailHtml in @curios/core, the design handoff's More board). The
  * text is the whole message, so a client that shows only text loses nothing.
  *
  * Every email carries a Reply-To: the job's own (a customer's email names the

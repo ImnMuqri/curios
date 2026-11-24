@@ -1,6 +1,6 @@
 .mark {
-  --mo-ring: var(--biru);
-  --mo-eye: var(--biru);
+  --mo-ring: var(--sky);
+  --mo-eye: var(--sky);
   display: inline-block;
   font-family: var(--font-display);
   font-size: var(--l-wordmark, 28px);

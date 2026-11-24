@@ -18,7 +18,7 @@ export function centsText(cents: number): string {
   return cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2);
 }
 
-/** An Ask item's starting price that is not a number of ringgit (the Store board's words). */
+/** An Ask item's starting price that is not a number of ringgit (the Dash board's words). */
 export const FROM_PARSE_SENTENCE = 'That starting price does not look right. Use ringgit, like 180, or leave it empty.';
 
 export type OptionDraft = { key: number; label: string; price: string };
@@ -106,7 +106,7 @@ export function pricedFields(pricing: Pricing): { priceCents: number | null; ask
 }
 
 /**
- * The price as the owner's screens say it (the Store board's `pricing().line`): an Ask item's
+ * The price as the owner's screens say it (the deleted Store board's `pricing().line`): an Ask item's
  * "From RM180, ask for a price" or "Price on request", else core's line ("RM25", "1kg RM95 · 2kg RM170").
  */
 export function ownerPriceLine(item: { priceCents: number | null; askForPrice?: boolean; options: { label: string; priceCents: number }[] }): string {

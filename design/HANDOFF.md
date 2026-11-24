@@ -10,10 +10,14 @@ Implement **one module at a time** and compare against the screenshots after eac
 
 | Path | What it is |
 |---|---|
-| `boards/*.dc.html` | The design source, one file per board. **Reference, not production code** (see below). |
+| `boards/*.dc.html` | The design source: five boards, `Landing2`, `Site`, `Dash`, `More` and `Admin`. **Reference, not production code** (see below). |
 | `boards/canvas.json` | Board order and titles, as they sit on the design canvas. |
-| `screens/<Board>[-state].desktop.jpg` | Each board and state at desktop width (1280, or 1440 for the app). |
+| `screens/<Board>[-state].desktop.jpg` | Stills at desktop width (1280, or 1440 for the app). |
 | `screens/<Board>[-state].phone.jpg` | The same at 390px. |
+
+The boards are the five in `boards/`. Earlier boards (Alerts, Billing, Components, Emails, Help, HeroA, HeroB, HeroNew, Knowledge, Leads, Main, MyCurios, Onboarding, Orders, Public, Questions, Review, Settings, SignIn, SignUp, Store, System and TanyaJe) were deleted on 24 Nov 2026 in commit 58a531e, when the sky and hot pink rebrand folded them into those five. They are in git history before that commit. Sections below that name an old board are kept as a record of what was decided at the time; the table under "Boards to routes" says where each one lives now.
+
+**The images in `screens/` predate the 24 Nov rebrand.** They show the old colours, and some come from the deleted boards. Keep them only as layout references until they are re-exported from the current boards.
 
 ### How to read a `.dc.html` board
 
@@ -45,7 +49,7 @@ app.
   burgundy and serif name in the boards are just the sample owner's theme. Build the themed parts
   from the page's real theme values.
 - **Colours** follow `devDocs/DESIGN.md`:
-  - `--ink` #191F2C, `--paper` #FAFBFC, `--biru` #2340C8 (and its pales #EAF0FF / #DFE8FD)
+  - `--ink` #191F2C, `--paper` #FAFBFC, `--biru` #0479A3 (sky deep: buttons, links, small blue text; pales #E2F4FB / #D3EEF8). Sky #0593C6 is for graphics and large text only (`--sky`); hot pink #D83395 for graphics (`--pink`), #C42683 for small pink text and badges (`--pink-deep`). Pages are white #FCFFFF with cool greys (24 Nov rebrand). The owner's own accent (default #2340C8) is unchanged.
   - `--kuning` #F2A33C, for money and attention only
   - `--merah` #D8452F, for errors and stops only
   - The green used for WhatsApp and paid states is #1D6F5F, with #E8F3EF as its pale.
@@ -59,29 +63,19 @@ app.
 
 ## Boards to routes
 
-| Board | Route or place in the code | Status |
+| Board | What it covers | Route or place in the code |
 |---|---|---|
-| `Main` | `app/(landing)/page.tsx` (and `/ms`) | exists, restyle |
-| `TanyaJe` | landing "Tanya je" section | exists, restyle |
-| `SignIn`, `SignUp` | `/signin`, `/signup` | exists, restyle |
-| `Onboarding` (4 steps) | `/app/onboarding` | exists, restyle |
-| `Public` route `page` / `ask` | `/[handle]` (Links and Ask tabs) | exists, restyle |
-| `Public` route `shop` / `item` | `/[handle]/shop`, `/[handle]/shop/[slug]` (see the 22 Oct update) | restyle / new |
-| `Public` route `checkout` | checkout (slice 18, `devDocs/store-design.md`) | new |
-| `Public` route `placed` | after placing an order: show the code, tell the visitor to keep it | new |
-| `Public` route `order` | `/[handle]/order/<token>` | new |
-| `Public` route `faq`, `faqq` | `/[handle]/faq`, `/[handle]/faq/[slug]` | exists, restyle |
-| `System` | `/forgot`, `/reset`, `/verify`, `not-found.tsx`, `error.tsx`, plus the over-cap chat reply | mostly exists, restyle |
-| `Emails` | owner emails sent by `apps/api` (currently plain text in `auth.service.ts`) | new HTML templates |
-| `Alerts` | a banner slot in `app-frame.tsx`, with `leads/trial-notice.tsx` as the copy source | new component |
-| `MyCurios` | `/app/curios` | exists, restyle |
-| `Store` | `/app/store` | exists, restyle |
-| `Orders` | `/app/orders` | new (slice 18) |
-| `Questions`, `Leads`, `Review`, `Knowledge`, `Billing`, `Settings` | `/app/<name>` (Knowledge is "Facts & sources") | exists, restyle |
+| `Landing2` | The landing page, in English and Malay, and the Peek mascot art | `app/(landing)/page.tsx` (and `/ms`) |
+| `Site` | Sign in, sign up, forgot, reset and verify, 404, error, unavailable, report, and the legal pages | `/signin`, `/signup`, `/forgot`, `/reset`, `/verify`, `not-found.tsx`, `error.tsx`, `/[handle]/report`, `/privacy`, `/terms`, `/refunds`, `/returns`, plus the over-cap chat reply |
+| `Dash` | Every dashboard page, tab, editor and sheet: My Curios, Store, Orders, Questions, Leads, Review, Knowledge ("Facts & sources"), Billing, Settings, Help, and the stop-state banners | `/app/<name>` (curios, store, orders, questions, leads, review, knowledge, billing, settings), the help panel in `app-frame.tsx`, and the banner slot with `leads/trial-notice.tsx` as the copy source |
+| `More` | Onboarding (4 steps), the customer pages (page, ask, shop, item, checkout, placed, paid, order page, FAQ) and the emails | `/app/onboarding`, `/[handle]`, `/[handle]/shop`, `/[handle]/shop/[slug]`, shop checkout, `/[handle]/order/<token>`, `/[handle]/faq`, `/[handle]/faq/[slug]`, and the mail templates in `packages/core` |
+| `Admin` | The Curios team console (unchanged by the rebrand) | `apps/admin` (see the Admin section below) |
+
+Some states only an old board drew (for example the payment failed page, the chat order card and the shop enquiry sheet). They are not in the current boards, so the code comments call them "the deleted Public board" and the like; read them in git history before 58a531e.
 
 ## Notes per area
 
-**Customer side (`Public`)**
+**Customer side (`More`)**
 - A personal page is the same as a business page without the Shop tab, without checkout, and
   without the lead capture card.
 - FAQ entry points:
@@ -113,7 +107,7 @@ app.
 - Owner emails carry a footer line saying they can be switched off in Settings, under
   Notifications.
 
-**Stop states (`Alerts`)**
+**Stop states (`Alerts`, now in `Dash`)**
 - There are six states:
   - trial running
   - trial used up
@@ -138,7 +132,7 @@ app.
 Iman approved these on the canvas. They replace what the boards showed before, so check the
 rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's tabs and Billplz.
 
-**The shop gets its own page (`Public`)**
+**The shop gets its own page (`Public`, now in `More`)**
 - The public page's tabs are **Links and Ask** only, on business pages too. The Shop tab is gone.
 - The shop's way in is the **first link** on the Links tab. It's the same pill as other links, in
   the accent colour, with three overlapping product photos and "Shop · N items · next pickup …".
@@ -164,7 +158,7 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   page whenever the basket has something in it.
 - Screens: `Public-page`, `Public-shop`, `Public-product`, `Public-ask`.
 
-**AI replies are not chat bubbles (`Public`, `Main`, `TanyaJe`)**
+**AI replies are not chat bubbles (`Public`, `Main`, `TanyaJe`; now `More` and `Landing2`)**
 - The visitor's message is a soft see-through bubble on the right (rgba(250,251,252,.14) on the
   page colour).
 - The page's reply has **no bubble**. A small label sits on top: a dot in the accent colour and
@@ -380,7 +374,7 @@ key-value table for the switches, limits, prices and banner, and a webhook event
 
 ## Digital products, 24 Oct 2026
 
-Boards: `Store`, `Public`, `Emails`, `Orders`. Screens: `design/screens/Digital_*`.
+Boards at the time: `Store`, `Public`, `Emails`, `Orders` (now `Dash` and `More`). Screens: `design/screens/Digital_*`.
 Sample items in Kek Lina's shop: a recipe e-book (files), a video course (link), a RM50 gift
 voucher (codes) and an online Kek batik class (session).
 
@@ -545,7 +539,7 @@ number, paid orders, the Questions list) exists already. The numbers are sample 
 ## Dashboard v2: new frame, calmer pages, 10px corners (29 Oct 2026)
 
 All owner screens (My Curios, Store, Orders, Questions, Leads, Review, Facts & sources, Billing,
-Settings, and the Alerts states board) were reworked. The boards in `design/boards/` are the
+Settings, and the Alerts states board) were reworked. The boards then in `design/boards/` (now folded into `Dash`) were the
 source of truth; stills are `design/screens/<Board>.desktop.jpg` and `.phone.jpg`, plus
 `Knowledge-ask-empty.desktop.jpg`. Each board's changes sit at the end of its `<style>` under
 `/* v2 ... */` comments, so they are easy to find.
@@ -655,7 +649,7 @@ At ≤760px the old row of icons at the top is gone. CSS is in the block marked 
 ## Payment result pages (2 Nov 2026)
 
 ### Subscription (owner pays Curios): Peek happy or sad
-Board: `Billing.dc.html`. To view it, use the preview bar's **Payment → Paid / Failed** buttons. Paying through the Billing modal also lands on the paid page now; it used to show a toast. CSS is in the block marked `/* payment result pages: Peek happy / sad (2 Nov) */`, and the markup is the `.pr` overlay. Screens: `Billing-paid.*`, `Billing-payment-failed.*`, plus the animation in `Billing-payment-result.peek.gif`.
+Board at the time: `Billing.dc.html` (now `Dash.dc.html`). To view it, use the preview bar's **Payment → Paid / Failed** buttons. Paying through the Billing modal also lands on the paid page now; it used to show a toast. CSS is in the block marked `/* payment result pages: Peek happy / sad (2 Nov) */`, and the markup is the `.pr` overlay. Screens: `Billing-paid.*`, `Billing-payment-failed.*`, plus the animation in `Billing-payment-result.peek.gif`.
 
 - Make it a full page at the CHIP return URL, not a modal. Grey ground `#edeff4`, logo on the left, **Back to Billing** on the right.
 - **Desktop:** one white card, 880px wide, 16px radius, split in two.
@@ -673,7 +667,7 @@ Board: `Billing.dc.html`. To view it, use the preview bar's **Payment → Paid /
 ### Shop (customer pays the owner)
 The success page already exists ("Paid. Order placed" with the order code), so keep it.
 
-The new failed page is in `Public.dc.html` as route `payfail` ("Payment failed" in the preview's route bar). CSS is in the block marked `/* payment failed (2 Nov) */`. Screens: `Shop-payment-failed.*`.
+The new failed page was in `Public.dc.html` as route `payfail` (deleted 24 Nov 2026; the current `More.dc.html` has no failed page, so read it in git history before 58a531e) ("Payment failed" in the preview's route bar). CSS is in the block marked `/* payment failed (2 Nov) */`. Screens: `Shop-payment-failed.*`.
 
 - It uses the same layout as the placed page: a red cross in a soft circle, then "Payment didn't go through".
 - "Nothing was taken. {Shop} has saved your order for **30 minutes**." Hold the order (and any stock or slot) for 30 minutes, then release it.
@@ -682,7 +676,7 @@ The new failed page is in `Public.dc.html` as route `payfail` ("Payment failed" 
 - At the bottom, a small line: "Tried with {method}. The bank said: {reason}."
 
 ## Landing: "No cut, ever" block (8 Nov 2026)
-Board: `TanyaJe.dc.html`. It's a new `<section class="nc">` between the For business story and Pricing, on the same pink (`#fbeef1`). CSS is in the block marked `/* no cut, ever (8 Nov) */`. Screens: `Landing-no-cut.*`.
+Board at the time: `TanyaJe.dc.html` (now `Landing2.dc.html`). It's a new `<section class="nc">` between the For business story and Pricing, on the same pink (`#fbeef1`). CSS is in the block marked `/* no cut, ever (8 Nov) */`. Screens: `Landing-no-cut.*`.
 - **Left:** eyebrow "No cut, ever", the title "Every sale is yours. We take 0%." with 0% in `#b5294e`, then "RM49 a month is all you pay us."
 - **Right:** a white card showing a RM100 order as two bars.
   - Marketplace: keep about RM89, with a red ~RM11 cut.
@@ -694,7 +688,7 @@ Board: `TanyaJe.dc.html`. It's a new `<section class="nc">` between the For busi
 - The "usual way vs Curios" checklist (option B) is meant for the pricing page later. It isn't built yet.
 
 ## Shop: Ask items and enquiries (8 Nov 2026)
-Boards: `Public.dc.html` (customer), `Store.dc.html` and `Leads.dc.html` (owner). CSS is in blocks marked `(8 Nov)`. Screens: `Shop-ask-*.phone.jpg`, `Store-ask-item.desktop.jpg`, `Leads-enquiry.desktop.jpg`.
+Boards at the time: `Public.dc.html` (customer, now `More.dc.html`), `Store.dc.html` and `Leads.dc.html` (owner, now `Dash.dc.html`). CSS is in blocks marked `(8 Nov)`. Screens: `Shop-ask-*.phone.jpg`, `Store-ask-item.desktop.jpg`, `Leads-enquiry.desktop.jpg`.
 
 **Owner (Store item editor)**
 - New "How they order" choice on physical items: **Add to basket** (default) or **Ask for a price**.
@@ -719,7 +713,7 @@ Boards: `Public.dc.html` (customer), `Store.dc.html` and `Leads.dc.html` (owner)
 - The first WhatsApp draft is written for the enquiry.
 
 ## Help chat for owners (12 Nov 2026)
-This is the follow-up to the support inbox. The full design is in `design/help/help-chat-design.md`, and the guide it answers from is in `design/help/help-faq.md` (58 entries, written from `main` at `88d53a3`). The board is `design/boards/Help.dc.html`, whose preview bar steps through Start, Answer, Didn't help, Not in the guide, Sent and Topics. Screens: `design/screens/Help-*.jpg`.
+This is the follow-up to the support inbox. The full design is in `design/help/help-chat-design.md`, and the guide it answers from is in `design/help/help-faq.md` (58 entries, written from `main` at `88d53a3`). The board was `design/boards/Help.dc.html` (now the Help panel in `Dash.dc.html`), whose preview bar steps through Start, Answer, Didn't help, Not in the guide, Sent and Topics. Screens: `design/screens/Help-*.jpg`.
 
 In short:
 - Help (top bar) and "Help & support" (account popover) open a 420px panel instead of `mailto:`.

@@ -47,7 +47,7 @@ function DownloadIcon() {
 }
 
 /**
- * "Your downloads and access" (Public board, `order`): what a paid order hands
+ * "Your downloads and access" (deleted Public board, `order`): what a paid order hands
  * over, line by line. Everything here comes from what was sold. The buttons are
  * plain links to the API's routes, so each download is counted there.
  */

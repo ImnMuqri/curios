@@ -45,7 +45,7 @@ textarea.control {
 }
 
 .control:focus {
-  border-color: var(--biru);
+  border-color: var(--sky);
 }
 
 /*

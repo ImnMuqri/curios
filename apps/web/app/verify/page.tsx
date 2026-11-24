@@ -6,7 +6,7 @@ import { Expired, Verified, Verify } from './verify-client.js';
 export const metadata: Metadata = { title: 'Confirm your email · Curios', robots: { index: false, follow: false } };
 
 /**
- * Email confirmation, from the System board. The link is looked at (not
+ * Email confirmation, from the Site board. The link is looked at (not
  * spent) first, so each case gets its own screen:
  *
  * - usable: confirm it now ("Confirming your address…", then confirmed);

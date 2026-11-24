@@ -1,5 +1,5 @@
 /*
- * Store's own parts, from the design handoff's Store board. What it shares
+ * Store's own parts, from the design handoff's Dash board. What it shares
  * with My Curios (header, tabs, sections, fields, switches, tiles, the empty
  * state, the phone preview) is in ../_ui/editor.module.css.
  */
@@ -21,95 +21,97 @@
   --panel-max: 840px;
 }
 
-/* ---- Header: open for orders ---- */
-
-.open {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  height: 34px;
-  padding: 0 6px 0 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 13px;
-  font-weight: 500;
-  white-space: nowrap;
+/* Items: the card grid takes the column's width (three cards on the board's measure). */
+.panelWide {
+  --panel-max: 1080px;
 }
 
-.open[data-state='blocked'] {
-  color: var(--amber-ink);
+/* ---- The Store: one column, no phone (the board's main2) ---- */
+
+.screen {
+  flex: 1;
+  min-width: 0;
 }
 
-.pulse {
-  position: relative;
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-radius: 50%;
-  background: var(--faint);
-}
-
-.open[data-state='open'] .pulse {
-  background: var(--hijau);
-}
-
-.open[data-state='blocked'] .pulse {
-  background: var(--kuning);
-}
-
-.open[data-state='open'] .pulse::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: inherit;
-  animation: ping 1.6s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes ping {
-  75%,
-  100% {
-    transform: scale(2.6);
-    opacity: 0;
-  }
+/* The tabs sit under the header's text, on the board's row of chips. */
+.tabsRow {
+  margin-top: 26px;
 }
 
 .openError {
   margin: 0;
-  padding: 10px 32px;
+  padding: 10px 20px;
   background: var(--merah-muda);
   color: var(--merah-deep);
   font-size: 13px;
 }
 
-/* ---- Ready to take orders ---- */
+/* ---- The ready box: is the shop open, and what does it still need ---- */
 
 .ready {
+  margin-top: 16px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  overflow: hidden;
+}
+
+.readyHead {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 20px;
+}
+
+.readyHead > div {
+  flex: 1;
+  min-width: 0;
+}
+
+.readyHead b {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.readyHead small {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+/* A shop that cannot open, or is paused: amber, as it was before the 24 Nov board (DEVIATIONS 384). */
+.ready[data-state='blocked'] .readyHead small {
+  color: var(--amber-ink);
+}
+
+.steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  max-width: 840px;
-  margin: 0 0 8px;
-  padding: 4px;
+  margin: 0;
+  padding: 0;
   list-style: none;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+
+.steps li + li {
+  border-left: 1px solid var(--line);
 }
 
 .step {
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   width: 100%;
-  padding: 10px 12px;
+  height: 100%;
+  padding: 14px 20px;
   border: 0;
-  border-radius: 7px;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 160ms ease;
+  transition: background-color 200ms ease;
 }
 
 .step:hover {
@@ -117,15 +119,15 @@
 }
 
 .step:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: -2px;
 }
 
 .stepDot {
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   flex: none;
   border-radius: 50%;
   background: var(--hijau-muda);
@@ -140,7 +142,7 @@
 .stepDot svg {
   fill: none;
   stroke: currentColor;
-  stroke-width: 2.6;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -151,20 +153,19 @@
 
 .stepText b {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 
 /* Wraps rather than cuts, though payWords keeps every note to one line ("CHIP, QR and bank account"). */
 .stepText span {
   display: block;
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
   overflow-wrap: anywhere;
 }
 
-/* ---- Items ---- */
-
+/* The bordered list the voucher and pickup-place rows sit in. */
 .itemList {
   margin: 0;
   padding: 0;
@@ -174,61 +175,80 @@
   background: var(--card);
 }
 
-.item {
+/* ---- Items: the card grid ---- */
+
+.shelf {
+  margin-top: 20px;
+}
+
+/* The grid answers the content column, not the window. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@container (max-width: 760px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container (max-width: 480px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  min-height: 76px;
-  padding: 0 10px 0 12px;
-  transition: background-color 160ms ease;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  overflow: hidden;
+  transition: box-shadow 200ms ease, transform 200ms ease;
 }
 
-.item:first-child {
-  border-radius: 10px 10px 0 0;
+.card:hover {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring), var(--calm-hover-shadow);
+  transform: translateY(-2px);
 }
 
-.item:last-child {
-  border-radius: 0 0 10px 10px;
+.cardLink {
+  display: block;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
 }
 
-.item:only-child {
-  border-radius: 10px;
+.cardLink:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: -2px;
+  border-radius: 16px;
 }
 
-.item:hover {
-  background: var(--paper);
-}
-
-.item + .item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 12px;
-  right: 12px;
-  height: 1px;
-  background: var(--line);
-}
-
-/* A photo, or the name's first letter on a soft tint (one of four, by position). */
-.thumb {
+/* A photo, or the name's first letter on a soft tint (one of four, by position). Square at every
+   card width, as the shop itself shows items (owner, 24 Nov 2026). */
+.cardPhoto {
   position: relative;
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
-  flex: none;
+  aspect-ratio: 1 / 1;
   overflow: hidden;
-  border-radius: 10px;
   background: var(--blob-pink);
-  color: color-mix(in oklch, var(--rose) 70%, var(--ink));
+  color: color-mix(in srgb, var(--rose) 70%, var(--ink));
   font-family: var(--font-fraunces), Georgia, serif;
-  font-size: 22px;
+  font-size: 44px;
   font-weight: 800;
   transition: opacity 250ms ease, filter 250ms ease;
 }
 
-.thumb img {
+.cardPhoto img {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -236,167 +256,283 @@
   object-fit: cover;
 }
 
-:is(.thumb, .photo)[data-tint='1'] {
+:is(.cardPhoto, .photo)[data-tint='1'] {
   background: var(--blob-peach);
-  color: color-mix(in oklch, var(--amber-ink) 85%, var(--ink));
+  color: color-mix(in srgb, var(--amber-ink) 85%, var(--ink));
 }
 
-:is(.thumb, .photo)[data-tint='2'] {
+:is(.cardPhoto, .photo)[data-tint='2'] {
   background: var(--blob-mint);
-  color: color-mix(in oklch, var(--hijau) 60%, var(--ink));
+  color: color-mix(in srgb, var(--hijau) 60%, var(--ink));
 }
 
-:is(.thumb, .photo)[data-tint='3'] {
+:is(.cardPhoto, .photo)[data-tint='3'] {
   background: var(--blob-blue);
-  color: color-mix(in oklch, var(--biru) 70%, var(--ink));
+  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
 }
 
 /* Behind a photo the tint blended into its rounded corners as a pale fringe. */
-:is(.thumb, .photo):has(> img),
-:is(.thumb, .photo)[data-tint]:has(> img) {
+:is(.cardPhoto, .photo):has(> img),
+:is(.cardPhoto, .photo)[data-tint]:has(> img) {
   background: none;
 }
 
-.item[data-hidden] .thumb {
-  opacity: 0.5;
-  filter: grayscale(0.8);
+/* What a digital item with no picture is: Files, Link, Codes or Session, on a pill. */
+.cardKind {
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
-.itemText {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
+.card[data-hidden] .cardPhoto {
+  opacity: 0.55;
+  filter: grayscale(0.7);
 }
 
-.itemText b {
+.cardText {
+  display: block;
+  padding: 14px 16px;
+}
+
+.cardText b {
   display: block;
   overflow: hidden;
+  font-size: 15px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.itemText span {
+.cardText small {
   display: block;
+  margin-top: 2px;
   overflow: hidden;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.itemText:hover b {
-  color: var(--biru);
+.card[data-hidden] .cardText b {
+  color: var(--muted);
 }
 
-.itemText:focus-visible {
-  outline: 2px solid var(--biru);
-  outline-offset: 2px;
-  border-radius: 6px;
-}
-
-.available {
+.cardFoot {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 118px;
-  flex: none;
-  font-size: 12.5px;
-  color: var(--muted);
-  white-space: nowrap;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 32px;
+  padding: 0 16px 14px;
 }
 
-.tools {
-  display: flex;
-  gap: 2px;
+.sold {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.hid {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--amber-ink);
+}
+
+/* The "..." that keeps the shop's order (Move earlier, Move later): over the photo's corner. */
+.cardMenu {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.cardDots {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  color: var(--ink);
+  cursor: pointer;
   opacity: 0;
   transition: opacity 140ms ease;
 }
 
-.item:hover .tools,
-.item:focus-within .tools {
+.cardDots svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.card:hover .cardDots,
+.card:focus-within .cardDots,
+.cardDots[aria-expanded='true'] {
   opacity: 1;
 }
 
 @media (hover: none) {
-  .tools {
+  .cardDots {
     opacity: 1;
   }
 }
 
+.cardDots:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+.cardMenuPanel {
+  display: grid;
+  min-width: 150px;
+  padding: 6px;
+}
+
+.cardMenuPanel button {
+  height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cardMenuPanel button:hover:not(:disabled) {
+  background: var(--surface);
+}
+
+.cardMenuPanel button:disabled {
+  color: var(--muted);
+  opacity: 0.5;
+  cursor: default;
+}
+
+.cardAdd {
+  display: grid;
+  min-height: 250px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1.5px var(--edge);
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cardAdd a {
+  display: grid;
+  place-items: center;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 16px;
+}
+
+.cardAdd a:hover {
+  color: var(--ink);
+  background: var(--surface);
+}
+
+.cardAdd a:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: -2px;
+}
+
+.noMatch {
+  margin: 18px 0 0;
+  padding: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.noMatch a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* "In your shop": the switch and what it means, in the row's control column. */
+.available {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
 /* ---- One item, edited ---- */
 
-.editor {
-  margin-top: 22px;
-  padding: 22px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--card);
+.itemScreen {
   animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The board's "All items": a quiet pill with a chevron, above the header, on its 40px line. */
+.backRow {
+  padding: 10px 40px 0;
 }
 
 .back {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 30px;
-  margin: -4px 0 16px -8px;
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink-soft);
-  font: inherit;
+  height: 36px;
+  margin-left: -6px;
+  padding: 0 14px 0 10px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 14px;
   font-weight: 500;
-  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 200ms ease;
 }
 
 .back:hover {
   background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
   color: var(--ink);
 }
 
-.back svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.back:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
 }
 
-.editorTop {
-  display: grid;
-  grid-template-columns: 148px minmax(0, 1fr);
-  gap: 18px;
+.back span {
+  margin-top: -2px;
+  font-size: 20px;
+  line-height: 1;
 }
 
 .photoCell {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .photo {
   position: relative;
   display: grid;
   place-items: center;
-  width: 148px;
-  height: 148px;
+  width: 96px;
+  height: 96px;
   padding: 0;
   border: 0;
   overflow: hidden;
-  border-radius: 10px;
+  border-radius: 16px;
   background: var(--blob-pink);
-  color: color-mix(in oklch, var(--rose) 70%, var(--ink));
+  color: color-mix(in srgb, var(--rose) 70%, var(--ink));
   font-family: var(--font-fraunces), Georgia, serif;
-  font-size: 3.25rem;
+  font-size: 2.25rem;
   font-weight: 800;
   cursor: pointer;
 }
@@ -435,7 +571,7 @@
 }
 
 .photo:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -443,9 +579,7 @@
   cursor: not-allowed;
 }
 
-.photoCell {
-  align-items: stretch;
-}
+
 
 .coverBadge,
 .cropBadge {
@@ -474,10 +608,9 @@
   color: var(--on-photo);
 }
 
+/* The extra photos and the add button sit in the cover's row, at its size. */
 .photoRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  display: contents;
 }
 
 .smallPhoto,
@@ -491,11 +624,11 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 40px;
-  height: 40px;
+  width: 96px;
+  height: 96px;
   padding: 0;
   overflow: hidden;
-  border-radius: 8px;
+  border-radius: 16px;
   cursor: pointer;
 }
 
@@ -520,12 +653,12 @@
 
 .smallPhoto:hover:not(:disabled),
 .addPhoto:hover:not(:disabled) {
-  outline: 2px solid color-mix(in oklch, var(--biru) 45%, transparent);
+  outline: 2px solid color-mix(in oklch, var(--sky) 45%, transparent);
 }
 
 .smallPhoto:focus-visible,
 .addPhoto:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -535,8 +668,9 @@
 }
 
 .photoCount {
+  flex-basis: 100%;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .fields {
@@ -613,7 +747,7 @@
 }
 
 .pricedBy button:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: -2px;
   border-radius: 8px;
 }
@@ -632,8 +766,8 @@
 }
 
 .money:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .money > span {
@@ -683,8 +817,8 @@
 }
 
 .option .optionName:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 /* What customers will see, or what is wrong: said as the owner types. */
@@ -714,37 +848,18 @@
   stroke-linejoin: round;
 }
 
-.editorFoot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 22px;
-  padding-top: 18px;
-  border-top: 1px solid var(--line);
-}
-
-.editorFoot .available {
-  width: auto;
-  color: var(--ink);
-}
-
-.footEnd {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-
 .ghost {
+  justify-self: start;
   height: 38px;
+  margin: 6px 0 0 -12px;
   padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: transparent;
   color: var(--merah-deep);
   font: inherit;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -983,7 +1098,7 @@
   overflow: hidden;
   border-radius: 8px;
   background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 12px 24px -16px rgb(35 64 200 / 40%);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 24px -16px rgb(5 147 198 / 40%);
 }
 
 .qrBox img {
@@ -999,8 +1114,8 @@
   right: 0;
   left: 0;
   height: 16px;
-  border-bottom: 1.5px solid var(--biru);
-  background: linear-gradient(to bottom, transparent, rgb(35 64 200 / 18%) 70%, rgb(35 64 200 / 60%) 100%);
+  border-bottom: 1.5px solid var(--sky);
+  background: linear-gradient(to bottom, transparent, rgb(5 147 198 / 18%) 70%, rgb(5 147 198 / 60%) 100%);
   animation: scan 2.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
 }
 
@@ -1069,7 +1184,7 @@
 }
 
 .drop:hover:not(:disabled) {
-  border-color: var(--biru);
+  border-color: var(--sky);
   background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
   color: var(--biru);
 }
@@ -1374,8 +1489,8 @@
 }
 
 .day[data-when='first'] {
-  background: var(--action);
-  color: var(--action-fg);
+  background: var(--select);
+  color: var(--select-fg);
   transform: scale(1.06);
 }
 
@@ -1418,7 +1533,7 @@
 }
 
 .weekday:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -1497,30 +1612,17 @@
 /* ---- Narrower ---- */
 
 @container (max-width: 680px) {
-  .ready {
+  .steps {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .available {
-    width: auto;
-    font-size: 0;
+  .steps li + li {
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 }
 
 @container (max-width: 520px) {
-  .editorTop {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .photoCell {
-    align-items: stretch;
-  }
-
-  .photo {
-    width: 100%;
-    height: 180px;
-  }
-
   .option {
     grid-template-columns: minmax(0, 1fr) 112px 34px;
   }
@@ -1537,8 +1639,8 @@
 }
 
 @media (max-width: 760px) {
-  .editor {
-    padding: 16px;
+  .backRow {
+    padding: 10px 20px 0;
   }
 
   /* The connected CHIP account and the QR: their buttons go under the words. */
@@ -1667,7 +1769,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--action);
+  background: var(--select);
   transition: width 160ms ease;
 }
 
@@ -1749,8 +1851,8 @@
 }
 
 .dgSlot input:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .dgSlot input:disabled {
@@ -1936,8 +2038,8 @@
 
 .vSelect:focus,
 .vDate:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .codeInput {
@@ -2029,14 +2131,21 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .editor,
+  .itemScreen,
   .option,
   .fee,
   .dg,
   .scan,
-  .voucherForm,
-  .open[data-state='open'] .pulse::after {
+  .voucherForm {
     animation: none;
+  }
+
+  .card {
+    transition: none;
+  }
+
+  .card:hover {
+    transform: none;
   }
 
   .pricedBy::before,

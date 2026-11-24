@@ -274,7 +274,7 @@ export async function verifyEmail(prisma: PrismaClient, token: string): Promise<
 
 /**
  * A fresh confirmation link, asked for from an expired one ("This link has
- * expired" on the System board).
+ * expired" on the Site board).
  *
  * The old link is what identifies the account: it came from that inbox, and
  * the new one goes back to the same inbox, so holding it buys nothing but a

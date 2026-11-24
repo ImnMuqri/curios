@@ -144,7 +144,7 @@ const base = { displayName: 'Iman', bio: null, onChange: vi.fn(), save: vi.fn(as
 describe('ProfileEditor picture', () => {
   it('shows the upload disabled, with the reason, when storage is off', () => {
     render(<ProfileEditor {...base} uploadsEnabled={false} uploadAvatar={vi.fn()} />);
-    const picture = screen.getByRole('button', { name: 'Upload a picture' });
+    const picture = screen.getByRole('button', { name: 'Add a profile picture' });
     expect(picture).toBeDisabled();
     expect(picture).toHaveAttribute('title', expect.stringMatching(/switched off here/i));
     expect(screen.queryByLabelText('Picture file')).toBeNull();
@@ -153,15 +153,48 @@ describe('ProfileEditor picture', () => {
   // The circle is the control: it says Add with no picture, Change with one.
   it('names the picture button for what clicking it does', () => {
     const { rerender } = render(<ProfileEditor {...base} uploadsEnabled uploadAvatar={vi.fn()} />);
-    expect(screen.getByRole('button', { name: 'Upload a picture' })).toHaveTextContent('Add');
+    expect(screen.getByRole('button', { name: 'Add a profile picture' })).toHaveTextContent('Add');
 
     rerender(<ProfileEditor {...base} avatarUrl="https://cdn.example/old.webp" uploadsEnabled uploadAvatar={vi.fn()} />);
     expect(screen.getByRole('button', { name: 'Change profile picture' })).toHaveTextContent('Change');
   });
 
-  it('counts the bio against its limit', () => {
+  it('counts the bio against its limit, inside the field, as "15 / 160"', () => {
     render(<ProfileEditor {...base} bio="Homemade cakes." uploadsEnabled uploadAvatar={vi.fn()} />);
-    expect(screen.getByText('15/160')).toBeInTheDocument();
+    const count = screen.getByText('15 / 160');
+    expect(count).toBeInTheDocument();
+    // Inside the bio field's box, which also holds the textarea, not beside the label.
+    expect(count.parentElement).toContainElement(screen.getByLabelText('Bio'));
+    expect(screen.getByLabelText('Bio')).toHaveAccessibleName('Bio');
+  });
+
+  it('puts a visible label above Name and Bio, each tied to its field, and a hint under the bio', () => {
+    render(<ProfileEditor {...base} uploadsEnabled uploadAvatar={vi.fn()} />);
+    const nameLabel = screen.getByText('Name', { selector: 'label' });
+    const bioLabel = screen.getByText('Bio', { selector: 'label' });
+    expect(nameLabel).toHaveAttribute('for', screen.getByLabelText('Display name').id);
+    expect(document.getElementById(nameLabel.getAttribute('for') ?? '')).toBe(screen.getByLabelText('Display name'));
+    expect(bioLabel).toHaveAttribute('for', screen.getByLabelText('Bio').id);
+    expect(document.getElementById(bioLabel.getAttribute('for') ?? '')).toBe(screen.getByLabelText('Bio'));
+    const hint = screen.getByText('One line people read before they ask. Mention where you are and how to order.');
+    expect(screen.getByLabelText('Bio')).toHaveAccessibleDescription(hint.textContent ?? '');
+  });
+
+  it('says what the picture wants, and the avatar itself is not a control', () => {
+    render(<ProfileEditor {...base} uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByText('Your picture')).toBeInTheDocument();
+    expect(screen.getByText('Square, at least 400 × 400')).toBeInTheDocument();
+    // Add is the only control for a picture.
+    expect(screen.getAllByRole('button').map((b) => b.textContent)).toEqual(['Add']);
+  });
+
+  it('shows Change and Remove with a picture, Add and no Remove without one', () => {
+    const { rerender } = render(<ProfileEditor {...base} uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Add a profile picture' })).toHaveTextContent('Add');
+    expect(screen.queryByRole('button', { name: 'Remove picture' })).toBeNull();
+    rerender(<ProfileEditor {...base} avatarUrl="https://cdn.example/old.webp" uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Change profile picture' })).toHaveTextContent('Change');
+    expect(screen.getByRole('button', { name: 'Remove picture' })).toHaveTextContent('Remove');
   });
 
   it('uploads a chosen file and shows the new picture', async () => {

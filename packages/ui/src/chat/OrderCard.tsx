@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import styles from './ChatMode.module.css';
 
 /**
- * The `order` event's card: the Public board's `ocard`. Mirrors the API's
+ * The `order` event's card: the deleted Public board's `ocard`. Mirrors the API's
  * `OrderCard` (apps/api/src/modules/chat/order-lookup.ts).
  */
 export interface OrderCardData {

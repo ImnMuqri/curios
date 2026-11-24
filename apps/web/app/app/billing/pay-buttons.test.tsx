@@ -1,12 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../../lib/api.js';
 import { PayButtons, PlanPay, payError, type PayOption } from './pay-buttons.js';
+import { PayDialogProvider, usePayDialog } from './pay-context.js';
 
 const options: PayOption[] = [
-  { plan: 'MONTHLY', name: 'Monthly', price: 'RM49', note: 'One month at a time', period: 'a month', unit: 'month', afterShort: '14 Dec', afterLong: '14 Dec 2026', paidPct: 50 },
-  { plan: 'ANNUAL', name: 'Yearly', price: 'RM490', note: 'Paid once a year', period: 'a year', unit: 'year', save: '2 months free', afterShort: '14 Nov 2027', afterLong: '14 Nov 2027', paidPct: 8 },
+  { plan: 'MONTHLY', name: 'Monthly', price: 'RM49', note: 'One month at a time', period: 'a month', unit: 'month', afterLong: '14 December 2026' },
+  { plan: 'ANNUAL', name: 'Yearly', price: 'RM490', note: 'Paid once a year', period: 'a year', unit: 'year', save: '2 months free', afterLong: '14 November 2027' },
 ];
 
 function pay(overrides: Partial<Parameters<typeof PlanPay>[0]> = {}) {
@@ -37,7 +38,7 @@ describe('PlanPay', () => {
 
     const dialog = screen.getByRole('dialog', { name: 'Add a year' });
     expect(dialog).toHaveTextContent('Business, 1 year');
-    expect(dialog).toHaveTextContent('Paid until becomes 14 Nov 2027');
+    expect(dialog).toHaveTextContent('Paid until becomes 14 November 2027');
     expect(onPay).not.toHaveBeenCalled();
 
     await userEvent.click(within(dialog).getByRole('button', { name: 'Continue to CHIP' }));
@@ -54,7 +55,7 @@ describe('PlanPay', () => {
   it('raises nothing when the owner backs out', async () => {
     const { onPay } = pay();
     await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(onPay).not.toHaveBeenCalled();
   });
@@ -94,28 +95,44 @@ describe('PlanPay', () => {
 
   it('pays with auto-renew when the box is ticked', async () => {
     const { onPay } = pay();
-    await userEvent.click(screen.getByRole('checkbox', { name: 'Renew automatically by card' }));
     await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Renew automatically by card' }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
 
     expect(onPay).toHaveBeenCalledWith('MONTHLY', true);
   });
 
-  it('says what the box does, and leaves it unticked', () => {
+  it('keeps the box in the dialog, says what it does, and leaves it unticked', async () => {
     pay();
-    expect(screen.getByRole('checkbox', { name: 'Renew automatically by card' })).not.toBeChecked();
+    // Not on the plan card any more: it is asked for with the payment, in the dialog.
+    expect(screen.queryByRole('checkbox')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+
+    const box = screen.getByRole('checkbox', { name: 'Renew automatically by card' });
+    expect(box).not.toBeChecked();
     expect(screen.getByText('We’ll charge your card when this period ends. Turn it off any time.')).toBeInTheDocument();
-    expect(screen.getByText(/FPX, card or e-wallet, through CHIP\./)).toBeInTheDocument();
+    expect(box).toHaveAccessibleDescription('We’ll charge your card when this period ends. Turn it off any time.');
+    expect(screen.getByText('FPX, e-wallet or card, through CHIP. It adds to the time you already have.')).toBeInTheDocument();
+  });
+
+  it('starts unticked every time the dialog opens: consent is for the payment in front of the owner', async () => {
+    const { onPay } = pay();
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Renew automatically by card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    expect(screen.getByRole('checkbox', { name: 'Renew automatically by card' })).not.toBeChecked();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
+    expect(onPay).toHaveBeenCalledWith('MONTHLY', false);
   });
 
   it('says the card-only route when ticked', async () => {
     pay();
     await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('You’ll go to CHIP to pay by FPX, card or e-wallet, then come straight back here.');
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     await userEvent.click(screen.getByRole('checkbox', { name: 'Renew automatically by card' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('You’ll go to CHIP to pay by card, then come straight back here.');
   });
 
@@ -128,13 +145,40 @@ describe('PlanPay', () => {
     expect(screen.getByText('CHIP’s payment page opens next.')).toBeInTheDocument();
   });
 
-  it('draws the line from today to where this payment takes it', () => {
-    pay({ timeline: { today: '15 Oct', paidUntil: '14 Nov' } });
-    expect(screen.getByText('Today')).toBeInTheDocument();
-    expect(screen.getByText('14 Nov')).toBeInTheDocument();
-    expect(screen.getByText('14 Dec')).toBeInTheDocument();
+  it('stops saying Opening CHIP when the page comes back from the back-forward cache', async () => {
+    pay({ onPay: vi.fn(() => new Promise<{ url: string }>(() => {})) });
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
+    expect(screen.getByText('Opening CHIP…')).toBeInTheDocument();
+
+    act(() => {
+      window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true }));
+    });
+    expect(screen.queryByText('Opening CHIP…')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Continue to CHIP' })).toBeInTheDocument();
+  });
+
+  it('opens from the shared dialog state, so Pay another way and Try again can open it', async () => {
+    render(
+      <PayDialogProvider>
+        <Opener />
+        <PlanPay options={options} onPay={vi.fn()} navigate={vi.fn()} />
+      </PayDialogProvider>,
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Open from elsewhere' }));
+    expect(screen.getByRole('dialog', { name: 'Add a month' })).toBeInTheDocument();
   });
 });
+
+function Opener() {
+  const shared = usePayDialog();
+  return (
+    <button type="button" onClick={() => shared?.setOpen(true)}>
+      Open from elsewhere
+    </button>
+  );
+}
 
 describe('payError', () => {
   // Development without CHIP settings. A 503, so again only the code arrives.

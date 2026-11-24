@@ -773,7 +773,7 @@ Batch 1 done: all seven tasks reviewed. One-count parity tests pass. Screens lig
   - the read in `notifications.query.ts`;
   - the settings PATCH in `apps/api`;
   - a trigger where the third ask lands (`apps/api/src/modules/chat/chat.service.ts` ~677 already detects the third ask for FAQ slugs);
-  - a mail template in `@curios/core` (Emails board layout);
+  - a mail template in `@curios/core` (the Emails board layout, now More.dc.html);
   - the Settings row (Switch, default off as on the board).
   - Tests at each layer.
 - **6.2 (only if Q1 is answered "Skip is remembered")**: `Fact.skippedAt` plus a migration, an API `POST /facts/:id/skip`, and a review query that orders skipped facts last.

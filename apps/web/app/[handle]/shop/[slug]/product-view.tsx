@@ -36,7 +36,7 @@ function Icon({ d }: { d: string }) {
 }
 
 /**
- * One product, as the Public board draws it: the photos as a square gallery, the tag, name,
+ * One product, as the More board draws it: the photos as a square gallery, the tag, name,
  * price and description, a card per size, what the shop needs of an order, a
  * way to ask about it, and a bar to choose how many and add. It reads and
  * writes the same sessionStorage basket the shop does; adding goes back to

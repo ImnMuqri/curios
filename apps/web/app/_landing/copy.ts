@@ -1,11 +1,10 @@
 import { monthsFree } from '@curios/core/billing';
 import { ringgit } from '@curios/core/money';
 import type { PlanTerms } from '@curios/core/settings';
-import type { LandsCard, LandsLine } from './lands-script.js';
 
 /**
  * Every word on the landing page, in both languages, in one shape. From the
- * design handoff's TanyaJe board (design/boards/TanyaJe.dc.html), which
+ * design handoff's Landing2 board (design/boards/Landing2.dc.html), which
  * replaced the shop-first landing on 2026-10-16.
  *
  * The Malay was drafted by an AI and read by the owner, a Malay speaker, on
@@ -62,47 +61,45 @@ export interface PersonaWords {
   links: [string, string, string];
 }
 
-/** One side of What lands in your hands: its chat, its steps and its four zones. */
+/** One side of What lands in your hands (Landing2 board, 24 Nov): the question asked, and the four cards it leaves. */
 export interface LandsSideCopy {
   label: string;
-  steps: string[];
-  keys: [string, string, string, string];
-  /** The label over the page's replies. */
+  /** Who asks, on whose page, and when: "Farhan, on Studio Hana’s page · 11:42 pm". */
   who: string;
-  placeholder: string;
-  /** The button on each card in the chat, and what it says once pressed. */
-  cardButton: string;
-  cardDone: string;
-  chat: LandsLine[];
-  /** 01: the lead or the order. */
-  first: { title: string; tag: string; tone: 'hot' | 'ok'; big: string; kv?: [string, string][]; lines?: [string, string][]; action: string };
-  /** 02: the cards the page suggested. */
-  suggested: LandsCard[];
-  /** 03: the ping on the owner's phone. */
-  ping: { from: string; when: string; text: string; foot: string };
-  /** 04: what people keep asking; `me` is this chat's question, `miss` one the page could not answer. */
-  asked: { q: string; n: number; me?: boolean; miss?: boolean }[];
+  /** What the visitor types. Malay on both landings, as a customer writes it. */
+  question: string;
+  /** The Curios notification on the owner's phone, and the line under it. */
+  notice: { text: string; caption: string };
+  /** The one package or product the page suggested in the chat. */
+  pick: { name: string; price: string };
+  /** What people asked this month (sample counts), and one question the page could not answer. */
+  asked: { q: string; n?: number; miss?: boolean }[];
   missTag: string;
 }
 
-/** Kek Lina's checkout in the phone: the words the real checkout does not have (it supplies the rest). */
-export interface LandsCheckoutCopy {
-  price: string;
-  item: string;
-  itemSub: string;
-  pickupWhere: string;
-  deliveryWhere: string;
-  free: string;
-  deliveryFee: string;
-  dayTitle: string;
-  dayHint: string;
-  days: [string, string, string, string];
-  dayLong: string;
-  banks: [string, string, string, string];
-  pay: (total: string) => string;
-  buyer: { name: string; phone: string };
-  code: string;
-  keep: (code: string) => string;
+/** A piece of the lead's sentence: plain text, or a bold word. */
+export type LandsSay = string | { b: string };
+
+/** The service side's first card: the lead. */
+export interface LandsLeadCopy {
+  kicker: string;
+  time: string;
+  initial: string;
+  name: string;
+  phone: string;
+  say: LandsSay[];
+  action: string;
+}
+
+/** The products side's first card: the paid order. */
+export interface LandsOrderCopy {
+  kicker: string;
+  pill: string;
+  amount: string;
+  from: string;
+  phone: string;
+  lines: [string, string][];
+  foot: string;
 }
 
 export interface LandingCopy {
@@ -183,25 +180,26 @@ export interface LandingCopy {
     lede: string;
     /** The switch's name, for screen readers. */
     switchLabel: string;
-    /** The finished chat, read to screen readers in place of the playing one: its name, and who asks. */
-    transcript: string;
-    visitor: string;
-    /** An empty zone, before anything lands. */
-    empty: string;
-    service: LandsSideCopy;
-    products: LandsSideCopy;
-    /** The page's "message you back" card, as the public page words it. */
-    capture: { ask: (name: string) => string; why: (name: string) => string; label: string; send: string; sent: (name: string) => string };
-    checkout: LandsCheckoutCopy;
+    replay: string;
+    /** The notification's time. */
+    now: string;
+    /** "Suggested in the chat", over the one package or product. */
+    suggested: string;
+    /** "This month, people asked" and the column's unit. */
+    countsTitle: string;
+    times: string;
+    service: LandsSideCopy & { lead: LandsLeadCopy };
+    products: LandsSideCopy & { order: LandsOrderCopy };
   };
   /** No cut, ever: what a RM100 order leaves you, and what the plan already covers. */
   noCut: {
     eyebrow: string;
     title: string;
     sub: string;
-    /** Two sample receipts for the same RM100 cake: fixed figures, not prices from PlanTerms. */
-    market: { title: string; ref: string; line: [string, number]; fees: [string, number][]; keep: string };
-    curios: { title: string; ref: string; line: [string, number]; commission: string; bank: [string, number]; keep: string; stamp: string };
+    /** The same RM100 cake, sold two ways: fixed figures, not prices from PlanTerms. */
+    sample: { start: number; fees: number[]; bank: number };
+    /** The owner's lock screen: two bank alerts, then what the difference is. */
+    lock: { date: string; bank: string; earlier: string; now: string; payout: string; fpx: string; more: (amount: string) => string };
     incl: { kicker: string; title: string; body: string }[];
     fine: string;
   };
@@ -267,34 +265,23 @@ export type PersonaKey = 'aisyah' | 'lina' | 'hana' | 'daniel' | 'farah';
 /** The five pages Who asks, in the board's order. */
 export type WhoKey = 'aisyah' | 'daniel' | 'farah' | 'lina' | 'hana';
 
-/** The chats on What lands in your hands. Visitors and pages talk in Malay on both landings, as on the board. */
-const SERVICE_CHAT: LandsLine[] = [
-  { r: 'v', t: 'Hi, nak buat branding untuk kafe baru. Ada package?', step: 0 },
-  { r: 'p', t: 'Ada dua. Full branding siap dalam dua minggu.', cards: [{ swatch: 'starter', name: 'Starter', price: 'from RM1,800' }, { swatch: 'full', name: 'Full branding', price: 'from RM3,800' }], land: [1], step: 1 },
-  { r: 'v', t: 'Full branding. Saya Farhan, kafe buka Januari, budget dalam RM4k.', pick: 1 },
-  { r: 'p', t: 'Boleh. Hana boleh WhatsApp untuk mula.', capture: '012-554 8190', step: 2 },
-  { r: 'end', land: [0, 2, 3], step: 3 },
-];
-const PRODUCTS_CHAT: LandsLine[] = [
-  { r: 'v', t: 'Kek birthday budak bawah RM100 ada?', step: 0 },
-  { r: 'p', t: 'Ada! Budak suka dua ni:', cards: [{ swatch: 'coklat', name: 'Kek coklat · 1kg', price: 'RM95' }, { swatch: 'batik', name: 'Kek batik', price: 'RM45' }], land: [1] },
-  { r: 'add', i: 0, step: 1 },
-  { r: 'checkout', step: 2 },
-  { r: 'pay', step: 3 },
-  { r: 'end', land: [0, 2, 3], step: 4 },
-];
+/** What a customer types on What lands in your hands: Malay on both landings, as on the board. */
+const QUESTION_SERVICE = 'Ada package branding untuk kafe baru? Budget saya dalam RM4k.';
+const QUESTION_PRODUCTS = 'Kek birthday budak bawah RM100 ada? Nak ambil Sabtu.';
 const SERVICE_ASKED = [
-  { q: 'Ada package?', n: 22, me: true },
+  { q: 'Ada package?', n: 22 },
   { q: 'Berapa lama siap?', n: 14 },
   { q: 'Boleh buat logo je?', n: 9 },
-  { q: 'Do you design menus?', n: 4, miss: true },
+  { q: 'Do you design menus?', miss: true },
 ];
 const PRODUCTS_ASKED = [
-  { q: 'Kek bawah RM100?', n: 14, me: true },
+  { q: 'Kek bawah RM100?', n: 14 },
   { q: 'Boleh tulis nama atas kek?', n: 12 },
   { q: 'Hantar Klang tak?', n: 8 },
-  { q: 'Ada kek pandan?', n: 5, miss: true },
+  { q: 'Ada kek pandan?', miss: true },
 ];
+/** The same RM100 cake: a marketplace's three fees (5%, ~4%, 2.16%), and Curios's bank fee alone (FPX, RM1). */
+const SAMPLE_SALE = { start: 100, fees: [5, 4, 2.16], bank: 1 };
 
 const EN: LandingBase = {
   locale: 'en',
@@ -412,100 +399,63 @@ const EN: LandingBase = {
   lands: {
     eyebrow: 'For business',
     title: 'What lands in your hands',
-    lede: 'One chat on your page. Four things you can use.',
+    lede: 'Someone asks your page a question. Here’s what you get.',
     switchLabel: 'Show it for',
-    transcript: 'The chat, in full',
-    visitor: 'Customer',
-    empty: 'Waiting for a chat',
+    replay: 'Play again',
+    now: 'now',
+    suggested: 'Suggested in the chat',
+    countsTitle: 'This month, people asked',
+    times: 'times',
     service: {
       label: 'I offer a service',
-      steps: ['Ask', 'Suggest', 'Number', 'Lead'],
-      keys: ['The lead, qualified', 'Your packages, suggested', 'Told the moment it matters', 'What people keep asking'],
-      who: 'Studio Hana’s page',
-      placeholder: 'Ask Studio Hana anything',
-      cardButton: 'Ask',
-      cardDone: 'Asked',
-      chat: SERVICE_CHAT,
-      first: {
-        title: 'Farhan · new lead · 11:42 pm',
-        tag: 'Hot',
-        tone: 'hot',
-        big: '+60 12-554 8190',
-        kv: [['Wants', 'Full branding'], ['Budget', 'RM4,000'], ['For', 'A new café'], ['Starts', 'January']],
-        action: 'Open WhatsApp',
+      who: 'Farhan, on Studio Hana’s page · 11:42 pm',
+      question: QUESTION_SERVICE,
+      lead: {
+        kicker: 'New lead',
+        time: '11:42 PM',
+        initial: 'F',
+        name: 'Farhan',
+        phone: '012-554 8190',
+        say: ['Wants ', { b: 'full branding' }, ' for a new café, around ', { b: 'RM4,000' }, ', opening in ', { b: 'January' }, '.'],
+        action: 'Message on WhatsApp',
       },
-      suggested: [{ swatch: 'starter', name: 'Starter', price: 'from RM1,800' }, { swatch: 'full', name: 'Full branding', price: 'from RM3,800' }],
-      ping: { from: 'Curios', when: 'now', text: 'New lead: Farhan wants Full branding, budget RM4,000, starting January.', foot: 'Also in your email, with the whole chat.' },
+      notice: { text: 'Farhan wants full branding, around RM4,000.', caption: 'Also in your email, with the whole chat.' },
+      pick: { name: 'Full branding', price: 'from RM3,800' },
       asked: SERVICE_ASKED,
-      missTag: 'Not in your services yet',
+      missTag: 'Not on your page yet',
     },
     products: {
       label: 'I sell products',
-      steps: ['Ask', 'Add', 'Check out', 'Pay', 'Order'],
-      keys: ['The order, paid', 'Your products, suggested', 'Told the moment it matters', 'What people keep asking'],
-      who: 'Kek Lina’s page',
-      placeholder: 'Ask Kek Lina anything',
-      cardButton: 'Add to basket',
-      cardDone: 'In your basket',
-      chat: PRODUCTS_CHAT,
-      first: {
-        title: 'Order #16 · Aida',
-        tag: 'Paid · FPX',
-        tone: 'ok',
-        big: 'RM95',
-        lines: [['1× Kek coklat · 1kg', 'RM95'], ['Pickup', 'Sat 21 Nov']],
-        action: 'Nothing to check',
+      who: 'Aida, on Kek Lina’s page · 9:15 pm',
+      question: QUESTION_PRODUCTS,
+      order: {
+        kicker: 'Order #16',
+        pill: 'Paid · FPX',
+        amount: 'RM95',
+        from: 'from Aida · ',
+        phone: '012-345 6789',
+        lines: [['Kek coklat · 1kg', '×1'], ['Pickup', 'Sat 21 Nov']],
+        foot: 'Paid straight to your account.',
       },
-      suggested: [{ swatch: 'coklat', name: 'Kek coklat · 1kg', price: 'RM95' }, { swatch: 'batik', name: 'Kek batik', price: 'RM45' }],
-      ping: { from: 'Curios', when: 'now', text: 'New order #16 · RM95 paid by FPX · pickup Sat 21 Nov.', foot: 'Already in Orders, marked paid.' },
+      notice: { text: 'New order #16 · RM95 paid · pickup Saturday.', caption: 'Already in Orders, marked paid.' },
+      pick: { name: 'Kek coklat · 1kg', price: 'RM95' },
       asked: PRODUCTS_ASKED,
       missTag: 'Not on your menu yet',
-    },
-    capture: {
-      ask: (name) => `Want ${name} to message you back?`,
-      why: (name) => `Your number goes to ${name} so they can reply on WhatsApp. Nobody else sees it.`,
-      label: 'Your WhatsApp number',
-      send: 'Send my number',
-      sent: (name) => `Got it. ${name} will message you on WhatsApp.`,
-    },
-    checkout: {
-      price: 'RM95',
-      item: 'Kek coklat',
-      itemSub: '1kg · RM95 each',
-      pickupWhere: 'Seksyen 7, Shah Alam',
-      deliveryWhere: 'Shah Alam and Klang',
-      free: 'Free',
-      deliveryFee: 'RM10',
-      dayTitle: 'Day',
-      dayHint: '1 day’s notice · closed Monday',
-      days: ['Fri 20', 'Sat 21', 'Sun 22', 'Tue 24'],
-      dayLong: 'Sat 21 Nov',
-      banks: ['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now'],
-      pay: (total) => `Pay ${total}`,
-      buyer: { name: 'Aida', phone: '012-345 6789' },
-      code: '7Q4M',
-      keep: (code) => `Keep this code. Ask Kek Lina’s page “where is my order ${code}?” any time and it shows you the status.`,
     },
   },
   noCut: {
     eyebrow: 'No cut, ever',
     title: 'Every sale is yours',
-    sub: 'The same RM100 cake, sold two ways. Read the receipts.',
-    market: {
-      title: 'On a marketplace',
-      ref: 'Order #A-55210 · 1 item',
-      line: ['Kek coklat · 1kg', 100],
-      fees: [['Platform fee 5%', 5], ['Commission ~4%', 4], ['Transaction fee 2.16%', 2.16]],
-      keep: 'You keep',
-    },
-    curios: {
-      title: 'On Curios',
-      ref: 'Order #16 · keklina · 1 item',
-      line: ['Kek coklat · 1kg', 100],
-      commission: 'Curios commission',
-      bank: ['Bank fee (FPX, by CHIP)', 1],
-      keep: 'You keep',
-      stamp: '0%',
+    sub: 'The same RM100 cake, sold two ways. Here’s what reaches your bank.',
+    sample: SAMPLE_SALE,
+    lock: {
+      date: 'Saturday, 21 November',
+      bank: 'Your bank',
+      earlier: '9:12 am',
+      now: 'now',
+      payout: 'Marketplace payout received:',
+      fpx: 'FPX from Aida, order #16:',
+      more: (amount) => `${amount} more, and it came straight to you`,
     },
     incl: [
       { kicker: 'Your website', title: 'RM2,000+ to build', body: 'Plus about RM420 a year to host. Your page is the website.' },
@@ -658,100 +608,63 @@ const MS: LandingBase = {
   lands: {
     eyebrow: 'Untuk bisnes',
     title: 'Apa yang anda dapat',
-    lede: 'Satu chat di halaman anda. Empat perkara yang anda boleh guna.',
+    lede: 'Bila orang tanya halaman anda, ini yang anda dapat.',
     switchLabel: 'Tunjuk untuk',
-    transcript: 'Chat penuh',
-    visitor: 'Pelanggan',
-    empty: 'Menunggu chat',
+    replay: 'Main semula',
+    now: 'baru tadi',
+    suggested: 'Dicadangkan dalam chat',
+    countsTitle: 'Bulan ini, orang tanya',
+    times: 'kali',
     service: {
       label: 'Saya beri servis',
-      steps: ['Tanya', 'Cadang', 'Nombor', 'Lead'],
-      keys: ['Lead, sudah ditapis', 'Pakej anda, dicadangkan', 'Dimaklumkan bila penting', 'Apa yang orang selalu tanya'],
-      who: 'Halaman Studio Hana',
-      placeholder: 'Tanya Studio Hana apa saja',
-      cardButton: 'Tanya',
-      cardDone: 'Ditanya',
-      chat: SERVICE_CHAT,
-      first: {
-        title: 'Farhan · lead baru · 11:42 malam',
-        tag: 'Panas',
-        tone: 'hot',
-        big: '+60 12-554 8190',
-        kv: [['Mahu', 'Full branding'], ['Bajet', 'RM4,000'], ['Untuk', 'Kafe baru'], ['Mula', 'Januari']],
-        action: 'Buka WhatsApp',
+      who: 'Farhan, di halaman Studio Hana · 11:42 malam',
+      question: QUESTION_SERVICE,
+      lead: {
+        kicker: 'Lead baru',
+        time: '11:42 malam',
+        initial: 'F',
+        name: 'Farhan',
+        phone: '012-554 8190',
+        say: ['Mahu ', { b: 'full branding' }, ' untuk kafe baru, sekitar ', { b: 'RM4,000' }, ', buka pada ', { b: 'Januari' }, '.'],
+        action: 'Mesej di WhatsApp',
       },
-      suggested: [{ swatch: 'starter', name: 'Starter', price: 'dari RM1,800' }, { swatch: 'full', name: 'Full branding', price: 'dari RM3,800' }],
-      ping: { from: 'Curios', when: 'baru tadi', text: 'Lead baru: Farhan mahu Full branding, bajet RM4,000, mula Januari.', foot: 'Juga dalam emel anda, bersama seluruh chat.' },
+      notice: { text: 'Farhan mahu full branding, sekitar RM4,000.', caption: 'Juga dalam emel anda, bersama seluruh chat.' },
+      pick: { name: 'Full branding', price: 'dari RM3,800' },
       asked: SERVICE_ASKED,
-      missTag: 'Belum ada dalam servis anda',
+      missTag: 'Belum ada di halaman anda',
     },
     products: {
       label: 'Saya jual produk',
-      steps: ['Tanya', 'Tambah', 'Checkout', 'Bayar', 'Pesanan'],
-      keys: ['Pesanan, sudah dibayar', 'Produk anda, dicadangkan', 'Dimaklumkan bila penting', 'Apa yang orang selalu tanya'],
-      who: 'Halaman Kek Lina',
-      placeholder: 'Tanya Kek Lina apa saja',
-      cardButton: 'Masuk bakul',
-      cardDone: 'Dalam bakul',
-      chat: PRODUCTS_CHAT,
-      first: {
-        title: 'Pesanan #16 · Aida',
-        tag: 'Dibayar · FPX',
-        tone: 'ok',
-        big: 'RM95',
-        lines: [['1× Kek coklat · 1kg', 'RM95'], ['Ambil sendiri', 'Sab 21 Nov']],
-        action: 'Tiada apa nak disemak',
+      who: 'Aida, di halaman Kek Lina · 9:15 malam',
+      question: QUESTION_PRODUCTS,
+      order: {
+        kicker: 'Pesanan #16',
+        pill: 'Dibayar · FPX',
+        amount: 'RM95',
+        from: 'dari Aida · ',
+        phone: '012-345 6789',
+        lines: [['Kek coklat · 1kg', '×1'], ['Ambil sendiri', 'Sab 21 Nov']],
+        foot: 'Dibayar terus ke akaun anda.',
       },
-      suggested: [{ swatch: 'coklat', name: 'Kek coklat · 1kg', price: 'RM95' }, { swatch: 'batik', name: 'Kek batik', price: 'RM45' }],
-      ping: { from: 'Curios', when: 'baru tadi', text: 'Pesanan baru #16 · RM95 dibayar dengan FPX · ambil Sab 21 Nov.', foot: 'Sudah dalam Pesanan, ditanda dibayar.' },
+      notice: { text: 'Pesanan baru #16 · RM95 dibayar · ambil hari Sabtu.', caption: 'Sudah dalam Pesanan, ditanda dibayar.' },
+      pick: { name: 'Kek coklat · 1kg', price: 'RM95' },
       asked: PRODUCTS_ASKED,
       missTag: 'Belum ada dalam menu anda',
-    },
-    capture: {
-      ask: (name) => `Nak ${name} mesej anda semula?`,
-      why: (name) => `Nombor anda pergi kepada ${name} supaya mereka boleh balas di WhatsApp. Orang lain tak nampak.`,
-      label: 'Nombor WhatsApp anda',
-      send: 'Hantar nombor saya',
-      sent: (name) => `Baik. ${name} akan mesej anda di WhatsApp.`,
-    },
-    checkout: {
-      price: 'RM95',
-      item: 'Kek coklat',
-      itemSub: '1kg · RM95 seunit',
-      pickupWhere: 'Seksyen 7, Shah Alam',
-      deliveryWhere: 'Shah Alam dan Klang',
-      free: 'Percuma',
-      deliveryFee: 'RM10',
-      dayTitle: 'Hari',
-      dayHint: 'Notis 1 hari · tutup hari Isnin',
-      days: ['Jum 20', 'Sab 21', 'Ahd 22', 'Sel 24'],
-      dayLong: 'Sab 21 Nov',
-      banks: ['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now'],
-      pay: (total) => `Bayar ${total}`,
-      buyer: { name: 'Aida', phone: '012-345 6789' },
-      code: '7Q4M',
-      keep: (code) => `Simpan kod ini. Tanya halaman Kek Lina “mana pesanan saya ${code}?” bila-bila masa dan ia tunjuk statusnya.`,
     },
   },
   noCut: {
     eyebrow: 'Tiada potongan, selamanya',
     title: 'Setiap jualan milik anda',
-    sub: 'Kek RM100 yang sama, dijual dua cara. Baca resitnya.',
-    market: {
-      title: 'Di marketplace',
-      ref: 'Pesanan #A-55210 · 1 barang',
-      line: ['Kek coklat · 1kg', 100],
-      fees: [['Yuran platform 5%', 5], ['Komisen ~4%', 4], ['Yuran transaksi 2.16%', 2.16]],
-      keep: 'Anda dapat',
-    },
-    curios: {
-      title: 'Di Curios',
-      ref: 'Pesanan #16 · keklina · 1 barang',
-      line: ['Kek coklat · 1kg', 100],
-      commission: 'Komisen Curios',
-      bank: ['Yuran bank (FPX, oleh CHIP)', 1],
-      keep: 'Anda dapat',
-      stamp: '0%',
+    sub: 'Kek RM100 yang sama, dijual dua cara. Ini yang sampai ke bank anda.',
+    sample: SAMPLE_SALE,
+    lock: {
+      date: 'Sabtu, 21 November',
+      bank: 'Bank anda',
+      earlier: '9:12 pagi',
+      now: 'baru tadi',
+      payout: 'Bayaran marketplace diterima:',
+      fpx: 'FPX daripada Aida, pesanan #16:',
+      more: (amount) => `Lebih ${amount}, terus masuk ke akaun anda`,
     },
     incl: [
       { kicker: 'Laman web anda', title: 'RM2,000+ untuk bina', body: 'Tambah lebih kurang RM420 setahun untuk hosting. Halaman anda ialah laman webnya.' },

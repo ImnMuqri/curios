@@ -25,9 +25,9 @@ const calm = {
   '--edge': 'var(--calm-ring)',
   '--ground': 'var(--calm-bg)',
   '--nav-on': 'var(--calm-surface)',
-  '--action': 'var(--calm-ink)',
-  '--action-fg': 'var(--calm-surface)',
-  '--action-hover': 'var(--calm-ink-deep)',
+  '--action': 'var(--calm-action)',
+  '--action-fg': 'var(--calm-action-fg)',
+  '--action-hover': 'var(--calm-action-hover)',
 };
 
 // The screens outside the dashboard: sign in and sign up (.auth), onboarding (.ob), and forgot, reset
@@ -45,7 +45,7 @@ describe('the auth screens take the calm tokens', () => {
       const body = rule(css, selector);
       for (const [name, value] of Object.entries(calm)) expect(body[name], name).toBe(value);
       expect(css).toMatch(/--paper:\s*var\(--calm-bg\)/);
-      expect(css).toMatch(/--action:\s*var\(--calm-ink\)/);
+      expect(css).toMatch(/--action:\s*var\(--calm-action\)/);
       expect(css).not.toMatch(/--calm-dark-/);
     });
   }
@@ -54,9 +54,18 @@ describe('the auth screens take the calm tokens', () => {
     // Every --token: value the four roots set from the calm palette (the frame's root is its light scope).
     const calmOf = (file: string, selector: string) =>
       Object.fromEntries(Object.entries(rule(read(file), selector)).filter(([, value]) => value.startsWith('var(--calm-')));
+    // The dashboard alone sits on pure white with its own soft blue and line (Dash board, 24 Nov:
+    // `.lc.dash:not(.dk)`); the other roots keep the #FCFFFF page ground. Those four are pinned here,
+    // and everything else must still match.
+    const frameGround = { '--paper': 'var(--calm-surface)', '--ground': 'var(--calm-surface)', '--surface': 'var(--frame-soft)', '--line': 'var(--frame-line)' };
+    const frameRule = rule(read('./app/app-frame.module.css'), '.frame');
+    for (const [name, value] of Object.entries(frameGround)) expect(frameRule[name], name).toBe(value);
     const frame = calmOf('./app/app-frame.module.css', '.frame');
-    expect(Object.keys(frame).length).toBeGreaterThanOrEqual(Object.keys(calm).length);
-    for (const [file, selector] of roots) expect(calmOf(file, selector), selector).toEqual(frame);
+    const shared = Object.keys(calm).filter((name) => !(name in frameGround));
+    for (const name of shared) expect(frame, name).toHaveProperty([name]);
+    const withoutGround = (tokens: Record<string, string>) =>
+      Object.fromEntries(Object.entries(tokens).filter(([name]) => !(name in frameGround)));
+    for (const [file, selector] of roots) expect(withoutGround(calmOf(file, selector)), selector).toEqual(withoutGround(frame));
   });
 });
 

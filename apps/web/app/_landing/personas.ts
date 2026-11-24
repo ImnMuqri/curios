@@ -1,7 +1,7 @@
 import type { PersonaKey, WhoKey } from './copy.js';
 
 /**
- * The sample owners the landing shows, from the TanyaJe board. None of them
+ * The sample owners the landing shows, from the Landing2 board. None of them
  * is real (the footer says so). What they say lives in copy.ts, per language;
  * this is how their pages look: the owner's accent, the deep colour their
  * page sits on, the tint their page's answers wear, and their heading font.
@@ -44,15 +44,3 @@ export const DECK: PersonaKey[] = ['aisyah', 'lina', 'hana'];
 
 /** The five pages Who asks the same question, in the board's order. */
 export const WHO: WhoKey[] = ['aisyah', 'daniel', 'farah', 'lina', 'hana'];
-
-/**
- * The sample owners' own product and package photos on What lands in your
- * hands, drawn as gradients (Landing2 board, L2:1083–1094): owner theme data,
- * like their accents above.
- */
-export const SWATCHES: Record<string, string> = {
-  starter: 'linear-gradient(135deg, #f6e7c3, #d9a53a)',
-  full: 'linear-gradient(135deg, #2b2209, #c58a12 70%, #f6e7c3)',
-  coklat: 'linear-gradient(135deg, #7a3b2a, #3d1a12 60%, #f6c9d5)',
-  batik: 'linear-gradient(135deg, #d9b48a, #5a3a22 70%)',
-};

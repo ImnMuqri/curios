@@ -6,7 +6,7 @@ import { UnpluggedArt } from './_system/art.js';
 import { reportClientError } from '../lib/report-client-error.js';
 
 /**
- * Something broke on our side, from the System board. "Try again" re-renders
+ * Something broke on our side, from the deleted System board. "Try again" re-renders
  * the screen that failed; the error ref is Next's digest, which matches the
  * server's log line, so a person quoting it can be helped.
  */

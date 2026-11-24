@@ -1,5 +1,5 @@
 import { canCapture, capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, withoutContactDetails, type GroupJobData, type MailJobData } from '@curios/core';
-import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
+import { mailQuestionAsked, recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import type { Settings } from '@curios/core/settings';
@@ -13,7 +13,7 @@ import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
-  // The Public board's order card, after "Thanks. Here’s order 7Q4M:".
+  // The deleted Public board's order card, after "Thanks. Here’s order 7Q4M:".
   | { type: 'order'; card: OrderCard }
   | {
       type: 'done';
@@ -258,6 +258,8 @@ export const CAP_REACHED_REPLY =
  */
 export const ANSWER_PAGE_SELECT = {
   id: true,
+  // The switch for "A question is asked 3 times", so an owner with it off costs the chat no query.
+  notifyQuestions: true,
   displayName: true,
   // Read for qualification: a personal page never offers the capture card.
   mode: true,
@@ -724,6 +726,13 @@ export async function* answer(
     }
   };
 
+  /**
+   * After the reply, so "the chat could answer it" is known: tells the owner a topic keeps being asked
+   * and is not answered. The page's switch was read with the page, so an owner with it off costs no query.
+   */
+  const mailAsked = () =>
+    mailQuestionAsked({ prisma, mailQueue: deps.mailQueue, appUrl: process.env.APP_URL ?? 'http://localhost:3000', log: deps.log }, wording.topicId, page.notifyQuestions);
+
   // Queued however this turn ends -- the reply finishing, the model failing,
   // the consumer walking away -- and always after the last event is yielded.
   try {
@@ -838,6 +847,7 @@ export async function* answer(
     }
   } finally {
     await queueGrouping();
+    await mailAsked();
   }
 }
 

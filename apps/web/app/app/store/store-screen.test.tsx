@@ -3,6 +3,9 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type PickupPlaceView, type ShopLook, type StoreSettings } from './store-types.js';
 
+const nav = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => nav }));
+
 const apiFetch = vi.fn();
 vi.mock('../../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
 const sendFile = vi.fn();
@@ -34,12 +37,13 @@ const look: ShopLook = {
   style: 'SOFT', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null, socials: [], whatsapp: '60123456789',
 };
 
-const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items, pickupPlaces: PickupPlaceView[] = []) =>
+const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items, pickupPlaces: PickupPlaceView[] = [], editingId: string | null = null) =>
   render(
     <StoreScreen
       initial={{ ...settings, ...over }}
       items={list}
       pickupPlaces={pickupPlaces}
+      editingId={editingId}
       look={look}
       uploadsEnabled
       publicBase="https://files.example/"
@@ -51,11 +55,23 @@ const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = item
     />,
   );
 
-const tab = (name: string) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
+const tab = (name: string | RegExp) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
 
 describe('StoreScreen, against the API', () => {
   beforeEach(() => apiFetch.mockReset());
   afterEach(() => vi.useRealTimers());
+
+  it('shows the items of a fresh read after a refresh, not the ones it held', () => {
+    const screenAt = (now: string, list: EditorItem[]) => (
+      <StoreScreen initial={settings} items={list} look={look} uploadsEnabled publicBase="https://files.example/" qrUrl={null} today="2026-10-16" now={new Date(now)}
+        chip={{ connected: false, brandName: null, methods: [], checkedAt: null, isTest: false }} orders={{ paused: null, nextNumber: 1 }} />
+    );
+    const view = render(screenAt('2026-10-16T02:00:00Z', items));
+    expect(screen.getByRole('link', { name: 'Edit Kek Batik' })).toBeInTheDocument();
+    view.rerender(screenAt('2026-10-16T02:05:00Z', [{ ...items[0]!, name: 'Kek Batik Raya' }]));
+    expect(screen.queryByRole('link', { name: 'Edit Kek Batik' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Edit Kek Batik Raya' })).toBeInTheDocument();
+  });
 
   it('saves a setting with PATCH /store/settings and unwraps the settings', async () => {
     apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true } });
@@ -64,9 +80,7 @@ describe('StoreScreen, against the API', () => {
     await userEvent.click(tab('Pickup & delivery'));
     await userEvent.click(screen.getByRole('switch', { name: 'Allow pickup' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/settings', { method: 'PATCH', body: JSON.stringify({ pickupEnabled: true }) });
-    // This tab turns the preview to the Pay screen; the shop's terms are on Shop.
-    await userEvent.click(within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Shop' }));
-    expect(await screen.findByText(/Pickup/, { selector: 'li' })).toBeInTheDocument();
+    expect(await screen.findByRole('switch', { name: 'Allow pickup', checked: true })).toBeInTheDocument();
   });
 
   it('uploads a QR to /store/payment-qr and shows it from the public base', async () => {
@@ -88,19 +102,17 @@ describe('StoreScreen, against the API', () => {
 
   it('removes an item with DELETE /store/items/:id, from its editor', async () => {
     apiFetch.mockResolvedValue({ status: 'removed' });
-    screenWith();
-    await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
+    screenWith({}, items, [], 'a');
     await userEvent.click(screen.getByRole('button', { name: 'Remove item' }));
     await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/items/a', { method: 'DELETE' });
-    expect(screen.queryByRole('listitem', { name: 'Kek Batik' })).toBeNull();
+    expect(nav.push).toHaveBeenCalledWith('/app/store');
   });
 
   it('adds with POST /store/items once the new item has a name and a price', async () => {
     vi.useFakeTimers();
     apiFetch.mockResolvedValue({ item: { ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, sku: null, description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
-    screenWith();
-    fireEvent.click(screen.getByRole('button', { name: '+ Add item' }));
+    screenWith({}, items, [], 'new');
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '9' } });
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
@@ -108,14 +120,14 @@ describe('StoreScreen, against the API', () => {
       method: 'POST',
       body: JSON.stringify({ name: 'Tart', description: null, category: null, tag: null, sku: null, pricing: { kind: 'single', priceCents: 900 } }),
     });
-    fireEvent.click(screen.getByRole('button', { name: 'All items' }));
-    expect(screen.getByRole('listitem', { name: 'Tart' })).toBeInTheDocument();
+    // The address follows the first save, so a reload opens the item.
+    expect(window.location.pathname).toBe('/app/store/items/n');
+    window.history.replaceState(null, '', '/');
   });
 
   it('uploads an item picture to /store/items/:id/photos with its frame and shows the cover from the public base', async () => {
     sendFile.mockResolvedValue({ photos: [{ id: 'p1', squareKey: 'items/a/p1.webp', width: 1000, height: 800, frame: { x: 0.125, y: 0, size: 1 } }], photoKey: 'items/a.webp' });
-    const { container } = screenWith();
-    await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
+    const { container } = screenWith({}, items, [], 'a');
     await userEvent.upload(screen.getByLabelText('Picture file'), new File(['x'], 'k.png', { type: 'image/png' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
     expect(sendFile).toHaveBeenCalledWith('/store/items/a/photos', expect.any(Blob), expect.any(Function), { 'x-photo-frame': '0.125,0,1' });
@@ -126,7 +138,8 @@ describe('StoreScreen, against the API', () => {
   it('reorders with PUT /store/items/order', async () => {
     apiFetch.mockResolvedValue({ status: 'ok' });
     screenWith({}, [...items, { ...items[0]!, id: 'b', name: 'Tart' }]);
-    await userEvent.click(screen.getByRole('button', { name: 'Move Kek Batik down' }));
+    await userEvent.click(screen.getByRole('button', { name: 'More for Kek Batik' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Move later' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/items/order', { method: 'PUT', body: JSON.stringify({ ids: ['b', 'a'] }) });
   });
 
@@ -135,7 +148,7 @@ describe('StoreScreen, against the API', () => {
     const made = { id: 'v1', mode: 'CODE', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'INSTA15', code: 'INSTA15', name: null, endsAt: null, maxUses: null, active: true, uses: 0, state: 'on', itemName: null };
     apiFetch.mockResolvedValue({ voucher: made });
     screenWith();
-    await userEvent.click(tab('Vouchers'));
+    await userEvent.click(tab(/^Discounts/));
     await userEvent.click(screen.getByRole('button', { name: /Add your first voucher/ }));
     await userEvent.click(screen.getByRole('button', { name: /^Code/ }));
     await userEvent.type(screen.getByLabelText('Code'), 'insta15');

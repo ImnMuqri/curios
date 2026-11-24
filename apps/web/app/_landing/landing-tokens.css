@@ -9,11 +9,11 @@
  * A token nothing reads is deleted (landing.test.tsx checks).
  */
 [data-landing] {
-  /* Taken from the TanyaJe board (16 Oct 2026); auth's muted labels read it. */
+  /* Taken from the deleted TanyaJe board (16 Oct 2026); auth's muted labels read it. */
   --tj-ink-500: #8a8f9b;
 
-  /* The biru ramp (parent --biru #2340c8, oklch 0.450 0.212 267); auth's links read it. */
-  --l-biru-800: #122686; /* oklch 0.331 0.160 267 -- primary button pressed; paper on it 12.3:1 */
+  /* The deep end of the biru ramp (parent --biru #0479a3, sky deep); auth's links read it. */
+  --l-biru-800: #035a7a; /* sky ink -- links and the pressed state; white on it 7.6:1 */
 
   --l-wordmark: 28px; /* the logotype; a mark, not a step of the text scale */
   --l-header-h: 72px; /* the calm nav; anchors stop below it */

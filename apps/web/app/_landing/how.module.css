@@ -31,7 +31,7 @@
   transform: translateY(-4px);
   box-shadow:
     0 0 0 1px var(--calm-line),
-    0 24px 40px -28px rgba(40, 30, 10, 0.3);
+    0 24px 40px -28px rgba(6, 40, 58, 0.3);
 }
 
 .art {
@@ -571,7 +571,7 @@
 @keyframes tapD {
   50% {
     scale: 0.7;
-    background: rgba(35, 64, 200, 0.35);
+    background: rgba(5, 147, 198, 0.35);
   }
 }
 

@@ -18,91 +18,56 @@ export function keepAfter(start: number, fees: number[]): number[] {
 
 const money = (v: number) => `RM${v.toFixed(2)}`;
 
-export interface ReceiptsState {
-  mk: boolean;
-  fees: number;
-  cu: boolean;
-  /** 0 nothing, 1 the commission row, 2 and the bank fee. */
-  rows: number;
-  stamp: boolean;
-  keepMk: number;
-  keepCu: number;
+/** What the owner's phone shows for the same RM100 cake: the marketplace's payout, Curios's payment, and the difference. */
+export function lockFigures(sample: { start: number; fees: number[]; bank: number }) {
+  const marketplace = keepAfter(sample.start, sample.fees).at(-1) ?? sample.start;
+  const curios = keepAfter(sample.start, [sample.bank])[0]!;
+  return { marketplace, curios, more: Math.round((curios - marketplace) * 100) / 100 };
+}
+
+export interface LockState {
+  /** How many of the three notifications are showing. */
+  shown: number;
   hop: number;
   cheer: number;
 }
 
-interface ReceiptsProps {
-  start: number;
-  fees: number[];
-  bank: number;
-}
-
-/** The two receipts print (Landing2 board, L2:1206–1213). */
-export const receiptsScene: Scene<ReceiptsState, ReceiptsProps> = {
-  still: (p) => ({
-    mk: true,
-    fees: p.fees.length,
-    cu: true,
-    rows: 2,
-    stamp: true,
-    keepMk: keepAfter(p.start, p.fees).at(-1) ?? p.start,
-    keepCu: keepAfter(p.start, [p.bank])[0]!,
-    hop: 0,
-    cheer: 0,
-  }),
-  start: (p) => ({ mk: false, fees: 0, cu: false, rows: 0, stamp: false, keepMk: p.start, keepCu: p.start, hop: 0, cheer: 0 }),
-  async run(p, set, wait) {
-    set((s) => ({ ...receiptsScene.start(p), hop: s.hop, cheer: s.cheer }));
-    await wait(500);
-    set((s) => ({ ...s, mk: true }));
+/** The bank dings twice (Landing2 board, L2:1249–1259), then the pill says what the difference is. */
+export const lockScene: Scene<LockState, null> = {
+  still: () => ({ shown: 3, hop: 0, cheer: 0 }),
+  start: () => ({ shown: 0, hop: 0, cheer: 0 }),
+  async run(_p, set, wait) {
+    set((s) => ({ ...s, shown: 0 }));
     await wait(900);
-    const totals = keepAfter(p.start, p.fees);
-    let k = p.start;
-    for (let f = 0; f < p.fees.length; f++) {
-      set((s) => ({ ...s, fees: f + 1 }));
-      await wait(250);
-      const to = totals[f]!;
-      for (let i = 1; i <= 24; i++) {
-        const keepMk = Math.round((k + ((to - k) * i) / 24) * 100) / 100;
-        set((s) => ({ ...s, keepMk }));
-        await wait(380 / 24);
-      }
-      k = to;
-      await wait(250);
-    }
-    await wait(500);
-    set((s) => ({ ...s, cu: true }));
-    await wait(900);
-    set((s) => ({ ...s, rows: 1 }));
-    await wait(700);
-    set((s) => ({ ...s, stamp: true, hop: s.hop + 1 }));
-    await wait(600);
-    set((s) => ({ ...s, rows: 2 }));
-    await wait(250);
-    const end = keepAfter(p.start, [p.bank])[0]!;
-    for (let i = 1; i <= 24; i++) {
-      const keepCu = Math.round((p.start + ((end - p.start) * i) / 24) * 100) / 100;
-      set((s) => ({ ...s, keepCu }));
-      await wait(380 / 24);
-    }
-    set((s) => ({ ...s, cheer: s.cheer + 1 }));
+    set((s) => ({ ...s, shown: 1 }));
+    await wait(1600);
+    set((s) => ({ ...s, shown: 2, hop: s.hop + 1 }));
+    await wait(1200);
+    set((s) => ({ ...s, shown: 3, cheer: s.cheer + 1 }));
     await wait(9000);
   },
 };
 
+function Bank() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" />
+    </svg>
+  );
+}
+
 /**
- * No cut, ever (Landing2 board): the same RM100 cake on two receipts. The
- * marketplace one prints, loses three fees and stays at full strength (the 19 Nov board no longer
- * dims it, so its lines keep their contrast); the Curios one prints,
- * takes no commission (stamped 0%) and only the bank's FPX fee. The figures
- * are a fixed sample, not prices from PlanTerms. The server, and reduced
- * motion, show both printed and totalled.
+ * No cut, ever (Landing2 board, 24 Nov): the same RM100 cake sold two ways,
+ * and the owner's lock screen. The marketplace pays out RM88.84 after three
+ * fees; the same sale on Curios comes straight from the customer's bank as
+ * RM99.00, less only the bank's RM1. The figures are a fixed sample, not
+ * prices from PlanTerms. The server, and reduced motion, show all three
+ * alerts, still.
  */
 export function NoCut({ locale }: { locale: Locale }) {
   const copy = COPY[locale].noCut;
   const ref = useRef<HTMLDivElement>(null);
-  const props = { start: copy.market.line[1], fees: copy.market.fees.map((f) => f[1]), bank: copy.curios.bank[1] };
-  const s = useScene(receiptsScene, props, ref);
+  const s = useScene(lockScene, null, ref);
   const peek = useRef<LivePeekHandle>(null);
   useEffect(() => {
     if (s.hop > 0) peek.current?.mood('hop', 520);
@@ -110,6 +75,8 @@ export function NoCut({ locale }: { locale: Locale }) {
   useEffect(() => {
     if (s.cheer > 0) peek.current?.mood('happy', 2000);
   }, [s.cheer]);
+  const fig = lockFigures(copy.sample);
+  const on = (n: number) => (s.shown >= n ? '' : undefined);
 
   return (
     <section className={calm.sec} aria-labelledby="nc-title">
@@ -123,50 +90,46 @@ export function NoCut({ locale }: { locale: Locale }) {
         <p className={`${calm.s2} ${calm.rv}`} data-rv="" style={{ '--d': '120ms' } as CSSProperties}>
           {copy.sub}
         </p>
-        <div ref={ref} className={`${styles.rcp} ${calm.rv}`} data-rv="" style={{ '--d': '200ms' } as CSSProperties}>
-          <div className={`${styles.rc} ${styles.mk}`} data-receipt="" data-in={s.mk ? '' : undefined}>
-            <h3>{copy.market.title}</h3>
-            <p className={styles.sm}>{copy.market.ref}</p>
-            <div className={styles.rl}>
-              <span>{copy.market.line[0]}</span>
-              <b>{money(copy.market.line[1])}</b>
-            </div>
-            {copy.market.fees.map(([label, fee], i) => (
-              <div key={label} className={`${styles.rl} ${styles.rf}`} data-in={i < s.fees ? '' : undefined}>
-                <span>{label}</span>
-                <b>−{money(fee)}</b>
+        <div ref={ref} className={`${styles.bk} ${calm.rv}`} data-rv="" style={{ '--d': '200ms' } as CSSProperties}>
+          <div className={styles.ph}>
+            <p className={styles.t}>9:41</p>
+            <p className={styles.dt}>{copy.lock.date}</p>
+            <div className={styles.list}>
+              <div className={styles.n} data-in={on(1)}>
+                <span className={styles.i}>
+                  <Bank />
+                </span>
+                <div className={styles.x}>
+                  <div className={styles.r}>
+                    <b>{copy.lock.bank}</b>
+                    <small>{copy.lock.earlier}</small>
+                  </div>
+                  <p>
+                    {copy.lock.payout} <span className={styles.a} data-amount="marketplace">{money(fig.marketplace)}</span>
+                  </p>
+                </div>
               </div>
-            ))}
-            <div className={styles.rt}>
-              <span>{copy.market.keep}</span>
-              <b data-keep="">{money(s.keepMk)}</b>
-            </div>
-          </div>
-          <div className={`${styles.rc} ${styles.cu}`} data-receipt="" data-in={s.cu ? '' : undefined}>
-            <h3>{copy.curios.title}</h3>
-            <p className={styles.sm}>{copy.curios.ref}</p>
-            <span className={styles.stamp} data-stamp="" data-in={s.stamp ? '' : undefined}>
-              {copy.curios.stamp}
-            </span>
-            <div className={styles.rl}>
-              <span>{copy.curios.line[0]}</span>
-              <b>{money(copy.curios.line[1])}</b>
-            </div>
-            <div className={`${styles.rl} ${styles.rz} ${styles.rf}`} data-in={s.rows >= 1 ? '' : undefined}>
-              <span>{copy.curios.commission}</span>
-              <b>{money(0)}</b>
-            </div>
-            <div className={`${styles.rl} ${styles.rf}`} data-in={s.rows >= 2 ? '' : undefined}>
-              <span>{copy.curios.bank[0]}</span>
-              <b>−{money(copy.curios.bank[1])}</b>
-            </div>
-            <div className={styles.rt}>
-              <span>{copy.curios.keep}</span>
-              <b data-keep="">{money(s.keepCu)}</b>
+              <div className={styles.n} data-in={on(2)}>
+                <span className={`${styles.i} ${styles.cu}`}>
+                  <Bank />
+                </span>
+                <div className={styles.x}>
+                  <div className={styles.r}>
+                    <b>{copy.lock.bank}</b>
+                    <small>{copy.lock.now}</small>
+                  </div>
+                  <p>
+                    {copy.lock.fpx} <span className={`${styles.a} ${styles.cu}`} data-amount="curios">{money(fig.curios)}</span>
+                  </p>
+                </div>
+              </div>
+              <div className={`${styles.n} ${styles.diff}`} data-in={on(3)}>
+                <p data-amount="more">{copy.lock.more(money(fig.more))}</p>
+              </div>
             </div>
           </div>
           <span className={styles.pk}>
-            <LivePeek width={96} follow ref={peek} />
+            <LivePeek width={104} follow ref={peek} />
           </span>
         </div>
         <div className={styles.incl}>

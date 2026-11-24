@@ -107,6 +107,7 @@ describe('StatStrip', () => {
     expect(css).toMatch(/\.card\[aria-pressed='true'\] \{[^}]*inset 0 0 0 2px var\(--ink\)/);
     expect(css).toMatch(/button\.card:active \{[^}]*scale\(0\.99\)/);
     expect(css).toMatch(/\.urgent \{[^}]*var\(--calm-urgent\);[^}]*var\(--calm-urgent-ring\)/);
+    expect(css).toMatch(/button\.urgent:hover \{[^}]*var\(--calm-urgent-hover-ring\),[^}]*var\(--calm-urgent-hover-shadow\)/);
     expect(css).toMatch(
       /@media \(max-width: 760px\) \{\s*\.strip \{[^}]*display: flex;[^}]*overflow-x: auto;[^}]*scroll-snap-type: x mandatory;/,
     );

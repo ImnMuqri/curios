@@ -18,10 +18,10 @@
   flex: 1;
   min-width: 0;
   border-radius: 3px 3px 0 0;
-  background: #c9d6fb;
+  background: #c4e6f3;
 }
 .on {
-  background: var(--blue);
+  background: var(--sky);
 }
 .axis {
   display: flex;
@@ -46,10 +46,10 @@
   vertical-align: -1px;
 }
 .keyOn {
-  background: var(--blue);
+  background: var(--sky);
 }
 .keyEarlier {
-  background: #c9d6fb;
+  background: #c4e6f3;
 }
 
 .need {
@@ -120,10 +120,10 @@
   height: 100%;
 }
 .personal {
-  background: #c9d6fb;
+  background: #c4e6f3;
 }
 .business {
-  background: var(--blue);
+  background: var(--sky);
 }
 .legend {
   display: grid;

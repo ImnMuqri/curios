@@ -22,7 +22,7 @@ const TABS: { key: SourceFilter; label: string }[] = [
 
 /** The board's status colours. */
 const STATUS_COLOUR: Record<SourceStatus, string> = {
-  Reading: '#2340c8',
+  Reading: '#0593c6',
   Done: '#1d9a6c',
   Walled: '#f2a33c',
   Failed: '#d8452f',

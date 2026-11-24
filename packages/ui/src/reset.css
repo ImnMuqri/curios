@@ -29,6 +29,6 @@ body {
  * is always done for the same reason: it looked untidy on one screen.
  */
 :focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }

@@ -1,5 +1,7 @@
 # Shopfront, CHIP for shops, and Peek: Implementation Plan
 
+> Note (24 Nov 2026): this plan was written against boards that are now deleted (Alerts, Billing, Emails, Knowledge, Leads, Main, MyCurios, Orders, Public, Store, System, TanyaJe and others). Names and line numbers below are as they were then. Their content now lives in the five boards in `design/boards/` (Landing2, Site, Dash, More, Admin); see `design/HANDOFF.md`, "Boards to routes". The old files are in git history before 58a531e.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** build the 22 Oct 2026 design update: the eyes wordmark, new favicons and Peek the mascot on Curios's own pages; a shop page and product pages with plain AI replies and product cards; and owners connecting their own CHIP account so customers pay at checkout straight from their bank or e-wallet, with orders marked paid by themselves.

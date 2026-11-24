@@ -91,6 +91,80 @@ describe('runGroupJob', () => {
     expect(await prisma.modelCall.count({ where: { pageId } })).toBe(1);
   });
 
+  describe('the question asked 3 times email', () => {
+    const queue = () => ({ add: vi.fn(async (_name: string, _data: { subject: string; audience?: string }, _opts?: unknown) => ({})) });
+    const deps = (mailQueue: ReturnType<typeof queue>, gateway: Gateway, embedder: Embedder) => ({ prisma, gateway, embedder, mailQueue, appUrl: 'https://curios.example' });
+    const vec = embedderFor({ 'Do you deliver to Klang': 1, 'Deliver to Klang?': 1 });
+    const businessWithSwitch = async () => {
+      const pageId = await aPage();
+      await prisma.page.update({ where: { id: pageId }, data: { notifyQuestions: true } });
+      return pageId;
+    };
+
+    it('mails when merging a lone wording brings the topic to 3 asks', async () => {
+      const pageId = await businessWithSwitch();
+      await aWording(pageId, 'Do you deliver to Klang', { grouped: true, askCount: 2 });
+      const q = await aWording(pageId, 'Deliver to Klang?');
+      const { gateway } = gatewaySaying((input) => input.candidates[0]!.id);
+      const mailQueue = queue();
+
+      await expect(runGroupJob(deps(mailQueue, gateway, vec), { questionId: q.id })).resolves.toBe('merged');
+
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+      expect(mailQueue.add.mock.calls[0]?.[1]).toMatchObject({ audience: 'owner', subject: 'People keep asking: “Do you deliver to Klang”' });
+    });
+
+    it('mails when moving a wording out of a shared topic brings the target to 3 asks', async () => {
+      const pageId = await businessWithSwitch();
+      await aWording(pageId, 'Do you deliver to Klang', { grouped: true, askCount: 2 });
+      const shared = await aWording(pageId, 'Hello there');
+      const q = await prisma.question.create({
+        data: { pageId, topicId: shared.topicId, text: 'Deliver to Klang?', normalizedQuestion: 'deliver to klang?', askCount: 1 },
+      });
+      const { gateway } = gatewaySaying((input) => input.candidates[0]!.id);
+      const mailQueue = queue();
+
+      await expect(runGroupJob(deps(mailQueue, gateway, vec), { questionId: q.id })).resolves.toBe('moved');
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends no second email when the topic it merges into was already mailed', async () => {
+      const pageId = await businessWithSwitch();
+      const target = await aWording(pageId, 'Do you deliver to Klang', { grouped: true, askCount: 3 });
+      await prisma.topic.update({ where: { id: target.topicId }, data: { askedMailedAt: new Date() } });
+      const q = await aWording(pageId, 'Deliver to Klang?');
+      const { gateway } = gatewaySaying((input) => input.candidates[0]!.id);
+      const mailQueue = queue();
+
+      await runGroupJob(deps(mailQueue, gateway, vec), { questionId: q.id });
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('keeps the sent mark when an already-mailed topic is merged into a clean one', async () => {
+      const pageId = await businessWithSwitch();
+      const target = await aWording(pageId, 'Do you deliver to Klang', { grouped: true, askCount: 1 });
+      const q = await aWording(pageId, 'Deliver to Klang?', { askCount: 3 });
+      await prisma.topic.update({ where: { id: q.topicId }, data: { askedMailedAt: new Date() } });
+      const { gateway } = gatewaySaying((input) => input.candidates[0]!.id);
+      const mailQueue = queue();
+
+      await runGroupJob(deps(mailQueue, gateway, vec), { questionId: q.id });
+      expect(mailQueue.add).not.toHaveBeenCalled();
+      expect((await prisma.topic.findUniqueOrThrow({ where: { id: target.topicId } })).askedMailedAt).not.toBeNull();
+    });
+
+    it('sends no email when the switch is off', async () => {
+      const pageId = await aPage();
+      await aWording(pageId, 'Do you deliver to Klang', { grouped: true, askCount: 2 });
+      const q = await aWording(pageId, 'Deliver to Klang?');
+      const { gateway } = gatewaySaying((input) => input.candidates[0]!.id);
+      const mailQueue = queue();
+
+      await runGroupJob(deps(mailQueue, gateway, vec), { questionId: q.id });
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
+  });
+
   it('moves nothing when the model says none', async () => {
     const pageId = await aPage();
     const other = await aWording(pageId, 'Kek 1kg berapa', { grouped: true });

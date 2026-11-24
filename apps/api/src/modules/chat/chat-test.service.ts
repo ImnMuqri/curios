@@ -124,7 +124,7 @@ async function citedSources(
  *   must not show up on Questions as a customer asking it.
  * - No usage counter, so testing never spends the month's conversations.
  *   But it reads the counter: once a new visitor would get the limit's fixed
- *   reply, so does the tester (the Alerts board: "the tester shows the fixed
+ *   reply, so does the tester (the deleted Alerts board: "the tester shows the fixed
  *   reply too"), and no model is called.
  * - No `intent`, so the lead card is never offered.
  * - The chat switched off by the admin: the fixed reply, as a visitor gets,

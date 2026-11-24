@@ -10,7 +10,7 @@ export function Done({ children }: { children: ReactNode }) {
   return <span className={styles.ok}>{children}</span>;
 }
 
-/** The ways in, drawn on the Settings board in a neutral square before their row. */
+/** The ways in, drawn on the Dash board in a neutral square before their row. */
 export function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" aria-hidden="true" style={{ stroke: 'none' }}>

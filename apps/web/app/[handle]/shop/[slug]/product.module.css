@@ -1,6 +1,6 @@
 /*
- * /[handle]/shop/[slug], copied from the Public board's .sp-* rules
- * (Public.dc.html ~100-104, 132-157). As on the shop page, the board's one dark
+ * /[handle]/shop/[slug], copied from the deleted Public board's .sp-* rules
+ * (deleted Public.dc.html ~100-104, 132-157). As on the shop page, the board's one dark
  * page becomes the owner's own: --page-bg / --page-fg from PageTheme and their
  * accent. Surfaces are the page's text at a low strength. The same rules wear
  * the Store editor's preview (`.view` sets its own veils from whatever

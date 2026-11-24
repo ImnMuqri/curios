@@ -6,8 +6,7 @@ import styles from '../auth.module.css';
 
 /**
  * The frame for the screens outside the dashboard -- sign in, sign up, forgot,
- * reset, verify, and claiming a page -- from the design handoff's SignIn and
- * SignUp boards.
+ * reset, verify, and claiming a page -- from the design handoff's Site board.
  *
  * Left: the form on paper, under the wordmark. Right, on wide screens: Peek on
  * a tinted panel (AuthScene). `scene` picks which: sign in's (the default) or

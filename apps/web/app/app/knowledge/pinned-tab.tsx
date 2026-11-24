@@ -139,7 +139,7 @@ export function PinnedList({
   return (
     <div className={styles.wrap}>
       <p className={styles.intro}>
-        Answers you wrote on <a href="/app/questions">Questions</a>. The chat repeats your words exactly.
+        Your answers from <a href="/app/questions">Questions</a>. The chat repeats your words exactly, every time.
       </p>
       {pinned.length === 0 ? (
         <div className={styles.es}>

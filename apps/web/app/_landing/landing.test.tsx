@@ -75,8 +75,8 @@ describe('motion', () => {
     // The hero's front page is answered, with no cursor and no caret.
     const hero = container.querySelector('section')!;
     expect(hero).toHaveTextContent(en.personas.aisyah.a);
-    // Every zone has landed.
-    expect(container.querySelector('#business')).toHaveTextContent(en.lands.service.first.title);
+    // Every card has landed.
+    expect(container.querySelector('#business')).toHaveTextContent(en.lands.service.lead.name);
     // The closing reads its first word, with nothing held for a reveal.
     expect(screen.getByRole('heading', { name: 'One page for freelancers' })).toBeInTheDocument();
     expect(container.querySelector('[data-rv="wait"]')).toBeNull();
@@ -134,7 +134,7 @@ describe('copy', () => {
   });
 
   it('carries no slice 18 markers: checkout, QR payment and Orders are built', () => {
-    for (const file of ['copy.ts', 'lands-script.ts', 'Lands.tsx']) {
+    for (const file of ['copy.ts', 'Lands.tsx']) {
       expect(readFileSync(join(import.meta.dirname, file), 'utf8')).not.toMatch(/SLICE 18/);
     }
   });
@@ -235,7 +235,7 @@ describe('the Malay landing', () => {
     return [];
   }
   /** Lines a visitor or a page types, which are Malay or mixed on both landings, as on the board. */
-  const SPOKEN = [/^lands\.(service|products)\.(chat|asked)\./, /^who\.answers\.\w+\.3$/, /^who\.questions\.3$/, /^personas\./];
+  const SPOKEN = [/^lands\.(service|products)\.(question|asked)/, /^who\.answers\.\w+\.3$/, /^who\.questions\.3$/, /^personas\./];
 
   it('carries no English sentence on /ms outside the chat lines and brand words', () => {
     // The walk reaches every section, and the check bites: the English copy fails it.
@@ -251,8 +251,8 @@ describe('the Malay landing', () => {
     expect(ms.who.title).toEqual(['Satu soalan, ', 'lima jawapan berbeza', '']);
     expect(ms.how.title).toBe('Sepuluh minit dari kosong ke link bio');
     expect(ms.how.steps.map((s) => s.title)).toEqual(['Beritahu tentang anda', 'Luluskan yang betul', 'Letak link dalam bio']);
-    expect([ms.lands.title, ms.lands.lede]).toEqual(['Apa yang anda dapat', 'Satu chat di halaman anda. Empat perkara yang anda boleh guna.']);
-    expect([ms.noCut.title, ms.noCut.sub]).toEqual(['Setiap jualan milik anda', 'Kek RM100 yang sama, dijual dua cara. Baca resitnya.']);
+    expect([ms.lands.title, ms.lands.lede]).toEqual(['Apa yang anda dapat', 'Bila orang tanya halaman anda, ini yang anda dapat.']);
+    expect([ms.noCut.title, ms.noCut.sub]).toEqual(['Setiap jualan milik anda', 'Kek RM100 yang sama, dijual dua cara. Ini yang sampai ke bank anda.']);
     expect(ms.pricing.title).toEqual(['Percuma untuk anda,', 'RM49 sebulan untuk bisnes']);
     expect(ms.faq.title).toEqual(['Sebelum', 'anda mula']);
     expect(ms.hero.eyebrow).toBe('Link bio, untuk Malaysia');

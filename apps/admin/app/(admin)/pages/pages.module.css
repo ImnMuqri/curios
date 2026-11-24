@@ -161,7 +161,7 @@
   background: #fafbfc;
 }
 .pick[aria-selected='true'] {
-  background: #f3f6ff;
+  background: #f0f9fc;
 }
 .pg {
   display: block;
@@ -318,8 +318,8 @@
   margin: 10px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f6f8ff;
-  color: #122686;
+  background: #f3fafd;
+  color: #035a7a;
   font-size: 12.5px;
 }
 

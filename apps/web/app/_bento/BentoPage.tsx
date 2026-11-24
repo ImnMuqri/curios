@@ -139,7 +139,7 @@ export function PageTheme({
   );
 }
 
-/** The shop pill's inside, from the Public board: the photos overlap, then the words, then a chevron. */
+/** The shop pill's inside, from the More board: the photos overlap, then the words, then a chevron. */
 function ShopPill({ shop }: { shop: NonNullable<BentoPageProps['shop']> }) {
   return (
     <span className={styles.shopIn}>

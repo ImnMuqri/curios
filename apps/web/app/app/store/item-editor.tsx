@@ -1,13 +1,17 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
+import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Callout } from '@curios/ui';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS } from '@curios/core/store';
+import { PageHead } from '../_ui/page-head.js';
 import { SaveState } from '../_ui/save-state.js';
+import { SectionHead } from '../_ui/section-head.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
+import panel from '../panel.module.css';
 import { blankOption, checkFields, draftOf, ownerPriceLine, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
-import { DigitalPanels, KindSwitch } from './digital-fields.js';
+import { DigitalPanels, GET_NOTE, KIND_NOTE, KindSwitch } from './digital-fields.js';
 import { ItemPhotos } from './item-photos.js';
 import { checkDigital, digitalDraftOf, type DigitalDraft } from './digital-draft.js';
 import { PHYSICAL_ITEM, type Delivery, type DigitalFields, type EditorItem, type ItemRow, type ItemsApi, type PhotosResult } from './store-types.js';
@@ -78,12 +82,12 @@ function previewDigital(draft: DigitalDraft, saved: EditorItem | null): Pick<Edi
 }
 
 /**
- * One item, edited on its own (the board's "All items" view). Saves as the
- * owner types, once the fields read as an item: a name, and a price or a
- * full set of options. Until then nothing is sent, and the line under the
- * price says what is missing. A new item is created by its first such save.
- * Done sends anything still waiting and goes back to the list, but not while
- * the fields cannot be saved.
+ * One item, on its own screen (the board's item editor): a back link, the header, and a row for
+ * each part (Photos, Name and description, What it is, How they order or How they get it, Price,
+ * In your shop). Saves as the owner types, once the fields read as an item: a name, and a price
+ * or a full set of options. Until then nothing is sent, and the line under the price says what
+ * is missing. A new item is created by its first such save. "All items" sends anything still
+ * waiting before it goes back, and stays if that save failed.
  */
 /** CHIP lists no online banking for a total under RM1, so a basket of just this price is paid another way. */
 const ONLINE_MIN_CENTS = 100;
@@ -97,7 +101,7 @@ const underOnlineMin = (pricing: CheckedItem['pricing']) => {
 /** Asking for a price is for physical items only: a digital one is always priced for the basket. */
 const pricingFor = (draft: PricingDraft, digital: DigitalDraft): PricingDraft => (digital.kind === 'DIGITAL' && draft.ask ? { ...draft, ask: false } : draft);
 
-/** "How they order" (Store board, 8 Nov): the basket, or an enquiry. */
+/** "How they order" (deleted Store board, 8 Nov): the basket, or an enquiry. */
 const HOWS = [
   [false, 'Add to basket', 'They pick, pay and it lands in Orders'],
   [true, 'Ask for a price', 'They send an enquiry. You reply with a price'],
@@ -114,6 +118,7 @@ export function ItemEditor({
   onPreview,
   onRemoved,
   onClose,
+  shop,
 }: {
   /** Null for a new item. */
   item: EditorItem | null;
@@ -130,7 +135,10 @@ export function ItemEditor({
   /** The item as it would look now, for the preview, or null while it cannot be shown. */
   onPreview: (item: EditorItem | null) => void;
   onRemoved: (id: string) => void;
+  /** Back to All items. Called once anything waiting has been sent. */
   onClose: () => void;
+  /** The owner's shop, for "See it in your shop": its handle, and whether it is open to visitors. */
+  shop: { handle: string; open: boolean };
 }) {
   const [saved, setSaved] = useState<EditorItem | null>(item);
   const [name, setName] = useState(item?.name ?? '');
@@ -157,6 +165,17 @@ export function ItemEditor({
   const checkedDigital = checkDigital(digital);
   const problem = 'error' in checked ? checked.error : 'error' in checkedDigital ? checkedDigital.error : null;
 
+  // What is typed in the last moments is sent when the screen is left any way at all (browser Back, the sidebar, closing).
+  // Declared before useAutosave so it runs before that hook's own cleanup drops the waiting save.
+  const flushRef = useRef<(() => Promise<unknown>) | null>(null);
+  useEffect(() => {
+    const leave = () => void flushRef.current?.();
+    window.addEventListener('pagehide', leave);
+    return () => {
+      window.removeEventListener('pagehide', leave);
+      leave();
+    };
+  }, []);
   const autosave = useAutosave(async (fields: Draft) => {
     const current = savedRef.current ?? (creating.current ? await creating.current : null);
     const { digital: kinds, ...rest } = fields;
@@ -176,6 +195,8 @@ export function ItemEditor({
       creating.current = null;
     }
   });
+
+  flushRef.current = autosave.flushPending;
 
   useEffect(() => {
     if (!item) nameRef.current?.focus();
@@ -299,267 +320,280 @@ export function ItemEditor({
     }
   }
 
-  async function done() {
-    if (problem) {
-      setError(saved ? `${problem} Or go back to All items to leave it as it was.` : `${problem} Or go back to All items to leave it out.`);
-      return;
-    }
-    const sent = await autosave.flushPending();
-    // Nothing waiting: go unless the last save failed and is still unsaved.
-    if (sent === true || (sent === null && autosave.status !== 'error')) onClose();
-  }
-
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   const shownCategory = category.replace(/\s+/g, ' ').trim();
   // This item's own category stays a choice, even when it is the only item with it.
   const categoryChoices = shownCategory && !categories.includes(shownCategory) ? [...categories, shownCategory] : categories;
+  const isDigital = digital.kind === 'DIGITAL';
+  const viewHref = saved && saved.available && shop.open ? `/${shop.handle}/shop/${saved.slug}` : null;
+  const row = `${ui.section} ${ui.sectionRow}`;
+
+  async function goBack(event: MouseEvent<HTMLAnchorElement>) {
+    // A new tab or window is the browser's to open; anything else waits for what is typed to be sent.
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    const sent = await autosave.flushPending();
+    // Stay when the save failed, now or earlier and not yet retried: leaving would drop what is typed.
+    if (sent === false || (sent === null && autosave.status === 'error')) return;
+    onClose();
+  }
+
+  const priceLine = (
+    <p className={styles.priceLine} data-bad={problem ? '' : undefined} aria-live="polite">
+      <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+        <path d={problem ? 'M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' : 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'} />
+      </svg>
+      {problem ?? `Customers see ${'error' in checked ? '' : ownerPriceLine(pricedFields(checked.pricing))}`}
+    </p>
+  );
 
   return (
-    <div className={styles.editor} role="group" aria-label={item ? `Edit ${item.name}` : 'New item'}>
-      <button type="button" className={styles.back} onClick={onClose}>
-        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-          <path d="M15 6l-6 6 6 6" />
-        </svg>
-        All items
-      </button>
-
-      <div className={styles.editorTop}>
-        <ItemPhotos item={saved} tint={tint} initial={initial} uploadsEnabled={uploadsEnabled} api={api} onChange={photosChanged} onError={setError} />
-        <div className={styles.fields}>
-          <label className={ui.float}>
-            <em>Name</em>
-            <input ref={nameRef} value={name} autoComplete="off" onChange={(event) => edit({ name: event.target.value })} />
-          </label>
-          <div className={ui.float}>
-            <label>
-              <em>Description</em>
-              <textarea value={description} style={{ height: 84 }} onChange={(event) => edit({ description: event.target.value })} />
-            </label>
-            <small aria-hidden="true" data-over={[...description].length > ITEM_DESCRIPTION_MAX || undefined}>
-              {[...description].length}/{ITEM_DESCRIPTION_MAX}
-            </small>
-          </div>
-        </div>
+    <div className={styles.itemScreen} role="group" aria-label={item ? `Edit ${item.name}` : 'New item'}>
+      <div className={styles.backRow}>
+        <Link className={styles.back} href="/app/store" prefetch={false} onClick={(event) => void goBack(event)}>
+          <span aria-hidden="true">‹</span>
+          All items
+        </Link>
       </div>
+      <PageHead kicker={isDigital ? 'Store · Digital item' : 'Store · Item'} title={name.trim() || saved?.name || 'New item'}>
+        {viewHref ? (
+          <a className={`${panel.secondaryLink} ${ui.headLink}`} href={viewHref} target="_blank" rel="noreferrer">
+            See it in your shop
+          </a>
+        ) : null}
+      </PageHead>
 
-      <div className={styles.labels}>
-        {typingCategory ? (
-          <label className={ui.float}>
-            <em>New category</em>
-            <input
-              value={category}
-              maxLength={ITEM_CATEGORY_MAX * 2}
-              autoComplete="off"
-              autoFocus
-              onChange={(event) => edit({ category: event.target.value })}
-              onBlur={() => setTypingCategory(false)}
-            />
-          </label>
-        ) : (
-          <label className={ui.float}>
-            <em>Category</em>
-            <select
-              value={shownCategory}
-              onChange={(event) => {
-                if (event.target.value !== NEW_CATEGORY) {
-                  edit({ category: event.target.value });
-                  return;
-                }
-                edit({ category: '' });
-                setTypingCategory(true);
-              }}
-            >
-              <option value="">No category</option>
-              {categoryChoices.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-              <option value={NEW_CATEGORY}>New category…</option>
-            </select>
-          </label>
-        )}
-        <label className={ui.float}>
-          <em>Tag</em>
-          <input value={tag} list={`${listId}-tags`} maxLength={ITEM_TAG_MAX * 2} autoComplete="off" onChange={(event) => edit({ tag: event.target.value })} />
-          <datalist id={`${listId}-tags`}>
-            {ITEM_TAG_PRESETS.map((preset) => (
-              <option key={preset} value={preset} />
-            ))}
-          </datalist>
-        </label>
-        <label className={ui.float}>
-          <em>Item code (optional)</em>
-          <input value={sku} maxLength={ITEM_SKU_MAX * 2} autoComplete="off" spellCheck={false} onChange={(event) => edit({ sku: event.target.value })} />
-        </label>
-      </div>
+      <div className={ui.editBody}>
+        <section className={row} aria-labelledby="photos-title">
+          <SectionHead id="photos-title" title="Photos" note="Up to 6. Square works best." />
+          <ItemPhotos item={saved} tint={tint} initial={initial} uploadsEnabled={uploadsEnabled} api={api} onChange={photosChanged} onError={setError} />
+          <p className={ui.note}>Drag to reorder. The first one is the cover, and you can crop it.</p>
+        </section>
 
-      <KindSwitch draft={digital} onDraft={editDigital} />
-      {digital.kind === 'DIGITAL' ? (
-        <DigitalPanels draft={digital} onDraft={editDigital} item={saved} api={api} ready={ready} patchItem={patchItem} />
-      ) : (
-        <>
-          <div className={styles.sub}>
-            <b id="how-title">How they order</b>
-            <span>Made-to-order things, like custom cakes, work best as Ask</span>
-          </div>
-          <div className={styles.askTiles} role="group" aria-labelledby="how-title">
-            {HOWS.map(([ask, label, note]) => (
-              <button key={label} type="button" className={`${ui.tile} ${styles.deliveryTile} ${styles.digitalTile}`} aria-pressed={asking === ask} onClick={() => setAsk(ask)}>
-                <span className={ui.tick} aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="12" height="12">
-                    <path d="M5 12.5l4.5 4.5L19 7.5" />
-                  </svg>
-                </span>
-                <span>
-                  <b>{label}</b>
-                  <span>{note}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-
-      {asking ? (
-        <>
-          <div className={styles.sub}>
-            <b>Starting price</b>
-            <span>Optional. Helps your page answer “how much?”</span>
-          </div>
-          <label className={`${styles.money} ${styles.price}`}>
-            <span>From RM</span>
-            <input value={draft.price} inputMode="decimal" aria-label="Starting price in ringgit" placeholder="Leave empty" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
-          </label>
-          <div className={styles.askNote}>
-            <b>What they fill in</b>
-            <p>One message box, plus their name and WhatsApp. Your page picks out the date, how many people and the budget for you, and puts it in Leads.</p>
-          </div>
-        </>
-      ) : (
-        <>
-          <div className={styles.sub}>
-            <b id="price-title">Price</b>
-            <span>Options suit sizes, like 1kg and 2kg</span>
-          </div>
-          <div className={styles.pricedBy} role="radiogroup" aria-labelledby="price-title" style={{ '--at': draft.kind === 'single' ? 0 : 1 } as CSSProperties}>
-            {(
-              [
-                ['single', 'One price'],
-                ['options', 'Options'],
-              ] as const
-            ).map(([kind, label]) => (
-              <button key={kind} type="button" role="radio" aria-checked={draft.kind === kind} onClick={() => setKind(kind)}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {draft.kind === 'single' ? (
-            <label className={`${styles.money} ${styles.price}`}>
-              <span>RM</span>
-              <input value={draft.price} inputMode="decimal" aria-label="Price in ringgit" placeholder="0.00" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
+        <section className={row} aria-labelledby="name-title">
+          <SectionHead id="name-title" title="Name and description" note="What customers read on the item page." />
+          <div className={styles.fields}>
+            <label className={ui.float}>
+              <em>Name</em>
+              <input ref={nameRef} value={name} autoComplete="off" onChange={(event) => edit({ name: event.target.value })} />
             </label>
-          ) : (
-            <>
-              <div className={styles.options}>
-                {draft.options.map((option, index) => (
-                  <div key={option.key} className={styles.option}>
-                    <input
-                      className={styles.optionName}
-                      value={option.label}
-                      placeholder={`Option ${index + 1}, like 1kg`}
-                      aria-label={`Option ${index + 1} name`}
-                      onChange={(event) => setOption(option.key, { label: event.target.value })}
-                    />
-                    <label className={styles.money}>
-                      <span>RM</span>
-                      <input
-                        value={option.price}
-                        inputMode="decimal"
-                        aria-label={`Option ${index + 1} price in ringgit`}
-                        placeholder="0.00"
-                        onChange={(event) => setOption(option.key, { price: event.target.value })}
-                      />
-                    </label>
-                    <button
-                      type="button"
-                      className={ui.iconButton}
-                      aria-label={`Remove option ${index + 1}`}
-                      disabled={draft.options.length === 1}
-                      onClick={() => edit({ draft: { ...draft, options: draft.options.filter((o) => o.key !== option.key) } })}
-                    >
-                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
-                        <path d={BIN} />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-              </div>
-              {draft.options.length < MAX_OPTIONS ? (
-                <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, options: [...draft.options, blankOption()] } })}>
-                  + Add option
-                </button>
+            <div className={ui.float}>
+              <label>
+                <em>About</em>
+                <textarea value={description} style={{ height: 84 }} onChange={(event) => edit({ description: event.target.value })} />
+              </label>
+              <small aria-hidden="true" data-over={[...description].length > ITEM_DESCRIPTION_MAX || undefined}>
+                {[...description].length}/{ITEM_DESCRIPTION_MAX}
+              </small>
+            </div>
+            <div className={styles.labels}>
+              {typingCategory ? (
+                <label className={ui.float}>
+                  <em>New category</em>
+                  <input
+                    value={category}
+                    maxLength={ITEM_CATEGORY_MAX * 2}
+                    autoComplete="off"
+                    autoFocus
+                    onChange={(event) => edit({ category: event.target.value })}
+                    onBlur={() => setTypingCategory(false)}
+                  />
+                </label>
               ) : (
-                <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
+                <label className={ui.float}>
+                  <em>Category</em>
+                  <select
+                    value={shownCategory}
+                    onChange={(event) => {
+                      if (event.target.value !== NEW_CATEGORY) {
+                        edit({ category: event.target.value });
+                        return;
+                      }
+                      edit({ category: '' });
+                      setTypingCategory(true);
+                    }}
+                  >
+                    <option value="">No category</option>
+                    {categoryChoices.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                    <option value={NEW_CATEGORY}>New category…</option>
+                  </select>
+                </label>
               )}
-            </>
-          )}
-        </>
-      )}
+              <label className={ui.float}>
+                <em>Tag</em>
+                <input value={tag} list={`${listId}-tags`} maxLength={ITEM_TAG_MAX * 2} autoComplete="off" onChange={(event) => edit({ tag: event.target.value })} />
+                <datalist id={`${listId}-tags`}>
+                  {ITEM_TAG_PRESETS.map((preset) => (
+                    <option key={preset} value={preset} />
+                  ))}
+                </datalist>
+              </label>
+              <label className={ui.float}>
+                <em>Item code (optional)</em>
+                <input value={sku} maxLength={ITEM_SKU_MAX * 2} autoComplete="off" spellCheck={false} onChange={(event) => edit({ sku: event.target.value })} />
+              </label>
+            </div>
+          </div>
+        </section>
 
-      <p className={styles.priceLine} data-bad={problem ? '' : undefined} aria-live="polite">
-        <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
-          <path d={problem ? 'M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' : 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'} />
-        </svg>
-        {problem ?? `Customers see ${'error' in checked ? '' : ownerPriceLine(pricedFields(checked.pricing))}`}
-      </p>
-      {paysOnline && !('error' in checked) && underOnlineMin(checked.pricing) ? (
-        <p className={ui.note}>Under RM1, a customer buying only this can’t pay by online banking: CHIP takes RM1 or more.</p>
-      ) : null}
+        <section className={row} aria-labelledby="kind-title">
+          <SectionHead id="kind-title" title="What it is" note={KIND_NOTE[isDigital ? 'DIGITAL' : 'PHYSICAL']} />
+          <KindSwitch draft={digital} onDraft={editDigital} headless />
+        </section>
 
-      <SaveState status={autosave.status} error={autosave.error} retry={autosave.retry} />
-      {error ? <Callout tone="error">{error}</Callout> : null}
-
-      <div className={styles.editorFoot}>
-        <span className={styles.available}>
-          <button
-            type="button"
-            className={ui.switch}
-            role="switch"
-            aria-checked={saved?.available ?? true}
-            aria-label="In your shop"
-            disabled={!saved}
-            onClick={() => void setAvailable(!(saved?.available ?? true))}
-          >
-            <i />
-          </button>
-          {(saved?.available ?? true) ? 'In your shop and known to the chat' : 'Hidden from your shop and the chat'}
-        </span>
-        <span className={styles.footEnd}>
-          {confirming ? (
-            <span className={ui.confirm} role="group" aria-label="Confirm removal">
-              Remove it from your shop and the chat?
-              <button type="button" className={ui.confirmRemove} onClick={() => void remove()}>
-                Yes, remove
-              </button>
-              <button type="button" onClick={() => setConfirming(false)}>
-                Keep
-              </button>
-            </span>
-          ) : (
-            <>
-              {saved ? (
-                <button type="button" className={styles.ghost} onClick={() => setConfirming(true)}>
-                  Remove item
+        {isDigital ? (
+          <section className={row} aria-labelledby="get-title">
+            <SectionHead id="get-title" title="How they get it" note={GET_NOTE} />
+            <DigitalPanels draft={digital} onDraft={editDigital} item={saved} api={api} ready={ready} patchItem={patchItem} headless />
+          </section>
+        ) : (
+          <section className={row} aria-labelledby="how-title">
+            <SectionHead id="how-title" title="How they order" note="Made-to-order things, like custom cakes, work best as Ask." />
+            <div className={styles.askTiles} role="group" aria-labelledby="how-title">
+              {HOWS.map(([ask, label, note]) => (
+                <button key={label} type="button" className={`${ui.tile} ${styles.deliveryTile} ${styles.digitalTile}`} aria-pressed={asking === ask} onClick={() => setAsk(ask)}>
+                  <span className={ui.tick} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="12" height="12">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  </span>
+                  <span>
+                    <b>{label}</b>
+                    <span>{note}</span>
+                  </span>
                 </button>
-              ) : null}
-              <button type="button" className={ui.primaryButton} onClick={() => void done()}>
-                Done
+              ))}
+            </div>
+            {asking ? (
+              <>
+                <label className={`${styles.money} ${styles.price}`}>
+                  <span>From RM</span>
+                  <input value={draft.price} inputMode="decimal" aria-label="Starting price in ringgit" placeholder="Leave empty" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
+                </label>
+                <p className={ui.note}>
+                  Optional. Helps your page answer “how much?” Customers fill in one message box, plus their name and WhatsApp. Your page picks out the date, how many people and the budget for you, and puts it in Leads.
+                </p>
+                {priceLine}
+              </>
+            ) : null}
+          </section>
+        )}
+
+        {asking ? null : (
+          <section className={row} aria-labelledby="price-title">
+            <SectionHead id="price-title" title="Price" note="Options suit sizes, like 1kg and 2kg." />
+            <div className={styles.pricedBy} role="radiogroup" aria-labelledby="price-title" style={{ '--at': draft.kind === 'single' ? 0 : 1 } as CSSProperties}>
+              {(
+                [
+                  ['single', 'One price'],
+                  ['options', 'Options'],
+                ] as const
+              ).map(([kind, label]) => (
+                <button key={kind} type="button" role="radio" aria-checked={draft.kind === kind} onClick={() => setKind(kind)}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {draft.kind === 'single' ? (
+              <label className={`${styles.money} ${styles.price}`}>
+                <span>RM</span>
+                <input value={draft.price} inputMode="decimal" aria-label="Price in ringgit" placeholder="0.00" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
+              </label>
+            ) : (
+              <>
+                <div className={styles.options}>
+                  {draft.options.map((option, index) => (
+                    <div key={option.key} className={styles.option}>
+                      <input
+                        className={styles.optionName}
+                        value={option.label}
+                        placeholder={`Option ${index + 1}, like 1kg`}
+                        aria-label={`Option ${index + 1} name`}
+                        onChange={(event) => setOption(option.key, { label: event.target.value })}
+                      />
+                      <label className={styles.money}>
+                        <span>RM</span>
+                        <input
+                          value={option.price}
+                          inputMode="decimal"
+                          aria-label={`Option ${index + 1} price in ringgit`}
+                          placeholder="0.00"
+                          onChange={(event) => setOption(option.key, { price: event.target.value })}
+                        />
+                      </label>
+                      <button
+                        type="button"
+                        className={ui.iconButton}
+                        aria-label={`Remove option ${index + 1}`}
+                        disabled={draft.options.length === 1}
+                        onClick={() => edit({ draft: { ...draft, options: draft.options.filter((o) => o.key !== option.key) } })}
+                      >
+                        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
+                          <path d={BIN} />
+                        </svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {draft.options.length < MAX_OPTIONS ? (
+                  <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, options: [...draft.options, blankOption()] } })}>
+                    + Add option
+                  </button>
+                ) : (
+                  <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
+                )}
+              </>
+            )}
+
+            {priceLine}
+            {paysOnline && !('error' in checked) && underOnlineMin(checked.pricing) ? (
+              <p className={ui.note}>Under RM1, a customer buying only this can’t pay by online banking: CHIP takes RM1 or more.</p>
+            ) : null}
+          </section>
+        )}
+
+        <section className={row} aria-labelledby="shop-title">
+          <SectionHead id="shop-title" title="In your shop" note="Switch it off to hide it for a while." />
+          <span className={styles.available}>
+            <button
+              type="button"
+              className={ui.switch}
+              role="switch"
+              aria-checked={saved?.available ?? true}
+              aria-label="In your shop"
+              disabled={!saved}
+              onClick={() => void setAvailable(!(saved?.available ?? true))}
+            >
+              <i />
+            </button>
+            {(saved?.available ?? true) ? 'In your shop and known to the chat' : 'Hidden from your shop and the chat'}
+          </span>
+          {saved ? (
+            confirming ? (
+              <span className={ui.confirm} role="group" aria-label="Confirm removal">
+                Remove it from your shop and the chat?
+                <button type="button" className={ui.confirmRemove} onClick={() => void remove()}>
+                  Yes, remove
+                </button>
+                <button type="button" onClick={() => setConfirming(false)}>
+                  Keep
+                </button>
+              </span>
+            ) : (
+              <button type="button" className={styles.ghost} onClick={() => setConfirming(true)}>
+                Remove item
               </button>
-            </>
-          )}
-        </span>
+            )
+          ) : null}
+        </section>
+
+        <SaveState status={autosave.status} error={autosave.error} retry={autosave.retry} />
+        {error ? <Callout tone="error">{error}</Callout> : null}
       </div>
     </div>
   );

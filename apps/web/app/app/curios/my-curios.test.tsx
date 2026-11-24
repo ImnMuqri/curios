@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MyCuriosEditor, type EditorPage } from './my-curios.js';
+import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
@@ -38,7 +39,12 @@ const api = () => ({
 });
 
 const show = (page: EditorPage = initial, calls = api()) => {
-  const view = render(<MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" />);
+  const view = render(
+    <SaveStatusProvider>
+      <div data-testid="top-bar"><SaveStatusSlot /></div>
+      <MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" />
+    </SaveStatusProvider>,
+  );
   return { ...view, calls };
 };
 const preview = () => screen.getByRole('region', { name: 'Live preview' });
@@ -46,6 +52,8 @@ const preview = () => screen.getByRole('region', { name: 'Live preview' });
 const editTab = (name: string) => within(screen.getByRole('tablist', { name: 'Edit' })).getByRole('tab', { name });
 /** The editor's header bar; the page in the phone has a header too. */
 const header = () => screen.getByRole('heading', { name: 'My Curios' }).closest('header')!;
+/** Where the frame draws "Saved": its top bar, not the page's header. */
+const topBar = () => screen.getByTestId('top-bar');
 
 afterEach(() => {
   vi.useRealTimers();
@@ -101,7 +109,28 @@ describe('MyCuriosEditor', () => {
   });
 });
 
-describe('the header', () => {
+describe('the header and preview note', () => {
+  it('shows the kicker, the sentence, the address and the Profile / Links tabs under the header', () => {
+    show();
+    expect(within(header()).getByText('Your page')).toBeInTheDocument();
+    expect(within(header()).getByText('How your page looks to everyone who taps your link.')).toBeInTheDocument();
+    expect(within(header()).getByRole('link', { name: 'View page' })).toBeInTheDocument();
+    expect(within(header()).getByRole('tablist', { name: 'Edit' })).toBeInTheDocument();
+  });
+
+  it('says what the phone shows', () => {
+    show();
+    expect(within(preview()).getByText('This is what people see. It changes as you edit.')).toBeInTheDocument();
+  });
+});
+
+describe('the save status', () => {
+  it('leaves the page header to the title, the tabs and the address: Saved is in the top bar', () => {
+    show();
+    expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
+    expect(within(header()).queryByText('Saved')).toBeNull();
+  });
+
   it('says Saved, then Saving… while a save is out, then Saved again', async () => {
     let finish!: () => void;
     const calls = api();
@@ -109,13 +138,13 @@ describe('the header', () => {
       (name: string) => new Promise((resolve) => { finish = () => resolve({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` }); }),
     );
     show(initial, calls);
-    expect(within(header()).getByText('Saved')).toBeInTheDocument();
+    expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
-    expect(within(header()).getByText('Saving…')).toBeInTheDocument();
+    expect(within(topBar()).getByText('Saving…')).toBeInTheDocument();
 
     await act(async () => finish());
-    expect(within(header()).getByText('Saved')).toBeInTheDocument();
+    expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
   });
 
   it('says Not saved after a save fails, until the next one lands', async () => {
@@ -124,10 +153,10 @@ describe('the header', () => {
     show(initial, calls);
 
     await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
-    expect(await within(header()).findByText('Not saved')).toBeInTheDocument();
+    expect(await within(topBar()).findByText('Not saved')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Tea and flowers' }));
-    expect(await within(header()).findByText('Saved')).toBeInTheDocument();
+    expect(await within(topBar()).findByText('Saved')).toBeInTheDocument();
   });
 
   it("copies the page's full address", async () => {
@@ -411,5 +440,19 @@ describe('without the template look', () => {
     // The shop row sits above the list, in the same box.
     const shop = screen.getByRole('group', { name: 'Shop link' });
     expect(shop.nextElementSibling?.tagName).toBe('UL');
+  });
+});
+
+describe('the address row', () => {
+  it('uses the My Curios modifiers so the pill stays on a phone and both are 44px', async () => {
+    show();
+    const link = within(header()).getByRole('link', { name: 'View page' });
+    const pill = within(header()).getByText(/curios\.my\//);
+    expect(pill.className).toMatch(/addrPill/);
+    expect(link.className).toMatch(/viewLink/);
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
+    expect(css).toMatch(/\.addr \.addrPill\s*{[^}]*display:\s*flex;[^}]*height:\s*44px/);
+    expect(css).toMatch(/\.addr \.viewLink\s*{[^}]*height:\s*44px/);
   });
 });

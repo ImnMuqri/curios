@@ -1,5 +1,7 @@
 # Payment results, 30-minute holds, and pickup places and times: implementation plan
 
+> Note (24 Nov 2026): this plan was written against boards that are now deleted (Alerts, Billing, Emails, Knowledge, Leads, Main, MyCurios, Orders, Public, Store, System, TanyaJe and others). Names and line numbers below are as they were then. Their content now lives in the five boards in `design/boards/` (Landing2, Site, Dash, More, Admin); see `design/HANDOFF.md`, "Boards to routes". The old files are in git history before 58a531e.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** this plan builds four things.

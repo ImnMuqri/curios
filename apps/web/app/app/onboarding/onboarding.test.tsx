@@ -194,7 +194,7 @@ describe('OnboardingFlow', () => {
   });
 });
 
-/** The panel beside the form: Peek, one pose per step (Onboarding.dc.html, "onboarding panel: Peek"). Owner answer 8: no phone, no streaming facts. */
+/** The panel beside the form: Peek, one pose per step (More.dc.html, "onboarding panel: Peek"). Owner answer 8: no phone, no streaming facts. */
 describe('OnboardingFlow panel', () => {
   const owned = { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' as const };
   const panel = (container: HTMLElement) => {

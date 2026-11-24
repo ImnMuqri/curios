@@ -1,5 +1,5 @@
 /*
- * The account and system screens, from the design handoff's System board:
+ * The account and system screens, from the design handoff's Site board:
  * the wordmark on flat paper, and one thing in the middle --
  * a small drawing, a headline, a line, and what to do next.
  */
@@ -19,9 +19,9 @@
   --edge: var(--calm-ring);
   --ground: var(--calm-bg);
   --nav-on: var(--calm-surface);
-  --action: var(--calm-ink);
-  --action-fg: var(--calm-surface);
-  --action-hover: var(--calm-ink-deep);
+  --action: var(--calm-action);
+  --action-fg: var(--calm-action-fg);
+  --action-hover: var(--calm-action-hover);
   --font-body: var(--font-inter), system-ui, sans-serif;
   /* The shared Button and Field in the calm voice: pills to click and type into, a box for prose. */
   --button-radius: var(--r-pill);
@@ -148,7 +148,7 @@
 }
 
 .inp:focus-within {
-  box-shadow: inset 0 0 0 2px var(--biru);
+  box-shadow: inset 0 0 0 2px var(--sky);
 }
 
 .inp input {
@@ -186,7 +186,7 @@
 }
 
 .eye:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
 }
 
 .meter {
@@ -212,7 +212,7 @@
 }
 
 .meter[data-strength='3'] i:nth-child(-n + 3) {
-  background: var(--action);
+  background: var(--select);
 }
 
 .meter[data-strength='4'] i {
@@ -294,7 +294,7 @@
 
 .go:focus-visible,
 .ghost:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 3px;
 }
 
@@ -354,7 +354,7 @@
   margin: 0 auto 18px;
 }
 
-.ill .fBiru { fill: var(--biru); }
+.ill .fBiru { fill: var(--sky); }
 .ill .fBiruMuda { fill: var(--biru-muda); }
 .ill .fBiruLembut { fill: var(--biru-lembut); }
 .ill .fBiruDeep { fill: var(--biru-deep); }
@@ -369,7 +369,7 @@
 .ill .fHijauMuda { fill: var(--hijau-muda); }
 .ill .fAmberMuda { fill: var(--amber-muda); }
 .ill .fInk { fill: var(--ink); }
-.ill .sBiru { stroke: var(--biru); }
+.ill .sBiru { stroke: var(--sky); }
 .ill .sBiruLembut { stroke: var(--biru-lembut); }
 .ill .sBiruDeep { stroke: var(--biru-deep); }
 .ill .sEdge { stroke: var(--edge); }

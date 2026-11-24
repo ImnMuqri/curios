@@ -176,7 +176,7 @@ export function Ask({
    * the page in its own effect for the same commit (a child's effects run
    * before its parent's).
    *
-   * There is no ask bar on the Links tab: the Public board has the Ask tab
+   * There is no ask bar on the Links tab: the deleted Public board had the Ask tab
    * as the one way into the chat, and its composer only there.
    *
    * Only when the chat was closed from the keyboard. After a tap, the move

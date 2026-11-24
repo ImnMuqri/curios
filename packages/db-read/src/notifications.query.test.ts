@@ -5,7 +5,7 @@ import { getNotifications } from './notifications.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
-async function anOwner(page: boolean, flags: { notifyLeads?: boolean; notifyOrders?: boolean; notifyReceipts?: boolean } = {}) {
+async function anOwner(page: boolean, flags: { notifyLeads?: boolean; notifyOrders?: boolean; notifyReceipts?: boolean; notifyQuestions?: boolean; notifyPlanEnding?: boolean } = {}) {
   const slug = randomUUID().slice(0, 8);
   const account = await write.account.create({
     data: {
@@ -18,14 +18,20 @@ async function anOwner(page: boolean, flags: { notifyLeads?: boolean; notifyOrde
 }
 
 describe('getNotifications', () => {
-  it('has every email on by default', async () => {
-    expect(await getNotifications(await anOwner(true))).toEqual({ leads: true, orders: true, receipts: true });
+  it('has every email on by default but the question one, as the board draws it', async () => {
+    expect(await getNotifications(await anOwner(true))).toEqual({ leads: true, orders: true, receipts: true, questions: false, planEnding: true });
   });
 
   it('reads each off once switched off', async () => {
-    expect(await getNotifications(await anOwner(true, { notifyLeads: false }))).toEqual({ leads: false, orders: true, receipts: true });
-    expect(await getNotifications(await anOwner(true, { notifyOrders: false }))).toEqual({ leads: true, orders: false, receipts: true });
-    expect(await getNotifications(await anOwner(true, { notifyReceipts: false }))).toEqual({ leads: true, orders: true, receipts: false });
+    expect(await getNotifications(await anOwner(true, { notifyLeads: false }))).toEqual({ leads: false, orders: true, receipts: true, questions: false, planEnding: true });
+    expect(await getNotifications(await anOwner(true, { notifyOrders: false }))).toEqual({ leads: true, orders: false, receipts: true, questions: false, planEnding: true });
+    expect(await getNotifications(await anOwner(true, { notifyReceipts: false }))).toEqual({ leads: true, orders: true, receipts: false, questions: false, planEnding: true });
+  });
+
+  it('reads the question and plan-ending switches', async () => {
+    expect(await getNotifications(await anOwner(true, { notifyQuestions: true, notifyPlanEnding: false }))).toEqual({
+      leads: true, orders: true, receipts: true, questions: true, planEnding: false,
+    });
   });
 
   it('is null for an owner with no page yet', async () => {

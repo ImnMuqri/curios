@@ -124,15 +124,14 @@ describe('the review screen, assembled', () => {
 
     render(await ReviewPage());
 
-    expect(screen.getByRole('link', { name: 'Add another source' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: '+ Add another source' })).toHaveAttribute(
       'href',
       '/app/knowledge?tab=sources&add=1',
     );
   });
 
-  // Dashboard v2: the side panel runs the full height of the sheet, so the
-  // header sits at the top of the left column, beside the panel, not over it.
-  it('puts the header over the left column only', async () => {
+  // The 24 Nov board: one column. The header, then the notice with Publish, then the fact.
+  it('puts the header, the notice and the fact in one column', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
     getReviewQueue.mockResolvedValueOnce(unreviewed);
@@ -140,10 +139,15 @@ describe('the review screen, assembled', () => {
     render(await ReviewPage());
 
     const title = screen.getByRole('heading', { level: 1, name: 'Review' });
-    const side = screen.getByRole('complementary', { name: 'What this changes' });
-    expect(side.contains(title)).toBe(false);
-    expect(side.previousElementSibling?.contains(title)).toBe(true);
-    expect(side.previousElementSibling?.contains(screen.getByRole('article', { name: 'Fact to check' }))).toBe(true);
+    const column = title.closest('header')!.parentElement!.parentElement!;
+    expect(column.contains(screen.getByRole('button', { name: /^publish$/i }))).toBe(true);
+    expect(column.contains(screen.getByRole('article', { name: 'Fact to check' }))).toBe(true);
+    // Publish comes before the card, as the board draws the notice above the fact.
+    const publish = screen.getByRole('button', { name: /^publish$/i });
+    expect(publish.compareDocumentPosition(screen.getByRole('article', { name: 'Fact to check' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // No side panel: the only aside is the Up next / Done list, inside the column.
+    expect(screen.queryByRole('complementary', { name: 'What this changes' })).toBeNull();
+    expect(screen.getByText('Knowledge')).toBeInTheDocument();
   });
 
   it('shows the live URL instead of the button once published', async () => {

@@ -205,6 +205,82 @@ describe('what the page needs to say the next pickup day and price the basket', 
   });
 });
 
+describe('getOwnerStore item stats', () => {
+  const now = new Date('2026-11-24T04:00:00Z');
+  const daysAgo = (days: number) => new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+  let accountId = '';
+  let ids: Record<string, string> = {};
+
+  beforeAll(async () => {
+    accountId = await seed('sq-stats', {
+      items: { create: [
+        { name: 'Cake', slug: 'cake', position: 0, available: true, priceCents: 9500 },
+        { name: 'Custom', slug: 'custom', position: 1, available: true, askForPrice: true },
+        { name: 'Class', slug: 'class', position: 2, available: true, priceCents: 6000, kind: 'DIGITAL', delivery: 'SESSION', sessionMinutes: 90, sessionPlace: 'ONLINE', sessionWhere: 'https://meet.example.com/s', sessions: { create: [
+          { startsAt: new Date('2026-11-20T12:00:00Z'), seats: 8 },
+          { startsAt: new Date('2026-11-28T12:00:00Z'), seats: 12 },
+          { startsAt: new Date('2026-12-05T12:00:00Z'), seats: 12 },
+        ] } },
+        { name: 'Idle', slug: 'idle', position: 3, available: false, priceCents: 100 },
+      ] },
+    });
+    const page = await write.page.findFirstOrThrow({ where: { accountId }, select: { id: true, items: { select: { id: true, slug: true, sessions: { select: { id: true, startsAt: true } } } } } });
+    ids = Object.fromEntries(page.items.map((i) => [i.slug, i.id]));
+    let number = 0;
+    const order = async (status: 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED', paidAt: Date | null, lines: [string, number][]) => {
+      number += 1;
+      return write.order.create({
+        data: {
+          pageId: page.id, number, code: `S${number}`, tokenHash: `sq-stats-${number}`, customerName: 'A', phone: '+60123456789', itemsCents: 1, deliveryCents: 0, totalCents: 1, status, paidAt,
+          lines: { create: lines.map(([slug, quantity], position) => ({ itemId: ids[slug], itemName: slug, unitPriceCents: 1, quantity, position })) },
+        },
+        select: { lines: { orderBy: { position: 'asc' }, select: { id: true } } },
+      });
+    };
+    await order('PAID', daysAgo(2), [['cake', 3]]);
+    await order('COMPLETED', daysAgo(29), [['cake', 2], ['class', 1]]);
+    // Not counted: paid too long ago, never paid, cancelled.
+    await order('PAID', daysAgo(31), [['cake', 5]]);
+    await order('PLACED', null, [['cake', 7]]);
+    await order('CANCELLED', daysAgo(3), [['cake', 11]]);
+    const booked = await order('PAID', daysAgo(1), [['class', 5]]);
+    const next = page.items.find((i) => i.slug === 'class')?.sessions.find((s) => s.startsAt.toISOString() === '2026-11-28T12:00:00.000Z');
+    await write.sessionBooking.create({ data: { sessionId: next?.id ?? '', orderLineId: booked.lines[0]?.id ?? '', seats: 5 } });
+    const lead = async (itemId: string | undefined, createdAt: Date, phone: string) => {
+      const conversation = await write.conversation.create({ data: { pageId: page.id } });
+      await write.lead.create({ data: { pageId: page.id, conversationId: conversation.id, phone, kind: itemId ? 'ENQUIRY' : 'CHAT', itemId, createdAt } });
+    };
+    await lead(ids.custom, daysAgo(1), '+60120000001');
+    await lead(ids.custom, daysAgo(10), '+60120000002');
+    await lead(ids.custom, daysAgo(45), '+60120000003');
+    await lead(undefined, daysAgo(1), '+60120000004');
+  });
+
+  it('counts units on orders paid in the last 30 days, and leaves out unpaid, old and cancelled ones', async () => {
+    const store = await getOwnerStore(accountId, now);
+    expect(store?.itemStats[ids.cake ?? '']?.sold).toBe(5);
+    expect(store?.itemStats[ids.class ?? '']?.sold).toBe(6);
+    expect(store?.itemStats[ids.idle ?? '']).toEqual({ sold: 0, enquiries: 0, seats: null });
+  });
+
+  it('counts the enquiries made about an item in the last 30 days, and not chats about no item', async () => {
+    const stats = (await getOwnerStore(accountId, now))?.itemStats;
+    expect(stats?.[ids.custom ?? '']?.enquiries).toBe(2);
+    expect(stats?.[ids.cake ?? '']?.enquiries).toBe(0);
+  });
+
+  it('gives a session item the seats booked in its next time, skipping one that is over', async () => {
+    const stats = (await getOwnerStore(accountId, now))?.itemStats[ids.class ?? ''];
+    expect(stats?.seats).toEqual({ startsAt: new Date('2026-11-28T12:00:00Z'), taken: 5, total: 12 });
+    // While a time is running it is still the one; once it has ended, the one after.
+    expect((await getOwnerStore(accountId, new Date('2026-11-28T13:00:00Z')))?.itemStats[ids.class ?? '']?.seats?.taken).toBe(5);
+    expect((await getOwnerStore(accountId, new Date('2026-11-28T14:00:00Z')))?.itemStats[ids.class ?? '']?.seats).toEqual({ startsAt: new Date('2026-12-05T12:00:00Z'), taken: 0, total: 12 });
+    expect((await getOwnerStore(accountId, new Date('2026-12-30T00:00:00Z')))?.itemStats[ids.class ?? '']?.seats).toBeNull();
+    // A physical item has none.
+    expect(stats && (await getOwnerStore(accountId, now))?.itemStats[ids.cake ?? '']?.seats).toBeNull();
+  });
+});
+
 describe('getOwnerStore', () => {
   it('orders items by position', async () => {
     const store = await getOwnerStore(orderAccountId);

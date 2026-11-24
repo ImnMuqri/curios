@@ -32,7 +32,7 @@ function chipError(failure: unknown): string {
 }
 
 /**
- * "Online payments" (Store board): the owner's own CHIP account. Not connected, it
+ * "Online payments" (Dash board): the owner's own CHIP account. Not connected, it
  * says what CHIP does; connecting, it asks for the Brand ID and live key (CHIP's name for the secret key); connected,
  * it names the brand and offers the RM1 test and Disconnect. The secret key is only
  * ever typed here and sent once; it is never read back, and is cleared once sent.
@@ -92,7 +92,7 @@ function OnlinePayments({
   const checked = chip.checkedAt ? relativeTime(new Date(chip.checkedAt), now) : 'just now';
 
   return (
-    <section className={ui.section} aria-labelledby="online-title">
+    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="online-title">
       <SectionHead id="online-title" title="Online payments" note="FPX, e-wallets and cards through your own CHIP account. Orders mark themselves paid." />
       {chip.connected ? (
         <div className={`${styles.gw} ${styles.gwOn}`}>
@@ -288,7 +288,7 @@ export function PaymentTab({
     <>
       <OnlinePayments chip={chip} chipApi={chipApi} onChip={onChip} displayName={displayName} now={now} navigate={navigate} />
 
-      <section className={ui.section} aria-labelledby="qr-title">
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="qr-title">
         <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it on their order page, with the exact total shown. No CHIP fee." />
         {qr.has ? (
           <div className={styles.qrCard}>
@@ -344,7 +344,7 @@ export function PaymentTab({
         {qrError ? <Callout tone="error">{qrError}</Callout> : null}
       </section>
 
-      <section className={ui.section} aria-labelledby="bank-title">
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="bank-title">
         <SectionHead id="bank-title" title="Bank account" note={bankOk ? 'All three filled in' : 'Fill in all three to use it'} />
         <div className={styles.grid2}>
           <div className={styles.wide}>

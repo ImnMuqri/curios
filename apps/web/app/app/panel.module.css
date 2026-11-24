@@ -61,7 +61,7 @@
 .check input {
   width: 18px;
   height: 18px;
-  accent-color: var(--biru);
+  accent-color: var(--sky);
 }
 
 .list {

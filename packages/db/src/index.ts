@@ -17,6 +17,8 @@ export { syncFactEmbeddings } from './fact-embedding.js';
 
 export { MergeWouldDropAnswerError, mergeTopics, moveWording, refreshTopic, retireSlug } from './topics.js';
 
+export { mailQuestionAsked, type QuestionMailDeps } from './question-mail.js';
+
 export { questionVectors, shortlistTopics } from './question-match.js';
 
 export { releaseOrderStock } from './order-stock.js';

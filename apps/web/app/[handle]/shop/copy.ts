@@ -185,7 +185,7 @@ export interface ShopCopy {
   pickADay: string;
   total: string;
   payNote: (name: string) => string;
-  // How you'll pay (Public board, checkout): the choices, their lists, the email, the button and the note.
+  // How you'll pay (deleted Public board, checkout): the choices, their lists, the email, the button and the note.
   howYoullPay: string;
   onlineBanking: string;
   onlineBankingSub: string;
@@ -234,7 +234,7 @@ export interface ShopCopy {
   checkingPayment: string;
   stillWaiting: string;
   onlineFailed: string;
-  /** The full page after a failed online payment (Public board, `payfail`). `payFailedHeld` marks its bold words with **. */
+  /** The full page after a failed online payment (deleted Public board, `payfail`). `payFailedHeld` marks its bold words with **. */
   payFailedTitle: string;
   payFailedHeld: (name: string) => string;
   payAgain: (total: string) => string;
@@ -321,7 +321,7 @@ export interface ShopCopy {
   receiptsOff: (name: string) => string;
   whatsappAbout: (name: string) => string;
   whatsappOrderText: (number: number, code: string) => string;
-  // Digital items (the Public board's digital frames).
+  // Digital items (the deleted Public board's digital frames).
   /** The tag on a digital item's card and page, and its own category chip. */
   digital: string;
   soldOut: string;
@@ -347,7 +347,7 @@ export interface ShopCopy {
   digitalPlacedNote: (paid: boolean, email: string) => string;
   /** The placed screen, for an unpaid order holding a code or a class seat. */
   holdNote: string;
-  /** The order page's digital part (Public board, `order`). */
+  /** The order page's digital part (deleted Public board, `order`). */
   statusSent: string;
   statusPaidDigital: string;
   /** What a set of digital kinds is called: "files", "link", "code", "class details", or "downloads and access". */

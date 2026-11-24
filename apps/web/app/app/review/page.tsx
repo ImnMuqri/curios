@@ -14,8 +14,9 @@ import styles from './review.module.css';
  * The highest-leverage screen in the product, per FRONTEND.md: the one place
  * a mistake is unrecoverable, because a wrong price published to a stranger
  * cannot be un-shown to whoever already saw it. From the design handoff's
- * Review board: one fact at a time on a stack, and beside it what the chat
- * can say once it is accepted.
+ * Dash board: one fact at a time, with what is up next and what is done
+ * beside it; the page's live / not-public notice, with Publish, sits under
+ * the header.
  *
  * `getOwnerPage` before the rest: the queue is meaningless without a page
  * for the facts to belong to, so an owner with no page yet is sent back to
@@ -44,27 +45,25 @@ export default async function ReviewPage() {
   // Server Component may not pass a function here; that is a 500 at request
   // time that no gate catches.
   //
-  // `Publish` is handed to the side panel UNCONDITIONALLY (B3/F5): it must
+  // `Publish` is handed to the notice UNCONDITIONALLY (B3/F5): it must
   // not depend on whether facts remain, because publishing is not gated on
   // having reviewed anything. THIS LINE is where F5 is actually decided,
   // which is why page.test.tsx renders this component and asserts the
   // button is offered with facts present and absent alike.
   //
-  // The header goes in as an element too, so Review can draw it over the
-  // left column only: the side panel beside it runs the full height of the
-  // sheet (Dashboard v2).
+  // The header goes in as an element too, so Review can draw it at the top of
+  // its one column, with the notice (`footer`) right under it.
   return (
     <Review
       facts={facts}
       pending={pending}
       published={page.published}
-      pageName={page.displayName}
       head={
-        <PageHead title="Review" summary="Facts found in your sources. Nothing reaches your customers until you accept it.">
+        <PageHead kicker="Knowledge" title="Review" summary="Facts found in your sources. Nothing reaches your customers until you accept it.">
           {/* A shop, a LinkedIn bio, a second site: sources can arrive at any
               time, and each one's facts join this same queue. */}
           <a className={`${panel.secondaryLink} ${styles.headLink}`} href="/app/knowledge?tab=sources&add=1">
-            Add another source
+            + Add another source
           </a>
         </PageHead>
       }

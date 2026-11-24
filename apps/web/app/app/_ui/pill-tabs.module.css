@@ -39,20 +39,20 @@
 .pill[aria-current='page']:hover,
 .pill[aria-current='true']:hover,
 .pill[aria-pressed='true']:hover {
-  color: var(--action-fg);
+  color: var(--select-fg);
 }
 
 .pill[aria-selected='true'],
 .pill[aria-current='page'],
 .pill[aria-current='true'],
 .pill[aria-pressed='true'] {
-  background: var(--action);
-  color: var(--action-fg);
+  background: var(--select);
+  color: var(--select-fg);
   box-shadow: none;
 }
 
 .pill:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 1px;
 }
 
@@ -61,4 +61,46 @@
   font-size: 12px;
   font-weight: 500;
   opacity: 0.7;
+}
+
+/* The underline variant (My Curios, the board's .tabs2): words on a hairline, 44px to tap on a phone. */
+.lineTrack {
+  display: flex;
+  gap: 26px;
+  margin-top: 34px;
+  border-bottom: 1px solid var(--line);
+}
+
+.lineTab {
+  padding: 0 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.lineTab[aria-selected='true'] {
+  font-weight: 600;
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--ink);
+}
+
+.lineTab:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 4px;
+}
+
+@media (max-width: 760px) {
+  .lineTrack {
+    margin-top: 26px;
+    align-items: flex-end;
+  }
+
+  .lineTab {
+    min-height: 44px;
+  }
 }

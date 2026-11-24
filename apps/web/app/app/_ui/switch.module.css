@@ -22,7 +22,7 @@
 }
 
 .hit[aria-checked='true'] .track {
-  background: var(--action);
+  background: var(--select);
 }
 
 .track i {
@@ -39,11 +39,11 @@
 
 .hit[aria-checked='true'] .track i {
   transform: translateX(16px);
-  background: var(--action-fg);
+  background: var(--select-fg);
 }
 
 .hit:focus-visible {
-  outline: 2px solid var(--action);
+  outline: 2px solid var(--select);
   outline-offset: 0;
 }
 

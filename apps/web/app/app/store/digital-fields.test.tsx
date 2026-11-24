@@ -41,7 +41,7 @@ function api(over: Partial<ItemsApi> = {}): ItemsApi {
 
 function show(item: EditorItem | null, calls = api()) {
   const props = { onSaved: vi.fn(), onPreview: vi.fn(), onRemoved: vi.fn(), onClose: vi.fn() };
-  render(<ItemEditor item={item} tint={0} uploadsEnabled categories={[]} api={calls} {...props} />);
+  render(<ItemEditor item={item} tint={0} uploadsEnabled categories={[]} api={calls} shop={{ handle: 'keklina', open: true }} {...props} />);
   return { calls, ...props };
 }
 

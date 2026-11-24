@@ -1,5 +1,5 @@
-import { type GroupJobData } from '@curios/core';
-import { MergeWouldDropAnswerError, mergeTopics, moveWording, recordModelCall, shortlistTopics, type PrismaClient } from '@curios/db';
+import { type GroupJobData, type MailJobData } from '@curios/core';
+import { mailQuestionAsked, MergeWouldDropAnswerError, mergeTopics, moveWording, recordModelCall, shortlistTopics, type PrismaClient } from '@curios/db';
 import { type Embedder } from '@curios/embeddings';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 
@@ -8,6 +8,9 @@ export interface GroupJobDeps {
   gateway: Gateway;
   embedder: Embedder;
   log?: { warn?: (details: object, message: string) => void };
+  /** Where "A question is asked 3 times" goes when merging or moving a wording brings a topic to 3 asks. Optional: without it, none is sent. */
+  mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
+  appUrl?: string;
 }
 
 export type GroupOutcome = 'skipped' | 'alone' | 'none' | 'merged' | 'moved';
@@ -87,7 +90,7 @@ export async function runGroupJob(deps: GroupJobDeps, data: GroupJobData): Promi
   const intoTopicId = verdict.match;
 
   const { pageId } = question;
-  return prisma.$transaction(async (tx) => {
+  const outcome = await prisma.$transaction(async (tx) => {
     // The model call took seconds. Lock the wording and look again: an owner's
     // split or merge made meanwhile wins, and nothing here may undo it.
     const [current] = await tx.$queryRaw<
@@ -119,4 +122,9 @@ export async function runGroupJob(deps: GroupJobDeps, data: GroupJobData): Promi
     await moveWording(tx, { questionId: question.id, intoTopicId });
     return 'moved' as const;
   });
+  // The topic the wording joined may have just reached 3 asks, which nothing else will notice.
+  if ((outcome === 'merged' || outcome === 'moved') && deps.mailQueue && deps.appUrl) {
+    await mailQuestionAsked({ prisma, mailQueue: deps.mailQueue, appUrl: deps.appUrl, log: deps.log }, intoTopicId);
+  }
+  return outcome;
 }

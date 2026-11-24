@@ -1,7 +1,7 @@
 import type { FastifyBaseLogger, FastifyReply } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { FAILED_PURCHASE_STATUSES, failReason } from '@curios/core/chip-status';
+import { FAILED_PURCHASE_STATUSES } from '@curios/core/chip-status';
 import {
   CHIP_DEFAULT_BASE_URL,
   billingDisabled,
@@ -173,9 +173,12 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
     { schema: { querystring: z.object({ payment: z.string().optional() }) } },
     async (request, reply) => {
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
-      // Pending stays a banner on Billing; a result is a page of its own, which reads the
-      // payment by id and so needs the id.
-      const pending = () => reply.redirect(`${appUrl}/app/billing?payment=pending`);
+      // Every answer lands on Billing, which reads the payment by our id and says what its own record
+      // says (a toast): ?paid=<id>, ?failed=<id>, or ?checking=<id> while it is not decided, which the
+      // page keeps asking about until the webhook or the next look settles it. A payment that cannot be
+      // found, or never reached CHIP, has nothing to ask about: Billing says only that it is confirming.
+      const pending = () => reply.redirect(`${appUrl}/app/billing?checking=${encodeURIComponent(paymentId ?? '')}`);
+      const unknown = () => reply.redirect(`${appUrl}/app/billing?payment=pending`);
 
       // The redirect is unsigned: it carries only our own payment id, so nothing in it is
       // trusted. The purchase is fetched from CHIP by the id we stored, and that -- not
@@ -186,24 +189,20 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
       // the owner's doing as a CHIP outage, and "pending" is the honest thing to tell them.
       const paymentId = request.query.payment;
       let purchaseId: string | undefined;
-      let autoRenew: boolean;
       let purchaseStatus: string;
-      let keptCard: boolean;
       let outcome: GrantOutcome;
       try {
         const payment = paymentId
           ? await app.prisma.payment.findUnique({
               where: { id: paymentId },
-              select: { providerRef: true, autoRenew: true },
+              select: { providerRef: true },
             })
           : null;
-        if (!payment?.providerRef) return pending();
+        if (!payment?.providerRef) return unknown();
         purchaseId = payment.providerRef;
-        autoRenew = payment.autoRenew;
 
         const purchase = await chip.client.getPurchase(payment.providerRef);
         purchaseStatus = purchase.status;
-        keptCard = purchase.isRecurringToken;
         outcome = await grantPayment(app.prisma, evidenceFromPurchase(purchase), { now: new Date() });
       } catch (error) {
         // The name only: a refused CHIP call carries CHIP's response body in its message.
@@ -213,16 +212,10 @@ export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, o
 
       logOutcome(request.log, purchaseId, 'return', outcome);
       if (outcome.kind === 'granted' || outcome.kind === 'already-granted') {
-        // Auto-renew was asked for and CHIP kept no card: the plan is paid, but it will
-        // not renew itself, and the owner should hear that now rather than at expiry. Read
-        // from the purchase, not this grant: CHIP's callback usually grants first, and
-        // this return then sees already-granted.
-        const cardOff = autoRenew && !keptCard;
-        return reply.redirect(`${appUrl}/app/billing/paid?payment=${paymentId}${cardOff ? '&card=off' : ''}`);
+        // Whether auto-renew was asked for and no card kept is for Billing to say, from its own records.
+        return reply.redirect(`${appUrl}/app/billing?paid=${encodeURIComponent(paymentId ?? '')}`);
       }
-      return FAILED_PURCHASE_STATUSES.has(purchaseStatus)
-        ? reply.redirect(`${appUrl}/app/billing/failed?payment=${paymentId}&reason=${failReason(purchaseStatus)}`)
-        : pending();
+      return FAILED_PURCHASE_STATUSES.has(purchaseStatus) ? reply.redirect(`${appUrl}/app/billing?failed=${encodeURIComponent(paymentId ?? '')}`) : pending();
     },
   );
 

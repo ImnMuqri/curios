@@ -1,5 +1,5 @@
 /*
- * Onboarding, from the design handoff's Onboarding board: four steps on the
+ * Onboarding, from the design handoff's More board: four steps on the
  * left (claim the address, say what the page is for, give it something to
  * read, watch it read), and on the right Peek, one pose per step. The panel
  * is drawing only; it hides under 980px.
@@ -61,9 +61,9 @@
   --edge: var(--calm-ring);
   --ground: var(--calm-bg);
   --nav-on: var(--calm-surface);
-  --action: var(--calm-ink);
-  --action-fg: var(--calm-surface);
-  --action-hover: var(--calm-ink-deep);
+  --action: var(--calm-action);
+  --action-fg: var(--calm-action-fg);
+  --action-hover: var(--calm-action-hover);
   --font-body: var(--font-inter), system-ui, sans-serif;
   /* The shared Button and Field in the calm voice: pills to click and type into, a box for prose. */
   --button-radius: var(--r-pill);
@@ -120,7 +120,7 @@
 }
 
 .steps i[data-on] {
-  background: var(--action);
+  background: var(--select);
 }
 
 .steps i[data-now] {
@@ -181,7 +181,7 @@
 
 .addr:focus-within,
 .txt:focus-within {
-  box-shadow: inset 0 0 0 2px var(--biru);
+  box-shadow: inset 0 0 0 2px var(--sky);
 }
 
 .addr > span:first-child {
@@ -301,7 +301,7 @@
 }
 
 .mode[aria-checked='true'] {
-  box-shadow: 0 0 0 2px var(--biru), 0 14px 30px -20px rgb(35 64 200 / 60%);
+  box-shadow: 0 0 0 2px var(--sky), 0 14px 30px -20px rgb(5 147 198 / 60%);
 }
 
 .mi {
@@ -393,7 +393,7 @@
   width: 12px;
   height: 12px;
   fill: none;
-  stroke: var(--action-fg);
+  stroke: var(--select-fg);
   stroke-width: 3.2;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -401,7 +401,7 @@
 }
 
 .mode[aria-checked='true'] .rad {
-  background: var(--action);
+  background: var(--select);
   box-shadow: none;
 }
 
@@ -471,7 +471,7 @@
 }
 
 .paste:focus {
-  box-shadow: inset 0 0 0 2px var(--biru);
+  box-shadow: inset 0 0 0 2px var(--sky);
 }
 
 .drop {
@@ -496,7 +496,7 @@
 .drop:hover,
 .drop[data-dragging],
 .drop:focus-within {
-  border-color: var(--biru);
+  border-color: var(--sky);
   background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
 }
 
@@ -700,7 +700,7 @@
   position: absolute;
   inset: 0 auto 0 0;
   border-radius: 3px;
-  background: var(--action);
+  background: var(--select);
   transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -836,7 +836,7 @@
 
 /*
  * ---- The panel: Peek ----
- * From the Onboarding board ("onboarding panel: Peek"): full-body Peek on a
+ * From the deleted Onboarding board ("onboarding panel: Peek"): full-body Peek on a
  * tinted panel, one pose per step, with two lines under it. Drawing only; it
  * hides under 980px. Type sizes are the board's own (22, 15, 14, 30px).
  */

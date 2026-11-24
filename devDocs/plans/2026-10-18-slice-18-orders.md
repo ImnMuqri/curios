@@ -1,5 +1,7 @@
 # Slice 18 — Orders: Implementation Plan
 
+> Note (24 Nov 2026): this plan was written against boards that are now deleted (Alerts, Billing, Emails, Knowledge, Leads, Main, MyCurios, Orders, Public, Store, System, TanyaJe and others). Names and line numbers below are as they were then. Their content now lives in the five boards in `design/boards/` (Landing2, Site, Dash, More, Admin); see `design/HANDOFF.md`, "Boards to routes". The old files are in git history before 58a531e.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** a visitor checks out the basket on a business page, pays the owner directly by their QR or bank transfer, uploads a receipt on their order page and can ask the chat where the order is; the owner checks receipts and moves orders on from `/app/orders`, and is emailed at each step.

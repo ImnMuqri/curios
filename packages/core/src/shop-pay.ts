@@ -1,6 +1,6 @@
 /**
  * Paying a shop online, through the owner's own CHIP account: the choices
- * checkout draws (Public board, "How you'll pay"), what each is called at CHIP,
+ * checkout draws (deleted Public board, "How you'll pay"), what each is called at CHIP,
  * and the words for how an order was paid. Shared by the API, which creates the
  * purchase, and checkout, which draws the choices; nothing here touches a key.
  *

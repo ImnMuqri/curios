@@ -19,7 +19,7 @@ function waNumber(phone: string): string {
 }
 
 /**
- * The placed screen (Public board, `placed`). Owner decision 2: Curios sends
+ * The placed screen (deleted Public board, `placed`). Owner decision 2: Curios sends
  * no WhatsApp, so under Pay is a button that opens the customer's own chat
  * with the order link in it, rather than the board's "We also sent…".
  *

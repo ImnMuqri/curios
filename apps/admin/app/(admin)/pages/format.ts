@@ -10,7 +10,7 @@ export const STATUS_COLOUR: Record<AdminPageStatus, string> = {
 
 /** The board's meter colours: blue, amber from 80% of the cap, red at it. */
 export const meterColour = (used: number, cap: number) =>
-  used >= cap ? '#d8452f' : used >= cap * 0.8 ? '#f2a33c' : '#2340c8';
+  used >= cap ? '#d8452f' : used >= cap * 0.8 ? '#f2a33c' : '#0593c6';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' });

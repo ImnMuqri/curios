@@ -16,9 +16,11 @@ const CALM_MODULES = ['calm.module.css', 'nav.module.css', 'footer.module.css', 
 
 const CL_TOKENS = [
   'text-2', 'text-3', 'placeholder', 'ghost', 'ring-hover', 'dot', 'hl-green', 'hl-green-ink', 'hl-rose', 'hl-rose-ink',
-  'art-blue', 'art-peach', 'art-mint', 'mark', 'mark-ink', 'fact-next', 'amber-ink', 'fee-ink', 'paid-wash', 'mint-on-ink', 'hot', 'hot-ink', 'miss',
-  'sys', 'sent', 'zone-empty', 'receipt-rule', 'mock-line', 'mock-soft', 'mock-hair', 'mock-ring', 'mock-radio', 'mock-text-2',
+  'art-blue', 'art-peach', 'art-mint', 'mark', 'mark-ink', 'fact-next', 'amber-ink', 'mint-on-ink',
+  'mock-line', 'mock-soft', 'mock-hair', 'mock-ring', 'mock-radio', 'mock-text-2',
   'ig-a', 'ig-b', 'ig-ring', 'ig-ink',
+  'wl-svc', 'wl-prod', 'text-4', 'rule', 'wa', 'wa-ink', 'miss-bg', 'miss-ink', 'avatar', 'avatar-ink', 'typing',
+  'kafe-bg', 'kafe-ink', 'kafe-gold', 'kafe-ring', 'cake-bg', 'cake-body', 'cake-candle', 'lock-ring', 'lock-icon', 'lock-edge',
   ...[1, 2, 3, 4, 5, 6].flatMap((n) => [`word-${n}`, `word-${n}-ink`]),
 ].map((n) => `--cl-${n}`);
 
@@ -35,8 +37,8 @@ describe('the calm page scope', () => {
       ['--paper', '--calm-bg'],
       ['--ink', '--calm-ink'],
       ['--line', '--calm-line'],
-      ['--action', '--calm-ink'],
-      ['--action-fg', '--calm-surface'],
+      ['--action', '--calm-action'],
+      ['--action-fg', '--calm-action-fg'],
     ])
       expect(page).toMatch(new RegExp(`${k}:\\s*var\\(${v}\\)`));
     expect(page).toMatch(/font-family:\s*var\(--font-inter\)/);
@@ -250,10 +252,8 @@ describe('contrast', () => {
       ['how.module.css', '.fact small'],
       ['pricing.module.css', '.k0'],
       ['nocut.module.css', '.incl small'],
-      ['nocut.module.css', '.sm'],
-      ['lands.module.css', '.lsteps span'],
-      ['lands.module.css', '.lzk'],
-      ['lands.module.css', '.kv small'],
+      ['lands.module.css', '.cap'],
+      ['lands.module.css', '.who'],
     ];
     for (const [file, selector] of readable) {
       const decls = rule(read(file), selector);
@@ -263,16 +263,12 @@ describe('contrast', () => {
   });
 
   it('keeps the coloured inks at 4.5:1 and the ask strip’s large unlit words at 3:1', () => {
-    expect(rule(read('nocut.module.css'), '.rf b')).toMatch(/color:\s*var\(--cl-fee-ink\)/);
-    expect(ratio(hex('--cl-fee-ink'), hex('--calm-surface'))).toBeGreaterThanOrEqual(4.5);
-    expect(ratio(hex('--cl-hot-ink'), hex('--cl-hot'))).toBeGreaterThanOrEqual(4.5);
+    expect(rule(read('nocut.module.css'), '.diff p')).toMatch(/color:\s*var\(--pink-ink\)/);
+    expect(ratio(hex('--pink-ink'), hex('--pink-muda'))).toBeGreaterThanOrEqual(4.5);
     expect(rule(read('ask.module.css'), '.w')).toMatch(/color:\s*var\(--cl-ghost\)/);
     expect(ratio(hex('--cl-ghost'), hex('--calm-bg'))).toBeGreaterThanOrEqual(3);
   });
 
-  it('keeps the marketplace receipt at full strength: no dim', () => {
-    expect(read('nocut.module.css')).not.toMatch(/data-dim/);
-  });
 });
 
 /** The declarations of `selector` inside the first `@media (max-width: <px>px)` block of `css`. */
@@ -332,8 +328,13 @@ describe('a phone (19 Nov review)', () => {
     for (const s of ["-1'] .body", "1'] .body", "-1'] .kind", "1'] .kind"]) expect(phoneRule(css, 640, `.pc[data-s='${s}`), s).toMatch(/visibility:\s*hidden/);
   });
 
-  it('lets the chat’s message list shrink, so messages never slide under the chat header', () => {
-    expect(rule(read('lands.module.css'), '.lcm')).toMatch(/min-height:\s*0;/);
+  it('puts What lands and the lock screen in one column and shrinks Peek, as the board does', () => {
+    expect(phoneRule(read('lands.module.css'), 760, '.bt')).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
+    expect(phoneRule(read('lands.module.css'), 760, '.st')).toMatch(/padding:\s*36px 18px 40px/);
+    expect(phoneRule(read('lands.module.css'), 760, '.pk')).toMatch(/width:\s*72px/);
+    expect(phoneRule(read('nocut.module.css'), 760, '.bk')).toMatch(/padding:\s*40px 14px 48px/);
+    expect(phoneRule(read('nocut.module.css'), 760, '.t')).toMatch(/font-size:\s*52px/);
+    expect(phoneRule(read('nocut.module.css'), 760, '.pk')).toMatch(/width:\s*76px/);
   });
 });
 

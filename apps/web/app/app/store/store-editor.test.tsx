@@ -2,8 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { writeBasket } from '../../[handle]/shop/basket.js';
 import { StoreEditor } from './store-editor.js';
+import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 import type { OwnerVoucher } from '@curios/core/vouchers';
-import { PHYSICAL_ITEM, PHYSICAL_ROW, previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
+import type { ItemStats } from '@curios/db-read';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, previewItem, type ChipApi, type ChipState, type EditorItem, type ItemRow, type ItemsApi, type PickupApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
+
+const nav = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => nav }));
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -53,6 +58,7 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   return { settingsApi, itemsApi, chipApi, vouchersApi, pickupApi };
 }
 
+
 const noChip: ChipState = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
 const chipOn: ChipState = { connected: true, brandName: 'Kek Lina Bakes', methods: ['fpx'], checkedAt: new Date('2026-10-16T01:00:00Z'), isTest: false };
 const NOW = new Date('2026-10-16T02:00:00Z');
@@ -60,24 +66,51 @@ const NOW = new Date('2026-10-16T02:00:00Z');
 /** The owner's one pickup place, which the shop preview's sign names. */
 const places = [{ id: 'p1', name: 'Seksyen 7', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }];
 
-function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }, chip = noChip) {
-  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} pickupPlaces={places} {...calls} />);
+const TOP = (
+  <div data-testid="top-bar"><SaveStatusSlot /></div>
+);
+
+/** The Store itself: its header, tabs, ready box and cards. */
+function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }, chip = noChip, stats: Record<string, ItemStats> = {}) {
+  render(
+    <SaveStatusProvider>
+      {TOP}
+      <StoreEditor initial={settings} items={list} stats={stats} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} pickupPlaces={places} {...calls} />
+    </SaveStatusProvider>,
+  );
+  return calls;
+}
+
+/** One item on its own screen (`editingId` an id, or 'new'), with the phone beside it. */
+function showItem(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }, chip = noChip, editingId = 'a', vouchers: OwnerVoucher[] = [], lookOver: Partial<ShopLook> = {}) {
+  render(
+    <SaveStatusProvider>
+      {TOP}
+      <StoreEditor initial={settings} items={list} look={{ ...look, ...lookOver }} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} pickupPlaces={places} vouchers={vouchers} editingId={editingId} {...calls} />
+    </SaveStatusProvider>,
+  );
   return calls;
 }
 
 const header = () => screen.getByRole('heading', { name: 'Store' }).closest('header')!;
 const preview = () => screen.getByRole('region', { name: 'Live preview of your shop' });
-const editTab = (name: string) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
+const editTab = (name: string | RegExp) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
+const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
+const readyBox = () => screen.getByRole('switch', { name: 'Shop open' }).closest('div')!.parentElement!;
 
-beforeEach(() => window.sessionStorage.clear());
+beforeEach(() => {
+  window.sessionStorage.clear();
+  nav.push.mockClear();
+  nav.refresh.mockClear();
+});
 afterEach(() => vi.useRealTimers());
 
 describe('opening on a tab', () => {
-  it('opens on Vouchers when the link says so, with the shop in the phone', () => {
+  it('opens on the discounts tab when the link says vouchers, and has no phone', () => {
     render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="vouchers" {...apis()} />);
-    expect(editTab('Vouchers')).toHaveAttribute('aria-selected', 'true');
+    expect(editTab(/^Discounts/)).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('heading', { name: 'Vouchers' })).toBeVisible();
-    expect(within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Shop' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('region', { name: 'Live preview of your shop' })).toBeNull();
   });
 
   it('opens on Payment when the link says so, and on Items otherwise', () => {
@@ -86,44 +119,199 @@ describe('opening on a tab', () => {
     expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
     unmount();
     show();
-    expect(editTab('Items')).toHaveAttribute('aria-selected', 'true');
+    expect(editTab(/^Items/)).toHaveAttribute('aria-selected', 'true');
   });
 });
 
 describe('the header', () => {
-  it('says the shop is open, and links to it', () => {
+  it('says "Your shop" over the title, and links to the shop and to a new item', () => {
     show();
-    expect(within(header()).getByText('Open for orders')).toBeInTheDocument();
-    expect(within(header()).getByRole('switch', { name: 'Shop open' })).toHaveAttribute('aria-checked', 'true');
+    expect(within(header()).getByText('Your shop')).toBeInTheDocument();
+    expect(within(header()).getByText('What you sell, how people pay, and how it reaches them.')).toBeInTheDocument();
     expect(within(header()).getByRole('link', { name: 'See your shop' })).toHaveAttribute('href', '/keklina/shop');
+    expect(within(header()).getByRole('link', { name: '+ Add item' })).toHaveAttribute('href', '/app/store/items/new');
     // The address is gone from the header (v3 board hides it): See your shop opens it.
     expect(within(header()).queryByText('curios.my/keklina/shop')).toBeNull();
   });
 
-  it('carries the tabs beside the title, and counts the items in its sentence', () => {
+  it('has no Shop open switch in it: that lives in the ready box', () => {
     show();
-    expect(within(header()).getByRole('tablist', { name: 'Store' })).toBeInTheDocument();
-    expect(within(header()).getByText(/What you sell, how people pay, and how it reaches them\./).textContent).toMatch(/^\d+ items? · \d+ in your shop\./);
+    expect(within(header()).queryByRole('switch')).toBeNull();
+    expect(screen.getByRole('switch', { name: 'Shop open' })).toBeInTheDocument();
   });
 
-  it('keeps a shop that cannot open shut, saying what it needs, and offers no link to it', () => {
+  it('puts the tabs under the title, with how many items and discounts there are', () => {
+    const live: OwnerVoucher = { id: 'v1', mode: 'AUTO', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya sale', code: null, name: 'Raya sale', endsAt: null, maxUses: null, active: true, uses: 0, state: 'on', itemName: null };
+    render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} vouchers={[live]} {...apis()} />);
+    expect(within(header()).getByRole('tablist', { name: 'Store' })).toBeInTheDocument();
+    expect(editTab('Items 2')).toBeInTheDocument();
+    expect(editTab('Payment')).toBeInTheDocument();
+    expect(editTab('Pickup & delivery')).toBeInTheDocument();
+    expect(editTab('Discounts 1')).toBeInTheDocument();
+  });
+
+  it('shows no count on a tab with nothing in it', () => {
+    show(ready, []);
+    expect(editTab('Items')).toBeInTheDocument();
+    expect(editTab('Discounts')).toBeInTheDocument();
+  });
+
+  it('offers no link to a shop that is shut', () => {
+    show({ ...ready, enabled: false });
+    expect(within(header()).queryByRole('link', { name: 'See your shop' })).toBeNull();
+  });
+
+  it('cannot add past the most a shop holds', () => {
+    show(ready, Array.from({ length: 60 }, (_u, i) => ({ ...items[0]!, id: `i${i}`, name: `Item ${i}` })));
+    expect(within(header()).queryByRole('link', { name: '+ Add item' })).toBeNull();
+    expect(within(header()).getByRole('button', { name: '+ Add item' })).toBeDisabled();
+  });
+});
+
+describe('the shop open switch, in the ready box', () => {
+  it('says the shop is open, with the board’s words', () => {
+    show();
+    expect(screen.getByText('Shop open')).toBeInTheDocument();
+    expect(within(readyBox()).getByText('Customers can order from your shop now.')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Shop open' })).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('keeps a shop that cannot open shut, saying what it needs, in the amber blocked state', () => {
     show({ ...ready, enabled: false, bankName: null });
-    expect(within(header()).getByText('Add a way to pay to open')).toBeInTheDocument();
-    const open = within(header()).getByRole('switch', { name: 'Shop open' });
+    expect(within(readyBox()).getByText('Add a way to pay to open')).toBeInTheDocument();
+    const open = screen.getByRole('switch', { name: 'Shop open' });
     expect(open).toBeDisabled();
     expect(open).toHaveAttribute('title', expect.stringMatching(/add a way to pay/));
-    expect(within(header()).queryByRole('link', { name: 'See your shop' })).toBeNull();
+    expect(readyBox().closest('[data-state]')).toHaveAttribute('data-state', 'blocked');
   });
 
   it('counts a CHIP connection as a way to pay', async () => {
     const calls = show({ ...ready, enabled: false, bankName: null, bankAccountName: null, bankAccountNumber: null }, items, apis(), undefined, chipOn);
-    expect(within(header()).getByText('Closed')).toBeInTheDocument();
+    expect(within(readyBox()).getByText('Closed. Switch on to take orders.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /A way to pay\s*Online through CHIP/ })).toBeInTheDocument();
-    await act(async () => { fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Shop open' })); });
     expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
   });
 
-  it('names CHIP beside the QR and bank account in the ready strip', () => {
+  it('opens a ready shop, and the link appears', async () => {
+    const calls = show({ ...ready, enabled: false });
+    expect(within(header()).queryByRole('link', { name: 'See your shop' })).toBeNull();
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Shop open' })); });
+    expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
+    expect(within(readyBox()).getByText('Customers can order from your shop now.')).toBeInTheDocument();
+    expect(within(header()).getByRole('link', { name: 'See your shop' })).toBeInTheDocument();
+  });
+
+  it('says why an open shop takes no orders while they are paused', () => {
+    show(ready, items, apis(), { paused: 'Paused: your 3 free orders are used.', nextNumber: 4 });
+    expect(within(readyBox()).getByText('Paused: your 3 free orders are used.')).toBeInTheDocument();
+    expect(screen.queryByText('Customers can order from your shop now.')).toBeNull();
+    // Still open: customers see the shop, and their basket goes on WhatsApp.
+    expect(screen.getByRole('switch', { name: 'Shop open' })).toHaveAttribute('aria-checked', 'true');
+    expect(readyBox().closest('[data-state]')).toHaveAttribute('data-state', 'blocked');
+  });
+
+  it('says why when the API will not open it', async () => {
+    show({ ...ready, enabled: false }, items, apis(async () => { throw new Error('Before your shop can open, turn on pickup or delivery.'); }));
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Shop open' })); });
+    expect(screen.getByRole('alert')).toHaveTextContent('turn on pickup or delivery');
+  });
+
+  it('is on the Items tab only, as the board draws it', () => {
+    show();
+    fireEvent.click(editTab('Payment'));
+    expect(screen.getByRole('switch', { name: 'Shop open', hidden: true }).closest('[role="tabpanel"]')).toHaveAttribute('hidden');
+  });
+});
+
+describe('saving', () => {
+  it('says nothing about saving on the Store screen itself: no Saved in its header or in the top bar', async () => {
+    let finish!: (s: StoreSettings) => void;
+    show({ ...ready, enabled: false }, items, apis(() => new Promise((resolve) => { finish = resolve; })));
+    expect(screen.queryByText('Saved')).toBeNull();
+    fireEvent.click(screen.getByRole('switch', { name: 'Shop open' }));
+    expect(screen.queryByText('Saving…')).toBeNull();
+    await act(async () => finish({ ...ready }));
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
+  it('says Saved in the top bar while an item is open, Saving… as it saves, and nothing once the screen is left', async () => {
+    vi.useFakeTimers();
+    let finish!: (saved: ItemRow) => void;
+    const row = (): ItemRow => ({ ...PHYSICAL_ROW, id: 'a', name: 'Kek batik Raya', slug: 'kek-batik', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: 4500, options: [], available: true });
+    const calls = apis();
+    calls.itemsApi.update = vi.fn(() => new Promise<ItemRow>((resolve) => { finish = resolve; }));
+    const { unmount } = render(
+      <SaveStatusProvider>
+        {TOP}
+        <StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} editingId="a" {...calls} />
+      </SaveStatusProvider>,
+    );
+    expect(within(screen.getByTestId('top-bar')).getByText('Saved')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek batik Raya' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(within(screen.getByTestId('top-bar')).getByText('Saving…')).toBeInTheDocument();
+    await act(async () => finish(row()));
+    expect(within(screen.getByTestId('top-bar')).getByText('Saved')).toBeInTheDocument();
+    unmount();
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+});
+
+describe('a failed save on the main screen', () => {
+  it('does not read "Not saved" once an item is opened: each item opens on a fresh screen', async () => {
+    const calls = apis();
+    vi.mocked(calls.itemsApi.update).mockRejectedValueOnce(new Error('Nope.'));
+    const { unmount } = render(
+      <SaveStatusProvider>
+        {TOP}
+        <StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} {...calls} />
+      </SaveStatusProvider>,
+    );
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Show Kek batik in your shop' })); });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    unmount();
+    showItem(ready, items, calls);
+    expect(screen.queryByText('Not saved')).toBeNull();
+    expect(within(screen.getByTestId('top-bar')).getByText('Saved')).toBeInTheDocument();
+  });
+
+  it('says so beside the Halal row when that save fails', async () => {
+    show(ready, items, apis(async () => { throw new Error('Could not save.'); }));
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Halal shop' })); });
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save.');
+  });
+});
+
+describe('ready to take orders', () => {
+  const steps = () => within(screen.getByRole('list', { name: 'Ready to take orders' }));
+
+  it('says what the shop has', () => {
+    show();
+    expect(steps().getByRole('button', { name: /Switch an item on\s*1 item in your shop/ })).toHaveAttribute('data-ok', 'true');
+    expect(steps().getByRole('button', { name: /A way to pay Bank account/ })).toBeInTheDocument();
+    expect(steps().getByRole('button', { name: /Getting it to them Pickup and delivery RM10/ })).toBeInTheDocument();
+  });
+
+  it('counts the items in the shop, in the plural', () => {
+    show(ready, [{ ...items[0]!, id: 'x1' }, { ...items[0]!, id: 'x2' }, { ...items[0]!, id: 'x3' }]);
+    expect(steps().getByRole('button', { name: /Switch an item on\s*3 items in your shop/ })).toBeInTheDocument();
+  });
+
+  it('says what it still needs, and takes the owner there', () => {
+    show({ ...ready, enabled: false, bankName: null, pickupEnabled: false, deliveryMode: 'NONE' }, items.map((i) => ({ ...i, available: false })));
+    expect(steps().getByRole('button', { name: /Switch an item on\s*No item is in your shop yet/ })).toHaveAttribute('data-ok', 'false');
+    expect(steps().getByRole('button', { name: /Getting it to them Turn on pickup or delivery/ })).toBeInTheDocument();
+    fireEvent.click(steps().getByRole('button', { name: /A way to pay Connect CHIP or add your QR/ }));
+    expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('asks a new shop for its first item', () => {
+    show({ ...ready, enabled: false }, []);
+    expect(steps().getByRole('button', { name: /Switch an item on\s*Add your first item/ })).toBeInTheDocument();
+  });
+
+  it('names CHIP beside the QR and bank account', () => {
     show({ ...ready, paymentQrKey: null }, items, apis(), undefined, chipOn);
     expect(screen.getByRole('button', { name: /A way to pay\s*CHIP and bank account/ })).toBeInTheDocument();
   });
@@ -137,57 +325,6 @@ describe('the header', () => {
     show(ready);
     expect(screen.getByRole('button', { name: /A way to pay\s*Bank account/ })).toBeInTheDocument();
     expect(screen.queryByText(/Connect CHIP or add your QR/)).toBeNull();
-  });
-
-  it('opens a ready shop, and the link appears', async () => {
-    const calls = show({ ...ready, enabled: false });
-    expect(within(header()).getByText('Closed')).toBeInTheDocument();
-    await act(async () => { fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' })); });
-    expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
-    expect(within(header()).getByText('Open for orders')).toBeInTheDocument();
-    expect(within(header()).getByRole('link', { name: 'See your shop' })).toBeInTheDocument();
-  });
-
-  it('says why an open shop takes no orders while they are paused', () => {
-    show(ready, items, apis(), { paused: 'Paused: your 3 free orders are used.', nextNumber: 4 });
-    expect(within(header()).getByText('Paused: your 3 free orders are used.')).toBeInTheDocument();
-    expect(within(header()).queryByText('Open for orders')).toBeNull();
-    // Still open: customers see the shop, and their basket goes on WhatsApp.
-    expect(within(header()).getByRole('switch', { name: 'Shop open' })).toHaveAttribute('aria-checked', 'true');
-  });
-
-  it('says why when the API will not open it', async () => {
-    show({ ...ready, enabled: false }, items, apis(async () => { throw new Error('Before your shop can open, turn on pickup or delivery.'); }));
-    await act(async () => { fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' })); });
-    expect(screen.getByRole('alert')).toHaveTextContent('turn on pickup or delivery');
-  });
-
-  it('says Saving… while a save is out, then Saved', async () => {
-    let finish!: (s: StoreSettings) => void;
-    show({ ...ready, enabled: false }, items, apis(() => new Promise((resolve) => { finish = resolve; })));
-    fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' }));
-    expect(within(header()).getByText('Saving…')).toBeInTheDocument();
-    await act(async () => finish({ ...ready }));
-    expect(within(header()).getByText('Saved')).toBeInTheDocument();
-  });
-});
-
-describe('ready to take orders', () => {
-  const steps = () => within(screen.getByRole('list', { name: 'Ready to take orders' }));
-
-  it('says what the shop has', () => {
-    show();
-    expect(steps().getByRole('button', { name: /Items 1 in your shop/ })).toHaveAttribute('data-ok', 'true');
-    expect(steps().getByRole('button', { name: /A way to pay Bank account/ })).toBeInTheDocument();
-    expect(steps().getByRole('button', { name: /Getting it to them Pickup and delivery RM10/ })).toBeInTheDocument();
-  });
-
-  it('says what it still needs, and takes the owner there', () => {
-    show({ ...ready, enabled: false, bankName: null, pickupEnabled: false, deliveryMode: 'NONE' }, items.map((i) => ({ ...i, available: false })));
-    expect(steps().getByRole('button', { name: /Items Switch an item on/ })).toHaveAttribute('data-ok', 'false');
-    expect(steps().getByRole('button', { name: /Getting it to them Turn on pickup or delivery/ })).toBeInTheDocument();
-    fireEvent.click(steps().getByRole('button', { name: /A way to pay Connect CHIP or add your QR/ }));
-    expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('asks a shop of digital items alone for no pickup or delivery', () => {
@@ -216,100 +353,192 @@ describe('the halal switch', () => {
 });
 
 describe('the items', () => {
-  it('saves the shop description once the owner pauses, and the preview shows it at once', async () => {
+  const names = () => screen.getAllByRole('link', { name: /^Edit / }).map((a) => a.getAttribute('aria-label'));
+
+  it('saves the shop description, labelled About, once the owner pauses', async () => {
     vi.useFakeTimers();
     const calls = show();
-    fireEvent.change(screen.getByLabelText('Shop description'), { target: { value: 'Raya orders are open.' } });
-    expect(within(preview()).getByText('Raya orders are open.')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('About'), { target: { value: 'Raya orders are open.' } });
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(calls.settingsApi.save).toHaveBeenCalledWith({ shopDescription: 'Raya orders are open.' });
   });
 
-  it('shows the shop with only what is in it', () => {
+  it('draws the items as cards under the ready box, and the description after them', () => {
     show();
-    expect(within(preview()).getByText('Kek batik')).toBeInTheDocument();
-    expect(within(preview()).queryByText('Burnt cheesecake')).toBeNull();
+    const cards = screen.getByRole('list', { name: 'Your items' });
+    const ready = screen.getByRole('list', { name: 'Ready to take orders' });
+    const about = screen.getByLabelText('About');
+    expect(ready.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(cards.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it('puts an item in the shop from its switch, and the preview follows', async () => {
+  it('shows the numbers the store read gave each card', () => {
+    show(ready, items, apis(), undefined, noChip, { a: { sold: 12, enquiries: 0, seats: null }, b: { sold: 0, enquiries: 0, seats: null } });
+    expect(screen.getByRole('link', { name: 'Edit Kek batik' }).closest('li')).toHaveTextContent('12 sold in 30 days');
+    expect(screen.getByRole('link', { name: 'Edit Burnt cheesecake' }).closest('li')).not.toHaveTextContent('sold');
+  });
+
+  it('puts an item in the shop from its switch, and the count follows', async () => {
     const calls = show();
-    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'In your shop: Burnt cheesecake' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Show Burnt cheesecake in your shop' })); });
     expect(calls.itemsApi.update).toHaveBeenCalledWith('b', { available: true });
-    expect(within(preview()).getByText('Burnt cheesecake')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Switch an item on\s*2 items in your shop/ })).toBeInTheDocument();
   });
 
   it('puts the switch back, and says why, when that fails', async () => {
     const calls = apis();
     calls.itemsApi.update = vi.fn(async () => { throw new Error('Could not reach the server.'); });
     show(ready, items, calls);
-    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'In your shop: Kek batik' })); });
-    expect(screen.getByRole('switch', { name: 'In your shop: Kek batik' })).toHaveAttribute('aria-checked', 'true');
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Show Kek batik in your shop' })); });
+    expect(screen.getByRole('switch', { name: 'Show Kek batik in your shop' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('alert')).toHaveTextContent('Could not reach the server.');
+  });
+
+  it('keeps the shop’s order: Move later from a card’s menu saves the new order', async () => {
+    const calls = show();
+    fireEvent.click(screen.getByRole('button', { name: 'More for Kek batik' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Move later' })); });
+    expect(calls.itemsApi.reorder).toHaveBeenCalledWith(['b', 'a']);
+    expect(names()).toEqual(['Edit Burnt cheesecake', 'Edit Kek batik']);
   });
 
   it('restores the order, and says why, when a move is refused', async () => {
     const calls = apis();
     calls.itemsApi.reorder = vi.fn(async () => { throw new Error('Your items changed somewhere else.'); });
     show(ready, items, calls);
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Move Kek batik down' })); });
-    expect(screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label')).filter(Boolean)).toEqual(['Kek batik', 'Burnt cheesecake']);
+    fireEvent.click(screen.getByRole('button', { name: 'More for Kek batik' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Move later' })); });
+    expect(names()).toEqual(['Edit Kek batik', 'Edit Burnt cheesecake']);
     expect(screen.getByRole('alert')).toHaveTextContent('changed somewhere else');
   });
 
-  it('opens an item on its own, and the preview shows it as a customer opens it', () => {
+  it('opens an item on its own address', () => {
     show();
-    fireEvent.click(screen.getByRole('button', { name: 'Edit Kek batik' }));
+    expect(screen.getByRole('link', { name: 'Edit Kek batik' })).toHaveAttribute('href', '/app/store/items/a');
+  });
+
+  it('has no phone on the Store itself', () => {
+    show();
+    expect(screen.queryByRole('region', { name: 'Live preview of your shop' })).toBeNull();
+    expect(screen.queryByRole('tablist', { name: 'Preview screen' })).toBeNull();
+  });
+});
+
+describe('an item on its own screen', () => {
+  it('opens the item with a back link, the board’s header, and the phone showing it as a customer opens it', () => {
+    showItem();
     expect(screen.getByRole('group', { name: 'Edit Kek batik' })).toBeInTheDocument();
-    expect(screen.queryByLabelText('Shop description')).toBeNull();
-    expect(within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Item' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Store · Item')).toBeInTheDocument();
+    expect(within(screen.getByRole('group', { name: 'Edit Kek batik' })).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /All items/ })).toHaveAttribute('href', '/app/store');
+    expect(screen.queryByLabelText('About', { selector: 'textarea' })?.closest('[role="tabpanel"]')).toBeNull();
+    expect(screen.queryByRole('tablist', { name: 'Store' })).toBeNull();
+    expect(screenTab('Item')).toHaveAttribute('aria-selected', 'true');
     expect(preview().querySelector('[data-inline]')).not.toBeNull();
     expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
     expect(within(preview()).queryByRole('dialog')).toBeNull();
-
-    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek batik Raya' } });
-    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik Raya' })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole('button', { name: 'All items' }));
-    expect(screen.getByLabelText('Shop description')).toBeInTheDocument();
-    expect(preview().querySelector('[data-inline]')).toBeNull();
+    expect(within(preview()).getByText('How it looks in your shop.')).toBeInTheDocument();
   });
 
-  it('opens the product screen in the preview from a tapped row, and returns to the shop after an add', () => {
+  it('follows the name as it is typed, in the title and the phone', () => {
+    showItem();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek batik Raya' } });
+    expect(within(screen.getByRole('group', { name: 'Edit Kek batik' })).getByRole('heading', { level: 1, name: 'Kek batik Raya' })).toBeInTheDocument();
+    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik Raya' })).toBeInTheDocument();
+  });
+
+  it('goes back to the Store from All items', async () => {
+    showItem();
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /All items/ })); });
+    expect(nav.push).toHaveBeenCalledWith('/app/store');
+  });
+
+  it('links to the item in the shop only while both it and the shop are open to visitors', () => {
+    const { unmount } = render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} editingId="a" {...apis()} />);
+    expect(screen.getByRole('link', { name: 'See it in your shop' })).toHaveAttribute('href', '/keklina/shop/x');
+    unmount();
+    // The hidden item, and a shop that is shut: neither has a page to see.
+    const second = render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} editingId="b" {...apis()} />);
+    expect(screen.queryByRole('link', { name: 'See it in your shop' })).toBeNull();
+    second.unmount();
+    render(<StoreEditor initial={{ ...ready, enabled: false }} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} editingId="a" {...apis()} />);
+    expect(screen.queryByRole('link', { name: 'See it in your shop' })).toBeNull();
+  });
+
+  it('a new item: its own title, and the address follows the first save', async () => {
+    vi.useFakeTimers();
+    window.history.replaceState({ __NA: true }, '', '/app/store/items/new');
+    const calls = apis();
+    calls.itemsApi.add = vi.fn(async () => ({ ...PHYSICAL_ROW, id: 'z9', name: 'Tart', slug: 'tart', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: 900, options: [], available: true }));
+    showItem(ready, items, calls, undefined, noChip, 'new');
+    expect(screen.getByRole('group', { name: 'New item' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'New item' })).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
+    fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '9' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(calls.itemsApi.add).toHaveBeenCalledTimes(1);
+    expect(window.location.pathname).toBe('/app/store/items/z9');
+    // Next's own marker is not carried over, or Next would ignore the new address and Back would reopen a blank new item.
+    expect(window.history.state).toBeNull();
+    expect(screen.getByRole('group', { name: 'Edit Tart' })).toBeInTheDocument();
+    window.history.replaceState(null, '', '/');
+  });
+
+  it('goes back to the Store after removing the item', async () => {
+    const calls = showItem();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove item' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Yes, remove' })); });
+    expect(calls.itemsApi.remove).toHaveBeenCalledWith('a');
+    expect(nav.push).toHaveBeenCalledWith('/app/store');
+  });
+
+  it('asks for the current screen when the browser brings back one older than a change made since', () => {
+    window.sessionStorage.setItem('curios-store-changed', String(NOW.getTime() + 60_000));
+    showItem();
+    expect(nav.refresh).toHaveBeenCalled();
+  });
+
+  it('marks a change with the server clock, not the browser one, so a browser clock that is off cannot cause or hide a refresh', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2030-01-01T00:00:00Z'));
+    const calls = apis();
+    calls.itemsApi.update = vi.fn(async (id, patch) => ({ ...PHYSICAL_ROW, id, name: 'Kek batik Raya', slug: 'x', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true }));
+    showItem(ready, items, calls);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek batik Raya' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(700); });
+    const stored = Number(window.sessionStorage.getItem('curios-store-changed'));
+    expect(stored).toBeGreaterThanOrEqual(NOW.getTime());
+    expect(stored).toBeLessThan(NOW.getTime() + 10_000);
+  });
+
+  it('does not, when nothing has changed since it was read', () => {
+    window.sessionStorage.setItem('curios-store-changed', String(NOW.getTime() - 60_000));
     show();
-    fireEvent.click(within(preview()).getByRole('link', { name: 'Kek batik' }));
-    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
-    fireEvent.click(within(preview()).getByRole('button', { name: /^Add to basket/ }));
-    expect(within(preview()).getByText('1 item · RM45')).toBeInTheDocument();
+    expect(nav.refresh).not.toHaveBeenCalled();
   });
 });
 
 describe('the preview', () => {
   it('offers no Item or Pay screen while there is nothing to open or buy, and says why', () => {
-    show(ready, []);
-    const tab = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Item' });
-    expect(tab).toBeDisabled();
-    expect(tab).toHaveAttribute('title', 'Add an item to see its page here');
-    const pay = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Pay' });
+    showItem(ready, [], apis(), undefined, noChip, 'new');
+    const item = screenTab('Item');
+    expect(item).toBeDisabled();
+    expect(item).toHaveAttribute('title', 'Add an item to see its page here');
+    const pay = screenTab('Pay');
     expect(pay).toBeDisabled();
     expect(pay).toHaveAttribute('title', 'Add an item to see how paying looks');
-  });
-
-  it('shows the shop, never an order of nothing, when it opens on Payment with no items', () => {
-    render(<StoreEditor initial={ready} items={[]} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="payment" {...apis()} />);
-    const tabs = within(screen.getByRole('tablist', { name: 'Preview screen' }));
-    expect(tabs.getByRole('tab', { name: 'Shop' })).toHaveAttribute('aria-selected', 'true');
-    expect(tabs.getByRole('tab', { name: 'Pay' })).toHaveAttribute('aria-selected', 'false');
+    // Opened on Item, with nothing to open, the phone shows the shop, and never an order of nothing.
+    expect(screenTab('Shop')).toHaveAttribute('aria-selected', 'true');
     expect(screen.queryByText('RM0')).toBeNull();
   });
 
   it('says orders are paused on the phone when the shop is off, and open when it is on', () => {
-    show({ ...ready, enabled: false });
-    const phone = within(screen.getByRole('region', { name: 'Live preview of your shop' }));
+    showItem({ ...ready, enabled: false });
+    fireEvent.click(screenTab('Shop'));
+    const phone = within(preview());
     expect(phone.getByText('Orders paused')).toBeInTheDocument();
     expect(phone.queryByText('Open for orders')).toBeNull();
   });
-
-  const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
 
   // The previews are the customer pages themselves, so each carries a landmark only the real page has.
   it('the Shop screen is the real shop page: its facts list and category chips, and no link leaves the editor', () => {
@@ -317,7 +546,8 @@ describe('the preview', () => {
       { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true, category: 'Cakes' },
       { ...base, id: 'c', name: 'Online class', priceCents: 6000, available: true, ...{ kind: 'DIGITAL' as const, delivery: 'FILES' as const } },
     ];
-    show(ready, list);
+    showItem(ready, list);
+    fireEvent.click(screenTab('Shop'));
     const shop = within(preview());
     expect(shop.getByText('Open for orders')).toBeInTheDocument();
     expect(shop.getByText('Seksyen 7')).toBeInTheDocument();
@@ -330,12 +560,27 @@ describe('the preview', () => {
     expect(click).toBe(false);
   });
 
-  it('the Item screen is the real item page: Size boxes for options, and Pick a time for a session', () => {
+  it('shows the shop with only what is in it, and the shop description as it is typed in the item’s own copy', () => {
+    showItem();
+    fireEvent.click(screenTab('Shop'));
+    expect(within(preview()).getByText('Kek batik')).toBeInTheDocument();
+    expect(within(preview()).queryByText('Burnt cheesecake')).toBeNull();
+  });
+
+  it('opens the product screen in the preview from a tapped row, and returns to the shop after an add', () => {
+    showItem();
+    fireEvent.click(screenTab('Shop'));
+    fireEvent.click(within(preview()).getByRole('link', { name: 'Kek batik' }));
+    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
+    fireEvent.click(within(preview()).getByRole('button', { name: /^Add to basket/ }));
+    expect(within(preview()).getByText('1 item · RM45')).toBeInTheDocument();
+  });
+
+  it('the Item screen is the real item page: Size boxes for options', () => {
     const list: EditorItem[] = [
       { ...base, id: 'a', name: 'Kek coklat', priceCents: null, available: true, options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }] },
     ];
-    show(ready, list);
-    fireEvent.click(screenTab('Item'));
+    showItem(ready, list);
     expect(within(preview()).getByRole('radiogroup', { name: 'Size' })).toBeInTheDocument();
     expect(within(preview()).getByRole('radio', { name: /1kg/ })).toBeInTheDocument();
     expect(within(preview()).getByRole('radio', { name: /2kg/ })).toBeInTheDocument();
@@ -344,7 +589,7 @@ describe('the preview', () => {
   it('the Pay screen has no link and copies nothing: its QR and Copy are pictures', () => {
     const writeText = vi.fn(async () => undefined);
     Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
-    show();
+    showItem();
     fireEvent.click(screenTab('Pay'));
     expect(preview().querySelector('a[download], a[href*="/qr"]')).toBeNull();
     fireEvent.click(within(preview()).getByRole('button', { name: 'Copy' }));
@@ -353,7 +598,7 @@ describe('the preview', () => {
   });
 
   it('the Pay screen is the real order page: its code and timeline', () => {
-    show();
+    showItem();
     fireEvent.click(screenTab('Pay'));
     const pay = within(preview());
     expect(pay.getByText('7Q4M')).toBeInTheDocument();
@@ -362,14 +607,15 @@ describe('the preview', () => {
   });
 
   it('ends the shop in the board’s basket bar, empty, with Checkout', () => {
-    show();
+    showItem();
+    fireEvent.click(screenTab('Shop'));
     expect(within(preview()).getByText('Basket is empty')).toBeInTheDocument();
     fireEvent.click(within(preview()).getByRole('button', { name: 'Checkout' }));
     expect(screenTab('Pay')).toHaveAttribute('aria-selected', 'true');
   });
 
   it('shows the order page’s Pay screen: the total, the bank account, and the receipt upload', () => {
-    show();
+    showItem();
     fireEvent.click(screenTab('Pay'));
     const pay = within(preview());
     expect(pay.getByRole('heading', { name: 'Order #13' })).toBeInTheDocument();
@@ -387,7 +633,7 @@ describe('the preview', () => {
 
   it('leaves an Ask item out of the Pay screen’s sample order: it never goes in the basket', () => {
     const cake: EditorItem = { ...base, id: 'k', name: 'Custom birthday cake', priceCents: 18000, askForPrice: true, available: true };
-    show(ready, [cake, ...items]);
+    showItem(ready, [cake, ...items]);
     fireEvent.click(screenTab('Pay'));
     const pay = within(preview());
     expect(pay.getByText('1× Kek batik')).toBeInTheDocument();
@@ -402,34 +648,22 @@ describe('the preview', () => {
   });
 
   it('says a rider’s fee is paid separately on the Pay screen, as the order page does', () => {
-    show({ ...ready, deliveryMode: 'RIDER', deliveryFeeCents: null });
+    showItem({ ...ready, deliveryMode: 'RIDER', deliveryFeeCents: null });
     fireEvent.click(screenTab('Pay'));
     expect(within(preview()).getByText('Delivery · Sun 18 Oct · Rider fee paid separately')).toBeInTheDocument();
   });
 
   it('says so on the Pay screen when there is no way to pay yet', () => {
-    show({ ...ready, bankName: null, bankAccountName: null, bankAccountNumber: null });
+    showItem({ ...ready, bankName: null, bankAccountName: null, bankAccountNumber: null });
     fireEvent.click(screenTab('Pay'));
     expect(within(preview()).getByText('No way to pay yet. Add a QR or your bank account.')).toBeInTheDocument();
   });
 
   it('counts a saved QR with nothing to show it from as no way to pay, in the page’s language', () => {
     const noBank = { ...ready, paymentQrKey: 'qr/k.webp', bankName: null, bankAccountName: null, bankAccountNumber: null };
-    render(
-      <StoreEditor initial={noBank} items={items} look={{ ...look, language: 'ms' }} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 1 }} {...apis()} />,
-    );
+    showItem(noBank, items, apis(), { paused: null, nextNumber: 1 }, noChip, 'a', [], { language: 'ms' });
     fireEvent.click(screenTab('Pay'));
     expect(within(preview()).getByText('Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.')).toBeInTheDocument();
-  });
-
-  it('turns to the Pay screen with the Payment and delivery tabs, and back to the shop with Items', () => {
-    show();
-    fireEvent.click(editTab('Payment'));
-    expect(screenTab('Pay')).toHaveAttribute('aria-selected', 'true');
-    fireEvent.click(editTab('Items'));
-    expect(screenTab('Shop')).toHaveAttribute('aria-selected', 'true');
-    fireEvent.click(editTab('Pickup & delivery'));
-    expect(screenTab('Pay')).toHaveAttribute('aria-selected', 'true');
   });
 });
 
@@ -441,13 +675,13 @@ describe('the tabs', () => {
     fireEvent.click(editTab('Pickup & delivery'));
     expect(screen.getByRole('heading', { name: 'Notice' })).toBeVisible();
     // Hidden, not unmounted: a description typed a moment ago still saves.
-    expect(screen.getByLabelText('Shop description')).not.toBeVisible();
+    expect(screen.getByLabelText('About')).not.toBeVisible();
   });
 });
 
 describe('without the template look', () => {
   it('has no gradient blobs in the preview panel', () => {
-    show();
+    showItem();
     expect(preview().parentElement!.querySelector('[class*="blob"]')).toBeNull();
     expect(document.querySelector('[class*="blobs"]')).toBeNull();
   });
@@ -468,8 +702,10 @@ describe('vouchers in the phone', () => {
     id: 'v1', mode: 'AUTO', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya sale',
     code: null, name: 'Raya sale', endsAt: null, maxUses: null, active: true, uses: 0, state: 'on', itemName: null,
   };
-  const withVouchers = (vouchers: OwnerVoucher[], paused: string | null = null) =>
-    render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused, nextNumber: 13 }} vouchers={vouchers} {...apis()} />);
+  const withVouchers = (vouchers: OwnerVoucher[], paused: string | null = null) => {
+    showItem(ready, items, apis(), { paused, nextNumber: 13 }, noChip, 'a', vouchers);
+    fireEvent.click(screenTab('Shop'));
+  };
 
   it('shows a live automatic voucher on the shop as customers see it', () => {
     withVouchers([live]);

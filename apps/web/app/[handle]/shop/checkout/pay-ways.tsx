@@ -91,7 +91,7 @@ export function payButtonText(copy: ShopCopy, total: string, pick: PayChoice): s
 }
 
 /**
- * The board's "How you'll pay" choices (Public board, checkout), the bank or e-wallet
+ * The board's "How you'll pay" choices (deleted Public board, checkout), the bank or e-wallet
  * under the one chosen, and the email for the receipt. `qr` names the owner's own QR
  * choice, when it is one of the ways.
  */

@@ -11,7 +11,7 @@ const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }>
   return props;
 };
 
-// "Biru" is both a background and an accent; each group's name tells them apart.
+// "Cobalt" is both a background and an accent; each group's name tells them apart.
 const accents = () => screen.getByRole('group', { name: 'Button colour' });
 
 /** AppearanceEditor is controlled; a real caller (MyCuriosEditor) keeps the
@@ -56,7 +56,7 @@ describe('AppearanceEditor', () => {
 
   it('picks a preset accent', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Purple' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Violet' }));
     expect(props.save).toHaveBeenCalledWith({ accentColor: '#6d3fb3' });
   });
 
@@ -67,11 +67,11 @@ describe('AppearanceEditor', () => {
   // whoever wants it.
   it('names every preset swatch for a screen reader, and keeps the hex as its title', () => {
     setup();
-    const names = ['Biru', 'Hijau', 'Purple', 'Magenta', 'Red', 'Amber', 'Forest', 'Ink'];
+    const names = ['Cobalt', 'Jade', 'Violet', 'Pink', 'Coral', 'Amber', 'Forest', 'Ink'];
     for (const name of names) {
       expect(within(accents()).getByRole('button', { name })).toBeInTheDocument();
     }
-    expect(within(accents()).getByRole('button', { name: 'Biru' })).toHaveAttribute('title', '#2340c8');
+    expect(within(accents()).getByRole('button', { name: 'Cobalt' })).toHaveAttribute('title', '#2340c8');
   });
 
   it('takes a custom colour typed as hex, and refuses one that is not', async () => {
@@ -122,7 +122,7 @@ describe('AppearanceEditor', () => {
   // test read the custom field's value after a preset click.
   it('syncs the custom colour field to a chosen preset', async () => {
     setup();
-    await userEvent.click(screen.getByRole('button', { name: 'Purple' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Violet' }));
     expect(screen.getByLabelText('Accent colour as hex')).toHaveValue('6d3fb3');
   });
 
@@ -162,7 +162,7 @@ describe('AppearanceEditor background', () => {
     const save = vi.fn(async () => undefined);
     const onChange = vi.fn();
     render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
-    await userEvent.click(screen.getByRole('button', { name: 'Dark' }));
+    await userEvent.click(within(screen.getByRole('group', { name: 'Page' })).getByRole('button', { name: 'Ink' }));
     expect(save).toHaveBeenCalledWith({ background: 'INK' });
     expect(onChange).toHaveBeenCalledWith({ background: 'INK' });
   });
@@ -208,14 +208,14 @@ describe('AppearanceEditor, the owner\u2019s own accent', () => {
   it('is not repeated when the accent is a preset', () => {
     setup();
     expect(screen.queryByRole('button', { name: 'Your colour' })).toBeNull();
-    expect(within(accents()).getByRole('button', { name: 'Biru' })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(accents()).getByRole('button', { name: 'Cobalt' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('does not save again when the chosen option is clicked', async () => {
     const props = setup();
     await userEvent.click(screen.getByRole('button', { name: /^Soft/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Paper' }));
-    await userEvent.click(within(accents()).getByRole('button', { name: 'Biru' }));
+    await userEvent.click(within(accents()).getByRole('button', { name: 'Cobalt' }));
     await userEvent.click(screen.getByRole('button', { name: 'Jakarta' }));
     expect(props.save).not.toHaveBeenCalled();
   });

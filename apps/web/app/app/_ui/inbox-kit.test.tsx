@@ -40,7 +40,7 @@ describe('the inbox kit stylesheet', () => {
   it('keeps the board values for the filter bar, the split and the detail', () => {
     expect(css).toMatch(/\.fbar \{[^}]*display: flex;[^}]*flex-wrap: wrap;[^}]*gap: 12px;/);
     expect(css).toMatch(/\.chip \{[^}]*height: 40px;[^}]*padding: 0 15px;[^}]*font-size: 14px;[^}]*font-weight: 500;/);
-    expect(css).toMatch(/\.chip\[aria-pressed='true'\],\s*\.chip\[aria-current='true'\] \{\s*background: var\(--action\);/);
+    expect(css).toMatch(/\.chip\[aria-pressed='true'\],\s*\.chip\[aria-current='true'\] \{\s*background: var\(--select\);/);
     expect(css).toMatch(/\.search \{[^}]*height: 40px;[^}]*border-radius: var\(--field-radius\);/);
     expect(css).toMatch(/\.split \{[^}]*grid-template-columns: minmax\(0, 1fr\) 420px;[^}]*align-items: start;[^}]*gap: 20px;[^}]*margin-top: 16px;/);
     expect(css).toMatch(/\.det \{[^}]*padding: 24px;/);

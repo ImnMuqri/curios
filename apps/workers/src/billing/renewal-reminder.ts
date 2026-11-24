@@ -25,7 +25,7 @@ export interface MailQueueLike {
 
 /**
  * The reminder itself: planEndingMail in @curios/core, laid out as the
- * Emails board draws its emails. English, because the dashboard is; and the
+ * More board draws its emails. English, because the dashboard is; and the
  * one thing it must not do is imply an automatic charge without a saved card,
  * since an owner who believes otherwise finds out by losing their capture card.
  */
@@ -65,6 +65,9 @@ export async function runRenewalReminders(deps: {
     where: {
       mode: 'BUSINESS',
       paidUntil: { gt: deps.now, lte: new Date(deps.now.getTime() + REMINDER_WINDOW_MS) },
+      // Settings' "Your plan is ending" switch. With a saved card the notice says a charge is coming,
+      // a billing notice: it is sent whatever the switch says.
+      OR: [{ notifyPlanEnding: true }, { renewalCard: { isNot: null } }],
     },
     select: {
       id: true,
@@ -165,6 +168,7 @@ export async function runPlanEndedMails(deps: {
       ordersPlaced: true,
       ordersAtTrialReset: true,
       storeEnabled: true,
+      notifyPlanEnding: true,
       account: { select: { email: true } },
     },
     orderBy: { paidUntil: 'asc' },
@@ -174,6 +178,16 @@ export async function runPlanEndedMails(deps: {
   for (const page of ended) {
     const paidUntil = page.paidUntil;
     if (paidUntil === null) continue;
+
+    // The shop by the rule checkout uses: free orders left keep it open.
+    const shop = {
+      state: orderState({ mode: 'BUSINESS', paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now: deps.now }, freeOrders),
+      storeEnabled: page.storeEnabled,
+    };
+    // Settings' "Your plan is ending" switch. A shop that has just stopped taking orders is not a reminder:
+    // that notice is sent whatever the switch says, as the card-charge notice is.
+    const shopStopped = shop.storeEnabled && (shop.state.kind === 'trialSpent' || shop.state.kind === 'lapsed');
+    if (!page.notifyPlanEnding && !shopStopped) continue;
 
     const claim = await deps.prisma.page.updateMany({
       where: {
@@ -185,11 +199,6 @@ export async function runPlanEndedMails(deps: {
     });
     if (claim.count === 0) continue;
 
-    // The shop by the rule checkout uses: free orders left keep it open.
-    const shop = {
-      state: orderState({ mode: 'BUSINESS', paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now: deps.now }, freeOrders),
-      storeEnabled: page.storeEnabled,
-    };
     const mail = planEndedMail({ displayName: page.displayName, paidUntil, appUrl: deps.appUrl, shop });
     try {
       await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail, audience: 'owner' });

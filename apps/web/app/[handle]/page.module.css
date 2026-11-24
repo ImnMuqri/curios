@@ -9,7 +9,7 @@
   padding: 20px 18px 0;
 }
 
-/* The opening line is the page's first reply: plain text under the same dot and label as every other (Public board, .chat .a). */
+/* The opening line is the page's first reply: plain text under the same dot and label as every other (deleted Public board, .chat .a). */
 .askPrompt {
   justify-self: stretch;
   margin: 0;
@@ -27,7 +27,7 @@
   font-weight: 600;
   line-height: 22px;
   color: color-mix(in srgb, var(--page-fg, var(--ink)) 75%, transparent);
-  background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--biru))) 10.5px, transparent 11px) no-repeat;
+  background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--sky))) 10.5px, transparent 11px) no-repeat;
 }
 
 .browse {

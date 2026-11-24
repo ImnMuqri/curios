@@ -6,32 +6,41 @@
  * act; --merah means destructive or error. If either turns up decoratively,
  * delete it rather than justify it.
  *
- * --biru is the brand and is never adjusted. Every neutral is derived from it
- * in OKLCH: the old ramp's lightness and chroma, turned to --biru's hue (267),
- * so the greys belong to the blue rather than sitting next to it. --muted is
- * one step darker than that, to clear 4.5:1 on --surface.
+ * The brand is sky blue and hot pink (design boards, 24 Nov 2026). Two shades of each, by job:
+ * --sky #0593C6 and --pink #D83395 are for graphics (Peek, the mark, icons, dots, bars) and large
+ * text only, because sky is about 3.4:1 on white. --biru #0479A3 (sky deep) carries white-text
+ * buttons, links and small blue text; --pink-deep #C42683 carries small pink text and badges.
+ * The names --biru* keep their old spelling, the values are sky. The calm greys are cool, tinted
+ * toward the sky's hue rather than warm. --muted is darker than the old ramp, to clear 4.5:1 on --surface.
  */
 :root {
   --ink: #191f2c;
   --paper: #fafbfc;
   --surface: #f0f1f4;
-  --biru: #2340c8;
-  --biru-muda: #eaf0ff;
+  --biru: #0479a3;
+  --biru-muda: #e2f4fb;
+  /* Sky, graphics and large text only (about 3.4:1 on white); --sky-light for dark accents and Peek's shine; the pink pair likewise. */
+  --sky: #0593c6;
+  --sky-light: #5cc6ec;
+  --pink: #d83395;
+  --pink-deep: #c42683;
+  --pink-muda: #fce6f2;
+  --pink-ink: #ae1e74;
   --kuning: #f2a33c;
   --merah: #d8452f;
   --muted: #696e7b;
   /* Peek, the mascot (design boards): body, the shade behind it, hands, and the covering hands. */
-  --peek-body: #2340c8;
-  --peek-shade: #1b33aa;
-  --peek-edge: #1b33aa;
-  --peek-hand: #3150dc;
-  --peek-cover: #4664ee;
+  --peek-body: #0593c6;
+  --peek-shade: #0582b0;
+  --peek-edge: #0582b0;
+  --peek-hand: #05aaee;
+  --peek-cover: #3db5e0;
   /* Peek full-body on the sign in and sign up panels: feet, highlight, and each panel's ground. */
-  --peek-foot: #1a2fa3;
-  --peek-shine: #5b76ff;
-  --panel-signin: #eef1fb;
-  --panel-signup: #fdf3e3;
-  --panel-onboarding: #eef1fb;
+  --peek-foot: #046f96;
+  --peek-shine: #5cc6ec;
+  --panel-signin: #eef8fc;
+  --panel-signup: #fdf0f7;
+  --panel-onboarding: #eef8fc;
   --peek-bag-shade: #d98a22;
   /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
   --card: #ffffff;
@@ -78,10 +87,10 @@
   --blob-peach: #ffe2b8;
   --blob-mint: #bfe3d6;
   --field: #f6f7fb;
-  /* The System board's drawings and its hover. */
-  --biru-deep: #1a31a8;
-  --biru-lembut: #86a2ea;
-  --biru-ring: #dfe8fd;
+  /* The Site board's drawings and its hover. */
+  --biru-deep: #046c92;
+  --biru-lembut: #7fd0ee;
+  --biru-ring: #d3eef8;
   --ungu-muda: #efe7fb;
   --merah-lembut: #f08a74;
   --merah-ink: #8a2a1a;
@@ -97,7 +106,7 @@
   --foot-mark-b: #4a5677;
   --peek-ground-shadow: rgba(0, 0, 0, 0.28);
   --phone-edge: #e1e4e9;
-  /* The paid page's confetti (Billing board, `.pr`), with --biru, and Peek's sweat drop on the failed page. */
+  /* The paid page's confetti (deleted Billing board, `.pr`), with --biru, and Peek's sweat drop on the failed page. */
   --confetti-gold: #f2b63c;
   --confetti-red: #e2483d;
   --confetti-green: #1f9d55;
@@ -105,18 +114,18 @@
   --peek-sweat: #9fd3ff;
   /* The tick in the dashboard toast. */
   --toast-tick: #86e0b8;
-  /* Checkout's quieter grey (Public board): sub-lines, hints and the small print. */
+  /* Checkout's quieter grey (deleted Public board): sub-lines, hints and the small print. */
   --hint: #8a8f9b;
   /*
-   * The order page's status pills (Public board, `order`): waiting for
+   * The order page's status pills (deleted Public board, `order`): waiting for
    * payment, a receipt being checked, and paid, each a pale with its ink.
    */
   --kuning-muda: #ffebd6;
   --kuning-ink: #7a4a0c;
-  --biru-ink: #122686;
+  --biru-ink: #035a7a;
   --hijau-ink: #123b33;
   /*
-   * Store -> Payment's "Online payments" (Store board): the payment marks (FPX uses
+   * Store -> Payment's "Online payments" (Dash board): the payment marks (FPX uses
    * --biru-muda and --biru-ink), and the connected card's green wash and edge.
    */
   --mark-tng: #0b4dbd;
@@ -132,11 +141,11 @@
    * current page in the sidebar, a chosen row in an inbox list, and the panel a dashboard chat sits in.
    */
   --ground: #edeff4;
-  --nav-on: #e2e7fb;
-  --pick: #eef1fd;
+  --nav-on: #e2f4fb;
+  --pick: #eef8fc;
   --chat: #f6f7f9;
   /*
-   * Checkout's "How you'll pay" (Public board): the Visa and QR marks beside each
+   * Checkout's "How you'll pay" (deleted Public board): the Visa and QR marks beside each
    * choice, and the letter chips of the banks and e-wallets under it.
    */
   --mark-visa: #1a1f71;
@@ -179,11 +188,14 @@
   --dark-field: #1a202c;
   --dark-soft-page: #12161f;
   --dark-phone-edge: #2b3242;
-  --dark-biru: #4f6cf0;
-  --dark-biru-muda: #1c2650;
-  --dark-biru-ring: #2a3870;
-  --dark-biru-ink: #b9c6ff;
-  --dark-biru-lembut: #7d93f2;
+  --dark-biru: #0593c6;
+  --dark-biru-muda: #0d2f3d;
+  --dark-biru-ring: #14485c;
+  --dark-biru-ink: #5cc6ec;
+  --dark-biru-lembut: #5cc6ec;
+  --dark-pink-deep: #f07bbf;
+  --dark-pink-muda: #4a1636;
+  --dark-pink-ink: #fce6f2;
   --dark-hijau: #2f9a82;
   --dark-hijau-muda: #13302a;
   --dark-hijau-line: #22463d;
@@ -214,7 +226,7 @@
   --dark-ghost-ink: #c9cfdc;
   --dark-soft-shadow: rgb(0 0 0 / 35%);
   --dark-scrim: rgb(0 0 0 / 60%);
-  --dark-pick: #18203a;
+  --dark-pick: #0d2f3d;
   --dark-chat: #1a202c;
 
   --light-paper: var(--paper);
@@ -235,6 +247,9 @@
   --light-biru-ring: var(--biru-ring);
   --light-biru-ink: var(--biru-ink);
   --light-biru-lembut: var(--biru-lembut);
+  --light-pink-deep: var(--pink-deep);
+  --light-pink-muda: var(--pink-muda);
+  --light-pink-ink: var(--pink-ink);
   --light-hijau: var(--hijau);
   --light-hijau-muda: var(--hijau-muda);
   --light-hijau-line: var(--hijau-line);
@@ -272,6 +287,11 @@
   --light-action: var(--action);
   --light-action-fg: var(--action-fg);
   --light-action-hover: var(--action-hover);
+  /* Switches, segmented pills, chips, the dock pill and progress bars stay ink (the board), not sky: selection is not a button. The frame's dark scopes swap them. */
+  --select: var(--calm-ink);
+  --select-fg: var(--calm-surface);
+  --light-select: var(--select);
+  --light-select-fg: var(--select-fg);
   /* Text drawn on a photo under a dark tint: white whatever the theme. */
   --on-photo: #ffffff;
   /* The tile a bank's logo sits on: white whatever the theme, so a dark mark still reads in the dark theme. */
@@ -285,35 +305,42 @@
  * here for contrast (4.5:1 or better), a deviation Task 7 logs.
  */
 :root {
-  --calm-bg: #fbfaf7;
+  --calm-bg: #fcffff;
   --calm-surface: #ffffff;
   --calm-ink: #1d1d1b;
   --calm-ink-deep: #000000;
-  --calm-muted: #6f6d68;
-  /* Fainter than muted: group titles and placeholders (the board's #a19e97). */
-  --calm-faint: #a19e97;
-  --calm-line: #ece9e3;
-  --calm-soft: #f4f2ed;
-  --calm-ring: #e2ded6;
-  --calm-badge: #b5294e;
+  --calm-muted: #5e6b75;
+  /* Fainter than muted: group titles and placeholders (the board's #8f9ba4). */
+  --calm-faint: #8f9ba4;
+  --calm-line: #e2eef3;
+  --calm-soft: #edf6fa;
+  --calm-ring: #d3e5ee;
+  --calm-badge: #c42683;
+  /* The dashboard frame's own ground (Dash board, 24 Nov): one white surface, a bluer soft fill and hairline than the customer pages' calm greys above (those stay in a preview island). */
+  --frame-soft: #e8f4f9;
+  --frame-line: #ddedf4;
+  --frame-hover: #f2f9fc;
+  --frame-track: #d2eaf4;
 
   --calm-dark-bg: #151514;
   --calm-dark-surface: #1f1f1d;
   --calm-dark-ink: #f2f0ea;
-  --calm-dark-ink-deep: #ffffff;
-  --calm-dark-muted: #a3a09a;
+  --calm-dark-muted: #9aa5ad;
   --calm-dark-faint: #75736d;
   --calm-dark-line: #2e2d2a;
   --calm-dark-soft: #262624;
   --calm-dark-ring: #3a3936;
-  --calm-dark-badge: #b5294e;
+  --calm-dark-badge: #c42683;
 
   --tag-ok: #e3f3ea;
   --tag-ok-ink: #1d7a4c;
   --tag-wait: #fdf0d8;
   --tag-wait-ink: #a1640c;
-  --tag-new: #e5ecff;
-  --tag-new-ink: #2340c8;
+  /* --tag-wait stays amber (the to-check avatar, the bell's alert rows); the waiting TAG is pink (Dash.dc .t-wait, 24 Nov). */
+  --tag-attn: #fce6f2;
+  --tag-attn-ink: #ae1e74;
+  --tag-new: #e2f4fb;
+  --tag-new-ink: #035a7a;
   --tag-red: #fbe3ea;
   --tag-red-ink: #b5294e;
 
@@ -321,8 +348,10 @@
   --calm-dark-tag-ok-ink: #7fd3a3;
   --calm-dark-tag-wait: #5a451d;
   --calm-dark-tag-wait-ink: #f5c56b;
-  --calm-dark-tag-new: #1f2a47;
-  --calm-dark-tag-new-ink: #a8baff;
+  --calm-dark-tag-attn: #4a1636;
+  --calm-dark-tag-attn-ink: #f7a8d4;
+  --calm-dark-tag-new: #0d2f3d;
+  --calm-dark-tag-new-ink: #5cc6ec;
   --calm-dark-tag-red: #451f28;
   --calm-dark-tag-red-ink: #f2a0b5;
 
@@ -334,34 +363,41 @@
   --light-tag-ok-ink: var(--tag-ok-ink);
   --light-tag-wait: var(--tag-wait);
   --light-tag-wait-ink: var(--tag-wait-ink);
+  --light-tag-attn: var(--tag-attn);
+  --light-tag-attn-ink: var(--tag-attn-ink);
   --light-tag-new: var(--tag-new);
   --light-tag-new-ink: var(--tag-new-ink);
   --light-tag-red: var(--tag-red);
   --light-tag-red-ink: var(--tag-red-ink);
   --light-badge: var(--badge);
 
-  /* The calm pages (page phase, batch 1): lists, the urgent strip, sparklines, switches. The frame's dark scope maps each --calm-X that has a --calm-dark-X; a preview island takes the light value back (--light-calm-X). hover-ring and switch-off have no dark twin. --calm-twice* dark twins come from the dark red tag family (DEVIATIONS 351). */
-  --calm-pick: #f1eee7;
-  --calm-row-hover: #fbfaf7;
-  --calm-urgent: #fdf6e7;
-  --calm-urgent-ring: #f1dfb4;
-  --calm-urgent-label: #7a4b06;
-  --calm-urgent-ink: #5c3804;
-  --calm-spark: #d8d4cb;
+  /* The calm pages (page phase, batch 1): lists, the urgent strip, sparklines, switches. The frame's dark scope maps each --calm-X that has a --calm-dark-X; a preview island takes the light value back (--light-calm-X). --calm-hover-ring and switch-off have no dark twin. --calm-twice* dark twins come from the dark red tag family (DEVIATIONS 351). */
+  --calm-pick: #e2f4fb;
+  --calm-row-hover: #f2f9fc;
+  /* Attention is hot pink, not amber (Dash.dc 24 Nov): the urgent stat card, the warn banner and a receipt not received. */
+  --calm-urgent: #fdf0f7;
+  --calm-urgent-ring: #f6cfe5;
+  --calm-urgent-label: #ae1e74;
+  --calm-urgent-ink: #8e1660;
+  --calm-urgent-hover-ring: #efa9d2;
+  --calm-urgent-hover-shadow: 0 8px 20px -14px rgba(174, 30, 116, 0.35);
+  --calm-spark: #c6dde8;
   --calm-spark-today: #1d7a4c;
-  --calm-hover-ring: #c9c4b8;
+  --calm-hover-ring: #a8d1e2;
   /* A clickable stat card's lift on hover, under --calm-hover-ring (Dash.html button.st3:hover). No dark twin: the board uses the one shadow in both themes. */
-  --calm-hover-shadow: 0 8px 20px -14px rgba(40, 30, 10, 0.3);
-  --calm-switch-off: #8f8b83;
+  --calm-hover-shadow: 0 8px 20px -14px rgba(6, 40, 58, 0.3);
+  --calm-switch-off: #7b8891;
   --calm-danger: #b3261e;
   --calm-twice: #fdf3f2;
   --calm-twice-ring: #f3d4d0;
   --calm-dark-pick: #232321;
   --calm-dark-row-hover: #1b1b1a;
-  --calm-dark-urgent: #33291a;
-  --calm-dark-urgent-ring: #4d3b1d;
-  --calm-dark-urgent-label: #f2c46b;
-  --calm-dark-urgent-ink: #f2c46b;
+  --calm-dark-urgent: #3a1430;
+  --calm-dark-urgent-ring: #5c1f4a;
+  --calm-dark-urgent-label: #f7a8d4;
+  --calm-dark-urgent-ink: #f7a8d4;
+  --calm-dark-urgent-hover-ring: #8a3a72;
+  --calm-dark-urgent-hover-shadow: 0 8px 20px -14px rgba(0, 0, 0, 0.6);
   --calm-dark-spark: #3a3936;
   --calm-dark-spark-today: #7fd3a5;
   --calm-dark-danger: #ff8a80;
@@ -373,6 +409,8 @@
   --light-calm-urgent-ring: var(--calm-urgent-ring);
   --light-calm-urgent-label: var(--calm-urgent-label);
   --light-calm-urgent-ink: var(--calm-urgent-ink);
+  --light-calm-urgent-hover-ring: var(--calm-urgent-hover-ring);
+  --light-calm-urgent-hover-shadow: var(--calm-urgent-hover-shadow);
   --light-calm-spark: var(--calm-spark);
   --light-calm-spark-today: var(--calm-spark-today);
   --light-calm-danger: var(--calm-danger);
@@ -387,9 +425,24 @@
   /* The badge red as a role: counts, the account's initial disc and Sign out read it; the frame's dark scopes swap it. */
   --badge: var(--calm-badge);
 
+  /* Sellers' pages keep the old Biru: the Muda and Biru bands, the "checking" and FPX marks, and the public pages' blue accents are the sellers' and customers', not Curios's brand, so they do not follow the rebrand. */
+  --band-muda: #eaf0ff;
+  --band-biru: #2340c8;
+  --public-blue: #2340c8;
+  --mark-fpx: #eaf0ff;
+  --mark-fpx-ink: #122686;
+  --order-check: #eaf0ff;
+  --order-check-ink: #122686;
   --action: var(--biru);
   --action-fg: var(--paper);
   --action-hover: var(--biru-deep);
+  /* The dashboard's buttons (Dash board, 24 Nov): sky deep with white text; in dark, sky with a dark ink. The frame maps these onto --action. */
+  --calm-action: #0479a3;
+  --calm-action-fg: #ffffff;
+  --calm-action-hover: #046c92;
+  --calm-dark-action: #0593c6;
+  --calm-dark-action-fg: #04212e;
+  --calm-dark-action-hover: #22a6d6;
   --r-box: 16px;
   --r-pill: 999px;
 }
@@ -400,35 +453,25 @@
  * phones (--cl-mock-*), the Instagram bio, and the closing word pill pairs. Only the landing reads them.
  */
 :root {
-  --cl-text-2: #55534e;
-  --cl-text-3: #3e3c38;
-  --cl-placeholder: #c2bfb8;
-  /* The ask strip's unlit words: large text, 3:1 on the page (19 Nov review; was #cdc9c1). */
-  --cl-ghost: #928e86;
-  --cl-ring-hover: #cfcac0;
-  --cl-dot: #e7e3da;
+  --cl-text-2: #4a5661;
+  --cl-text-3: #36414b;
+  --cl-placeholder: #b2bec5;
+  /* The ask strip's unlit words: large text, 3:1 on the page (19 Nov review; was #b9cbd3). */
+  --cl-ghost: #8494a0;
+  --cl-ring-hover: #b8d5e2;
+  --cl-dot: #dcedf4;
   --cl-hl-green: #dcefe5;
   --cl-hl-green-ink: #14523d;
   --cl-hl-rose: #f8e3ea;
   --cl-hl-rose-ink: #9b2347;
-  --cl-art-blue: #eef2ff;
+  --cl-art-blue: #eef8fc;
   --cl-art-peach: #fff1ea;
   --cl-art-mint: #ecf6f0;
-  --cl-mark: #dfe6ff;
-  --cl-mark-ink: #1d2f99;
-  --cl-fact-next: #fbf7f4;
+  --cl-mark: #d3eef8;
+  --cl-mark-ink: #035a7a;
+  --cl-fact-next: #f2f9fc;
   --cl-amber-ink: #b4541b;
-  /* A marketplace receipt's fee lines: the amber darkened to 4.5:1 on white (19 Nov review). */
-  --cl-fee-ink: #9a4314;
-  --cl-paid-wash: #eaf6ef;
   --cl-mint-on-ink: #9fe3bd;
-  --cl-hot: #fde6dc;
-  --cl-hot-ink: #9a3412;
-  --cl-miss: #e8a33a;
-  --cl-sys: #d9f2e3;
-  --cl-sent: #e9eefc;
-  --cl-zone-empty: #b3afa7;
-  --cl-receipt-rule: #e4e0d8;
   --cl-mock-line: #e3e6ec;
   --cl-mock-soft: #f2f3f6;
   --cl-mock-hair: #eef0f3;
@@ -443,12 +486,35 @@
   --cl-word-1-ink: #14523d;
   --cl-word-2: #f8e3ea;
   --cl-word-2-ink: #9b2347;
-  --cl-word-3: #f6efe6;
+  --cl-word-3: #eef8fc;
   --cl-word-3-ink: #8a5a2b;
-  --cl-word-4: #e5ecff;
-  --cl-word-4-ink: #2340c8;
-  --cl-word-5: #fdefe6;
+  --cl-word-4: #e2f4fb;
+  --cl-word-4-ink: #0593c6;
+  --cl-word-5: #fdf0f7;
   --cl-word-5-ink: #c2410c;
   --cl-word-6: #f8f1dc;
   --cl-word-6-ink: #8a6410;
+
+  /* What lands in your hands, and Every sale is yours (Landing2 board, 24 Nov): the stage tints, the cards' secondary inks and the lock screen. */
+  --cl-wl-svc: #eef8fc;
+  --cl-wl-prod: #fdf0f7;
+  --cl-text-4: #62707a;
+  --cl-rule: #e7f1f5;
+  --cl-wa: #e5f2ea;
+  --cl-wa-ink: #1d6b45;
+  --cl-miss-bg: #fbf1df;
+  --cl-miss-ink: #8a5a0c;
+  --cl-avatar: #efe6da;
+  --cl-avatar-ink: #7a5a3a;
+  --cl-typing: #b6cfd9;
+  --cl-kafe-bg: #f1e6d6;
+  --cl-kafe-ink: #4a3420;
+  --cl-kafe-gold: #c58a12;
+  --cl-kafe-ring: #e2d6c4;
+  --cl-cake-bg: #f3e1e3;
+  --cl-cake-body: #7a4a3a;
+  --cl-cake-candle: #e6b45a;
+  --cl-lock-ring: #cce3ed;
+  --cl-lock-icon: #e4f0f5;
+  --cl-lock-edge: #e2eef3;
 }
