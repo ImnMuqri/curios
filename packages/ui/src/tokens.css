@@ -87,7 +87,7 @@
   --blob-peach: #ffe2b8;
   --blob-mint: #bfe3d6;
   --field: #f6f7fb;
-  /* The System board's drawings and its hover. */
+  /* The Site board's drawings and its hover. */
   --biru-deep: #046c92;
   --biru-lembut: #7fd0ee;
   --biru-ring: #d3eef8;
@@ -106,7 +106,7 @@
   --foot-mark-b: #4a5677;
   --peek-ground-shadow: rgba(0, 0, 0, 0.28);
   --phone-edge: #e1e4e9;
-  /* The paid page's confetti (Billing board, `.pr`), with --biru, and Peek's sweat drop on the failed page. */
+  /* The paid page's confetti (deleted Billing board, `.pr`), with --biru, and Peek's sweat drop on the failed page. */
   --confetti-gold: #f2b63c;
   --confetti-red: #e2483d;
   --confetti-green: #1f9d55;
@@ -114,10 +114,10 @@
   --peek-sweat: #9fd3ff;
   /* The tick in the dashboard toast. */
   --toast-tick: #86e0b8;
-  /* Checkout's quieter grey (Public board): sub-lines, hints and the small print. */
+  /* Checkout's quieter grey (deleted Public board): sub-lines, hints and the small print. */
   --hint: #8a8f9b;
   /*
-   * The order page's status pills (Public board, `order`): waiting for
+   * The order page's status pills (deleted Public board, `order`): waiting for
    * payment, a receipt being checked, and paid, each a pale with its ink.
    */
   --kuning-muda: #ffebd6;
@@ -125,7 +125,7 @@
   --biru-ink: #035a7a;
   --hijau-ink: #123b33;
   /*
-   * Store -> Payment's "Online payments" (Store board): the payment marks (FPX uses
+   * Store -> Payment's "Online payments" (Dash board): the payment marks (FPX uses
    * --biru-muda and --biru-ink), and the connected card's green wash and edge.
    */
   --mark-tng: #0b4dbd;
@@ -145,7 +145,7 @@
   --pick: #eef8fc;
   --chat: #f6f7f9;
   /*
-   * Checkout's "How you'll pay" (Public board): the Visa and QR marks beside each
+   * Checkout's "How you'll pay" (deleted Public board): the Visa and QR marks beside each
    * choice, and the letter chips of the banks and e-wallets under it.
    */
   --mark-visa: #1a1f71;

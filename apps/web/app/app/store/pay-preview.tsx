@@ -39,7 +39,7 @@ function digitalLine(item: EditorItem): DigitalLineView | null {
 }
 
 /**
- * The preview's Pay screen (Store board, `pay`): the real order page, given a
+ * The preview's Pay screen (deleted Store board, `pay`): the real order page, given a
  * sample order of one of each of the first two items, built from the editor's
  * draft so it follows every edit. Delivery when the shop delivers, else
  * pickup, on the earliest day a customer could pick; an order of digital

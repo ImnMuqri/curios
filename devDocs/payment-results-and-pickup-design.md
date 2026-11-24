@@ -32,7 +32,7 @@ Status: draft for the owner's review (2 Nov 2026).
   - a pending result still goes to `/app/billing?payment=pending`, as today.
 - Each page reads its own payment row: plan, months, amount, method and reference. The paid page
   also reads the new paid-until date. The failed page reads the current one and CHIP's status.
-- **Layout:** follow the board exactly (`Billing.dc.html`, the `.pr` block).
+- **Layout:** follow the board exactly (`Billing.dc.html`, the `.pr` block; now in `Dash.dc.html`).
   - **Page:** full page with a grey ground, the logo, and **Back to Billing**.
   - **Desktop:** an 880px split card.
   - **Phone:** the art stacks on top.
@@ -56,7 +56,7 @@ Status: draft for the owner's review (2 Nov 2026).
 
 - This replaces the one-line `onlineFailed` notice on the order page. It shows when the customer
   comes back from CHIP and the order page's check says `failed`.
-- **Layout:** the board's `payfail` route (`Public.dc.html`, `/* payment failed (2 Nov) */`).
+- **Layout:** the board's `payfail` route (`Public.dc.html`, `/* payment failed (2 Nov) */`; deleted 24 Nov 2026, in git history before 58a531e).
   - A red ✕ in a soft circle, then "Payment didn't go through".
   - "Nothing was taken. {Shop} has saved your order for **30 minutes**."
   - Grey code tiles, the order lines and the total.

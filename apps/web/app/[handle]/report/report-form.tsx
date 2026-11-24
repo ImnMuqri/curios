@@ -15,7 +15,7 @@ export interface ReportInput {
 }
 
 /**
- * "Report this page": the System board's shell, a list of reasons and an optional note.
+ * "Report this page": the Site board's shell, a list of reasons and an optional note.
  * Not drawn on any board (DEVIATIONS 219). The owner is never told who reported.
  */
 export function ReportForm({

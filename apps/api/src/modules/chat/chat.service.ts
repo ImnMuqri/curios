@@ -13,7 +13,7 @@ import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
-  // The Public board's order card, after "Thanks. Here’s order 7Q4M:".
+  // The deleted Public board's order card, after "Thanks. Here’s order 7Q4M:".
   | { type: 'order'; card: OrderCard }
   | {
       type: 'done';

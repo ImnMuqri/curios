@@ -10,7 +10,7 @@ which named this as one of two projects to come after it. The owner's decisions,
 Where this says *(builder's call)*, the owner did not decide it. It is the designer's recommendation
 and can be changed without asking them again.
 
-Board: `design/boards/Help.dc.html` (on the canvas as "App · Help"). Its preview bar shows every
+Board at the time: `design/boards/Help.dc.html` (on the canvas as "App · Help"; now the Help panel in `design/boards/Dash.dc.html`). Its preview bar shows every
 state. The FAQ is `design/help/help-faq.md`. Screens: `design/screens/Help-*.jpg`.
 
 ---

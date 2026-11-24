@@ -9,7 +9,7 @@
  * A token nothing reads is deleted (landing.test.tsx checks).
  */
 [data-landing] {
-  /* Taken from the TanyaJe board (16 Oct 2026); auth's muted labels read it. */
+  /* Taken from the deleted TanyaJe board (16 Oct 2026); auth's muted labels read it. */
   --tj-ink-500: #8a8f9b;
 
   /* The deep end of the biru ramp (parent --biru #0479a3, sky deep); auth's links read it. */

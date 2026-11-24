@@ -59,7 +59,7 @@ describe('Ask, opening chat mode', () => {
     expect(container.querySelector('[aria-label="Back to links"]')).not.toBeInTheDocument();
   });
 
-  it('puts no ask bar on the links, as the Public board has it, and sends nothing before a tap', () => {
+  it('puts no ask bar on the links, as the deleted Public board had it, and sends nothing before a tap', () => {
     stubQualifyingFetch();
     render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
 

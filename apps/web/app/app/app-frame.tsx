@@ -277,7 +277,7 @@ export function AppFrame({
     writeBellSeen(formatBellSeen(bellNow));
   };
 
-  // Onboarding is its own full screen, as the design handoff's Onboarding
+  // Onboarding is its own full screen, as the design handoff's More
   // board draws it, before and after the page exists. Both of those return
   // the screen in the same place, so claiming the page mid-onboarding does
   // not remount it and lose where the owner is.

@@ -465,7 +465,7 @@
   box-shadow: 0 0 0 1px var(--line);
 }
 
-/* Help shows as pressed while its panel is open (the Help board). */
+/* Help shows as pressed while its panel is open (the Dash board). */
 .help[aria-expanded='true'] {
   background: var(--card);
   color: var(--ink);

@@ -9,7 +9,7 @@ type Kind = 'orders' | 'receipts' | 'leads';
 export type NotifySwitches = Record<Kind, boolean>;
 
 /**
- * The Settings board's "Email me when", in its order. Off, the thing still
+ * The Dash board's "Email me when", in its order. Off, the thing still
  * lands in the app; only the email stops, and the line says where it waits.
  * The board's fourth switch, a question asked three times, is left out: no
  * such email exists to switch. Its fifth, the plan ending, is `PlanEndingRow`

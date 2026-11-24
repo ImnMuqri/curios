@@ -24,7 +24,7 @@ const HISTORY = 10;
 
 /**
  * Peek standing and whistling, eyes up, while nothing has been asked yet: the
- * Knowledge board's `.pw`, in the mascot's tokens. It bobs and two notes float
+ * deleted Knowledge board's `.pw`, in the mascot's tokens. It bobs and two notes float
  * up from it, unless the device asks for less motion (knowledge.module.css).
  * The clip that shades the body needs an id of its own on the page.
  */

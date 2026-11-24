@@ -5,7 +5,7 @@ import { pickupLine } from '@curios/core/pickup';
 import type { Prisma, PrismaClient } from '@curios/db';
 
 /**
- * "Where is my order 7Q4M?" (Public board, route `ask`). Answered here, from
+ * "Where is my order 7Q4M?" (deleted Public board, route `ask`). Answered here, from
  * the order itself, before any model call: the model never sees an order,
  * and a lookup costs the owner nothing.
  *
@@ -15,7 +15,7 @@ import type { Prisma, PrismaClient } from '@curios/db';
  * code again every time, and the chat's per-IP limits bound that.
  */
 
-/** The Public board's `ocard`, as the chat's `order` event carries it. */
+/** The deleted Public board's `ocard`, as the chat's `order` event carries it. */
 export interface OrderCard {
   number: number;
   code: string;

@@ -4,7 +4,7 @@ import type { PlanTerms } from '@curios/core/settings';
 
 /**
  * Every word on the landing page, in both languages, in one shape. From the
- * design handoff's TanyaJe board (design/boards/TanyaJe.dc.html), which
+ * design handoff's Landing2 board (design/boards/Landing2.dc.html), which
  * replaced the shop-first landing on 2026-10-16.
  *
  * The Malay was drafted by an AI and read by the owner, a Malay speaker, on

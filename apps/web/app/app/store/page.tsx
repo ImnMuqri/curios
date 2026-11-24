@@ -17,7 +17,7 @@ function todayInMalaysia(now = new Date()): string {
 }
 
 /**
- * Why an open shop takes no orders now, in the Alerts board's words for the
+ * Why an open shop takes no orders now, in the deleted Alerts board's words for the
  * same pause, or null while it may. orderState decides, as it does for the
  * shop, the API, Alerts and Billing, against the free orders in force.
  */

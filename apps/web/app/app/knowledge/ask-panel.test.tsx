@@ -23,7 +23,7 @@ describe('AskPanel', () => {
     expect(within(log()).getByText(/the way a customer would/i)).toBeInTheDocument();
   });
 
-  // The Knowledge board's empty chat: Peek whistling, "Nothing asked yet", gone once asked.
+  // The deleted Knowledge board's empty chat: Peek whistling, "Nothing asked yet", gone once asked.
   it('shows Peek whistling until something is asked', async () => {
     panel();
     expect(within(log()).getByText('Nothing asked yet')).toBeInTheDocument();

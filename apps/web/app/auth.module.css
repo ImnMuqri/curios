@@ -3,7 +3,7 @@
  * reset, verify, and claiming a page). They are one screen with several
  * contents, so they get one stylesheet rather than near-copies that drift.
  *
- * From the design handoff's SignIn and SignUp boards: the form on paper
+ * From the design handoff's Site board: the form on paper
  * beside a Peek panel (_auth/scene.module.css), Bricolage 800 for the title,
  * Inter for everything else (the calm redesign), white pill fields with a soft edge, a black
  * pill to submit. The product's Field, Button and Callout keep their

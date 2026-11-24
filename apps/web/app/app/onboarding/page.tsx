@@ -8,7 +8,7 @@ import { ringgit } from '@curios/core/money';
 import { Onboarding } from './onboarding.js';
 
 /**
- * Onboarding, from the design handoff's Onboarding board: claim the address,
+ * Onboarding, from the design handoff's More board: claim the address,
  * say what the page is for, give it something to read, watch it read. Full
  * screen (the frame steps aside here). An owner who already has a page starts
  * at the third step, to add a source.

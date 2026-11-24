@@ -7,7 +7,7 @@ import { Reset } from './reset-form.js';
 export const metadata: Metadata = { title: 'Choose a new password · Curios', robots: { index: false, follow: false } };
 
 /**
- * Choose a new password, from the System board. The link is looked at (not
+ * Choose a new password, from the Site board. The link is looked at (not
  * spent) first: a link cut short by a mail client, more than an hour old or
  * already used goes straight to "That link doesn't work", and a good one
  * names the address it is for.

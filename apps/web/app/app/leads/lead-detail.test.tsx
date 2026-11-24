@@ -25,7 +25,7 @@ const lead: OwnerLead = {
   enquiry: null,
 };
 
-// An enquiry from an Ask item in the shop (HANDOFF "Shop: Ask items", 8 Nov 2026), as on the Leads board.
+// An enquiry from an Ask item in the shop (HANDOFF "Shop: Ask items", 8 Nov 2026), as on the Dash board.
 const note = 'For 20 people on Sun 15 Nov. Frozen theme, 2 tiers, with “Aisyah” on top. Budget around RM250.';
 const enquiryLead: LeadRow = {
   id: 'e1',

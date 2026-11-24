@@ -29,7 +29,7 @@ function Icon({ d }: { d: string }) {
 }
 
 /**
- * /[handle]/shop as the Public board draws it: its own top bar, the sign, the
+ * /[handle]/shop as the More board draws it: its own top bar, the sign, the
  * owner's note, category chips, two-column cards and the "not listed?" card.
  * The page's theme comes from the wrapper (PageTheme), so everything here
  * follows the owner's background and accent. The basket bar is the page's own

@@ -1,4 +1,4 @@
-/* The paid and failed pages after CHIP: the Billing board's `.pr` ("payment result pages: Peek
+/* The paid and failed pages after CHIP: the deleted Billing board's `.pr` ("payment result pages: Peek
    happy / sad"). A page of its own over the app frame, as the board's overlay is. The colours are
    the board's and do not follow the theme: the art panels are drawn on them. */
 .pr {

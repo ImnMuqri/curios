@@ -254,7 +254,7 @@
   cursor: pointer;
 }
 
-/* Checkout is paused (Alerts board): a quiet line above the bar, pointing at WhatsApp. */
+/* Checkout is paused (deleted Alerts board): a quiet line above the bar, pointing at WhatsApp. */
 .paused {
   margin: 0 0 6px;
   padding: 0 12px;

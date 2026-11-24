@@ -164,7 +164,7 @@ const date = (iso: string | null) => (iso ? new Date(iso) : null);
 
 const EXTENSION: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
-/** The pill's words and colour, from the Orders board's view and the customer's steps. */
+/** The pill's words and colour, from the Dash board's view and the customer's steps. */
 function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, copy: ShopCopy, digital?: { sent: boolean }): { text: string; tone: Tone } {
   // A digital-only order has nothing to get ready: paid, then sent.
   if (digital && (view === 'paid' || view === 'paidOnline')) return { text: digital.sent ? copy.statusSent : copy.statusPaidDigital, tone: 'ok' };
@@ -188,7 +188,7 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
 }
 
 /**
- * The customer's order link (Public board, `order`): where it is, how to pay,
+ * The customer's order link (deleted Public board, `order`): where it is, how to pay,
  * and the receipt. Every name and number is this order's and this shop's.
  */
 export function OrderView(props: OrderViewProps) {

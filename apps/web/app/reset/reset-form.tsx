@@ -13,7 +13,7 @@ const STRENGTH_TEXT = ['8 characters or more.', 'Too short. 8 characters or more
 const EYE = 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z';
 
 /**
- * Choose a new password, then "Password changed", from the System board.
+ * Choose a new password, then "Password changed", from the Site board.
  *
  * A completed reset ends every other session for the account -- someone
  * resetting under suspicion of compromise must not leave the intruder in --

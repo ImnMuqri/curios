@@ -55,7 +55,7 @@ export function ShopView(props: {
    */
   canTakeOrders?: boolean;
   /**
-   * The Store preview's checkout, as the Store board draws it: the bar is
+   * The Store preview's checkout, as the deleted Store board drew it: the bar is
    * always there ("Basket is empty" until something is added), and its
    * Checkout button calls this instead of leaving the page.
    */

@@ -14,7 +14,7 @@ import styles from './review.module.css';
  * The highest-leverage screen in the product, per FRONTEND.md: the one place
  * a mistake is unrecoverable, because a wrong price published to a stranger
  * cannot be un-shown to whoever already saw it. From the design handoff's
- * Review board: one fact at a time on a stack, and beside it what the chat
+ * Dash board: one fact at a time on a stack, and beside it what the chat
  * can say once it is accepted.
  *
  * `getOwnerPage` before the rest: the queue is meaningless without a page

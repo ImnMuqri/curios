@@ -9,7 +9,7 @@ export type AuthLink =
 /**
  * Where a verification or reset link stands, WITHOUT spending it.
  *
- * The System board answers each case differently ("This link has expired",
+ * The Site board answers each case differently ("This link has expired",
  * "That link doesn't work", "For lina@keklina.example"), and only the server
  * knows which one it is. Reading is all this does: the API is still the only
  * thing that claims a link, and it re-checks all of this atomically when it

@@ -1,5 +1,5 @@
 /*
- * The order page (Public board, `order`). It sits in checkout's column on
+ * The order page (deleted Public board, `order`). It sits in checkout's column on
  * checkout's stage (checkout.module.css: .stage, .column, .sheet, .top,
  * .title, .section, .head); these are the board's o3 pieces on top. The accent is the
  * owner's (--accent from PageTheme); green means paid, as everywhere.
@@ -537,7 +537,7 @@
   stroke: var(--order-check-ink);
 }
 
-/* "Your downloads and access" and its locked note (Public board, the dgo pieces). */
+/* "Your downloads and access" and its locked note (deleted Public board, the dgo pieces). */
 .dgLock {
   display: flex;
   align-items: flex-start;
@@ -789,7 +789,7 @@
   font-size: 13px;
 }
 
-/* ---- Payment failed (Public board, `payfail`, 2 Nov): checkout's placed layout, in red and grey ---- */
+/* ---- Payment failed (deleted Public board, `payfail`, 2 Nov): checkout's placed layout, in red and grey ---- */
 .pf {
   --pf-red: var(--merah-deep);
 }

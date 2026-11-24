@@ -3,7 +3,7 @@ import { Wordmark } from '../../_landing/Wordmark.js';
 import { PeekBody } from '../_ui/peek.js';
 import styles from './result.module.css';
 
-/** Confetti for the paid page: where each piece falls from, its colour and its pace. From the Billing board. */
+/** Confetti for the paid page: where each piece falls from, its colour and its pace. From the Dash board. */
 const CONFETTI: [left: number, color: string, delay: number, seconds: number][] = [
   [6, 'var(--light-biru)', -0.2, 2.9],
   [14, 'var(--confetti-gold)', -1.4, 3.3],
@@ -37,7 +37,7 @@ const Feet = () => (
 );
 
 /**
- * Peek on the paid page, from the Billing board: he looks up, both hands raised, and
+ * Peek on the paid page, from the Dash board: he looks up, both hands raised, and
  * jumps -- squashing on landing, his shadow shrinking while he is in the air -- under
  * falling confetti. Decoration only; the same body as everywhere, in his own pose.
  */

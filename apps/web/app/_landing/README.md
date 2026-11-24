@@ -13,7 +13,7 @@
 
 Rebuilt from the calm `Landing2` board (`design/HANDOFF.md`, "Start here: the
 calm redesign", 14 Nov 2026; screens `Calm-Landing.desktop.jpg` and
-`.phone.jpg`), which replaced the TanyaJe board: warm neutrals, Inter, black
+`.phone.jpg`), which replaced the TanyaJe board (deleted 24 Nov 2026): warm neutrals, Inter, black
 pill buttons, a living Peek, and nine sections.
 
 | Section | File | What it does |
@@ -105,7 +105,7 @@ Nothing claims ratings or reviews.
 
 Built 2026-10-03 as "Tanya page ni", reworked through a band layout, a motion
 pass and the 2026-10-13 Berkira pass (pinned hero, the paid moment, GSAP and
-Lenis), then replaced on 2026-10-16 by the TanyaJe board, and on 2026-11-17 by the calm Landing2 board (`tanya.module.css` and the TanyaJe sections are gone). What survives: the
+Lenis), then replaced on 2026-10-16 by the TanyaJe board (now deleted), and on 2026-11-17 by the calm Landing2 board (`tanya.module.css` and the TanyaJe sections are gone). What survives: the
 claim field's behaviour (a real GET form to `/signup` that keeps the typed handle
 for the claim screen, `apps/web/lib/wanted-handle.ts`), the wordmark, and the
 structured data. The old `Device` phone, `demo.ts` and `landing.module.css` went

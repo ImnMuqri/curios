@@ -25,7 +25,7 @@ export interface MailQueueLike {
 
 /**
  * The reminder itself: planEndingMail in @curios/core, laid out as the
- * Emails board draws its emails. English, because the dashboard is; and the
+ * More board draws its emails. English, because the dashboard is; and the
  * one thing it must not do is imply an automatic charge without a saved card,
  * since an owner who believes otherwise finds out by losing their capture card.
  */

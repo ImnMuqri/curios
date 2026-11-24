@@ -1,7 +1,7 @@
 import { useId } from 'react';
 import styles from './scene.module.css';
 
-/** The sign-in answers, verbatim from the SignIn board (owner answer 6: sample counts, since there is no session before login). */
+/** The sign-in answers, verbatim from the deleted SignIn board (owner answer 6: sample counts, since there is no session before login). */
 const POPS: { text: string; tag: string; green?: boolean; delay: string }[] = [
   { text: 'Boleh hantar ke Klang?', tag: 'Answered', delay: '0ms' },
   { text: 'Ada kek tanpa telur?', tag: 'Answered', delay: '1300ms' },
@@ -14,8 +14,7 @@ const NAME_FITS_AT = 11;
 
 /**
  * Beside the sign-in and sign-up forms: Peek, full-body and calm, on a tinted
- * panel (design/HANDOFF.md, "Sign in and sign up, right panel"; SignIn.dc.html
- * and SignUp.dc.html). Sign in: Peek with a phone while sample answers pop up,
+ * panel (design/HANDOFF.md, "Sign in and sign up, right panel"; Site.dc.html). Sign in: Peek with a phone while sample answers pop up,
  * "While you were away". Sign up: Peek holding a sign with the wanted address.
  * Decoration, hidden from assistive tech. Wide screens only.
  */

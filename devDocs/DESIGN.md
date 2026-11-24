@@ -114,7 +114,7 @@ loud.
 
 If you cut one thing from this document, do not cut this.
 
-*Amended 2026-10-18, the owner's call following the design handoff's Public board: the
+*Amended 2026-10-18, the owner's call following the design handoff's Public board (now More.dc.html): the
 public page's Links tab no longer carries the bar. The Ask tab is the one way into the
 chat, and its composer is the bar there; the page's real questions are offered as its
 suggestions. The My Curios preview and the onboarding phone still draw it, as their
@@ -193,7 +193,7 @@ window, the accent's send circle at their end. The FAQ pages wear the page's acc
 tint. Type sizes follow the boards' CSS, which uses more than the six steps under **Type**; the
 check in `packages/ui/src/design-rules.ts` now lists the boards' sizes instead.
 
-The landing (`/`, `/ms`) is rebuilt from the TanyaJe board: "Don't read the bio. Ask", for
+The landing (`/`, `/ms`) is rebuilt from the TanyaJe board (now Landing2.dc.html): "Don't read the bio. Ask", for
 anyone, with business as one section. It keeps the landing's motion exemption, drawn still for
 reduced motion and before JavaScript, without GSAP or Lenis. Its nav pill is frosted, as the board
 draws it: the owner chose to allow that one frosted surface (it falls back to near-opaque

@@ -1,5 +1,5 @@
 /*
- * Checkout and the placed screen (Public board, `checkout` and `placed`).
+ * Checkout and the placed screen (deleted Public board, `checkout` and `placed`).
  * A 460px column on a darker field of the page's own band, as the shop sits
  * on a wide screen: checkout is a plain white sheet; the placed screen is the
  * board's faint tint of the owner's accent. The accent is the owner's
@@ -859,7 +859,7 @@
   text-underline-offset: 3px;
 }
 
-/* ---- How you'll pay (Public board, checkout: .pw-ic, .pbk) ---- */
+/* ---- How you'll pay (deleted Public board, checkout: .pw-ic, .pbk) ---- */
 
 /* The small marks at the end of each choice. */
 .marks {

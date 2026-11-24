@@ -51,7 +51,7 @@ describe('buildNotification', () => {
     expect(decodeURIComponent(link?.[1] ?? '')).toContain('kek butter 2kg');
   });
 
-  it('puts the number in the subject, as the Emails board does', () => {
+  it('puts the number in the subject, as the More board does', () => {
     const mail = buildNotification({
       displayName: 'Nadia Bakes',
       phone: '+60123456789',

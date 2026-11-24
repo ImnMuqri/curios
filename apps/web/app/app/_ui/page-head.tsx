@@ -8,7 +8,7 @@ import styles from './page-head.module.css';
  * under it that carries the numbers the stat cards used to ("2 receipts to check and 5 orders to
  * make."), and the actions on the right. `beside` sits right after the title on its line (the
  * Profile / Links tabs); such a header gives the title its own line under
- * 1000px, as the Store and My Curios boards stack it. No line under it.
+ * 1000px, as the Dash board stacks it. No line under it.
  *
  * Under it, the frame's alert for this screen if there is one (AlertSlot), so every screen shows
  * its banner in the same place, after its title. Along its bottom edge, the bar that runs while

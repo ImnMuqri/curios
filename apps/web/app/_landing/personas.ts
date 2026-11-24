@@ -1,7 +1,7 @@
 import type { PersonaKey, WhoKey } from './copy.js';
 
 /**
- * The sample owners the landing shows, from the TanyaJe board. None of them
+ * The sample owners the landing shows, from the Landing2 board. None of them
  * is real (the footer says so). What they say lives in copy.ts, per language;
  * this is how their pages look: the owner's accent, the deep colour their
  * page sits on, the tint their page's answers wear, and their heading font.

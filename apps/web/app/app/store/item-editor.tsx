@@ -97,7 +97,7 @@ const underOnlineMin = (pricing: CheckedItem['pricing']) => {
 /** Asking for a price is for physical items only: a digital one is always priced for the basket. */
 const pricingFor = (draft: PricingDraft, digital: DigitalDraft): PricingDraft => (digital.kind === 'DIGITAL' && draft.ask ? { ...draft, ask: false } : draft);
 
-/** "How they order" (Store board, 8 Nov): the basket, or an enquiry. */
+/** "How they order" (deleted Store board, 8 Nov): the basket, or an enquiry. */
 const HOWS = [
   [false, 'Add to basket', 'They pick, pay and it lands in Orders'],
   [true, 'Ask for a price', 'They send an enquiry. You reply with a price'],

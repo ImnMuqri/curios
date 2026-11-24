@@ -76,7 +76,7 @@
 }
 
 /*
- * A thread, as the Public board draws it (.chat): the visitor's words in a
+ * A thread, as the deleted Public board drew it (.chat): the visitor's words in a
  * see-through bubble on the right, the page's reply with no bubble at all --
  * plain text under a dot and "{Name}'s page". The reply is AnswerBubble with
  * its --bubble-* hooks flattened.
@@ -114,7 +114,7 @@
   overflow-wrap: anywhere;
 }
 
-/* An enquiry from the shop (8 Nov): the Public board's .enqb, the item on top of the message, and .enqsys under it. */
+/* An enquiry from the shop (8 Nov): the deleted Public board's .enqb, the item on top of the message, and .enqsys under it. */
 .enquiry {
   align-self: flex-end;
   max-width: 85%;
@@ -209,7 +209,7 @@
   background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--sky))) 10.5px, transparent 11px) no-repeat;
 }
 
-/* The product card: the Public board's .sp-pc. */
+/* The product card: the deleted Public board's .sp-pc. */
 .productCard {
   display: flex;
   align-items: center;
@@ -299,7 +299,7 @@
   }
 }
 
-/* The order card in the chat: the Public board's `ocard`, whose colours are its own, not the shop's theme. */
+/* The order card in the chat: the deleted Public board's `ocard`, whose colours are its own, not the shop's theme. */
 .orderCard {
   align-self: stretch;
   padding: 14px;

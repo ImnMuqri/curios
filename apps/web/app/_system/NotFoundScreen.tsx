@@ -19,7 +19,7 @@ function triedHandle(pathname: string): string | null {
 }
 
 /**
- * 404, from the System board: "Nobody lives here yet." When the address
+ * 404, from the deleted System board: "Nobody lives here yet." When the address
  * could be a page's, it shows it struck through and offers to claim it, the
  * handle carried to sign-up as the landing page's claim field carries it.
  */

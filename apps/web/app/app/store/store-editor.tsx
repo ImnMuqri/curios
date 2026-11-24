@@ -231,7 +231,7 @@ export function StoreEditor({
   const payOk = !gaps.includes('payment');
   const handOk = !gaps.includes('fulfilment');
   const blocked = !settings.enabled && gaps.length > 0;
-  // Open but paused (Alerts board): the shop still shows, its basket goes on WhatsApp, and this says why.
+  // Open but paused (deleted Alerts board): the shop still shows, its basket goes on WhatsApp, and this says why.
   const paused = settings.enabled ? orders.paused : null;
   const openState = paused || blocked ? 'blocked' : settings.enabled ? 'open' : 'closed';
   const openWords = settings.enabled

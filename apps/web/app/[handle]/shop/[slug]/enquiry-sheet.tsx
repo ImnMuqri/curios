@@ -9,7 +9,7 @@ import styles from './enquiry-sheet.module.css';
 type Field = 'message' | 'name' | 'phone';
 
 /**
- * An Ask item's enquiry sheet: the Public board's `.enq` (8 Nov). The item at
+ * An Ask item's enquiry sheet: the deleted Public board's `.enq` (8 Nov). The item at
  * the top, one message box, a name and a WhatsApp number, and Send enquiry.
  * A bottom sheet over the product page; it sends `POST /enquiries/:handle`
  * and hands the result to `onSent`, which takes the customer to the chat.

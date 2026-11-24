@@ -1,5 +1,5 @@
 /*
- * Onboarding, from the design handoff's Onboarding board: four steps on the
+ * Onboarding, from the design handoff's More board: four steps on the
  * left (claim the address, say what the page is for, give it something to
  * read, watch it read), and on the right Peek, one pose per step. The panel
  * is drawing only; it hides under 980px.
@@ -836,7 +836,7 @@
 
 /*
  * ---- The panel: Peek ----
- * From the Onboarding board ("onboarding panel: Peek"): full-body Peek on a
+ * From the deleted Onboarding board ("onboarding panel: Peek"): full-body Peek on a
  * tinted panel, one pose per step, with two lines under it. Drawing only; it
  * hides under 980px. Type sizes are the board's own (22, 15, 14, 30px).
  */

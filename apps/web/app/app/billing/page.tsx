@@ -24,7 +24,7 @@ import { PageHead } from '../_ui/page-head.js';
 import { CountUp } from '../_ui/count-up.js';
 import { NEAR_SHARE } from '../alerts.js';
 
-/** What Business includes, as the Billing board lists it. */
+/** What Business includes, as the Dash board lists it. */
 const INCLUDED = ['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search'];
 
 const PLANS: { plan: BillingPlan; name: string; note: string; period: string; unit: string }[] = [
@@ -116,7 +116,7 @@ function Meter({ label, used, of, share, tone, children }: { label: string; used
 
 /**
  * Where the plan stands, what the month has used, and what has been paid, from
- * the design handoff's Billing board; and the things an owner can do about it:
+ * the design handoff's Dash board; and the things an owner can do about it:
  * pay for more time, or -- once, and only for a page that never paid -- take
  * back a trial they spent testing their own page. A personal page has nothing
  * to pay for, and is offered the switch to business instead.

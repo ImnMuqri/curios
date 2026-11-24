@@ -32,7 +32,7 @@ function chipError(failure: unknown): string {
 }
 
 /**
- * "Online payments" (Store board): the owner's own CHIP account. Not connected, it
+ * "Online payments" (Dash board): the owner's own CHIP account. Not connected, it
  * says what CHIP does; connecting, it asks for the Brand ID and live key (CHIP's name for the secret key); connected,
  * it names the brand and offers the RM1 test and Disconnect. The secret key is only
  * ever typed here and sent once; it is never read back, and is cleared once sent.

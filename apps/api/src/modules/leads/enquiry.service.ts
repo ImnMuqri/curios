@@ -47,7 +47,7 @@ export class AlreadyEnquiredError extends Error {
 
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-/** How the enquiry reads in the conversation, and so in Leads and the owner's email: the Leads board's own words. */
+/** How the enquiry reads in the conversation, and so in Leads and the owner's email: the Dash board's own words. */
 export function enquiryMessage(itemName: string, message: string): string {
   return `Enquiry from the shop: ${itemName}. ${message}`;
 }

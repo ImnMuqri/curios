@@ -28,7 +28,7 @@ function sameWay(choice: OnlineChoice | null, chipMethods: string[] | null): Onl
 
 /**
  * The full page when the customer comes back from CHIP and the payment did not go
- * through (Public board, `payfail`): nothing was taken, the order is held, and the two
+ * through (deleted Public board, `payfail`): nothing was taken, the order is held, and the two
  * ways on. "Pay again" starts a new purchase on this order with the way it was tried, in
  * one click, or, when that way is unknown or no longer offered, opens RetryPay's picker;
  * "Pay another way" gives the order's lines back to the basket, cancels the order and goes

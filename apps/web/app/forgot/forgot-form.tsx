@@ -9,7 +9,7 @@ import { apiFetch } from '../../lib/api.js';
 const looksLikeEmail = (email: string) => /.+@.+\..+/.test(email);
 
 /**
- * Forgot password, and the email-sent screen after it, from the System board.
+ * Forgot password, and the email-sent screen after it, from the Site board.
  *
  * The sent screen reads the same whether or not the address has an account
  * with a password -- the API's response is identical in both cases, and this

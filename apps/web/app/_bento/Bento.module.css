@@ -432,7 +432,7 @@
   overflow-wrap: anywhere;
 }
 
-/* The shop is the first link: the accent pill from the Public board (.sp-link, .sp-in, .sp-ph). */
+/* The shop is the first link: the accent pill from the deleted Public board (.sp-link, .sp-in, .sp-ph). */
 .shopLink {
   display: block;
   padding: 5px;

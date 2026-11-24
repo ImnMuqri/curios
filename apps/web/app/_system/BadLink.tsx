@@ -2,7 +2,7 @@ import { SystemCard, SystemShell, systemStyles as styles } from './SystemShell.j
 import { BrokenLinkArt } from './art.js';
 
 /**
- * "That link doesn't work", from the System board: a reset link that is cut
+ * "That link doesn't work", from the Site board: a reset link that is cut
  * short, too old, already used or never ours. `kind` says which email it came
  * from, because what to ask for next differs: a reset link sends the owner for
  * a new one, a confirmation link back to sign in, where an unconfirmed address

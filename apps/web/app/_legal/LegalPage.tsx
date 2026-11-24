@@ -36,7 +36,7 @@ export function legalMetadata(doc: LegalDoc, locale: Locale): Metadata {
 
 /**
  * The Terms, Privacy, Refund and Return pages, in either language. No board draws
- * them (DEVIATIONS 137): the System board's paper and wordmark, with one
+ * them (DEVIATIONS 137): the Site board's paper and wordmark, with one
  * readable column of text instead of a centred card.
  *
  * `plan` is the prices and free counts in force, read by the page

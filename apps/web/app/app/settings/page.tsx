@@ -18,7 +18,7 @@ import { avatarUrl } from '../../../lib/avatar-url.js';
 import styles from './settings.module.css';
 
 /**
- * The account and the page, from the design handoff's Settings board: the
+ * The account and the page, from the design handoff's Dash board: the
  * page's address and kind, the ways to sign in, signing out, and which emails
  * a business page gets. Also the
  * redirect target a successful and a failed Google link both land on (C2,

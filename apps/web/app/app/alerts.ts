@@ -3,7 +3,7 @@ import { BANNER_ALERT_ID, SUSPENDED_ALERT_ID } from './alert-ids.js';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
 /**
- * One of the dashboard's stop states, from the design handoff's Alerts board,
+ * One of the dashboard's stop states, from the design handoff's deleted Alerts board,
  * as plain data for the banner under a screen's header.
  *
  * - `tone`: info (blue) and warn (amber) can be dismissed, stop (red,

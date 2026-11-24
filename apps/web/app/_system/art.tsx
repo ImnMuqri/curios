@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import styles from './system.module.css';
 
 /*
- * The System board's drawings, one per screen, at the board's coordinates.
+ * The Site board's drawings, one per screen, at the board's coordinates.
  * Colours are classes in system.module.css, so they come from the tokens.
  */
 

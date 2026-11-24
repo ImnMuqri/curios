@@ -9,7 +9,7 @@ export const UNAVAILABLE_METADATA: Metadata = { title: 'Unavailable · Curios', 
 
 /**
  * What a visitor sees at any address of a suspended page, in the page's own
- * language: the System board's shell, one line, a way out. The reason is the
+ * language: the Site board's shell, one line, a way out. The reason is the
  * owner's to read, never the visitor's.
  */
 export function UnavailableScreen({ language }: { language: string }) {
