@@ -333,7 +333,7 @@ function Zone1({ d, picked }: { d: LandsSideCopy; picked: number | null }) {
 function Ping() {
   return (
     <svg className={styles.pngI} viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="var(--biru)" />
+      <rect width="32" height="32" rx="8" fill="var(--sky)" />
       <ellipse cx="10.8" cy="16" rx="4.9" ry="5.8" fill="white" />
       <ellipse cx="21.2" cy="16" rx="4.9" ry="5.8" fill="white" />
       <circle cx="11.7" cy="17.2" r="2.9" fill="var(--light-ink)" />

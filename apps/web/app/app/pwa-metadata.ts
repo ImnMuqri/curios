@@ -11,4 +11,4 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: 'Curios', statusBarStyle: 'default' },
 };
 
-export const viewport: Viewport = { themeColor: '#2340c8' };
+export const viewport: Viewport = { themeColor: '#0593c6' };

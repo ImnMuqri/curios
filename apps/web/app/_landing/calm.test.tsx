@@ -35,8 +35,8 @@ describe('the calm page scope', () => {
       ['--paper', '--calm-bg'],
       ['--ink', '--calm-ink'],
       ['--line', '--calm-line'],
-      ['--action', '--calm-ink'],
-      ['--action-fg', '--calm-surface'],
+      ['--action', '--calm-action'],
+      ['--action-fg', '--calm-action-fg'],
     ])
       expect(page).toMatch(new RegExp(`${k}:\\s*var\\(${v}\\)`));
     expect(page).toMatch(/font-family:\s*var\(--font-inter\)/);

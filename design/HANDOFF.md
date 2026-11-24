@@ -45,7 +45,7 @@ app.
   burgundy and serif name in the boards are just the sample owner's theme. Build the themed parts
   from the page's real theme values.
 - **Colours** follow `devDocs/DESIGN.md`:
-  - `--ink` #191F2C, `--paper` #FAFBFC, `--biru` #2340C8 (and its pales #EAF0FF / #DFE8FD)
+  - `--ink` #191F2C, `--paper` #FAFBFC, `--biru` #0479A3 (sky deep: buttons, links, small blue text; pales #E2F4FB / #D3EEF8). Sky #0593C6 is for graphics and large text only (`--sky`); hot pink #D83395 for graphics (`--pink`), #C42683 for small pink text and badges (`--pink-deep`). Pages are white #FCFFFF with cool greys (24 Nov rebrand). The owner's own accent (default #2340C8) is unchanged.
   - `--kuning` #F2A33C, for money and attention only
   - `--merah` #D8452F, for errors and stops only
   - The green used for WhatsApp and paid states is #1D6F5F, with #E8F3EF as its pale.

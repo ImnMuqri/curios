@@ -23,7 +23,7 @@
   background: var(--calm-surface);
   box-shadow:
     0 0 0 1px var(--calm-line),
-    0 30px 50px -34px rgba(40, 30, 10, 0.4);
+    0 30px 50px -34px rgba(6, 40, 58, 0.4);
   font-family: var(--cl-mono);
   font-size: 13.5px;
   clip-path: inset(0 0 100% 0);

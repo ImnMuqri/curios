@@ -23,14 +23,14 @@
   --edge: var(--calm-ring);
   --ground: var(--calm-bg);
   --nav-on: var(--calm-surface);
-  --action: var(--calm-ink);
-  --action-fg: var(--calm-surface);
-  --action-hover: var(--calm-ink-deep);
+  --action: var(--calm-action);
+  --action-fg: var(--calm-action-fg);
+  --action-hover: var(--calm-action-hover);
   --font-display: var(--font-bricolage), system-ui, sans-serif;
   /* Inter for everything read in the calm app; a preview island keeps the owner page's own (Bento sets it). */
   --font-body: var(--font-inter), system-ui, sans-serif;
-  /* Biru, a step deeper: text on biru-muda, 11:1. */
-  --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--ink));
+  /* Biru, a step deeper: the hover and pressed shade, and text on biru-muda. Derived from the frame's own biru, so dark mode lightens it. */
+  --biru-deep: color-mix(in srgb, var(--biru) 88%, var(--ink));
   --soft: var(--ink-soft);
   --radius: 10px;
   --radius-inner: 7px;
@@ -170,7 +170,7 @@
   width: 300px;
   max-width: calc(100vw / var(--page-zoom, 1) - 32px);
   padding: 8px;
-  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgb(40 30 10 / 45%);
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgb(6 40 58 / 45%);
 }
 
 .nav {
@@ -507,7 +507,7 @@
   max-height: calc(100vh / var(--page-zoom, 1) - 90px);
   overflow: auto;
   padding: 8px;
-  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px var(--soft-shadow, rgb(40 30 10 / 45%));
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px var(--soft-shadow, rgb(6 40 58 / 45%));
   transform-origin: 90% 0;
 }
 
@@ -754,6 +754,9 @@
     --biru-ring: var(--dark-biru-ring);
     --biru-ink: var(--dark-biru-ink);
     --biru-lembut: var(--dark-biru-lembut);
+    --pink-deep: var(--dark-pink-deep);
+    --pink-muda: var(--dark-pink-muda);
+    --pink-ink: var(--dark-pink-ink);
     --hijau: var(--dark-hijau);
     --hijau-muda: var(--dark-hijau-muda);
     --hijau-line: var(--dark-hijau-line);
@@ -788,9 +791,11 @@
     --nav-on: var(--calm-dark-surface);
     --pick: var(--dark-pick);
     --chat: var(--dark-chat);
-    --action: var(--calm-dark-ink);
-    --action-fg: var(--calm-dark-bg);
-    --action-hover: var(--calm-dark-ink-deep);
+    --action: var(--calm-dark-action);
+    --action-fg: var(--calm-dark-action-fg);
+    --action-hover: var(--calm-dark-action-hover);
+    --select: var(--calm-dark-ink);
+    --select-fg: var(--calm-dark-bg);
     /* The status tags keep their hue on dark fills, with lighter inks (ruling R5), for anything that reads them; and the badge (R6). */
     --tag-ok: var(--calm-dark-tag-ok);
     --tag-ok-ink: var(--calm-dark-tag-ok-ink);
@@ -837,6 +842,9 @@
   --biru-ring: var(--dark-biru-ring);
   --biru-ink: var(--dark-biru-ink);
   --biru-lembut: var(--dark-biru-lembut);
+  --pink-deep: var(--dark-pink-deep);
+  --pink-muda: var(--dark-pink-muda);
+  --pink-ink: var(--dark-pink-ink);
   --hijau: var(--dark-hijau);
   --hijau-muda: var(--dark-hijau-muda);
   --hijau-line: var(--dark-hijau-line);
@@ -871,9 +879,11 @@
   --nav-on: var(--calm-dark-surface);
   --pick: var(--dark-pick);
   --chat: var(--dark-chat);
-  --action: var(--calm-dark-ink);
-  --action-fg: var(--calm-dark-bg);
-  --action-hover: var(--calm-dark-ink-deep);
+  --action: var(--calm-dark-action);
+  --action-fg: var(--calm-dark-action-fg);
+  --action-hover: var(--calm-dark-action-hover);
+  --select: var(--calm-dark-ink);
+  --select-fg: var(--calm-dark-bg);
   /* The status tags keep their hue on dark fills, with lighter inks (ruling R5), for anything that reads them; and the badge (R6). */
   --tag-ok: var(--calm-dark-tag-ok);
   --tag-ok-ink: var(--calm-dark-tag-ok-ink);
@@ -919,6 +929,9 @@
   --biru-ring: var(--light-biru-ring);
   --biru-ink: var(--light-biru-ink);
   --biru-lembut: var(--light-biru-lembut);
+  --pink-deep: var(--light-pink-deep);
+  --pink-muda: var(--light-pink-muda);
+  --pink-ink: var(--light-pink-ink);
   --hijau: var(--light-hijau);
   --hijau-muda: var(--light-hijau-muda);
   --hijau-line: var(--light-hijau-line);
@@ -956,6 +969,8 @@
   --action: var(--light-action);
   --action-fg: var(--light-action-fg);
   --action-hover: var(--light-action-hover);
+  --select: var(--light-select);
+  --select-fg: var(--light-select-fg);
   --tag-ok: var(--light-tag-ok);
   --tag-ok-ink: var(--light-tag-ok-ink);
   --tag-wait: var(--light-tag-wait);
@@ -978,7 +993,7 @@
   --calm-twice: var(--light-calm-twice);
   --calm-twice-ring: var(--light-calm-twice-ring);
   /* What the frame works out from a remapped token is worked out again here, or the island would inherit the frame's result. */
-  --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--light-ink));
+  --biru-deep: color-mix(in srgb, var(--biru) 88%, var(--light-ink));
   --button-secondary-bg: var(--light-card);
   --button-secondary-border: var(--light-edge);
   --field-label-color: var(--light-ink);
@@ -1021,7 +1036,7 @@
     max-width: none;
     max-height: 80vh;
     padding: 8px 8px 14px;
-    box-shadow: 0 0 0 1px var(--line), 0 -20px 50px -30px var(--soft-shadow, rgb(40 30 10 / 45%));
+    box-shadow: 0 0 0 1px var(--line), 0 -20px 50px -30px var(--soft-shadow, rgb(6 40 58 / 45%));
     transform-origin: 50% 100%;
   }
 

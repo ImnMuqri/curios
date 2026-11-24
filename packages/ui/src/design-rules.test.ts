@@ -111,7 +111,14 @@ describe('the calm tokens', () => {
   const tags = ['ok', 'wait', 'new', 'red'].flatMap((t) => [`tag-${t}`, `tag-${t}-ink`]);
   const names = [
     ...light.map((n) => `--calm-${n}`),
-    ...light.map((n) => `--calm-dark-${n}`),
+    // The dark twin of --calm-ink-deep went with the black button: dark buttons are --calm-dark-action.
+    ...light.filter((n) => n !== 'ink-deep').map((n) => `--calm-dark-${n}`),
+    '--calm-action',
+    '--calm-action-fg',
+    '--calm-action-hover',
+    '--calm-dark-action',
+    '--calm-dark-action-fg',
+    '--calm-dark-action-hover',
     ...tags.map((n) => `--${n}`),
     ...tags.map((n) => `--calm-dark-${n}`),
     '--action',
@@ -197,8 +204,6 @@ describe('the calm rules on the shared pieces', () => {
    * and selector, so a new biru fill has to be argued for here, not slipped in.
    */
   const brandMarks = [
-    // Peek's face on Help's answers: two eyes on a biru disc.
-    'apps/web/app/app/help/help.module.css: .mark',
     // Happy Peek's art panel on the paid page, drawn on his biru-muda.
     "apps/web/app/app/billing/result.module.css: .art[data-tone='ok']",
   ];

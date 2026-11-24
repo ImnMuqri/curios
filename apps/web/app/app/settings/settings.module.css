@@ -312,8 +312,8 @@
 }
 
 .inp:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 /* ---- The password, opened under its row ---- */
@@ -360,7 +360,7 @@
 }
 
 .meter[data-level='3'] i:nth-child(-n + 3) {
-  background: var(--action);
+  background: var(--select);
 }
 
 .meter[data-level='4'] i {
@@ -395,7 +395,7 @@
 }
 
 .switch[aria-checked='true'] {
-  background: var(--action);
+  background: var(--select);
 }
 
 .switch i {
@@ -412,7 +412,7 @@
 
 .switch[aria-checked='true'] i {
   transform: translateX(16px);
-  background: var(--action-fg);
+  background: var(--select-fg);
 }
 
 .switch:disabled {

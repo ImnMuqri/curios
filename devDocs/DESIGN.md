@@ -24,23 +24,33 @@ communicating.
 
 ```
 --ink        #191F2C   near-black with biru in it. text, dark surfaces.
---paper      #FAFBFC   cool white. never cream.
+--paper      #FAFBFC   cool white. never cream. (the calm pages sit on #FCFFFF)
 --surface    #F0F1F4   cards, resting links.
---biru       #2340C8   primary. actions, the ask bar, the owner's voice.
---biru-muda  #EAF0FF   biru, pale. quiet emphasis.
+--biru       #0479A3   sky deep. buttons (white text), links, small blue text. hover #046C92.
+--biru-muda  #E2F4FB   pale sky. quiet emphasis, the selected sidebar item (ink #035A7A).
+--sky        #0593C6   graphics and large text only: Peek, the mark, icons, dots, bars. ~3.4:1 on white.
+--sky-light  #5CC6EC   sky for dark mode, and Peek's shine.
+--pink       #D83395   hot pink. accents and graphics.
+--pink-deep  #C42683   small pink text and badges (count badges, the bell). pale #FCE6F2, ink #AE1E74.
 --kuning     #F2A33C   lead capture, unanswered questions. money and attention only.
 --merah      #D8452F   destructive and errors. nothing else.
 --muted      #696E7B   secondary text. minimum size 12px.
 ```
 
-*Amended 2026-10-03: hijau to biru.* The primary is now biru enamel, the cobalt of old
-enamel shop signs and kopitiam cups; green is what every AI-made palette reaches for.
-`--biru` is the brand and is never adjusted. Every neutral is derived from it in OKLCH:
-the old ramp's lightness and chroma, turned to biru's hue (267), so the greys belong to
-the blue. `--muted` sits one step darker than that so it clears 4.5:1 on `--surface`
-(the green-era muted did not). Contrast: paper on biru 7.7:1, biru on biru-muda 7.0:1,
-ink on kuning 7.9:1. Known short: `--merah` on paper is 4.2:1, so small error text
-needs an icon or ink beside it. Hijau stays one of the owner accent presets.
+*Amended 2026-10-03: hijau to biru.* *Amended 2026-11-24: the rebrand to sky and hot pink.*
+The brand is now sky blue and hot pink (the 24 Nov boards). The token names keep their old
+spelling (`--biru` is sky deep) so nothing had to be renamed. Sky `#0593C6` is about 3.4:1 on
+white, so it never carries small text or a button with white text: those take `--biru`
+`#0479A3` (white on it 4.9:1). Pink works the same way: `--pink` for graphics, `--pink-deep`
+for small text and badges. The page is white `#FCFFFF` (the dashboard's own ground is
+`#FFFFFF` with soft `#E8F4F9` and line `#DDEDF4`), and every grey is cool, tinted toward
+sky instead of warm. In the dashboard's dark mode buttons are sky `#0593C6` with ink
+`#04212E`, the selected nav is `#0D2F3D` with `#5CC6EC` icons, and counts read `#F07BBF`.
+The seller's own accent is a separate matter and does not change: `#2340C8` stays the
+default accent and the BIRU preset. `--muted` clears 4.5:1 on `--surface`. Known short:
+`--merah` on paper is 4.2:1, so small error text needs an icon or ink beside it. Hijau stays
+one of the owner accent presets. (Attention states, `--kuning`, are still amber and move to
+pink in a later step.)
 
 Two accents, and each owns exactly one job. `kuning` means *a human needs to act*.
 If it shows up anywhere decorative, delete it.

@@ -13,9 +13,9 @@
   --card: var(--light-card);
   --ink: var(--light-ink);
   /* The calm action pill, light like the rest of the page whatever the frame's theme. */
-  --action: var(--calm-ink);
-  --action-fg: var(--calm-surface);
-  --action-hover: var(--calm-ink-deep);
+  --action: var(--calm-action);
+  --action-fg: var(--calm-action-fg);
+  --action-hover: var(--calm-action-hover);
   --l-wordmark: 18px;
 }
 

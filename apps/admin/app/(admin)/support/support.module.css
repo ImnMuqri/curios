@@ -141,7 +141,7 @@
   background: #fafbfc;
 }
 .item[aria-current='true'] {
-  background: #f3f6ff;
+  background: #f0f9fc;
 }
 .who {
   display: flex;
@@ -322,7 +322,7 @@
 .msg[data-dir='out'] {
   margin-left: 48px;
   border-color: #dfe5fb;
-  background: #f6f8ff;
+  background: #f3fafd;
 }
 .from {
   display: flex;

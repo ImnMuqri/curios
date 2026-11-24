@@ -68,7 +68,7 @@
 
 .headLink:focus-visible,
 .darkPill:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -223,7 +223,7 @@ a.receipt:hover {
 }
 
 .receipt:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -498,7 +498,7 @@ a.receipt:hover {
 
 .primary:focus-visible,
 .whatsapp:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -650,7 +650,7 @@ a.receipt:hover {
 
 .sentBtn:focus-visible,
 .sentResend:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 

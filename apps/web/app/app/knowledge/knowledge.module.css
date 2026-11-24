@@ -145,7 +145,7 @@
 
 .tab[aria-current='page'] .tabCount {
   background: var(--biru-muda);
-  color: var(--biru);
+  color: var(--biru-ink);
 }
 
 .wrap {
@@ -257,8 +257,8 @@
 }
 
 .inp:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 /* An icon button that shows on a row's hover, and always on touch. */
@@ -374,8 +374,8 @@
 }
 
 .search:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .search svg {
@@ -490,7 +490,7 @@
 }
 
 .chip[data-kind='HOURS'] {
-  --dot: var(--biru);
+  --dot: var(--sky);
 }
 
 .chip[data-kind='LOCATION'] {
@@ -598,9 +598,9 @@
   min-width: 0;
   height: 38px;
   padding: 0 12px;
-  border: 1.5px solid var(--biru);
+  border: 1.5px solid var(--sky);
   border-radius: 9px;
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
   font: inherit;
   color: var(--ink);
   outline: none;
@@ -787,7 +787,7 @@
 .addSrc {
   margin-bottom: 12px;
   padding: 16px;
-  border: 1.5px solid var(--biru);
+  border: 1.5px solid var(--sky);
   border-radius: 10px;
   background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
   animation: fadeUp 300ms ease both;
@@ -846,8 +846,8 @@
 }
 
 .addSrc textarea:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .drop {
@@ -865,7 +865,7 @@
 }
 
 .drop[data-dragging] {
-  border-color: var(--biru);
+  border-color: var(--sky);
 }
 
 .drop input {
@@ -876,8 +876,8 @@
 }
 
 .drop:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .drop b {
@@ -1011,7 +1011,7 @@
 .scan {
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 30%, rgb(35 64 200 / 8%) 50%, transparent 70%);
+  background: linear-gradient(100deg, transparent 30%, rgb(5 147 198 / 8%) 50%, transparent 70%);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
   pointer-events: none;
@@ -1029,7 +1029,7 @@
 .sprog i {
   position: absolute;
   inset: 0 auto 0 0;
-  background: var(--action);
+  background: var(--select);
   transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -1121,9 +1121,9 @@
   min-height: 90px;
   margin-top: 6px;
   padding: 10px 12px;
-  border: 1.5px solid var(--biru);
+  border: 1.5px solid var(--sky);
   border-radius: 10px;
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
   font: inherit;
   font-size: 14px;
   line-height: 1.5;
@@ -1417,7 +1417,7 @@
 }
 
 .sugg button:hover:not(:disabled) {
-  border-color: var(--biru);
+  border-color: var(--sky);
   background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
 }
 
@@ -1433,8 +1433,8 @@
 }
 
 .tin:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .tin input {

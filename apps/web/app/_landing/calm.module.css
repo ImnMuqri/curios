@@ -13,9 +13,9 @@
   --line: var(--calm-line);
   --surface: var(--calm-soft);
   --edge: var(--calm-ring);
-  --action: var(--calm-ink);
-  --action-fg: var(--calm-surface);
-  --action-hover: var(--calm-ink-deep);
+  --action: var(--calm-action);
+  --action-fg: var(--calm-action-fg);
+  --action-hover: var(--calm-action-hover);
   --cl-mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
   position: relative;
   min-height: calc(100vh / var(--page-zoom, 1));
@@ -162,12 +162,12 @@
 }
 
 .dark {
-  background: var(--calm-ink);
-  color: var(--calm-surface);
+  background: var(--calm-action);
+  color: var(--calm-action-fg);
 }
 
 .dark:hover {
-  background: var(--calm-ink-deep);
+  background: var(--calm-action-hover);
   transform: translateY(-1px);
   box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.45);
 }

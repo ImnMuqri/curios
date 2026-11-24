@@ -117,7 +117,7 @@
 }
 
 .step:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: -2px;
 }
 
@@ -296,7 +296,7 @@
 }
 
 .itemText:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
   border-radius: 6px;
 }
@@ -435,7 +435,7 @@
 }
 
 .photo:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -520,12 +520,12 @@
 
 .smallPhoto:hover:not(:disabled),
 .addPhoto:hover:not(:disabled) {
-  outline: 2px solid color-mix(in oklch, var(--biru) 45%, transparent);
+  outline: 2px solid color-mix(in oklch, var(--sky) 45%, transparent);
 }
 
 .smallPhoto:focus-visible,
 .addPhoto:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -613,7 +613,7 @@
 }
 
 .pricedBy button:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: -2px;
   border-radius: 8px;
 }
@@ -632,8 +632,8 @@
 }
 
 .money:focus-within {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .money > span {
@@ -683,8 +683,8 @@
 }
 
 .option .optionName:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 /* What customers will see, or what is wrong: said as the owner types. */
@@ -983,7 +983,7 @@
   overflow: hidden;
   border-radius: 8px;
   background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 12px 24px -16px rgb(35 64 200 / 40%);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 24px -16px rgb(5 147 198 / 40%);
 }
 
 .qrBox img {
@@ -999,8 +999,8 @@
   right: 0;
   left: 0;
   height: 16px;
-  border-bottom: 1.5px solid var(--biru);
-  background: linear-gradient(to bottom, transparent, rgb(35 64 200 / 18%) 70%, rgb(35 64 200 / 60%) 100%);
+  border-bottom: 1.5px solid var(--sky);
+  background: linear-gradient(to bottom, transparent, rgb(5 147 198 / 18%) 70%, rgb(5 147 198 / 60%) 100%);
   animation: scan 2.6s cubic-bezier(0.65, 0, 0.35, 1) infinite alternate;
 }
 
@@ -1069,7 +1069,7 @@
 }
 
 .drop:hover:not(:disabled) {
-  border-color: var(--biru);
+  border-color: var(--sky);
   background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
   color: var(--biru);
 }
@@ -1374,8 +1374,8 @@
 }
 
 .day[data-when='first'] {
-  background: var(--action);
-  color: var(--action-fg);
+  background: var(--select);
+  color: var(--select-fg);
   transform: scale(1.06);
 }
 
@@ -1418,7 +1418,7 @@
 }
 
 .weekday:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -1667,7 +1667,7 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--action);
+  background: var(--select);
   transition: width 160ms ease;
 }
 
@@ -1749,8 +1749,8 @@
 }
 
 .dgSlot input:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .dgSlot input:disabled {
@@ -1936,8 +1936,8 @@
 
 .vSelect:focus,
 .vDate:focus {
-  border-color: var(--biru);
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
 }
 
 .codeInput {

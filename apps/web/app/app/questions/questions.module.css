@@ -94,7 +94,7 @@
 .tools button:focus-visible,
 .pickSelect:focus-visible,
 .renameInput:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -176,7 +176,7 @@
 }
 
 .in:focus-within {
-  box-shadow: inset 0 0 0 1.5px var(--biru);
+  box-shadow: inset 0 0 0 1.5px var(--sky);
 }
 
 .in textarea {
@@ -445,7 +445,7 @@
 
 .answerField:focus {
   outline: none;
-  box-shadow: inset 0 0 0 1.5px var(--biru);
+  box-shadow: inset 0 0 0 1.5px var(--sky);
 }
 
 .answerField::placeholder {
@@ -498,7 +498,7 @@
 }
 
 .pick:focus-visible {
-  outline: 2px solid var(--biru);
+  outline: 2px solid var(--sky);
   outline-offset: 2px;
 }
 
@@ -596,7 +596,7 @@
 }
 
 .pickSelect:focus {
-  box-shadow: inset 0 0 0 1.5px var(--biru);
+  box-shadow: inset 0 0 0 1.5px var(--sky);
 }
 
 .pickField::after {
@@ -649,7 +649,7 @@
 
 .renameInput:focus {
   outline: none;
-  box-shadow: inset 0 0 0 1.5px var(--biru);
+  box-shadow: inset 0 0 0 1.5px var(--sky);
 }
 
 /* The board's save: eight sparks fly off the button, and the answer types itself in. */

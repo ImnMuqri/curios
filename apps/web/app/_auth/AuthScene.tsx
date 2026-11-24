@@ -69,9 +69,9 @@ export function AuthScene({ scene, handle = '' }: { scene: 'signin' | 'signup'; 
                   <rect x="106" y="90" width="30" height="46" rx="6" fill="var(--ink)" />
                   <rect x="109" y="95" width="24" height="36" rx="3" fill="var(--paper)" />
                   <rect x="112" y="99" width="14" height="5" rx="2.5" fill="var(--biru-ring)" />
-                  <rect x="116" y="107" width="14" height="5" rx="2.5" fill="var(--biru)" />
+                  <rect x="116" y="107" width="14" height="5" rx="2.5" fill="var(--sky)" />
                   <rect x="112" y="115" width="11" height="5" rx="2.5" fill="var(--biru-ring)" />
-                  <rect x="116" y="123" width="14" height="5" rx="2.5" fill="var(--biru)" />
+                  <rect x="116" y="123" width="14" height="5" rx="2.5" fill="var(--sky)" />
                 </g>
                 <g className={styles.tap}>
                   <circle cx="105" cy="124" r="9.5" fill="var(--peek-hand)" stroke="var(--peek-edge)" strokeWidth="1.5" />

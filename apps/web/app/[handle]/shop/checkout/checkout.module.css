@@ -676,7 +676,7 @@
 }
 
 .burst span:nth-child(4n + 2) {
-  background: var(--biru);
+  background: var(--public-blue);
 }
 
 .burst span:nth-child(4n + 3) {
@@ -884,8 +884,8 @@
 }
 
 .marks .markFpx {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
+  background: var(--mark-fpx);
+  color: var(--mark-fpx-ink);
 }
 
 .marks .markTng {

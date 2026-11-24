@@ -9,8 +9,8 @@
 export const BRAND = {
   ink: '#191f2c',
   paper: '#fafbfc',
-  biru: '#2340c8',
-  biruMuda: '#eaf0ff',
+  biru: '#0479a3',
+  biruMuda: '#e2f4fb',
   kuning: '#f2a33c',
   card: '#ffffff',
   muted: '#696e7b',

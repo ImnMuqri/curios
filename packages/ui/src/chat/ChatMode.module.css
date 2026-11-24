@@ -194,7 +194,7 @@
   align-self: stretch;
   font-family: var(--font-body);
   /* Thinking's o, while the first word is on its way: the colour of the dot beside the label. */
-  --mo-ring: var(--accent-mark, var(--accent, var(--biru)));
+  --mo-ring: var(--accent-mark, var(--accent, var(--sky)));
 }
 
 /* The dot is the page's accent (its text colour where the accent would vanish: --accent-mark); the words are 75% of the page's text colour. */
@@ -206,7 +206,7 @@
   font-weight: 600;
   line-height: 22px;
   color: color-mix(in srgb, var(--page-fg, var(--ink)) 75%, transparent);
-  background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--biru))) 10.5px, transparent 11px) no-repeat;
+  background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--sky))) 10.5px, transparent 11px) no-repeat;
 }
 
 /* The product card: the Public board's .sp-pc. */
@@ -341,8 +341,8 @@
 }
 
 .orderPill[data-tone='check'] {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
+  background: var(--order-check);
+  color: var(--order-check-ink);
 }
 
 .orderPill[data-tone='ok'] {

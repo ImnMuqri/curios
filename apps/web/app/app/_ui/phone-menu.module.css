@@ -68,7 +68,7 @@
   box-shadow:
     0 0 0 1px color-mix(in srgb, var(--ink) 6%, transparent),
     0 1px 0 color-mix(in srgb, var(--card) 90%, transparent) inset,
-    0 16px 34px -16px rgb(40 30 10 / 38%);
+    0 16px 34px -16px rgb(6 40 58 / 38%);
 }
 
 /*
@@ -84,7 +84,7 @@
   width: max(38px, calc(var(--pill-r) - var(--pill-l)));
   height: 48px;
   border-radius: var(--r-pill);
-  background: var(--action);
+  background: var(--select);
   transform: translateX(var(--pill-l));
 }
 
@@ -122,12 +122,12 @@
 }
 
 .tab[data-on] {
-  color: var(--action-fg);
+  color: var(--select-fg);
 }
 
 /* Until the pill is placed (before the script runs), the tab you are on carries the black itself. */
 .dock:not([data-ready]) .tab[data-on] {
-  background: var(--action);
+  background: var(--select);
 }
 
 .tab:focus-visible {
@@ -217,7 +217,7 @@
 }
 
 .tab[data-on] .badge {
-  box-shadow: 0 0 0 2px var(--action);
+  box-shadow: 0 0 0 2px var(--select);
 }
 
 /* Something inside More needs the owner (a count on Leads, Review or Facts & sources, or Billing's dot): a dot, not a sum, ringed like the counts (owner, 2026-11-18). */
@@ -233,7 +233,7 @@
 }
 
 .tab[data-on] .moreDot {
-  box-shadow: 0 0 0 2px var(--action);
+  box-shadow: 0 0 0 2px var(--select);
 }
 
 /* ---- More's sheet (the board's .dscrim and .dsheet) ---- */
@@ -259,7 +259,7 @@
   padding: 8px;
   border-radius: var(--r-box);
   background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgb(40 30 10 / 50%);
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -30px rgb(6 40 58 / 50%);
   transform: translateX(-50%);
   transform-origin: 80% 100%;
 }

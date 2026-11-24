@@ -730,7 +730,7 @@ describe("a phone's menu", () => {
     expect(dot).toMatch(/background:\s*var\(--badge\);/);
     expect(dot).toMatch(/box-shadow:\s*0 0 0 2px var\(--card\);/);
     expect(dot).toMatch(/border-radius:\s*50%;/);
-    expect(css).toMatch(/\.tab\[data-on\] \.moreDot\s*\{[^}]*box-shadow:\s*0 0 0 2px var\(--action\);/);
+    expect(css).toMatch(/\.tab\[data-on\] \.moreDot\s*\{[^}]*box-shadow:\s*0 0 0 2px var\(--select\);/);
   });
 
   it('stays while More is open, and near the top of the page', () => {

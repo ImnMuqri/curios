@@ -157,7 +157,7 @@
 }
 
 .pbar > i[data-state='now'] {
-  background: var(--action);
+  background: var(--select);
 }
 
 /* Past a couple of dozen facts: one bar, accepted then rejected. */
@@ -344,9 +344,9 @@
   width: 100%;
   height: 110px;
   padding: 12px 14px;
-  border: 1.5px solid var(--biru);
+  border: 1.5px solid var(--sky);
   border-radius: 10px;
-  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
   resize: none;
   font: inherit;
   font-size: 17px;

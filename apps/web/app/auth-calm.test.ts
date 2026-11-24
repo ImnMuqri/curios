@@ -25,9 +25,9 @@ const calm = {
   '--edge': 'var(--calm-ring)',
   '--ground': 'var(--calm-bg)',
   '--nav-on': 'var(--calm-surface)',
-  '--action': 'var(--calm-ink)',
-  '--action-fg': 'var(--calm-surface)',
-  '--action-hover': 'var(--calm-ink-deep)',
+  '--action': 'var(--calm-action)',
+  '--action-fg': 'var(--calm-action-fg)',
+  '--action-hover': 'var(--calm-action-hover)',
 };
 
 // The screens outside the dashboard: sign in and sign up (.auth), onboarding (.ob), and forgot, reset
@@ -45,7 +45,7 @@ describe('the auth screens take the calm tokens', () => {
       const body = rule(css, selector);
       for (const [name, value] of Object.entries(calm)) expect(body[name], name).toBe(value);
       expect(css).toMatch(/--paper:\s*var\(--calm-bg\)/);
-      expect(css).toMatch(/--action:\s*var\(--calm-ink\)/);
+      expect(css).toMatch(/--action:\s*var\(--calm-action\)/);
       expect(css).not.toMatch(/--calm-dark-/);
     });
   }

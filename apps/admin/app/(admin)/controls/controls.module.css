@@ -118,7 +118,7 @@
 }
 .sw:focus-visible,
 .text:focus-visible {
-  outline: 2px solid #2340c8;
+  outline: 2px solid #0593c6;
   outline-offset: 2px;
 }
 
@@ -139,7 +139,7 @@
   text-align: right;
 }
 .in input:focus {
-  outline: 2px solid #2340c8;
+  outline: 2px solid #0593c6;
   outline-offset: -1px;
   border-color: transparent;
 }
@@ -218,8 +218,8 @@
   margin: 10px 0 0;
   padding: 10px 12px;
   border-radius: 8px;
-  background: #f6f8ff;
-  color: #122686;
+  background: #f3fafd;
+  color: #035a7a;
   font-size: 12.5px;
 }
 .err {
@@ -247,8 +247,8 @@
   margin: -6px 0 14px;
   padding: 10px 12px 10px 28px;
   border-radius: 8px;
-  background: #f6f8ff;
-  color: #122686;
+  background: #f3fafd;
+  color: #035a7a;
   font-size: 13px;
 }
 .changes li + li {

@@ -65,7 +65,7 @@
 }
 
 .pill[data-tone='check'] {
-  --dot: var(--biru);
+  --dot: var(--public-blue);
 }
 
 .pill[data-tone='ok'] {
@@ -530,11 +530,11 @@
 
 /* A payment in flight at CHIP: the sent box's shape, in the quiet blue of "checking". */
 .upload.checking {
-  background: var(--biru-muda);
+  background: var(--order-check);
 }
 
 .upload.checking svg {
-  stroke: var(--biru-ink);
+  stroke: var(--order-check-ink);
 }
 
 /* "Your downloads and access" and its locked note (Public board, the dgo pieces). */

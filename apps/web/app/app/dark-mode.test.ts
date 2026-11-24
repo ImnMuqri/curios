@@ -32,9 +32,9 @@ const calmLight: Record<string, string> = {
   '--edge': 'var(--calm-ring)',
   '--ground': 'var(--calm-bg)',
   '--nav-on': 'var(--calm-surface)',
-  '--action': 'var(--calm-ink)',
-  '--action-fg': 'var(--calm-surface)',
-  '--action-hover': 'var(--calm-ink-deep)',
+  '--action': 'var(--calm-action)',
+  '--action-fg': 'var(--calm-action-fg)',
+  '--action-hover': 'var(--calm-action-hover)',
 };
 const calmDark: Record<string, string> = {
   '--paper': '--calm-dark-bg',
@@ -49,9 +49,11 @@ const calmDark: Record<string, string> = {
   '--edge': '--calm-dark-ring',
   '--ground': '--calm-dark-bg',
   '--nav-on': '--calm-dark-surface',
-  '--action': '--calm-dark-ink',
-  '--action-fg': '--calm-dark-bg',
-  '--action-hover': '--calm-dark-ink-deep',
+  '--action': '--calm-dark-action',
+  '--action-fg': '--calm-dark-action-fg',
+  '--action-hover': '--calm-dark-action-hover',
+  '--select': '--calm-dark-ink',
+  '--select-fg': '--calm-dark-bg',
   // The status tags keep their hue on dark fills, with lighter inks (rulings R5); the badge red is a role (R6).
   '--tag-ok': '--calm-dark-tag-ok',
   '--tag-ok-ink': '--calm-dark-tag-ok-ink',
@@ -111,14 +113,14 @@ describe('dashboard dark mode', () => {
     const body = declarations(frame.slice(start, frame.indexOf('\n}\n', start)));
     for (const [name, value] of Object.entries(calmLight)) expect(body[name], name).toBe(value);
     expect(frame).toMatch(/--paper:\s*var\(--calm-bg\)/);
-    expect(frame).toMatch(/--action:\s*var\(--calm-ink\)/);
+    expect(frame).toMatch(/--action:\s*var\(--calm-action\)/);
   });
 
   it('maps the calm dark values in dark mode, and the preview island keeps the owner light', () => {
     expect(darkBlock['--paper']).toBe('var(--calm-dark-bg)');
-    expect(darkBlock['--action']).toBe('var(--calm-dark-ink)');
-    expect(darkBlock['--action-fg']).toBe('var(--calm-dark-bg)');
-    expect(darkBlock['--action-hover']).toBe('var(--calm-dark-ink-deep)');
+    expect(darkBlock['--action']).toBe('var(--calm-dark-action)');
+    expect(darkBlock['--action-fg']).toBe('var(--calm-dark-action-fg)');
+    expect(darkBlock['--action-hover']).toBe('var(--calm-dark-action-hover)');
     expect(islandBlock['--paper']).toBe('var(--light-paper)');
     expect(islandBlock['--ink']).toBe('var(--light-ink)');
     expect(islandBlock['--action']).toBe('var(--light-action)');
@@ -204,13 +206,13 @@ describe('dashboard dark mode', () => {
 
   it('maps the page-phase --calm-* tokens: a dark twin swapped in dark, the light value back in an island', () => {
     const pinned: Record<string, [string, string]> = {
-      pick: ['#f1eee7', '#232321'],
-      'row-hover': ['#fbfaf7', '#1b1b1a'],
+      pick: ['#e2f4fb', '#232321'],
+      'row-hover': ['#f2f9fc', '#1b1b1a'],
       urgent: ['#fdf6e7', '#33291a'],
       'urgent-ring': ['#f1dfb4', '#4d3b1d'],
       'urgent-label': ['#7a4b06', '#f2c46b'],
       'urgent-ink': ['#5c3804', '#f2c46b'],
-      spark: ['#d8d4cb', '#3a3936'],
+      spark: ['#c6dde8', '#3a3936'],
       'spark-today': ['#1d7a4c', '#7fd3a5'],
       danger: ['#b3261e', '#ff8a80'],
       twice: ['#fdf3f2', '#451f28'],
@@ -228,7 +230,7 @@ describe('dashboard dark mode', () => {
       expect(islandBlock[`--calm-${k}`], k).toBe(`var(--light-calm-${k})`);
     }
     // These two are the same in both themes.
-    expect(tokens['--calm-hover-ring']).toBe('#c9c4b8');
-    expect(tokens['--calm-switch-off']).toBe('#8f8b83');
+    expect(tokens['--calm-hover-ring']).toBe('#a8d1e2');
+    expect(tokens['--calm-switch-off']).toBe('#7b8891');
   });
 });
