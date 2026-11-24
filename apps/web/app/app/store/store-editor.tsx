@@ -11,7 +11,7 @@ import { ShopPageView } from '../../[handle]/shop/shop-page.js';
 import { PageHead } from '../_ui/page-head.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
 import { SaveState } from '../_ui/save-state.js';
-import { SaveStatus, useSaveStatus, type SaveTrack } from '../_ui/save-status.js';
+import { usePublishSaveStatus, useSaveStatus, type SaveTrack } from '../_ui/save-status.js';
 import { SectionHead } from '../_ui/section-head.js';
 import { PillTabs } from '../_ui/pill-tabs.js';
 import ui from '../_ui/editor.module.css';
@@ -170,7 +170,8 @@ export function StoreEditor({
   vouchersApi: VouchersApi;
   pickupApi: PickupApi;
 }) {
-  const { state, track } = useSaveStatus();
+  // Opening an item resets a failure left by the main screen (resetItem), so "Not saved" never leaks into an editor.
+  const { state, track, reset: resetItem } = useSaveStatus();
   const settingsApi = useMemo(() => trackedSettings(rawSettings, track), [rawSettings, track]);
   const itemsApi = useMemo(() => trackedItems(rawItems, track), [rawItems, track]);
 
@@ -191,12 +192,16 @@ export function StoreEditor({
   const [tab, setTab] = useState<Tab>(initialTab);
   /** The item open on its own: an id, 'new', or null for the list. */
   const [editing, setEditing] = useState<string | null>(null);
+  // "Saved" shows in the frame's top bar only while an item is open in its editor: the Store's main screen and
+  // its other tabs say nothing there.
+  usePublishSaveStatus(tab === 'items' && editing ? state : null);
   const [draftItem, setDraftItem] = useState<EditorItem | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>(previewFor(initialTab));
   /** A row tapped in the preview's shop: the Item screen shows it, until the owner opens another item. */
   const [picked, setPicked] = useState<string | null>(null);
   const [listError, setListError] = useState('');
   const [openError, setOpenError] = useState('');
+  const [halalError, setHalalError] = useState('');
 
   /** Saves a patch and keeps what the API says the settings now are. */
   const save = async (patch: SettingsPatch) => {
@@ -210,7 +215,14 @@ export function StoreEditor({
   const categories = [...new Set(items.filter((other) => other.id !== editing).map((other) => other.category).filter((value): value is string => Boolean(value)))].sort((a, b) =>
     a.localeCompare(b),
   );
-  const toggleHalal = () => void save({ shopHalal: !settings.shopHalal }).catch(() => undefined);
+  const toggleHalal = async () => {
+    setHalalError('');
+    try {
+      await save({ shopHalal: !settings.shopHalal });
+    } catch (failure) {
+      setHalalError(message(failure));
+    }
+  };
 
   const readiness = { ...settings, paymentQrKey: qr.has ? 'qr' : null, chipConnected: chip.connected, physicalItems: items.some((item) => item.kind !== 'DIGITAL') };
   const bankOk = Boolean(settings.bankName && settings.bankAccountName && settings.bankAccountNumber);
@@ -267,6 +279,7 @@ export function StoreEditor({
   }
 
   function openItem(id: string | null) {
+    resetItem();
     setEditing(id);
     setDraftItem(null);
     setPicked(null);
@@ -325,7 +338,6 @@ export function StoreEditor({
             </>
           }
         >
-          <SaveStatus state={state} />
           <span className={styles.open} data-state={openState}>
             <span className={styles.pulse} aria-hidden="true" />
             <span>{openWords}</span>
@@ -424,10 +436,15 @@ export function StoreEditor({
                       <b>Halal shop</b>
                       <span>{settings.shopHalal ? 'Your shop and its items say halal' : 'Switch on if everything you sell is halal'}</span>
                     </span>
-                    <button type="button" className={ui.switch} role="switch" aria-checked={settings.shopHalal} aria-label="Halal shop" onClick={toggleHalal}>
+                    <button type="button" className={ui.switch} role="switch" aria-checked={settings.shopHalal} aria-label="Halal shop" onClick={() => void toggleHalal()}>
                       <i />
                     </button>
                   </div>
+                  {halalError ? (
+                    <p className={styles.openError} role="alert">
+                      {halalError}
+                    </p>
+                  ) : null}
                 </section>
                 <ItemsList
                   items={items}

@@ -1,0 +1,62 @@
+/* "Saved" in the top bar, just before Help (the Dash board's .tsv, 24 Nov): 13.5px, a cloud with a tick, plain text. */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: -4px;
+  /* Muted, not the board's lighter grey: that is about 3.9:1 on white, this is 5.4:1 (and 7:1 in dark). */
+  color: var(--muted);
+  font-size: 13.5px;
+  font-weight: 400;
+  white-space: nowrap;
+  transition: color 200ms ease;
+}
+
+.status svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status[data-state='failed'] {
+  color: var(--merah-deep);
+}
+
+.spin {
+  transform-origin: 12px 12px;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Under 400px the top bar is crowded (logo, Help, bell, avatar): the icon says it, the words stay for a screen reader. */
+@media (max-width: 399px) {
+  .words {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .status {
+    margin-right: 0;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
+  }
+}

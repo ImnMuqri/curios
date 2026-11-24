@@ -1,7 +1,6 @@
 /*
- * The dashboard's frame (Dashboard v2, 29 Oct 2026): a soft grey ground with the sidebar and the
- * 64px top bar sitting on it, no panel and no border, and the screen on one white sheet whose
- * top-left corner alone is rounded (16px). Inter for everything read (the calm redesign), and biru spent only
+ * The dashboard's frame (Dashboard v2, 29 Oct 2026; the Dash board's 24 Nov frame): one white surface,
+ * with the sidebar, the 56px top bar and the screen all on it and no separate sheet. Inter for everything read (the calm redesign), and biru spent only
  * where you act or where you are. The public page keeps its own fonts.
  *
  * Corners follow the calm rule (--r-pill to click or type into, --r-box for containers) on the shared pieces; the frame's own still read 10px until its restyle. Under
@@ -10,19 +9,26 @@
  */
 .frame {
   /* The calm scope (light): the base tokens take the calm values here, and nowhere a customer sees. A preview island takes the owner's own back, below. */
-  --paper: var(--calm-bg);
+  --paper: var(--calm-surface);
   --card: var(--calm-surface);
-  --surface: var(--calm-soft);
+  --surface: var(--frame-soft);
   --ink: var(--calm-ink);
   --muted: var(--calm-muted);
   /* The old blue-grey text steps, on the calm greys: --faint stays a step fainter than muted. */
   --ink-soft: var(--calm-muted);
   --hint: var(--calm-muted);
   --faint: var(--calm-faint);
-  --line: var(--calm-line);
+  --line: var(--frame-line);
   --edge: var(--calm-ring);
-  --ground: var(--calm-bg);
+  --ground: var(--calm-surface);
   --nav-on: var(--calm-surface);
+  /* The sidebar's states (the board's .nv, .pln, .hp): a hover fill, the soft blue pill of the page you are on, the plan bar. Dark swaps them below. */
+  --side-hover: var(--frame-hover);
+  --side-on: var(--biru-muda);
+  --side-on-ink: var(--biru-ink);
+  --side-on-icon: var(--sky);
+  --side-track: var(--frame-track);
+  --side-fill: var(--sky);
   --action: var(--calm-action);
   --action-fg: var(--calm-action-fg);
   --action-hover: var(--calm-action-hover);
@@ -79,7 +85,7 @@
   white-space: nowrap;
 }
 
-/* ---- Sidebar (the calm Dash board: .side, .who4, .grp, .nv, .pln) ---- */
+/* ---- Sidebar (the Dash board: .side, .who4, .grp, .nv, .pln, .hp) ---- */
 
 .side {
   position: sticky;
@@ -91,7 +97,7 @@
   flex: none;
   width: 248px;
   height: calc(100vh / var(--page-zoom, 1));
-  padding: 22px 14px 18px;
+  padding: 20px 12px 16px;
   border-right: 1px solid var(--line);
 }
 
@@ -99,7 +105,7 @@
   --l-wordmark: 25px;
   display: inline-flex;
   align-self: flex-start;
-  margin: 2px 10px 26px;
+  margin: 4px 12px 22px;
   color: var(--ink);
   text-decoration: none;
 }
@@ -107,34 +113,59 @@
 /* The account card, and the menu it opens just over its foot. */
 .cardSlot {
   flex: none;
-  margin-bottom: 18px;
+  margin-bottom: 10px;
 }
 
+/* No box and no outline: a fill on hover or while its menu is open, and a chevron that turns over. */
 .card {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   width: 100%;
-  padding: 10px;
+  padding: 8px 34px 8px 8px;
   border: 0;
-  border-radius: var(--r-box);
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--line);
+  border-radius: 14px;
+  background: transparent;
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: box-shadow 0.2s ease;
+  transition: background-color 0.2s ease;
+}
+
+.card::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.6px solid var(--muted);
+  border-bottom: 1.6px solid var(--muted);
+  transform: rotate(45deg);
+  transition: transform 0.25s;
+}
+
+.card[aria-expanded='true']::after {
+  margin-top: -1px;
+  transform: rotate(225deg);
 }
 
 .card:hover,
 .card[aria-expanded='true'] {
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--edge) 70%, var(--muted));
+  background: var(--side-hover);
 }
 
 .card:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: 2px;
+}
+
+.card .avatar {
+  width: 36px;
+  height: 36px;
 }
 
 /* A long page name or first name truncates; the card never widens the sidebar. */
@@ -154,12 +185,13 @@
 }
 
 .cardText b {
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
+  line-height: 1.25;
 }
 
 .cardText small {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--muted);
 }
 
@@ -185,14 +217,12 @@
 }
 
 .groupTitle {
-  margin: 16px 10px 6px;
-  font-size: 11.5px;
+  margin: 18px 12px 6px;
+  font-size: 12px;
   font-weight: 600;
-  color: var(--faint);
-}
-
-.group:first-child .groupTitle {
-  margin-top: 0;
+  letter-spacing: 0.01em;
+  /* The board's grey here is about 3.9:1 on white; muted is 5.4:1. */
+  color: var(--muted);
 }
 
 .item {
@@ -200,26 +230,30 @@
   display: flex;
   flex: none;
   align-items: center;
-  gap: 11px;
-  height: 38px;
-  padding: 0 12px;
+  gap: 12px;
+  height: 40px;
+  padding: 0 14px;
   border-radius: var(--r-pill);
   /* The board's nav ink: a step darker than muted, in either theme. */
   color: color-mix(in srgb, var(--muted) 60%, var(--ink));
   font-size: 14.5px;
   text-decoration: none;
-  transition: background-color 120ms ease, color 120ms ease, box-shadow 120ms ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.item + .item {
+  margin-top: 2px;
 }
 
 .item:hover {
-  background: color-mix(in srgb, var(--card) 70%, transparent);
+  background: var(--side-hover);
   color: var(--ink);
 }
 
-/* Where you are: a flat white pill, no hairline or shadow (owner, DEVIATIONS 346). No biru. */
+/* Where you are: a soft blue pill in sky ink, no ring, shadow or coloured edge; its icon in sky. */
 .item[aria-current='page'] {
-  background: var(--nav-on);
-  color: var(--ink);
+  background: var(--side-on);
+  color: var(--side-on-ink);
   font-weight: 600;
 }
 
@@ -235,24 +269,25 @@
 }
 
 .item .icon {
-  color: color-mix(in srgb, var(--muted) 50%, var(--faint));
+  width: 19px;
+  height: 19px;
+  color: var(--muted);
+  transition: color 0.2s ease;
 }
 
 .item[aria-current='page'] .icon {
-  color: var(--ink);
+  color: var(--side-on-icon);
 }
 
-/* What is waiting: a small white chip with a hairline. */
+/* What is waiting: a plain number at the end of the row, in the pink (no chip, no fill). */
 .count {
+  min-width: 22px;
   margin-left: auto;
-  padding: 1px 8px;
-  border-radius: var(--r-pill);
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--line);
-  color: var(--ink);
-  font-size: 12px;
+  color: var(--pink-deep);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
   font-weight: 600;
-  line-height: 1.5;
+  text-align: right;
 }
 
 /* Billing needs the owner: a trial used up, or a plan that ended (Alerts). */
@@ -264,37 +299,37 @@
   background: var(--merah);
 }
 
-/* The plan at the sidebar's foot: its name, how it stands, and a bar. */
+/* The plan at the sidebar's foot: its name, how it stands, and a bar. Still a link to Billing. */
 .plan {
   display: block;
   flex: none;
   margin-top: auto;
-  padding: 14px;
-  border-radius: var(--r-box);
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--line);
+  padding: 14px 14px 15px;
+  border-radius: 16px;
+  background: var(--side-hover);
   color: var(--muted);
-  font-size: 13px;
+  font-size: 12.5px;
   line-height: 1.4;
   text-decoration: none;
 }
 
 .plan b {
   display: block;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--ink);
 }
 
 .plan span {
   display: block;
+  margin-top: 1px;
 }
 
-.planBar {
-  height: 5px;
-  margin-top: 10px;
+.plan .planBar {
+  height: 6px;
+  margin-top: 12px;
   border-radius: 3px;
-  background: var(--surface);
+  background: var(--side-track);
   overflow: hidden;
 }
 
@@ -302,11 +337,45 @@
   display: block;
   height: 100%;
   border-radius: 3px;
-  background: var(--ink);
+  background: var(--side-fill);
+}
+
+/* Help, under the plan: opens the same panel as the top bar's Help, and names its shortcut. */
+.sideHelp {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 40px;
+  margin: 8px 0 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: color-mix(in srgb, var(--muted) 60%, var(--ink));
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.sideHelp:hover {
+  background: var(--side-hover);
+}
+
+.sideHint {
+  padding: 1px 7px;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font: 500 11.5px var(--font-mono, ui-monospace, monospace);
 }
 
 .plan:focus-visible,
-.item:focus-visible {
+.item:focus-visible,
+.sideHelp:focus-visible {
   outline: 2px solid var(--ink);
   outline-offset: -2px;
 }
@@ -341,14 +410,14 @@
   min-height: calc(100vh / var(--page-zoom, 1));
 }
 
-/* The right side: Help and the bell. The account lives in the sidebar's card (the calm Dash board). */
+/* The right side: Saved (on the screens that save), Help and the bell. The account lives in the sidebar's card (the calm Dash board). */
 .top {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 16px;
   flex: none;
-  height: 64px;
+  height: 56px;
   padding: 0 24px 0 32px;
 }
 
@@ -466,22 +535,9 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  /* The same white as the ground in light (one surface, no hairline round it); dark keeps its lifted card. */
   background: var(--card);
-  /* Square, like the rest of the frame (owner, DEVIATIONS 348). */
   border-radius: 0;
-}
-
-/* The sheet's hairline edge, drawn over what the screen paints: an inset shadow on the sheet itself
-   sits under its children's backgrounds, so a full-height side panel (Review, Facts & sources, the
-   phone previews) hid the top line over its own width and the two columns looked unevenly high. */
-.sheet::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  border-radius: inherit;
-  box-shadow: inset 1px 1px 0 var(--line);
-  pointer-events: none;
 }
 
 /* ---- Notifications (the calm Dash board, .nfp): the bell's popover ---- */
@@ -715,10 +771,6 @@
     padding-bottom: 96px;
     border-radius: 0;
   }
-
-  .sheet::before {
-    content: none;
-  }
 }
 
 /*
@@ -801,6 +853,8 @@
     --tag-ok-ink: var(--calm-dark-tag-ok-ink);
     --tag-wait: var(--calm-dark-tag-wait);
     --tag-wait-ink: var(--calm-dark-tag-wait-ink);
+    --tag-attn: var(--calm-dark-tag-attn);
+    --tag-attn-ink: var(--calm-dark-tag-attn-ink);
     --tag-new: var(--calm-dark-tag-new);
     --tag-new-ink: var(--calm-dark-tag-new-ink);
     --tag-red: var(--calm-dark-tag-red);
@@ -813,12 +867,35 @@
     --calm-urgent-ring: var(--calm-dark-urgent-ring);
     --calm-urgent-label: var(--calm-dark-urgent-label);
     --calm-urgent-ink: var(--calm-dark-urgent-ink);
+    --calm-urgent-hover-ring: var(--calm-dark-urgent-hover-ring);
+    --calm-urgent-hover-shadow: var(--calm-dark-urgent-hover-shadow);
     --calm-spark: var(--calm-dark-spark);
     --calm-spark-today: var(--calm-dark-spark-today);
     --calm-danger: var(--calm-dark-danger);
     --calm-twice: var(--calm-dark-twice);
     --calm-twice-ring: var(--calm-dark-twice-ring);
   }
+}
+
+/* The sidebar's states in dark (the board's .lc.dash.dk): a lifted hover, the deep sky pill with warm ink, a sky-light icon and bar fill. */
+@media (prefers-color-scheme: dark) {
+  .frame:not([data-theme='light']) .side {
+    --side-hover: var(--calm-dark-surface);
+    --side-on: var(--dark-biru-muda);
+    --side-on-ink: var(--calm-dark-ink);
+    --side-on-icon: var(--sky-light);
+    --side-track: var(--calm-dark-line);
+    --side-fill: var(--sky-light);
+  }
+}
+
+.frame[data-theme='dark'] .side {
+  --side-hover: var(--calm-dark-surface);
+  --side-on: var(--dark-biru-muda);
+  --side-on-ink: var(--calm-dark-ink);
+  --side-on-icon: var(--sky-light);
+  --side-track: var(--calm-dark-line);
+  --side-fill: var(--sky-light);
 }
 
 /* Chosen in the header's switch, whatever the device says. The same list as above. */
@@ -889,6 +966,8 @@
   --tag-ok-ink: var(--calm-dark-tag-ok-ink);
   --tag-wait: var(--calm-dark-tag-wait);
   --tag-wait-ink: var(--calm-dark-tag-wait-ink);
+  --tag-attn: var(--calm-dark-tag-attn);
+  --tag-attn-ink: var(--calm-dark-tag-attn-ink);
   --tag-new: var(--calm-dark-tag-new);
   --tag-new-ink: var(--calm-dark-tag-new-ink);
   --tag-red: var(--calm-dark-tag-red);
@@ -901,6 +980,8 @@
   --calm-urgent-ring: var(--calm-dark-urgent-ring);
   --calm-urgent-label: var(--calm-dark-urgent-label);
   --calm-urgent-ink: var(--calm-dark-urgent-ink);
+  --calm-urgent-hover-ring: var(--calm-dark-urgent-hover-ring);
+  --calm-urgent-hover-shadow: var(--calm-dark-urgent-hover-shadow);
   --calm-spark: var(--calm-dark-spark);
   --calm-spark-today: var(--calm-dark-spark-today);
   --calm-danger: var(--calm-dark-danger);
@@ -975,6 +1056,8 @@
   --tag-ok-ink: var(--light-tag-ok-ink);
   --tag-wait: var(--light-tag-wait);
   --tag-wait-ink: var(--light-tag-wait-ink);
+  --tag-attn: var(--light-tag-attn);
+  --tag-attn-ink: var(--light-tag-attn-ink);
   --tag-new: var(--light-tag-new);
   --tag-new-ink: var(--light-tag-new-ink);
   --tag-red: var(--light-tag-red);
@@ -987,6 +1070,8 @@
   --calm-urgent-ring: var(--light-calm-urgent-ring);
   --calm-urgent-label: var(--light-calm-urgent-label);
   --calm-urgent-ink: var(--light-calm-urgent-ink);
+  --calm-urgent-hover-ring: var(--light-calm-urgent-hover-ring);
+  --calm-urgent-hover-shadow: var(--light-calm-urgent-hover-shadow);
   --calm-spark: var(--light-calm-spark);
   --calm-spark-today: var(--light-calm-spark-today);
   --calm-danger: var(--light-calm-danger);

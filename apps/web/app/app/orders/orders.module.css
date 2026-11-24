@@ -303,7 +303,7 @@ a.receipt:hover {
   text-align: center;
 }
 
-/* Soft cards (Dash.html .xsent): a voucher, sent by email; amber for a receipt not received. */
+/* Soft cards (Dash.html .xsent): a voucher, sent by email; hot pink for a receipt not received. */
 .soft,
 .sent {
   margin-top: 14px;

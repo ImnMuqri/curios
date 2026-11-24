@@ -11,7 +11,7 @@ import { PageHead } from '../_ui/page-head.js';
 import { PageReply } from '../_ui/page-reply.js';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
-import { SaveStatus, useSaveStatus } from '../_ui/save-status.js';
+import { usePublishSaveStatus, useSaveStatus } from '../_ui/save-status.js';
 import { PillTabs } from '../_ui/pill-tabs.js';
 import panel from '../panel.module.css';
 import { AppearanceEditor } from './appearance-editor.js';
@@ -76,7 +76,7 @@ const TABS = [
 type Tab = (typeof TABS)[number]['id'];
 type PreviewTab = 'links' | 'ask';
 
-/** Each tracked, so the header's "Saving…" and "Saved" cover every save on the screen. */
+/** Each tracked, so the top bar's "Saving…" and "Saved" cover every save on the screen. */
 function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['track']): CuriosApi {
   return {
     addLink: (input) => track(api.addLink(input)),
@@ -122,6 +122,8 @@ export function MyCuriosEditor({
   const [page, setPage] = useState(initial);
   const update = (change: Partial<EditorPage>) => setPage((current) => ({ ...current, ...change }));
   const { state, track } = useSaveStatus();
+  // "Saved" lives in the frame's top bar while this screen is open.
+  usePublishSaveStatus(state);
   const api = useMemo(() => trackedApi(rawApi, track), [rawApi, track]);
   const [tab, setTab] = useState<Tab>('profile');
   const [previewTab, setPreviewTab] = useState<PreviewTab>('links');
@@ -161,7 +163,6 @@ export function MyCuriosEditor({
             </div>
           }
         >
-          <SaveStatus state={state} />
           <span className={ui.url}>
             curios.my/{page.handle}
             <button type="button" className={ui.iconButton} aria-label="Copy link" title={copied ? 'Copied' : 'Copy'} onClick={() => void copyLink()}>

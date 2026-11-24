@@ -21,6 +21,7 @@ const apiFetch = vi.fn(async () => ({ sections: [], chat: true }));
 vi.mock('../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
 const { AppFrame } = await import('./app-frame.js');
 const { PageHead } = await import('./_ui/page-head.js');
+const { usePublishSaveStatus } = await import('./_ui/save-status.js');
 const { DarkModeRow, ThemeContext } = await import('./_ui/theme-switch.js');
 
 const frame = ({
@@ -466,7 +467,7 @@ describe('the top bar', () => {
 
   it('opens and closes the Help panel from the top bar, showing Help as pressed while it is open', () => {
     frame();
-    const help = screen.getByRole('button', { name: 'Help' });
+    const help = within(screen.getByRole('banner')).getByRole('button', { name: 'Help' });
     expect(help).toHaveAttribute('aria-expanded', 'false');
     fireEvent.click(help);
     expect(help).toHaveAttribute('aria-expanded', 'true');
@@ -827,6 +828,267 @@ describe("the document behind the frame", () => {
     expect(document.querySelector('meta[name="theme-color"]')).toBeNull();
     expect(document.documentElement.style.backgroundColor).toBe('');
     expect(document.body.style.backgroundColor).toBe('');
+  });
+});
+
+/** A screen that saves as its owner types: it publishes its status to the frame's top bar, as My Curios does. */
+function Saves({ state }: { state: 'saving' | 'failed' | 'saved' }) {
+  usePublishSaveStatus(state);
+  return <p>a saving screen</p>;
+}
+
+describe('the sidebar, on white (24 Nov)', () => {
+  const sideCss = () => readFileSync(path.join(import.meta.dirname, 'app-frame.module.css'), 'utf8');
+  /** The declarations of one top-level rule of the frame's stylesheet. */
+  const ruleOf = (selector: string) => {
+    const css = sideCss();
+    const start = css.indexOf(`\n${selector} {`);
+    expect(start, selector).toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  };
+
+  it('is one white surface: the ground, the card and the paper are all the calm surface, with the frame\'s own soft fill and line', () => {
+    const root = ruleOf('.frame');
+    expect(root).toMatch(/--ground:\s*var\(--calm-surface\)/);
+    expect(root).toMatch(/--card:\s*var\(--calm-surface\)/);
+    expect(root).toMatch(/--surface:\s*var\(--frame-soft\)/);
+    expect(root).toMatch(/--line:\s*var\(--frame-line\)/);
+    // No separate sheet on a different ground, and no hairline drawn round it.
+    expect(sideCss()).not.toContain('.sheet::before');
+    expect(ruleOf('.sheet')).not.toContain('box-shadow');
+  });
+
+  it('draws the nav items 40px tall with 12px gaps, 14.5px text and 19px icons, 2px apart', () => {
+    const item = ruleOf('.item');
+    expect(item).toMatch(/height:\s*40px/);
+    expect(item).toMatch(/gap:\s*12px/);
+    expect(item).toMatch(/padding:\s*0 14px/);
+    expect(item).toMatch(/font-size:\s*14\.5px/);
+    expect(ruleOf('.item + .item')).toMatch(/margin-top:\s*2px/);
+    expect(ruleOf('.item .icon')).toMatch(/width:\s*19px/);
+  });
+
+  it('marks the page you are on as a soft blue pill with sky ink and a sky icon, no ring and no coloured edge', () => {
+    const on = ruleOf(".item[aria-current='page']");
+    expect(on).toMatch(/background:\s*var\(--side-on\)/);
+    expect(on).toMatch(/color:\s*var\(--side-on-ink\)/);
+    expect(on).toMatch(/font-weight:\s*600/);
+    expect(on).not.toMatch(/box-shadow|border/);
+    expect(ruleOf(".item[aria-current='page'] .icon")).toMatch(/color:\s*var\(--side-on-icon\)/);
+    const css = sideCss();
+    expect(css).toMatch(/--side-on:\s*var\(--biru-muda\)/);
+    expect(css).toMatch(/--side-on-ink:\s*var\(--biru-ink\)/);
+    expect(css).toMatch(/--side-on-icon:\s*var\(--sky\)/);
+    // Dark: the deep sky pill, warm ink, a lighter sky icon (the board's #0D2F3D, #f2f0ea, #5CC6EC).
+    expect(css).toMatch(/\.frame\[data-theme='dark'\] \.side \{[^}]*--side-on:\s*var\(--dark-biru-muda\)[^}]*--side-on-ink:\s*var\(--calm-dark-ink\)[^}]*--side-on-icon:\s*var\(--sky-light\)/);
+  });
+
+  it('draws a count as a plain pink number: no chip, no fill, tabular figures, right-aligned', () => {
+    const count = ruleOf('.count');
+    expect(count).toMatch(/color:\s*var\(--pink-deep\)/);
+    expect(count).toMatch(/font-size:\s*12\.5px/);
+    expect(count).toMatch(/font-weight:\s*600/);
+    expect(count).toMatch(/font-variant-numeric:\s*tabular-nums/);
+    expect(count).toMatch(/text-align:\s*right/);
+    expect(count).not.toMatch(/background|box-shadow|padding/);
+  });
+
+  it('draws the account card without a box, with a chevron that turns over while the menu is open', () => {
+    const card = ruleOf('.card');
+    expect(card).toMatch(/background:\s*transparent/);
+    expect(card).toMatch(/padding:\s*8px 34px 8px 8px/);
+    expect(card).not.toContain('box-shadow');
+    expect(ruleOf('.card::after')).toMatch(/width:\s*6px/);
+    expect(ruleOf(".card[aria-expanded='true']::after")).toMatch(/rotate\(225deg\)/);
+    expect(ruleOf('.card .avatar')).toMatch(/width:\s*36px/);
+  });
+
+  it('fills the plan block with no outline, 16px round, and keeps it a link to Billing', () => {
+    frame();
+    const plan = ruleOf('.plan');
+    expect(plan).toMatch(/border-radius:\s*16px/);
+    expect(plan).toMatch(/padding:\s*14px 14px 15px/);
+    expect(plan).toMatch(/margin-top:\s*auto/);
+    expect(plan).not.toContain('box-shadow');
+    expect(ruleOf('.plan .planBar')).toMatch(/height:\s*6px/);
+    expect(sideCol().getByRole('link', { name: /18 days left/ })).toHaveAttribute('href', '/app/billing');
+  });
+
+  it('colours the group titles in muted, which reads on white (the board\'s #78868F is about 3.9:1)', () => {
+    expect(ruleOf('.groupTitle')).toMatch(/color:\s*var\(--muted\)/);
+    expect(ruleOf('.groupTitle')).toMatch(/margin:\s*18px 12px 6px/);
+  });
+});
+
+describe('Help in the sidebar, and its shortcut', () => {
+  const sideHelp = () => sideCol().getByRole('button', { name: /^Help/ });
+  const platform = (value: string) => vi.spyOn(window.navigator, 'platform', 'get').mockReturnValue(value);
+  afterEach(() => vi.restoreAllMocks());
+
+  it('has a Help row at the foot of the sidebar, after the plan, that opens the Help panel', () => {
+    frame();
+    const aside = screen.getByRole('complementary');
+    expect(aside.lastElementChild).toBe(sideHelp());
+    expect(sideHelp()).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(sideHelp());
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
+    expect(sideHelp()).toHaveAttribute('aria-expanded', 'true');
+    // The top bar's Help is still there, and it is not in the nav's links.
+    expect(within(screen.getByRole('banner')).getByRole('button', { name: 'Help' })).toBeInTheDocument();
+    expect(links().map((a) => a.textContent)).not.toContain('Help');
+  });
+
+  it('names the shortcut Ctrl K off Apple platforms, decided after mount', () => {
+    platform('Win32');
+    frame();
+    expect(sideHelp()).toHaveTextContent('Help' + 'Ctrl K');
+    expect(sideHelp()).toHaveAttribute('aria-keyshortcuts', 'Control+K');
+  });
+
+  it('names the shortcut ⌘K on a Mac', () => {
+    platform('MacIntel');
+    frame();
+    expect(sideHelp()).toHaveTextContent('Help' + '⌘K');
+    expect(sideHelp()).toHaveAttribute('aria-keyshortcuts', 'Meta+K');
+  });
+
+  it('draws no hint on the server render, so it cannot mismatch on hydration', async () => {
+    const { renderToString } = await import('react-dom/server');
+    const html = renderToString(
+      <AppFrame displayName="Iman Muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL">
+        <p>content</p>
+      </AppFrame>,
+    );
+    expect(html).not.toMatch(/Ctrl K|⌘K/);
+    expect(html).toContain('Help');
+  });
+
+  it('opens Help on Ctrl+K and swallows the browser\'s own binding', () => {
+    platform('Win32');
+    frame();
+    const press = new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      document.dispatchEvent(press);
+    });
+    expect(press.defaultPrevented).toBe(true);
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
+  });
+
+  it('takes the physical K key on a layout whose letter is not k', () => {
+    platform('Win32');
+    frame();
+    const press = new KeyboardEvent('keydown', { key: 'л', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      document.dispatchEvent(press);
+    });
+    expect(press.defaultPrevented).toBe(true);
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
+  });
+
+  it('takes the Command key on a Mac, and not Ctrl', () => {
+    platform('MacIntel');
+    frame();
+    const ctrl = new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      document.dispatchEvent(ctrl);
+    });
+    expect(ctrl.defaultPrevented).toBe(false);
+    expect(screen.queryByRole('dialog', { name: 'Help' })).toBeNull();
+    const meta = new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', metaKey: true, bubbles: true, cancelable: true });
+    act(() => {
+      document.dispatchEvent(meta);
+    });
+    expect(meta.defaultPrevented).toBe(true);
+    expect(screen.getByRole('dialog', { name: 'Help' })).toBeInTheDocument();
+  });
+
+  it('ignores other keys, and K with another modifier', () => {
+    platform('Win32');
+    frame();
+    for (const init of [{ key: 'j', code: 'KeyJ', ctrlKey: true }, { key: 'k', code: 'KeyK' }, { key: 'k', code: 'KeyK', ctrlKey: true, shiftKey: true }, { key: 'k', code: 'KeyK', ctrlKey: true, altKey: true }, { key: 'k', code: 'KeyJ', ctrlKey: true }]) {
+      const event = new KeyboardEvent('keydown', { ...init, bubbles: true, cancelable: true });
+      act(() => {
+        document.dispatchEvent(event);
+      });
+      expect(event.defaultPrevented, JSON.stringify(init)).toBe(false);
+    }
+    expect(screen.queryByRole('dialog', { name: 'Help' })).toBeNull();
+  });
+
+  it('stops listening when the frame goes', () => {
+    platform('Win32');
+    const add = vi.spyOn(document, 'addEventListener');
+    const remove = vi.spyOn(document, 'removeEventListener');
+    const { unmount } = frame();
+    const keydowns = add.mock.calls.filter(([type]) => type === 'keydown').map(([, fn]) => fn);
+    expect(keydowns.length).toBeGreaterThan(0);
+    unmount();
+    const removed = remove.mock.calls.filter(([type]) => type === 'keydown').map(([, fn]) => fn);
+    for (const fn of keydowns) expect(removed).toContain(fn);
+    const press = new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(press);
+    expect(press.defaultPrevented).toBe(false);
+  });
+});
+
+describe('Saved in the top bar', () => {
+  const top = () => screen.getByRole('banner');
+  const render_ = (child: React.ReactNode) =>
+    render(
+      <AppFrame displayName="Iman Muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
+        {child}
+      </AppFrame>,
+    );
+
+  it('shows nothing in the top bar on a screen that does not save as you type', () => {
+    frame();
+    expect(within(top()).queryByRole('status')).toBeNull();
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
+  it('shows the status of a screen that publishes one, just before Help, and keeps its words and live region', () => {
+    render_(<Saves state="saved" />);
+    const status = within(top()).getByRole('status');
+    expect(status).toHaveTextContent('Saved');
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    const help = within(top()).getByRole('button', { name: 'Help' });
+    expect(status.compareDocumentPosition(help) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(status.nextElementSibling).toBe(help);
+    // Not in the screen's own area.
+    expect(within(screen.getByRole('main')).queryByText('Saved')).toBeNull();
+  });
+
+  it('follows the screen between Saving…, Not saved and Saved', () => {
+    const view = render_(<Saves state="saving" />);
+    expect(within(top()).getByRole('status')).toHaveTextContent('Saving…');
+    view.rerender(
+      <AppFrame displayName="Iman Muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
+        <Saves state="failed" />
+      </AppFrame>,
+    );
+    expect(within(top()).getByRole('status')).toHaveTextContent('Not saved');
+  });
+
+  it('goes when the screen goes', () => {
+    const view = render_(<Saves state="saved" />);
+    expect(within(top()).getByRole('status')).toBeInTheDocument();
+    view.rerender(
+      <AppFrame displayName="Iman Muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
+        <p>another screen</p>
+      </AppFrame>,
+    );
+    expect(within(top()).queryByRole('status')).toBeNull();
+  });
+
+  it('is a 56px bar, with the status in the muted ink at 13.5px and an 18px icon', () => {
+    const css = readFileSync(path.join(import.meta.dirname, 'app-frame.module.css'), 'utf8');
+    expect(css).toMatch(/\n\.top \{[^}]*height:\s*56px;/);
+    expect(css).not.toContain('64px');
+    const status = readFileSync(path.join(import.meta.dirname, '_ui/save-status.module.css'), 'utf8');
+    expect(status).toMatch(/\.status \{[^}]*color:\s*var\(--muted\);[^}]*font-size:\s*13\.5px/);
+    expect(status).toMatch(/\.status svg \{[^}]*width:\s*18px;[^}]*height:\s*18px/);
+    // Under 400px the words are visually hidden (kept for a screen reader) so the bar does not overflow.
+    expect(status).toMatch(/@media \(max-width: 399px\) \{\s*\.words \{[^}]*position:\s*absolute;[^}]*clip-path:\s*inset\(50%\)/);
   });
 });
 

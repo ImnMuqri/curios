@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MyCuriosEditor, type EditorPage } from './my-curios.js';
+import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
@@ -38,7 +39,12 @@ const api = () => ({
 });
 
 const show = (page: EditorPage = initial, calls = api()) => {
-  const view = render(<MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" />);
+  const view = render(
+    <SaveStatusProvider>
+      <div data-testid="top-bar"><SaveStatusSlot /></div>
+      <MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" />
+    </SaveStatusProvider>,
+  );
   return { ...view, calls };
 };
 const preview = () => screen.getByRole('region', { name: 'Live preview' });
@@ -46,6 +52,8 @@ const preview = () => screen.getByRole('region', { name: 'Live preview' });
 const editTab = (name: string) => within(screen.getByRole('tablist', { name: 'Edit' })).getByRole('tab', { name });
 /** The editor's header bar; the page in the phone has a header too. */
 const header = () => screen.getByRole('heading', { name: 'My Curios' }).closest('header')!;
+/** Where the frame draws "Saved": its top bar, not the page's header. */
+const topBar = () => screen.getByTestId('top-bar');
 
 afterEach(() => {
   vi.useRealTimers();
@@ -101,7 +109,13 @@ describe('MyCuriosEditor', () => {
   });
 });
 
-describe('the header', () => {
+describe('the save status', () => {
+  it('leaves the page header to the title, the tabs and the address: Saved is in the top bar', () => {
+    show();
+    expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
+    expect(within(header()).queryByText('Saved')).toBeNull();
+  });
+
   it('says Saved, then Saving… while a save is out, then Saved again', async () => {
     let finish!: () => void;
     const calls = api();
@@ -109,13 +123,13 @@ describe('the header', () => {
       (name: string) => new Promise((resolve) => { finish = () => resolve({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` }); }),
     );
     show(initial, calls);
-    expect(within(header()).getByText('Saved')).toBeInTheDocument();
+    expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
-    expect(within(header()).getByText('Saving…')).toBeInTheDocument();
+    expect(within(topBar()).getByText('Saving…')).toBeInTheDocument();
 
     await act(async () => finish());
-    expect(within(header()).getByText('Saved')).toBeInTheDocument();
+    expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
   });
 
   it('says Not saved after a save fails, until the next one lands', async () => {
@@ -124,10 +138,10 @@ describe('the header', () => {
     show(initial, calls);
 
     await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
-    expect(await within(header()).findByText('Not saved')).toBeInTheDocument();
+    expect(await within(topBar()).findByText('Not saved')).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Tea and flowers' }));
-    expect(await within(header()).findByText('Saved')).toBeInTheDocument();
+    expect(await within(topBar()).findByText('Saved')).toBeInTheDocument();
   });
 
   it("copies the page's full address", async () => {

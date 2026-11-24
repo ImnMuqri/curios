@@ -1,6 +1,6 @@
 /*
  * The editing screens' shared parts, from the design handoff's MyCurios and
- * Store boards (Dashboard v2/v3): the header's save status, address and tabs,
+ * Store boards (Dashboard v2/v3): the header's address and tabs,
  * hairline-divided sections, floating-label fields, switches, picker tiles,
  * the empty state, and the live preview: a phone on white beside the controls
  * (below them under 1200px). The preview runs the full height of the sheet;
@@ -20,43 +20,6 @@
 }
 
 /* ---- Header ---- */
-
-/* The save status: plain text with its tick (v3), no pill; only a failure takes a colour. */
-.status {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 24px;
-  padding: 0;
-  color: var(--muted);
-  font-size: 12.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  transition: color 200ms ease;
-}
-
-.status svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.status[data-state='failed'] {
-  color: var(--merah-deep);
-}
-
-.spin {
-  transform-origin: 12px 12px;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 /* The page's address with its copy button, boxed like a field (v3). */
 .url {
@@ -790,7 +753,7 @@ a.headLink {
   }
 }
 
-/* The board's small-screen header (6bace44): the address goes, the tabs share the width, the status leads the actions. */
+/* The board's small-screen header (6bace44): the address goes, the tabs share the width. */
 @media (max-width: 760px) {
   .url {
     display: none;
@@ -804,18 +767,13 @@ a.headLink {
     flex: 1 1 auto;
     padding: 0 12px;
   }
-
-  .status {
-    margin-right: auto;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .panel,
   .empty,
   .ghostRows > span,
-  .emptyBadge,
-  .spin {
+  .emptyBadge {
     animation: none;
   }
 

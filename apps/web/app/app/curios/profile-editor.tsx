@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type ChangeEvent } from 'react';
+import { useId, useRef, useState, type ChangeEvent } from 'react';
 import { Callout } from '@curios/ui';
 import { BIO_MAX } from '@curios/core/bento';
 import { SaveState } from '../_ui/save-state.js';
@@ -11,7 +11,7 @@ import styles from './curios.module.css';
 
 /**
  * The picture, name and bio, saved as the owner chooses or types. The picture
- * is the circle itself: click it to upload or change. The header's status says
+ * is changed with the button beside it. The header's status says
  * when a save is under way; a failed one is said here, under its field.
  */
 export function ProfileEditor({
@@ -67,6 +67,10 @@ export function ProfileEditor({
     }
   };
 
+  const nameId = useId();
+  const bioId = useId();
+  const hintId = useId();
+
   const handleRemove = async () => {
     try {
       await removeAvatar();
@@ -81,31 +85,40 @@ export function ProfileEditor({
   return (
     <section className={ui.section} aria-labelledby="profile-title">
       <SectionHead id="profile-title" title="You" note="Your picture, name and a line people read first." />
-      <div className={styles.idRow}>
-        <div className={styles.avatarCell}>
-          <button
-            type="button"
-            className={styles.avatar}
-            aria-label={hasPicture ? 'Change profile picture' : 'Upload a picture'}
-            title={uploadsEnabled ? undefined : 'Uploading pictures is switched off here'}
-            disabled={!uploadsEnabled}
-            onClick={() => file.current?.click()}
-          >
+      <div className={styles.you}>
+        {/* The picture on its own row; the button beside it is what opens the file picker (24 Nov). */}
+        <div className={styles.youTop}>
+          <span className={styles.avatar} aria-hidden="true">
             {hasPicture ? (
               <img src={avatarUrl ?? ''} alt="" onError={() => setAvatarFailed(true)} />
             ) : (
-              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="32" height="32">
                 <circle cx="12" cy="9" r="4" />
                 <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
               </svg>
             )}
-            <span aria-hidden="true">{hasPicture ? 'Change' : 'Add'}</span>
-          </button>
-          {hasPicture && uploadsEnabled ? (
-            <button type="button" className={styles.quietButton} aria-label="Remove picture" onClick={() => void handleRemove()}>
-              Remove
-            </button>
-          ) : null}
+          </span>
+          <div className={styles.youAct}>
+            <b>Your picture</b>
+            <small>Square, at least 400 × 400</small>
+            <div className={styles.youBtns}>
+              <button
+                type="button"
+                className={styles.changeButton}
+                aria-label={hasPicture ? 'Change profile picture' : 'Add a profile picture'}
+                title={uploadsEnabled ? undefined : 'Uploading pictures is switched off here'}
+                disabled={!uploadsEnabled}
+                onClick={() => file.current?.click()}
+              >
+                {hasPicture ? 'Change' : 'Add'}
+              </button>
+              {hasPicture && uploadsEnabled ? (
+                <button type="button" className={styles.quietButton} aria-label="Remove picture" onClick={() => void handleRemove()}>
+                  Remove
+                </button>
+              ) : null}
+            </div>
+          </div>
           {uploadsEnabled ? (
             <input
               ref={file}
@@ -117,40 +130,45 @@ export function ProfileEditor({
             />
           ) : null}
         </div>
-        {/* The name and the bio stacked beside the picture (v3). */}
-        <div className={styles.idField}>
-          <label className={ui.float}>
-            <em>Name</em>
-            <input
-              // "Name" on screen, as the board has it; "Display name" to a screen reader, apart from a link's Name.
-              aria-label="Display name"
-              value={displayName}
-              autoComplete="off"
-              onChange={(event) => {
-                onChange({ displayName: event.target.value });
-                name.schedule(event.target.value);
-              }}
-            />
-          </label>
-          <SaveState status={name.status} error={name.error} retry={name.retry} />
-          {/* The count sits beside the label, not in it, so the field is named "Bio" and nothing more. */}
-          <div className={`${ui.float} ${styles.bio}`}>
-            <label>
-              <em>Bio</em>
-              <textarea
-                value={bio ?? ''}
-                onChange={(event) => {
-                  onChange({ bio: event.target.value });
-                  about.schedule(event.target.value);
-                }}
-              />
-            </label>
-            <small aria-hidden="true" data-over={bioLength > BIO_MAX || undefined}>
-              {bioLength}/{BIO_MAX}
-            </small>
-          </div>
-          <SaveState status={about.status} error={about.error} retry={about.retry} />
+        {/* Name and bio stacked full width, each label above its field and tied to it. */}
+        <label className={styles.youLabel} htmlFor={nameId}>
+          Name
+        </label>
+        <input
+          id={nameId}
+          className={styles.youField}
+          // "Name" on screen, as the board has it; "Display name" to a screen reader, apart from a link's Name.
+          aria-label="Display name"
+          value={displayName}
+          autoComplete="off"
+          onChange={(event) => {
+            onChange({ displayName: event.target.value });
+            name.schedule(event.target.value);
+          }}
+        />
+        <SaveState status={name.status} error={name.error} retry={name.retry} />
+        <label className={styles.youLabel} htmlFor={bioId}>
+          Bio
+        </label>
+        {/* The count sits inside the field, bottom right, and is not part of the field's name. */}
+        <div className={`${styles.youField} ${styles.youBio}`}>
+          <textarea
+            id={bioId}
+            aria-describedby={hintId}
+            value={bio ?? ''}
+            onChange={(event) => {
+              onChange({ bio: event.target.value });
+              about.schedule(event.target.value);
+            }}
+          />
+          <em aria-hidden="true" data-over={bioLength > BIO_MAX || undefined}>
+            {bioLength} / {BIO_MAX}
+          </em>
         </div>
+        <SaveState status={about.status} error={about.error} retry={about.retry} />
+        <p className={styles.youHint} id={hintId}>
+          One line people read before they ask. Mention where you are and how to order.
+        </p>
       </div>
       {avatarError ? <Callout tone="error">{avatarError}</Callout> : null}
     </section>

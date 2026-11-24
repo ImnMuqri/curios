@@ -14,6 +14,7 @@ import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
 import { OverlayContext } from './_ui/overlay-context.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
+import { SaveStatusProvider, SaveStatusSlot } from './_ui/save-status.js';
 import { announceOverlay, Popover } from './_ui/popover.js';
 import { DarkModeRow, ThemeContext } from './_ui/theme-switch.js';
 import { paintDocument } from '../_bento/document-color.js';
@@ -77,6 +78,12 @@ export type PlanBlock = { name: string; note: string; fill: number | null; glanc
 
 export { countLabel };
 
+/** Apple's platforms take ⌘K; the rest take Ctrl+K. Read in the browser only (the server has no navigator). */
+function onApple() {
+  const platform = (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ?? navigator.platform ?? '';
+  return /mac|iphone|ipad|ipod/i.test(platform);
+}
+
 /** A year, and only for the dashboard, as the theme's cookie. */
 function writeBellSeen(value: string) {
   document.cookie = `${BELL_COOKIE}=${value}; Path=/app; Max-Age=31536000; SameSite=Lax`;
@@ -85,8 +92,8 @@ function writeBellSeen(value: string) {
 /**
  * The dashboard's frame (the calm Dash board, 14 Nov 2026): a sidebar on the warm ground -- the
  * wordmark, the account card that opens the account menu, the grouped modules as pill links with
- * what is waiting in each, and the plan at its foot -- a 64px top bar on the same ground (Help, and
- * the bell with what needs you), and the screen on one sheet. Each screen draws its own header (PageHead).
+ * what is waiting in each, and the plan at its foot -- a 56px top bar on the same ground (Saved on the
+ * screens that save, Help, and the bell with what needs you), and the screen on the same white surface. Each screen draws its own header (PageHead).
  *
  * Under 1100px the sidebar goes: the top bar starts with the logo, the account menu opens from the
  * avatar at its end (DEVIATIONS 313), and a phone's menu floats at the foot (PhoneMenu).
@@ -155,6 +162,12 @@ export function AppFrame({
     () => ({ open: helpOpen, show: () => setHelpOpen(true), close: () => setHelpOpen(false), toggle: () => setHelpOpen((was) => !was) }),
     [helpOpen],
   );
+  // The sidebar's Help row names its shortcut: ⌘K on Apple, Ctrl K elsewhere. Known only in the browser, so
+  // the server and the first client render draw no hint, and it appears after mount (no hydration mismatch).
+  const [hint, setHint] = useState<string | null>(null);
+  useEffect(() => {
+    setHint(onApple() ? '⌘K' : 'Ctrl K');
+  }, []);
   // A SideSheet or Dialog open anywhere in the screen (_ui/overlay-context): counted, so two at once
   // (a dialog over a sheet) keep the phone's menu hidden until both are gone.
   const [sheets, setSheets] = useState(0);
@@ -222,6 +235,22 @@ export function AppFrame({
 
   // The bell, worked out before the frameless return below so its hook runs on every render.
   const framed = !bare && !pathname.startsWith('/app/onboarding');
+  // ⌘K / Ctrl+K opens Help from anywhere in the dashboard. A sheet or dialog that is open owns the keyboard, and
+  // Help being open already needs nothing; the browser's own binding for the key is suppressed either way.
+  const showHelp = help.show;
+  useEffect(() => {
+    if (!framed) return;
+    const onKey = (event: KeyboardEvent) => {
+      // The physical key, so a non-Latin layout (Arabic, Cyrillic) still reaches it; event.key only when there is no code.
+      const isK = event.code ? event.code === 'KeyK' : event.key.toLowerCase() === 'k';
+      if (!isK || event.altKey || event.shiftKey || event.isComposing) return;
+      if (!(onApple() ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey)) return;
+      event.preventDefault();
+      if (open.current === 0) showHelp();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [framed, showHelp]);
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
   const waiting = WAITING.filter((w) => business(w) && badges[w.key] > 0);
   // What the bell holds now, and what of it is new: a count above what was read, an alert not read.
@@ -324,6 +353,7 @@ export function AppFrame({
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
      <HelpContext.Provider value={help}>
+     <SaveStatusProvider>
       <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-sheet-open={sheets ? true : undefined} data-laptop-scale>
         <aside ref={sideRef} className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
@@ -398,6 +428,15 @@ export function AppFrame({
               </span>
             ) : null}
           </Link>
+          {/* Help at the foot (the board's .hp): the same panel as the top bar's Help, and the shortcut that opens it. */}
+          <button type="button" className={styles.sideHelp} aria-expanded={helpOpen} aria-keyshortcuts={hint === '⌘K' ? 'Meta+K' : 'Control+K'} onClick={help.show}>
+            <span>Help</span>
+            {hint ? (
+              <kbd className={styles.sideHint} aria-hidden="true">
+                {hint}
+              </kbd>
+            ) : null}
+          </button>
         </aside>
 
         <div ref={columnRef} className={styles.column}>
@@ -407,6 +446,8 @@ export function AppFrame({
               <Wordmark />
               <span className={styles.srOnly}>Curios dashboard</span>
             </Link>
+            {/* "Saved", on the screens that save as the owner types (My Curios, an item's editor). */}
+            <SaveStatusSlot />
             <button type="button" className={styles.help} data-help-opener aria-expanded={helpOpen} onClick={help.toggle}>
               Help
             </button>
@@ -449,6 +490,7 @@ export function AppFrame({
         <div ref={setLayerHost} className={styles.layers} />
         {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}
       </div>
+     </SaveStatusProvider>
      </HelpContext.Provider>
     </ThemeContext.Provider>
   );

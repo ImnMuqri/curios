@@ -20,17 +20,18 @@ const chosenBlock = rule(".frame[data-theme='dark']");
 const islandBlock = rule('.frame [data-island]');
 /** The base tokens the calm scope re-maps, and what they take in the light frame and in dark mode. */
 const calmLight: Record<string, string> = {
-  '--paper': 'var(--calm-bg)',
+  // The frame is one white surface with its own bluer soft fill and hairline (Dash board, 24 Nov); a preview island keeps the calm greys.
+  '--paper': 'var(--calm-surface)',
   '--card': 'var(--calm-surface)',
-  '--surface': 'var(--calm-soft)',
+  '--surface': 'var(--frame-soft)',
   '--ink': 'var(--calm-ink)',
   '--muted': 'var(--calm-muted)',
   '--ink-soft': 'var(--calm-muted)',
   '--hint': 'var(--calm-muted)',
   '--faint': 'var(--calm-faint)',
-  '--line': 'var(--calm-line)',
+  '--line': 'var(--frame-line)',
   '--edge': 'var(--calm-ring)',
-  '--ground': 'var(--calm-bg)',
+  '--ground': 'var(--calm-surface)',
   '--nav-on': 'var(--calm-surface)',
   '--action': 'var(--calm-action)',
   '--action-fg': 'var(--calm-action-fg)',
@@ -59,6 +60,8 @@ const calmDark: Record<string, string> = {
   '--tag-ok-ink': '--calm-dark-tag-ok-ink',
   '--tag-wait': '--calm-dark-tag-wait',
   '--tag-wait-ink': '--calm-dark-tag-wait-ink',
+  '--tag-attn': '--calm-dark-tag-attn',
+  '--tag-attn-ink': '--calm-dark-tag-attn-ink',
   '--tag-new': '--calm-dark-tag-new',
   '--tag-new-ink': '--calm-dark-tag-new-ink',
   '--tag-red': '--calm-dark-tag-red',
@@ -71,6 +74,8 @@ const calmDark: Record<string, string> = {
   '--calm-urgent-ring': '--calm-dark-urgent-ring',
   '--calm-urgent-label': '--calm-dark-urgent-label',
   '--calm-urgent-ink': '--calm-dark-urgent-ink',
+  '--calm-urgent-hover-ring': '--calm-dark-urgent-hover-ring',
+  '--calm-urgent-hover-shadow': '--calm-dark-urgent-hover-shadow',
   '--calm-spark': '--calm-dark-spark',
   '--calm-spark-today': '--calm-dark-spark-today',
   '--calm-danger': '--calm-dark-danger',
@@ -112,7 +117,7 @@ describe('dashboard dark mode', () => {
     const start = frame.indexOf('.frame {');
     const body = declarations(frame.slice(start, frame.indexOf('\n}\n', start)));
     for (const [name, value] of Object.entries(calmLight)) expect(body[name], name).toBe(value);
-    expect(frame).toMatch(/--paper:\s*var\(--calm-bg\)/);
+    expect(frame).toMatch(/--paper:\s*var\(--calm-surface\)/);
     expect(frame).toMatch(/--action:\s*var\(--calm-action\)/);
   });
 
@@ -166,7 +171,7 @@ describe('dashboard dark mode', () => {
   });
 
   it('swaps the status tags and the badge in dark, so anything reading --tag-* or --badge follows (Leads new dot)', () => {
-    for (const name of ['--tag-ok', '--tag-ok-ink', '--tag-wait', '--tag-wait-ink', '--tag-new', '--tag-new-ink', '--tag-red', '--tag-red-ink', '--badge']) {
+    for (const name of ['--tag-ok', '--tag-ok-ink', '--tag-wait', '--tag-wait-ink', '--tag-attn', '--tag-attn-ink', '--tag-new', '--tag-new-ink', '--tag-red', '--tag-red-ink', '--badge']) {
       expect(darkBlock[name], name).toBe(`var(${calmDark[name]})`);
       expect(chosenBlock[name], name).toBe(`var(${calmDark[name]})`);
       expect(islandBlock[name], name).toBe(`var(--light-${name.slice(2)})`);
@@ -208,10 +213,12 @@ describe('dashboard dark mode', () => {
     const pinned: Record<string, [string, string]> = {
       pick: ['#e2f4fb', '#232321'],
       'row-hover': ['#f2f9fc', '#1b1b1a'],
-      urgent: ['#fdf6e7', '#33291a'],
-      'urgent-ring': ['#f1dfb4', '#4d3b1d'],
-      'urgent-label': ['#7a4b06', '#f2c46b'],
-      'urgent-ink': ['#5c3804', '#f2c46b'],
+      // Attention is hot pink (Dash.dc, 24 Nov), no longer amber.
+      urgent: ['#fdf0f7', '#3a1430'],
+      'urgent-ring': ['#f6cfe5', '#5c1f4a'],
+      'urgent-label': ['#ae1e74', '#f7a8d4'],
+      'urgent-ink': ['#8e1660', '#f7a8d4'],
+      'urgent-hover-ring': ['#efa9d2', '#8a3a72'],
       spark: ['#c6dde8', '#3a3936'],
       'spark-today': ['#1d7a4c', '#7fd3a5'],
       danger: ['#b3261e', '#ff8a80'],
@@ -229,8 +236,46 @@ describe('dashboard dark mode', () => {
       expect(chosenBlock[`--calm-${k}`], k).toBe(`var(--calm-dark-${k})`);
       expect(islandBlock[`--calm-${k}`], k).toBe(`var(--light-calm-${k})`);
     }
+    // The urgent card's hover lift has a dark shadow too, mapped in both dark blocks and restored by the island.
+    expect(tokens['--calm-dark-urgent-hover-shadow']).toBe('0 8px 20px -14px rgba(0, 0, 0, 0.6)');
+    expect(darkBlock['--calm-urgent-hover-shadow']).toBe('var(--calm-dark-urgent-hover-shadow)');
+    expect(chosenBlock['--calm-urgent-hover-shadow']).toBe('var(--calm-dark-urgent-hover-shadow)');
+    expect(islandBlock['--calm-urgent-hover-shadow']).toBe('var(--light-calm-urgent-hover-shadow)');
     // These two are the same in both themes.
     expect(tokens['--calm-hover-ring']).toBe('#a8d1e2');
     expect(tokens['--calm-switch-off']).toBe('#7b8891');
+  });
+  it('gives the frame its own white ground, soft fill and line in light (24 Nov), and leaves the calm greys to the island', () => {
+    expect(tokens['--frame-soft']).toBe('#e8f4f9');
+    expect(tokens['--frame-line']).toBe('#ddedf4');
+    expect(tokens['--frame-hover']).toBe('#f2f9fc');
+    expect(tokens['--frame-track']).toBe('#d2eaf4');
+    // The customer-page greys are untouched, and a preview island takes them (through the light aliases) back.
+    expect(tokens['--calm-bg']).toBe('#fcffff');
+    expect(tokens['--calm-soft']).toBe('#edf6fa');
+    expect(tokens['--calm-line']).toBe('#e2eef3');
+    expect(frameRoot).toMatch(/--line:\s*var\(--frame-line\)/);
+    expect(islandBlock['--line']).toBe('var(--light-line)');
+    expect(islandBlock['--surface']).toBe('var(--light-surface)');
+  });
+
+  it('swaps the sidebar states in dark, the same by the device and by the switch (the board, .lc.dash.dk)', () => {
+    const states = (selector: string) => {
+      const start = frame.indexOf(`${selector} {`);
+      expect(start, selector).toBeGreaterThan(-1);
+      return declarations(frame.slice(start, frame.indexOf('}', start)));
+    };
+    const chosen = states(".frame[data-theme='dark'] .side");
+    expect(states(".frame:not([data-theme='light']) .side")).toEqual(chosen);
+    expect(chosen).toEqual({
+      '--side-hover': 'var(--calm-dark-surface)',
+      '--side-on': 'var(--dark-biru-muda)',
+      '--side-on-ink': 'var(--calm-dark-ink)',
+      '--side-on-icon': 'var(--sky-light)',
+      '--side-track': 'var(--calm-dark-line)',
+      '--side-fill': 'var(--sky-light)',
+    });
+    expect(tokens['--dark-biru-muda']).toBe('#0d2f3d');
+    expect(tokens['--sky-light']).toBe('#5cc6ec');
   });
 });

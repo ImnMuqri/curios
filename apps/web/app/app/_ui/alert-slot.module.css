@@ -24,6 +24,8 @@
   --ban-new-ink: var(--tag-new-ink);
   --ban-wait: var(--tag-wait);
   --ban-wait-ink: var(--tag-wait-ink);
+  --ban-warn: var(--calm-urgent);
+  --ban-warn-edge: var(--calm-urgent-ring);
   --ban-red: var(--tag-red);
   --ban-red-ink: var(--tag-red-ink);
   --ban-bg: var(--card);
@@ -45,8 +47,9 @@
 }
 
 .ban[data-tone='warn'] {
-  --ban-bg: color-mix(in srgb, var(--ban-wait) 45%, var(--card));
-  --ban-edge: color-mix(in srgb, var(--ban-wait) 80%, var(--ban-wait-ink) 20%);
+  /* Attention is pink; the icon badge stays amber (Dash.dc .ban.warn, .ban.warn .bi). */
+  --ban-bg: var(--ban-warn);
+  --ban-edge: var(--ban-warn-edge);
   --ban-badge: color-mix(in srgb, var(--ban-wait) 85%, var(--ban-wait-ink) 15%);
   --ban-badge-ink: var(--ban-wait-ink);
   --ban-btn-bg: var(--action);

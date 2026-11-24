@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { writeBasket } from '../../[handle]/shop/basket.js';
 import { StoreEditor } from './store-editor.js';
+import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 import type { OwnerVoucher } from '@curios/core/vouchers';
 import { PHYSICAL_ITEM, PHYSICAL_ROW, previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 
@@ -61,7 +62,12 @@ const NOW = new Date('2026-10-16T02:00:00Z');
 const places = [{ id: 'p1', name: 'Seksyen 7', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }];
 
 function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }, chip = noChip) {
-  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} pickupPlaces={places} {...calls} />);
+  render(
+    <SaveStatusProvider>
+      <div data-testid="top-bar"><SaveStatusSlot /></div>
+      <StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} pickupPlaces={places} {...calls} />
+    </SaveStatusProvider>,
+  );
   return calls;
 }
 
@@ -162,13 +168,47 @@ describe('the header', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('turn on pickup or delivery');
   });
 
-  it('says Saving… while a save is out, then Saved', async () => {
+  it('says nothing about saving on the Store screen itself: no Saved in its header or in the top bar', async () => {
     let finish!: (s: StoreSettings) => void;
     show({ ...ready, enabled: false }, items, apis(() => new Promise((resolve) => { finish = resolve; })));
+    expect(screen.queryByText('Saved')).toBeNull();
     fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' }));
-    expect(within(header()).getByText('Saving…')).toBeInTheDocument();
+    expect(screen.queryByText('Saving…')).toBeNull();
     await act(async () => finish({ ...ready }));
-    expect(within(header()).getByText('Saved')).toBeInTheDocument();
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+
+  it("says Saving… then Saved in the top bar while an item is open in its editor, and takes it away when the editor closes", async () => {
+    let finish!: (s: StoreSettings) => void;
+    show({ ...ready, enabled: false }, items, apis(() => new Promise((resolve) => { finish = resolve; })));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kek batik' }));
+    expect(within(screen.getByTestId('top-bar')).getByText('Saved')).toBeInTheDocument();
+    expect(within(header()).queryByText('Saved')).toBeNull();
+    fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' }));
+    expect(within(screen.getByTestId('top-bar')).getByText('Saving…')).toBeInTheDocument();
+    await act(async () => finish({ ...ready }));
+    expect(within(screen.getByTestId('top-bar')).getByText('Saved')).toBeInTheDocument();
+    fireEvent.click(editTab('Payment'));
+    expect(screen.queryByText('Saved')).toBeNull();
+  });
+});
+
+describe('a failed save on the main screen', () => {
+  it('does not read "Not saved" once an item is opened', async () => {
+    const calls = apis();
+    vi.mocked(calls.itemsApi.update).mockRejectedValueOnce(new Error('Nope.'));
+    show(ready, items, calls);
+    await act(async () => { fireEvent.click(screen.getAllByRole('switch', { name: /In your shop: Kek batik/ })[0]!); });
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Kek batik' }));
+    expect(screen.queryByText('Not saved')).toBeNull();
+    expect(within(screen.getByTestId('top-bar')).getByText('Saved')).toBeInTheDocument();
+  });
+
+  it('says so beside the Halal row when that save fails', async () => {
+    show(ready, items, apis(async () => { throw new Error('Could not save.'); }));
+    await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'Halal shop' })); });
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save.');
   });
 });
 

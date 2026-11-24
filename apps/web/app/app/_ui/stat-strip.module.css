@@ -116,6 +116,12 @@ button.card:focus-visible {
   box-shadow: inset 0 0 0 1px var(--calm-urgent-ring);
 }
 
+button.urgent:hover {
+  box-shadow:
+    inset 0 0 0 1px var(--calm-urgent-hover-ring),
+    var(--calm-urgent-hover-shadow);
+}
+
 .urgent .label {
   color: var(--calm-urgent-label);
 }

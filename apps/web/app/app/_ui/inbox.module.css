@@ -389,10 +389,15 @@
   color: var(--tag-ok-ink);
 }
 
-.av[data-tone='wait'],
-.tag[data-tone='wait'] {
+.av[data-tone='wait'] {
   background: var(--tag-wait);
   color: var(--tag-wait-ink);
+}
+
+/* The waiting tag is hot pink (attention); its row avatar stays amber (Dash.dc .t-wait vs .av). */
+.tag[data-tone='wait'] {
+  background: var(--tag-attn);
+  color: var(--tag-attn-ink);
 }
 
 .av[data-tone='new'],
