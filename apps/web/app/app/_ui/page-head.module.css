@@ -110,6 +110,17 @@
   }
 }
 
+/* The board's .ed screens (My Curios): a 48px title, a full-width row beneath the text. */
+.large .title {
+  font-size: 48px;
+  letter-spacing: -0.045em;
+}
+
+.below {
+  flex: 1 1 100%;
+  min-width: 0;
+}
+
 @media (max-width: 1100px) {
   .title {
     font-size: 34px;
@@ -124,6 +135,10 @@
 
   .title {
     font-size: 32px;
+  }
+
+  .large .title {
+    font-size: 38px;
   }
 
   .summary {

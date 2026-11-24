@@ -26,11 +26,11 @@ const FONT_NAMES: Record<HeadingFont, string> = {
 // A hex string is not a name -- "Accent #2340c8" tells a screen-reader user
 // nothing a sighted owner does not already get from the swatch's colour.
 const ACCENT_NAMES: Record<string, string> = {
-  '#2340c8': 'Biru',
-  '#0c7a62': 'Hijau',
-  '#6d3fb3': 'Purple',
-  '#c2185b': 'Magenta',
-  '#d8452f': 'Red',
+  '#2340c8': 'Cobalt',
+  '#0c7a62': 'Jade',
+  '#6d3fb3': 'Violet',
+  '#c2185b': 'Pink',
+  '#d8452f': 'Coral',
   '#e08a1e': 'Amber',
   '#2d6a4f': 'Forest',
   '#191f2c': 'Ink',
@@ -38,10 +38,10 @@ const ACCENT_NAMES: Record<string, string> = {
 
 const BACKGROUND_NAMES: Record<PageBackground, string> = {
   PAPER: 'Paper',
-  MUDA: 'Pale blue',
-  KUNING: 'Warm',
-  BIRU: 'Biru',
-  INK: 'Dark',
+  MUDA: 'Mist',
+  KUNING: 'Cream',
+  BIRU: 'Cobalt',
+  INK: 'Ink',
   CUSTOM: 'Custom',
 };
 
@@ -65,7 +65,7 @@ function Tick() {
 /**
  * The look, in the Profile tab's last two sections (v3 board): Colours (the
  * page background and the button colour as two rows of dots, the hex field
- * kept), then Button style and font (the two styles as cards, the six heading
+ * kept), then Buttons and font (the two styles as cards, the six heading
  * fonts as a grid of tiles, each the owner's name in that font). Each choice
  * is a single click, so it saves at once rather than on a debounce. A typed
  * colour saves only once it is a valid hex; text on it is made readable by
@@ -148,7 +148,7 @@ export function AppearanceEditor({
 
   return (
     <>
-      <section className={ui.section} aria-labelledby="colours-title">
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="colours-title">
         <SectionHead id="colours-title" title="Colours" note="The page behind everything, and your first link and the send button." />
         <div className={styles.colourCols}>
           <div>
@@ -246,8 +246,8 @@ export function AppearanceEditor({
         </div>
       </section>
 
-      <section className={ui.section} aria-labelledby="shape-title">
-        <SectionHead id="shape-title" title="Button style and font" note="How your links look, and the font for your name." />
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="shape-title">
+        <SectionHead id="shape-title" title="Buttons and font" note="How your links look, and the font for your name." />
         <div className={styles.shapeFont}>
           <div>
             <p className={styles.groupLabel} aria-hidden="true">

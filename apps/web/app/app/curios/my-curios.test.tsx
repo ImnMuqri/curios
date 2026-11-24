@@ -109,6 +109,21 @@ describe('MyCuriosEditor', () => {
   });
 });
 
+describe('the header and preview note', () => {
+  it('shows the kicker, the sentence, the address and the Profile / Links tabs under the header', () => {
+    show();
+    expect(within(header()).getByText('Your page')).toBeInTheDocument();
+    expect(within(header()).getByText('How your page looks to everyone who taps your link.')).toBeInTheDocument();
+    expect(within(header()).getByRole('link', { name: 'View page' })).toBeInTheDocument();
+    expect(within(header()).getByRole('tablist', { name: 'Edit' })).toBeInTheDocument();
+  });
+
+  it('says what the phone shows', () => {
+    show();
+    expect(within(preview()).getByText('This is what people see. It changes as you edit.')).toBeInTheDocument();
+  });
+});
+
 describe('the save status', () => {
   it('leaves the page header to the title, the tabs and the address: Saved is in the top bar', () => {
     show();
@@ -425,5 +440,19 @@ describe('without the template look', () => {
     // The shop row sits above the list, in the same box.
     const shop = screen.getByRole('group', { name: 'Shop link' });
     expect(shop.nextElementSibling?.tagName).toBe('UL');
+  });
+});
+
+describe('the address row', () => {
+  it('uses the My Curios modifiers so the pill stays on a phone and both are 44px', async () => {
+    show();
+    const link = within(header()).getByRole('link', { name: 'View page' });
+    const pill = within(header()).getByText(/curios\.my\//);
+    expect(pill.className).toMatch(/addrPill/);
+    expect(link.className).toMatch(/viewLink/);
+    const { readFileSync } = await import('node:fs');
+    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
+    expect(css).toMatch(/\.addr \.addrPill\s*{[^}]*display:\s*flex;[^}]*height:\s*44px/);
+    expect(css).toMatch(/\.addr \.viewLink\s*{[^}]*height:\s*44px/);
   });
 });

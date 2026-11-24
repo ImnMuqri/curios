@@ -97,10 +97,11 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
 
 /**
  * My Curios: the owner's page, arranged. The header, over the left column
- * only, carries the Profile / Links tabs beside the title, and says whether
- * everything has saved; under it, the tab's controls, and on the right the
+ * only, carries the kicker, title and sentence, the address with View page, and the
+ * Profile / Links underline tabs; "Saved" lives in the frame's top bar. Whether
+ * everything has saved is the top bar's to say; under it, the tab's controls, and on the right the
  * live preview from the top of the sheet (below, under 1200px), rendered by
- * the same BentoPage visitors see. No summary sentence: the board has none. State is local and optimistic; each control saves its own
+ * the same BentoPage visitors see. State is local and optimistic; each control saves its own
  * change at once, or as the owner pauses typing.
  *
  * Every panel stays mounted and is only hidden: the name, bio and social
@@ -156,14 +157,14 @@ export function MyCuriosEditor({
     <div className={ui.body}>
       <div className={ui.edit}>
         <PageHead
+          kicker="Your page"
           title="My Curios"
-          beside={
-            <div className={ui.headTabs}>
-              <PillTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} />
-            </div>
-          }
-        >
-          <span className={ui.url}>
+          large
+          summary="How your page looks to everyone who taps your link."
+          below={
+            <>
+              <div className={styles.addr}>
+          <span className={`${ui.url} ${styles.addrPill}`}>
             curios.my/{page.handle}
             <button type="button" className={ui.iconButton} aria-label="Copy link" title={copied ? 'Copied' : 'Copy'} onClick={() => void copyLink()}>
               {copied ? (
@@ -179,13 +180,17 @@ export function MyCuriosEditor({
             </button>
             <span className={ui.srOnly} aria-live="polite">{copied ? 'Link copied' : ''}</span>
           </span>
-          <a className={`${panel.primaryLink} ${ui.headLink}`} href={`/${page.handle}`} target="_blank" rel="noreferrer">
+          <a className={`${panel.primaryLink} ${ui.headLink} ${styles.viewLink}`} href={`/${page.handle}`} target="_blank" rel="noreferrer">
             View page
           </a>
-        </PageHead>
+              </div>
+              <PillTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} underline />
+            </>
+          }
+        />
 
         <div className={ui.editBody}>
-          <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden={tab !== 'profile'} className={ui.panel}>
+          <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden={tab !== 'profile'} className={`${ui.panel} ${styles.wide}`}>
             <ProfileEditor
               displayName={page.displayName}
               bio={page.bio}
@@ -222,7 +227,7 @@ export function MyCuriosEditor({
             />
           </div>
 
-          <div role="tabpanel" id="panel-links" aria-labelledby="tab-links" hidden={tab !== 'links'} className={ui.panel}>
+          <div role="tabpanel" id="panel-links" aria-labelledby="tab-links" hidden={tab !== 'links'} className={`${ui.panel} ${styles.wide}`}>
             <SocialsEditor socials={page.socials} onChange={(socials) => update({ socials })} save={api.saveAppearance} />
             <LinksEditor
               links={page.links}
@@ -261,6 +266,7 @@ export function MyCuriosEditor({
         tabs={previewTabs.map((id) => ({ id, label: id === 'links' ? 'Links' : 'Ask' }))}
         selected={shownPreview}
         onSelect={setPreviewTab}
+        note="This is what people see. It changes as you edit."
         overlay={
           // The ask bar belongs to the Ask tab; the Links tab ends with the FAQ, as the page does.
           shownPreview === 'ask' ? (

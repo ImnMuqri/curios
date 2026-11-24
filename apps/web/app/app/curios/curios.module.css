@@ -16,6 +16,33 @@
   }
 }
 
+/* ---- The header's address row and the Profile / Links tabs (the board's .addr and .tabs2) ---- */
+
+.addr {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+/* The board's .addr: 44px tall, and kept on a phone (the shared .url hides under 760px; the doubled selector wins over it). */
+.addr .addrPill {
+  display: flex;
+  height: 44px;
+  font-size: 14px;
+}
+
+.addr .viewLink {
+  height: 44px;
+  font-size: 14px;
+}
+
+/* The controls get the room the board's .ed gives them. */
+.wide {
+  --panel-max: 880px;
+}
+
 /* ---- Cover photo: a row of 84px squares (v3), the chosen one ringed ---- */
 
 /* Wraps: the stock covers, the owner's own and the upload tile are more than one row holds in a narrow column. */
@@ -1061,14 +1088,15 @@ input.youField {
 
 /* ---- Narrower ---- */
 
-@container (max-width: 520px) {
+/* Measured on the controls' own column (editor.module.css makes each .sectionRow child a container). */
+@container (max-width: 400px) {
   .socials {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 /* The board's phone: the covers wrap as 64px squares, the colours stack, the fonts go two across. */
-@media (min-width: 761px) {
+@container (min-width: 520px) {
   .styleTiles {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }

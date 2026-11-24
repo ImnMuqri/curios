@@ -83,7 +83,7 @@ export function ProfileEditor({
   const hasPicture = Boolean(avatarUrl && !avatarFailed);
 
   return (
-    <section className={ui.section} aria-labelledby="profile-title">
+    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="profile-title">
       <SectionHead id="profile-title" title="You" note="Your picture, name and a line people read first." />
       <div className={styles.you}>
         {/* The picture on its own row; the button beside it is what opens the file picker (24 Nov). */}

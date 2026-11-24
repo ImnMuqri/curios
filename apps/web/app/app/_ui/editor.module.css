@@ -146,6 +146,59 @@ a.headLink {
   color: var(--muted);
 }
 
+/* My Curios' rows (the Dash board's .row): the heading in a 220px column, the controls beside it.
+   Opt-in, so the Store's editors keep the heading above their controls. Stacks when the content
+   column (.editBody) is narrow, whatever the viewport. */
+.sectionRow {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  column-gap: 36px;
+  padding: 34px 0;
+}
+
+.sectionRow > .sectionHead {
+  grid-column: 1;
+  grid-row: 1 / span 40;
+  margin: 0;
+}
+
+.sectionRow > :not(.sectionHead) {
+  grid-column: 2;
+  min-width: 0;
+}
+
+/* Each control column measures itself: the heading column has taken 256px of the content width. */
+.sectionRow > :not(.sectionHead) {
+  container-type: inline-size;
+}
+
+.sectionRow .sectionTitle {
+  font-size: 16px;
+  letter-spacing: -0.01em;
+}
+
+.sectionRow .sectionNote {
+  margin-top: 3px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+@container (max-width: 560px) {
+  .sectionRow {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 26px 0;
+  }
+
+  .sectionRow > .sectionHead {
+    grid-row: auto;
+    margin-bottom: 16px;
+  }
+
+  .sectionRow > :not(.sectionHead) {
+    grid-column: 1;
+  }
+}
+
 .note {
   margin: 10px 0 0;
   color: var(--muted);
@@ -681,6 +734,15 @@ a.headLink {
   margin: 0;
   border-radius: 0;
   padding-bottom: 76px;
+}
+
+/* The board's .fnote under the phone. */
+.previewNote {
+  max-width: 280px;
+  margin: 16px auto 0;
+  font-size: 13px;
+  text-align: center;
+  color: var(--muted);
 }
 
 /* The preview's own tabs: a sliding thumb under the chosen one. */

@@ -72,8 +72,8 @@ export function CoverEditor({
     }, 'That did not save. Try again.');
 
   return (
-    <section className={ui.section} aria-labelledby="cover-title">
-      <SectionHead id="cover-title" title="Cover photo" note="Shown behind your name. Pick one, upload your own, or go with a solid colour." />
+    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="cover-title">
+      <SectionHead id="cover-title" title="Cover photo" note="Shown behind your name. Pick one, upload your own, or a solid colour." />
 
       <div className={styles.gallery} role="group" aria-labelledby="cover-title" aria-busy={busy}>
         <button

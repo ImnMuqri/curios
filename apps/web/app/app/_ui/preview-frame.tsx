@@ -17,6 +17,7 @@ export function PreviewFrame<Id extends string>({
   selected,
   onSelect,
   overlay,
+  note,
   children,
 }: {
   label: string;
@@ -26,6 +27,8 @@ export function PreviewFrame<Id extends string>({
   selected: Id;
   onSelect: (id: Id) => void;
   overlay?: ReactNode;
+  /** A line of small text under the tabs ("This is what people see."). */
+  note?: string;
   children: ReactNode;
 }) {
   return (
@@ -52,6 +55,7 @@ export function PreviewFrame<Id extends string>({
           </button>
         ))}
       </div>
+      {note ? <p className={styles.previewNote}>{note}</p> : null}
     </section>
   );
 }

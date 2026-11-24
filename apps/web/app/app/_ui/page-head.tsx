@@ -25,6 +25,8 @@ export function PageHead({
   title,
   summary,
   beside,
+  below,
+  large,
   children,
 }: {
   /** Small uppercase line above the title. */
@@ -33,11 +35,15 @@ export function PageHead({
   /** One sentence; wrap the numbers in <b>. */
   summary?: ReactNode;
   beside?: ReactNode;
+  /** A full-width row under the text, inside the header (My Curios: the address, then the underline tabs). */
+  below?: ReactNode;
+  /** The 48px title of the board's `.ed` screens (My Curios), 38px on a phone. */
+  large?: boolean;
   children?: ReactNode;
 }) {
   return (
     <>
-      <header className={[styles.head, beside ? styles.withBeside : '', kicker ? styles.hasKicker : ''].filter(Boolean).join(' ')}>
+      <header className={[styles.head, beside ? styles.withBeside : '', kicker ? styles.hasKicker : '', large ? styles.large : ''].filter(Boolean).join(' ')}>
         <div className={styles.text}>
           {kicker ? <p className={styles.kicker}>{kicker}</p> : null}
           <div className={styles.titleRow}>
@@ -47,6 +53,7 @@ export function PageHead({
           {summary ? <p className={styles.summary} data-head-part="summary">{summary}</p> : null}
         </div>
         {children ? <div className={styles.actions} data-head-part="actions">{children}</div> : null}
+        {below ? <div className={styles.below}>{below}</div> : null}
         <NavProgress />
       </header>
       <AlertSlot />

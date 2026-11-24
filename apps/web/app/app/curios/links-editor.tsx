@@ -184,7 +184,7 @@ export function LinksEditor({
   const full = links.length >= MAX_LINKS;
 
   return (
-    <section className={ui.section} aria-labelledby="links-title">
+    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="links-title">
       <SectionHead id="links-title" title="Links" note="Top to bottom, as they appear. Your page can point people to them too." />
 
       {lead || links.length > 0 ? (

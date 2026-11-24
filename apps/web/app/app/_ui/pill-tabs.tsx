@@ -30,11 +30,14 @@ export function PillTabs<Id extends string>({
   tabs,
   selected,
   onSelect,
+  underline = false,
 }: {
   label: string;
   tabs: readonly { id: Id; label: string; count?: ReactNode }[];
   selected: Id;
   onSelect: (id: Id) => void;
+  /** The board's My Curios tabs: words on a hairline, the chosen one underlined, not pills. */
+  underline?: boolean;
 }) {
   const refs = useRef<Partial<Record<Id, HTMLButtonElement | null>>>({});
   const at = tabs.findIndex((t) => t.id === selected);
@@ -49,7 +52,7 @@ export function PillTabs<Id extends string>({
   }
 
   return (
-    <div className={styles.track} role="tablist" aria-label={label}>
+    <div className={underline ? styles.lineTrack : styles.track} role="tablist" aria-label={label}>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -62,7 +65,7 @@ export function PillTabs<Id extends string>({
           aria-selected={selected === t.id}
           aria-controls={`panel-${t.id}`}
           tabIndex={selected === t.id ? 0 : -1}
-          className={styles.pill}
+          className={underline ? styles.lineTab : styles.pill}
           onClick={() => onSelect(t.id)}
           onKeyDown={onKey}
         >
