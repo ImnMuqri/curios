@@ -137,7 +137,7 @@ export function PinnedList({
   };
 
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} ${styles.wrapRead}`}>
       <p className={styles.intro}>
         Your answers from <a href="/app/questions">Questions</a>. The chat repeats your words exactly, every time.
       </p>

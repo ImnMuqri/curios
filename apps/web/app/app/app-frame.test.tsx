@@ -856,6 +856,8 @@ describe('the sidebar, on white (24 Nov)', () => {
     // No separate sheet on a different ground, and no hairline drawn round it.
     expect(sideCss()).not.toContain('.sheet::before');
     expect(ruleOf('.sheet')).not.toContain('box-shadow');
+    // The page is painted with the ground, so in dark it isn't a lighter card under a darker top bar.
+    expect(ruleOf('.sheet')).toMatch(/background:\s*var\(--ground\)/);
   });
 
   it('draws the nav items 40px tall with 12px gaps, 14.5px text and 19px icons, 2px apart', () => {

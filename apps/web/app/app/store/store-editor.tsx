@@ -566,8 +566,6 @@ export function StoreEditor({
               </ul>
             </div>
 
-            <ItemsList items={items} stats={stats} showFilter={showFilter} error={listError} onMove={(from, to) => void move(from, to)} onAvailable={(id, available) => void setAvailable(id, available)} />
-
             <section className={ui.section} aria-labelledby="about-title">
               <SectionHead id="about-title" title="About your shop" note="Shown above your items. Tell people what to know before they order." />
               <div className={ui.float}>
@@ -600,6 +598,8 @@ export function StoreEditor({
                 </p>
               ) : null}
             </section>
+
+            <ItemsList items={items} stats={stats} showFilter={showFilter} error={listError} onMove={(from, to) => void move(from, to)} onAvailable={(id, available) => void setAvailable(id, available)} />
           </div>
 
           <div role="tabpanel" id="panel-payment" aria-labelledby="tab-payment" hidden={tab !== 'payment'} className={`${ui.panel} ${styles.panel}`}>

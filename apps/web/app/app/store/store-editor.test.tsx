@@ -363,13 +363,13 @@ describe('the items', () => {
     expect(calls.settingsApi.save).toHaveBeenCalledWith({ shopDescription: 'Raya orders are open.' });
   });
 
-  it('draws the items as cards under the ready box, and the description after them', () => {
+  it('draws the items as cards under the ready box, and the description before them', () => {
     show();
     const cards = screen.getByRole('list', { name: 'Your items' });
     const ready = screen.getByRole('list', { name: 'Ready to take orders' });
     const about = screen.getByLabelText('About');
-    expect(ready.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(cards.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(ready.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(about.compareDocumentPosition(cards) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('shows the numbers the store read gave each card', () => {
