@@ -1,0 +1,128 @@
+/* The "new version" card: bottom right on a wide screen (the toast pill keeps the centre), above the phone menu on a narrow one. */
+
+.slot {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  /* With the toast: over the sheet (85) and the dialog (87). */
+  z-index: 88;
+  width: min(440px, calc(100vw / var(--page-zoom, 1) - 32px));
+  pointer-events: none;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line), 0 16px 40px -14px var(--soft-shadow, rgb(25 31 44 / 28%));
+  pointer-events: auto;
+  animation: versionIn 360ms cubic-bezier(0.3, 1.2, 0.5, 1) both;
+}
+
+.tile {
+  flex: none;
+  width: 40px;
+  height: 40px;
+}
+
+.words {
+  flex: 1;
+  min-width: 0;
+}
+
+.title,
+.sub {
+  margin: 0;
+}
+
+.title {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.sub {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.refresh {
+  flex: none;
+  height: 36px;
+  margin: 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--action);
+  color: var(--action-fg);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.refresh:hover {
+  background: var(--action-hover);
+}
+
+.refresh:focus-visible,
+.dismiss:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+}
+
+.dismiss {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.dismiss:hover {
+  background: var(--side-hover);
+  color: var(--ink);
+}
+
+.dismiss svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+@keyframes versionIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* Under 1100px the phone menu floats at the foot (toast.module.css): full width less the gutters, above the menu and above a toast pill. */
+@media (max-width: 1100px) {
+  .slot {
+    right: 16px;
+    bottom: calc(92px + 56px + env(safe-area-inset-bottom));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    animation: none;
+  }
+}

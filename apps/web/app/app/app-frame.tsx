@@ -13,6 +13,7 @@ import { NavProgressProvider } from './_ui/nav-progress.js';
 import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
 import { OverlayContext } from './_ui/overlay-context.js';
+import { NewVersion } from './_ui/new-version.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
 import { SaveStatusProvider, SaveStatusSlot } from './_ui/save-status.js';
 import { announceOverlay, Popover } from './_ui/popover.js';
@@ -118,6 +119,7 @@ export function AppFrame({
   bare = false,
   theme: savedTheme = 'system',
   bellSeen: savedBellSeen = { counts: {}, alerts: [] },
+  version = 'development',
   children,
 }: {
   /** The page's name: on the sidebar card, and in the account buttons' names. */
@@ -144,6 +146,8 @@ export function AppFrame({
   theme?: Theme;
   /** What the bell held when it was last marked read (bell-seen.ts); the layout reads it from the cookie. */
   bellSeen?: BellSeen;
+  /** The build this page was rendered by (lib/build-version.ts): the dashboard asks now and then whether a newer one is live. */
+  version?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
@@ -486,6 +490,7 @@ export function AppFrame({
         </div>
 
         <PhoneMenu pathname={pathname} items={items} badges={badges} billingDot={billingDot} className={styles.phoneMenu} />
+        <NewVersion version={version} />
         {/* SideSheet, Dialog and the toast render here (_ui/overlay-context): inside the frame for its tokens and dark mode, outside the screen so nothing in it can trap a fixed layer. */}
         <div ref={setLayerHost} className={styles.layers} />
         {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}
