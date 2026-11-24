@@ -43,9 +43,9 @@ Open: /app/curios
 Source: packages/core/src/handle.ts; onboarding copy “You can change how it looks later, not the address.”
 
 ### start-publish · How do I get my page live?
-Publish it from Review when you are ready: the side panel says when your page is not public yet. After that, facts you accept show up on it straight away; there is nothing else to publish. Then put curios.my/yourname in your Instagram, TikTok or WhatsApp bio.
+Publish it from Review when you are ready: the notice at the top of Review says when your page is not public yet. After that, facts you accept show up on it straight away; there is nothing else to publish. Then put curios.my/yourname in your Instagram, TikTok or WhatsApp bio.
 Open: /app/review
-Source: apps/web/app/app/review/publish-button.tsx; review/page.tsx (footer)
+Source: apps/web/app/app/review/publish-button.tsx; review/review-queue.tsx (the notice)
 
 ### start-instagram · Can Curios read my Instagram or TikTok?
 Not yet. Instagram, TikTok, Facebook and LinkedIn don’t let us read profiles. Paste your bio or captions instead, or add a website or Linktree link.
@@ -101,7 +101,7 @@ Open: /app/knowledge?tab=sources
 Source: Sources copy; “This usually takes under a minute.”
 
 ### know-wrong · My page said something wrong. How do I fix it?
-Find the fact in Facts & sources and edit or remove it. Once removed, the chat stops using it and reading the source again won’t bring it back. If the answer came from Questions, edit your answer there. You can try questions in Ask your page, beside Facts & sources, to check.
+Find the fact in Facts & sources and edit or remove it. Once removed, the chat stops using it and reading the source again won’t bring it back. If the answer came from Questions, edit your answer there. To check, press Try your page in Facts & sources and ask.
 Open: /app/knowledge
 Source: Knowledge copy “Remove it? The chat stops using it, and a re-read won’t bring it back.”; “Test what the chat says”
 
@@ -121,7 +121,7 @@ Open: none
 Source: landing FAQ “Does it reply in Malay?”
 
 ### know-test · How can I test what my page will say?
-Use Ask your page, beside Facts & sources. Ask the way a customer would; it answers only from the facts there, the same way your page does.
+In Facts & sources, press Try your page. Ask the way a customer would; it answers only from the facts there, the same way your page does.
 Open: /app/knowledge
 Source: apps/web/app/app/knowledge/ask-panel.tsx
 
@@ -178,7 +178,7 @@ Source: devDocs/README.md (PDPA: 12 month retention); Leads copy
 ## Shop and orders
 
 ### shop-open · How do I open my shop?
-In Store (business pages only). Add your items, choose how customers pay and how they get their order (pickup, delivery or both), then turn on Open for orders. The switch tells you what is still missing.
+In Store (business pages only). Add your items, choose how customers pay and how they get their order (pickup, delivery or both), then turn on Shop open, in the box at the top of Items. The box tells you what is still missing.
 Open: /app/store
 Source: devDocs/FRONTEND.md (/app/store); Store copy
 
@@ -213,7 +213,7 @@ Open: /app/store?tab=delivery
 Source: devDocs/payment-results-and-pickup-design.md; Store copy “Give flat delivery a fee above RM0, up to RM500.”
 
 ### shop-vouchers · How do I give a discount?
-Make a voucher in Store. It can apply by itself when an order fits, or only with a code the customer types. It takes a percentage or a fixed amount off the whole order or one item, with an optional minimum spend, end date and limit on uses. One discount applies per order, the one that saves most, and delivery is never discounted.
+Make a voucher in Store, under Discounts. It can apply by itself when an order fits, or only with a code the customer types. It takes a percentage or a fixed amount off the whole order or one item, with an optional minimum spend, end date and limit on uses. One discount applies per order, the one that saves most, and delivery is never discounted.
 Open: /app/store?tab=vouchers
 Source: devDocs/vouchers-design.md (Part A)
 
@@ -277,7 +277,7 @@ Open: /app/billing
 Source: devDocs/chip-payments-design.md (Part 1); Billing copy
 
 ### bill-renew · Does my plan renew by itself?
-Only if you turn it on. Tick Renew automatically by card before you pay (you then pay by card), and your card is charged when each period ends. FPX and e-wallets can’t charge automatically, so you renew those by hand. You can turn auto-renew off any time in Billing.
+Only if you turn it on. Tick Renew automatically by card in the pay window before you continue (you then pay by card), and your card is charged when each period ends. FPX and e-wallets can’t charge automatically, so you renew those by hand. You can turn auto-renew off any time in Billing.
 Open: /app/billing
 Source: apps/web/app/app/billing/pay-buttons.tsx; devDocs/chip-payments-design.md
 
@@ -316,9 +316,9 @@ Open: none
 Source: Settings copy “To change it, use Forgot your password? when you sign in.”
 
 ### acc-emails · How do I change which emails I get?
-In Settings, under Email me when: a new order, a receipt is uploaded, and someone leaves their number. Your plan ending is always emailed (3 days before and on the day) and can’t be turned off. New orders and leads still show in the dashboard with the emails off. To get a notification on your phone as well, or instead, turn on Notify this device in Settings.
+In Settings, under Email me when: a new order, a receipt is uploaded, someone leaves their number, a question is asked 3 times (it emails once per question that still needs your answer), and your plan is ending (3 days before and on the day). Two plan emails still come with that switch off: the one saying your card will be charged, and the one saying your shop has stopped taking orders. New orders and leads still show in the dashboard with the emails off. To get a notification on your phone as well, or instead, turn on Notifications on this device in Settings, under Signing in.
 Open: /app/settings
-Source: apps/web/app/app/settings/notify-emails.tsx; settings/page.tsx
+Source: apps/web/app/app/settings/notify-emails.tsx; settings/page.tsx; packages/db/src/question-mail.ts; apps/workers/src/billing/renewal-reminder.ts
 
 ### acc-home-screen · How do I put Curios on my phone’s home screen?
 On Android, open curios.my in Chrome, tap the ⋮ menu, then Add to Home screen (or Install app). On iPhone, open curios.my in Safari, tap the Share button (the square with an arrow), then Add to Home Screen, then Add. On a computer, Chrome and Edge show an install icon at the end of the address bar. Curios then opens from its own icon, straight to your dashboard, without the browser bar. On iPhone you sign in once more inside it.
@@ -326,17 +326,17 @@ Open: none
 Source: apps/web/public/manifest.webmanifest (start_url /app, standalone); app/app/pwa-metadata.ts
 
 ### acc-push · How do I get notifications on my phone?
-In Settings, under Notify this device, turn the switch on and allow notifications when your phone asks. You’ll get one for each new order, each online payment, each receipt uploaded and each person who leaves their number, and tapping it opens that order or Leads. Tap Send a test to check it works. Turn it on on each phone or computer you want, as each one has its own switch. It works whatever your email switches are set to. On iPhone, put Curios on your Home Screen first and open it from there.
+In Settings, under Signing in, turn on Notifications on this device and allow notifications when your phone asks. You’ll get one for each new order, each online payment, each receipt uploaded and each person who leaves their number, and tapping it opens that order or Leads. Tap Send a test to check it works. Turn it on on each phone or computer you want, as each one has its own switch. It works whatever your email switches are set to. On iPhone, put Curios on your Home Screen first and open it from there.
 Open: /app/settings
 Source: apps/web/app/app/settings/push-device.tsx; apps/api/src/modules/push/push.routes.ts; packages/core/src/push.ts
 
 ### acc-push-iphone · Why can’t I turn on notifications on my iPhone?
-Apple only lets websites send notifications once they are on your Home Screen, on iOS 16.4 or newer. In Safari, tap Share, then Add to Home Screen, then open Curios from its new icon, sign in, and turn on Notify this device in Settings. In Safari’s own tab the switch is not offered.
+Apple only lets websites send notifications once they are on your Home Screen, on iOS 16.4 or newer. In Safari, tap Share, then Add to Home Screen, then open Curios from its new icon, sign in, and turn on Notifications on this device in Settings. In Safari’s own tab the switch is not offered.
 Open: /app/settings
 Source: apps/web/lib/push-client.ts (ios-install); push-device.tsx
 
 ### acc-push-missing · I turned notifications on but nothing arrives.
-Tap Send a test in Settings under Notify this device. If the test doesn’t arrive, check that notifications for Curios (or your browser) are allowed in your phone’s settings, and that Do Not Disturb or a Focus mode isn’t on. If Settings says notifications are blocked, allow them for curios.my in your browser’s settings and come back. After removing Curios from your Home Screen or clearing your browser, turn the switch on again. The emails still come as set, so you won’t miss an order meanwhile.
+Tap Send a test in Settings, on Notifications on this device. If the test doesn’t arrive, check that notifications for Curios (or your browser) are allowed in your phone’s settings, and that Do Not Disturb or a Focus mode isn’t on. If Settings says notifications are blocked, allow them for curios.my in your browser’s settings and come back. After removing Curios from your Home Screen or clearing your browser, turn the switch on again. The emails still come as set, so you won’t miss an order meanwhile.
 Open: /app/settings
 Source: apps/web/app/app/settings/push-device.tsx (denied, Send a test); apps/workers/src/push/push.worker.ts (gone devices removed)
 
