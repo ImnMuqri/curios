@@ -145,12 +145,17 @@
 /* ---- Start ---- */
 
 .empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 12px 8px 8px;
   text-align: center;
 }
 
 /* The board's live Peek (LivePeek): eyes follow the pointer, and he bobs and blinks by himself. */
 .panel .peek {
+  display: block;
+  margin: 0 auto;
   width: 104px;
   height: auto;
   overflow: visible;

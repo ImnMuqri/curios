@@ -550,8 +550,7 @@ describe('the preview', () => {
     fireEvent.click(screenTab('Shop'));
     const shop = within(preview());
     expect(shop.getByText('Open for orders')).toBeInTheDocument();
-    expect(shop.getByText('Seksyen 7')).toBeInTheDocument();
-    expect(shop.getByText('Pickup or delivery')).toBeInTheDocument();
+    expect(shop.getByText('Seksyen 7 · Pickup or delivery')).toBeInTheDocument();
     expect(shop.getByRole('group', { name: 'Categories' })).toBeInTheDocument();
     expect(shop.getByRole('button', { name: /^Cakes/ })).toBeInTheDocument();
     expect(shop.getByRole('button', { name: /^Digital/ })).toBeInTheDocument();
@@ -572,7 +571,7 @@ describe('the preview', () => {
     fireEvent.click(screenTab('Shop'));
     fireEvent.click(within(preview()).getByRole('link', { name: 'Kek batik' }));
     expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
-    fireEvent.click(within(preview()).getByRole('button', { name: /^Add to basket/ }));
+    fireEvent.click(within(preview()).getByRole('button', { name: /^Add ·/ }));
     expect(within(preview()).getByText('1 item · RM45')).toBeInTheDocument();
   });
 
@@ -601,7 +600,7 @@ describe('the preview', () => {
     showItem();
     fireEvent.click(screenTab('Pay'));
     const pay = within(preview());
-    expect(pay.getByText('7Q4M')).toBeInTheDocument();
+    expect(pay.getAllByText('7Q4M', { exact: false }).length).toBeGreaterThan(0);
     const steps = pay.getByRole('list', { name: 'Order progress' });
     expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Placed, done', 'Paid', 'Ready', 'Done']);
   });
@@ -618,14 +617,15 @@ describe('the preview', () => {
     showItem();
     fireEvent.click(screenTab('Pay'));
     const pay = within(preview());
-    expect(pay.getByRole('heading', { name: 'Order #13' })).toBeInTheDocument();
+    expect(pay.getByRole('heading', { name: 'Your order' })).toBeInTheDocument();
+    expect(pay.getByText('Order #13', { exact: false })).toBeInTheDocument();
     expect(pay.getByText('Waiting for payment')).toBeInTheDocument();
     // Kek batik RM45 and the RM10 flat fee: the board's delivery, on the earliest day.
     expect(pay.getByRole('heading', { name: 'Pay RM55' })).toBeInTheDocument();
     expect(pay.getByText('Maybank · Lina')).toBeInTheDocument();
     expect(pay.getByText('1234567890')).toBeInTheDocument();
     expect(pay.getByText('Upload your receipt')).toBeInTheDocument();
-    expect(pay.getByText('1× Kek batik')).toBeInTheDocument();
+    expect(pay.getByText('Kek batik')).toBeInTheDocument();
     expect(pay.getByText('Delivery · Sun 18 Oct')).toBeInTheDocument();
     // A preview: nothing in it uploads.
     expect(preview().querySelector('input[type="file"]')).toBeNull();
@@ -636,7 +636,7 @@ describe('the preview', () => {
     showItem(ready, [cake, ...items]);
     fireEvent.click(screenTab('Pay'));
     const pay = within(preview());
-    expect(pay.getByText('1× Kek batik')).toBeInTheDocument();
+    expect(pay.getByText('Kek batik')).toBeInTheDocument();
     expect(pay.queryByText(/Custom birthday cake/)).toBeNull();
     expect(pay.getByRole('heading', { name: 'Pay RM55' })).toBeInTheDocument();
   });

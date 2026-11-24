@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { OwnerTopic, QuestionWeek, TopicTotals } from '@curios/db-read';
@@ -186,6 +188,39 @@ describe('QuestionsScreen, the cards', () => {
     expect(within(card('Is it halal?')).queryByRole('textbox')).toBeNull();
     const box = within(card('Do you deliver to Klang?')).getByRole('textbox', { name: 'Your answer to Do you deliver to Klang?' });
     expect(box).toHaveAttribute('placeholder', 'Write your answer once. The page uses it every time.');
+  });
+
+  it('keeps the box closed on a chat-answered topic until the owner asks to write one, then focuses it', () => {
+    show();
+    const chat = card('What time do you open?');
+    expect(within(chat).queryByRole('textbox')).toBeNull();
+    fireEvent.click(within(chat).getByRole('button', { name: 'Write your own answer' }));
+    const box = within(chat).getByRole('textbox', { name: 'Your answer to What time do you open?' });
+    expect(box).toHaveFocus();
+    expect(within(chat).queryByRole('button', { name: 'Write your own answer' })).toBeNull();
+    // A topic that needs an answer still has its box open, with no extra button.
+    expect(within(card('Do you deliver to Klang?')).queryByRole('button', { name: 'Write your own answer' })).toBeNull();
+  });
+
+  it('closes the opened box with Cancel, drops the draft, and does not steal focus when it reopens elsewhere', () => {
+    show();
+    const chat = card('What time do you open?');
+    fireEvent.click(within(chat).getByRole('button', { name: 'Write your own answer' }));
+    fireEvent.change(within(chat).getByRole('textbox'), { target: { value: 'Nine' } });
+    fireEvent.click(within(chat).getByRole('button', { name: 'Cancel' }));
+    expect(within(chat).queryByRole('textbox')).toBeNull();
+    fireEvent.click(within(chat).getByRole('button', { name: 'Write your own answer' }));
+    expect(within(chat).getByRole('textbox')).toHaveValue('');
+    // A topic that needs an answer has no Cancel: its box is always there.
+    expect(within(card('Do you deliver to Klang?')).queryByRole('button', { name: 'Cancel' })).toBeNull();
+  });
+
+  it('stacks the answer box on phones: a taller field, then a full-width Save', () => {
+    const css = readFileSync(join(import.meta.dirname, 'questions.module.css'), 'utf8');
+    const phone = css.slice(css.indexOf('@media (max-width: 760px)'));
+    expect(phone).toMatch(/\.in \{\s*flex-direction: column;/);
+    expect(phone).toMatch(/\.in textarea \{\s*min-height: 88px;/);
+    expect(phone).toMatch(/\.in \.darkPill \{\s*width: 100%;/);
   });
 
   it('saves an answer from the card, says so, refreshes, and shows it answered at once', async () => {

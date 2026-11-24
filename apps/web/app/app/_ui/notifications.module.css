@@ -14,7 +14,7 @@
   justify-content: space-between;
   gap: 12px;
   min-height: 46px;
-  padding: 6px 12px 4px;
+  padding: 10px 12px 8px;
 }
 
 .head b {
@@ -68,8 +68,9 @@
   animation-delay: calc(var(--i, 0) * 35ms);
 }
 
+/* The board's .nfi:hover, the sky-white wash (--surface follows dark). */
 a.row:hover {
-  background: color-mix(in srgb, var(--surface) 60%, var(--card));
+  background: var(--surface);
 }
 
 @keyframes rowIn {
@@ -157,20 +158,21 @@ a.row:hover {
   width: 16px;
   height: 16px;
   fill: none;
-  stroke: var(--faint);
+  /* The board's chevron, a step lighter than the faint text. */
+  stroke: color-mix(in srgb, var(--faint) 70%, var(--card));
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-/* Heads up: the plan's alerts, on amber, with "!" in the icon. */
+/* Heads up is attention, so the row is the pale hot pink (the board's .nfi.al, 24 Nov), its "!" still on amber. */
 .alert {
   align-items: flex-start;
-  background: var(--nf-alert);
+  background: var(--calm-urgent);
 }
 
 a.alert:hover {
-  background: var(--nf-alert-hover);
+  background: var(--tag-attn);
 }
 
 .alert .icon {
@@ -190,7 +192,7 @@ a.alert:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 18px 20px 22px;
+  padding: 26px 20px 22px;
   text-align: center;
 }
 
@@ -200,7 +202,7 @@ a.alert:hover {
 
 .empty b {
   margin-top: 10px;
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 600;
 }
 

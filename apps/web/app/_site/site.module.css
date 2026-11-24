@@ -1,0 +1,19 @@
+/* The small footer under the auth screens (Site board .ft2): © Curios, Terms, Privacy, the other language. */
+.line {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 22px;
+  padding: 26px 24px 34px;
+  color: var(--calm-faint);
+  font-size: 13.5px;
+}
+
+.line a {
+  padding-block: 4px;
+}
+
+.line a:hover {
+  color: var(--calm-ink);
+}

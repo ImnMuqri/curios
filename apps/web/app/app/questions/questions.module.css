@@ -205,6 +205,11 @@
   font-size: 13.5px;
 }
 
+/* "Write your own answer": the quiet way to open the box on a topic the chat already answers. */
+.writeOwn {
+  margin-top: 14px;
+}
+
 /* How far over the limit, beside Save answer. */
 .over {
   align-self: center;
@@ -716,8 +721,14 @@
     padding: 12px 14px;
   }
 
+  .in textarea {
+    min-height: 88px;
+    padding: 4px 0;
+  }
+
   .in .darkPill {
     width: 100%;
+    height: 44px;
   }
 
   .conflict {

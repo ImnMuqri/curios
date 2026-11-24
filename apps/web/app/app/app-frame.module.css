@@ -214,6 +214,30 @@
   margin: 0 -6px;
   padding: 0 6px 12px;
   overflow-y: auto;
+  /* A thin, rounded scrollbar that only shows once the pointer is over the list. --edge is the ring colour, dark-mapped. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.nav:hover {
+  scrollbar-color: var(--edge) transparent;
+}
+
+.nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+.nav:hover::-webkit-scrollbar-thumb {
+  background: var(--edge);
 }
 
 .groupTitle {
@@ -555,8 +579,6 @@
   --nf-red-ink: var(--tag-red-ink);
   --nf-ok: var(--tag-ok);
   --nf-ok-ink: var(--tag-ok-ink);
-  --nf-alert: color-mix(in srgb, var(--tag-wait) 60%, var(--card));
-  --nf-alert-hover: var(--tag-wait);
   --nf-alert-icon: color-mix(in srgb, var(--tag-wait) 88%, var(--tag-wait-ink));
   width: 384px;
   max-width: calc(100vw / var(--page-zoom, 1) - 32px);
@@ -861,6 +883,7 @@
     --tag-red-ink: var(--calm-dark-tag-red-ink);
     --badge: var(--calm-dark-badge);
     --calm-pick: var(--calm-dark-pick);
+    --pick-weight: var(--dark-pick-weight);
     --calm-scrim: var(--calm-dark-scrim);
     --calm-row-hover: var(--calm-dark-row-hover);
     --calm-urgent: var(--calm-dark-urgent);
@@ -974,6 +997,7 @@
   --tag-red-ink: var(--calm-dark-tag-red-ink);
   --badge: var(--calm-dark-badge);
   --calm-pick: var(--calm-dark-pick);
+  --pick-weight: var(--dark-pick-weight);
   --calm-scrim: var(--calm-dark-scrim);
   --calm-row-hover: var(--calm-dark-row-hover);
   --calm-urgent: var(--calm-dark-urgent);
@@ -1064,6 +1088,7 @@
   --tag-red-ink: var(--light-tag-red-ink);
   --badge: var(--light-badge);
   --calm-pick: var(--light-calm-pick);
+  --pick-weight: var(--light-pick-weight);
   --calm-scrim: var(--light-calm-scrim);
   --calm-row-hover: var(--light-calm-row-hover);
   --calm-urgent: var(--light-calm-urgent);

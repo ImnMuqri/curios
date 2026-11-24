@@ -42,6 +42,20 @@
   }
 }
 
+/* On a phone the bar is fixed directly under the sticky top bar (56px, app-frame.module.css), so it stays
+   there while the page scrolls instead of hiding behind it. Above the bar's z-index 30 yet below its 56px, so
+   it never covers the bar itself. The fadeUp on a screen ends at transform: none, which is no containing block. */
+@media (max-width: 760px) {
+  .bar {
+    position: fixed;
+    top: 56px;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    z-index: 31;
+  }
+}
+
 /* No motion: a still bar says the same thing. */
 @media (prefers-reduced-motion: reduce) {
   .bar[data-phase='loading'] {

@@ -95,10 +95,8 @@
 .old {
   margin: 14px 6px 6px;
   color: var(--muted);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 /* No match, and All clear (Dash.html .xnomatch / .xallclear). */

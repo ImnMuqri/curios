@@ -32,7 +32,7 @@ describe('the inbox kit stylesheet', () => {
     }
     expect(li.join('\n')).toMatch(/\.li \{[^}]*min-height: 64px;[^}]*padding: 16px 20px;[^}]*border-top: 1px solid var\(--line\);/);
     expect(li.join('\n')).toMatch(/\.li:first-child \{\s*border-top: 0;/);
-    expect(li.join('\n')).toMatch(/\.li\[aria-current='true'\] \{\s*background: var\(--calm-pick\);/);
+    expect(li.join('\n')).toMatch(/\.li\[aria-current='true'\] \{\s*background: color-mix\(in srgb, var\(--calm-pick\) var\(--pick-weight, 80%\), var\(--card\)\);/);
     expect(li.join('\n')).toMatch(/\.li:not\(\[aria-current='true'\]\):hover \{\s*background: var\(--calm-row-hover\);/);
     expect(li.join('\n')).toMatch(/\.li\[aria-current='true'\] \.liText b \{\s*font-weight: 700;/);
   });

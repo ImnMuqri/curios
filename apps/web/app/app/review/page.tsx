@@ -60,9 +60,9 @@ export default async function ReviewPage() {
       published={page.published}
       head={
         <PageHead kicker="Knowledge" title="Review" summary="Facts found in your sources. Nothing reaches your customers until you accept it.">
-          {/* A shop, a LinkedIn bio, a second site: sources can arrive at any
+          {/* The header's create action: the one primary button (secondary ones are "See your shop" and the like). A shop, a LinkedIn bio, a second site: sources can arrive at any
               time, and each one's facts join this same queue. */}
-          <a className={`${panel.secondaryLink} ${styles.headLink}`} href="/app/knowledge?tab=sources&add=1">
+          <a className={`${panel.primaryLink} ${styles.headLink}`} href="/app/knowledge?tab=sources&add=1">
             + Add another source
           </a>
         </PageHead>

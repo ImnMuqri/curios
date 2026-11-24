@@ -51,7 +51,7 @@
 .ready {
   margin-top: 16px;
   border-radius: 16px;
-  background: var(--surface);
+  background: var(--card);
   box-shadow: inset 0 0 0 1px var(--edge);
   overflow: hidden;
 }
@@ -115,7 +115,8 @@
 }
 
 .step:hover {
-  background: var(--card);
+  /* Dark-mapped by the frame (the board's row hover); the frame's raw light hover token would stay near-white in dark. */
+  background: var(--calm-row-hover);
 }
 
 .step:focus-visible {
@@ -184,22 +185,18 @@
 /* The grid answers the content column, not the window. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 14px;
-  margin: 16px 0 0;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
   padding: 0;
   list-style: none;
 }
 
-@container (max-width: 760px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
+/* Phones: two across, whatever the track width would allow. */
 @container (max-width: 480px) {
   .grid {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
   }
 }
 
@@ -207,7 +204,7 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
+  border-radius: 12px;
   background: var(--card);
   box-shadow: inset 0 0 0 1px var(--edge);
   overflow: hidden;
@@ -243,7 +240,7 @@
   background: var(--blob-pink);
   color: color-mix(in srgb, var(--rose) 70%, var(--ink));
   font-family: var(--font-fraunces), Georgia, serif;
-  font-size: 44px;
+  font-size: 30px;
   font-weight: 800;
   transition: opacity 250ms ease, filter 250ms ease;
 }
@@ -279,12 +276,12 @@
 
 /* What a digital item with no picture is: Files, Link, Codes or Session, on a pill. */
 .cardKind {
-  padding: 6px 12px;
+  padding: 4px 10px;
   border-radius: 999px;
   background: color-mix(in srgb, var(--card) 85%, transparent);
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.04em;
 }
@@ -296,13 +293,13 @@
 
 .cardText {
   display: block;
-  padding: 14px 16px;
+  padding: 10px 12px 6px;
 }
 
 .cardText b {
   display: block;
   overflow: hidden;
-  font-size: 15px;
+  font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -310,9 +307,9 @@
 
 .cardText small {
   display: block;
-  margin-top: 2px;
+  margin-top: 1px;
   overflow: hidden;
-  font-size: 13.5px;
+  font-size: 12px;
   color: var(--muted);
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -326,19 +323,21 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  min-height: 32px;
-  padding: 0 16px 14px;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 12px 8px;
 }
 
 .sold {
-  font-size: 12.5px;
+  min-width: 0;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--muted);
 }
 
 .hid {
-  font-size: 12.5px;
+  min-width: 0;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--amber-ink);
 }
@@ -346,15 +345,15 @@
 /* The "..." that keeps the shop's order (Move earlier, Move later): over the photo's corner. */
 .cardMenu {
   position: absolute;
-  top: 10px;
-  right: 10px;
+  top: 6px;
+  right: 6px;
 }
 
 .cardDots {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -422,8 +421,8 @@
 
 .cardAdd {
   display: grid;
-  min-height: 250px;
-  border-radius: 16px;
+  min-height: 150px;
+  border-radius: 12px;
   box-shadow: inset 0 0 0 1.5px var(--edge);
   color: var(--muted);
   font-weight: 600;
@@ -434,7 +433,8 @@
   place-items: center;
   color: inherit;
   text-decoration: none;
-  border-radius: 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
 }
 
 .cardAdd a:hover {
@@ -791,6 +791,7 @@
 
 .price {
   width: 200px;
+  max-width: 100%;
   margin-top: 12px;
 }
 
@@ -802,7 +803,7 @@
 
 .option {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 150px 34px;
+  grid-template-columns: minmax(0, 1fr) 160px 34px;
   align-items: center;
   gap: 8px;
   animation: fadeUp 300ms ease both;
@@ -1403,6 +1404,7 @@
 
 .fee .money {
   width: 180px;
+  max-width: 100%;
 }
 
 .fee > span {
@@ -1624,7 +1626,7 @@
 
 @container (max-width: 520px) {
   .option {
-    grid-template-columns: minmax(0, 1fr) 112px 34px;
+    grid-template-columns: minmax(0, 1fr) 140px 34px;
   }
 
   .grid2,
@@ -1734,7 +1736,6 @@
   font-family: var(--font-mono);
   font-size: 10.5px;
   font-weight: 500;
-  text-transform: uppercase;
 }
 
 .dgName {
@@ -2302,4 +2303,24 @@
 .cropRemove:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* Phones: one tap to add, in the filter row; the grid's last card is for wider columns. Scoped to
+   the shelf so it outranks the primary link's own display whatever order the sheets load in. */
+.shelf .addTop {
+  display: none;
+}
+
+@container (max-width: 480px) {
+  .shelf .addTop {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+  }
+
+  .cardAdd {
+    display: none;
+  }
 }
