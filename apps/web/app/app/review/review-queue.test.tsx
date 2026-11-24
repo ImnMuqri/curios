@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -58,7 +56,7 @@ describe('ReviewQueue', () => {
 
     // The card flies off, then leaves; the next one is on top.
     await waitFor(() => expect(topCard()).toHaveTextContent(/open 9am to 6pm/i));
-    expect(screen.queryByText(/kuih lapis is rm12 a box/i, { selector: 'article p' })).toBeNull();
+    expect(screen.queryByText(/kuih lapis is rm12 a box/i, { selector: 'article h2' })).toBeNull();
     // The local removal alone would be a lie about the server's state.
     expect(onChanged).toHaveBeenCalledTimes(1);
     expect(onAccept).toHaveBeenCalledWith('f-1');
@@ -71,10 +69,10 @@ describe('ReviewQueue', () => {
       <ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={onReject} onChanged={onChanged} />,
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^reject this fact$/i }));
 
     await waitFor(() => expect(topCard()).toHaveTextContent(/open 9am to 6pm/i));
-    expect(screen.queryByText(/kuih lapis is rm12 a box/i, { selector: 'article p' })).toBeNull();
+    expect(screen.queryByText(/kuih lapis is rm12 a box/i, { selector: 'article h2' })).toBeNull();
     expect(onChanged).toHaveBeenCalledTimes(1);
     expect(onReject).toHaveBeenCalledWith('f-1');
   });
@@ -87,7 +85,7 @@ describe('ReviewQueue', () => {
     const onEdit = vi.fn().mockResolvedValue(undefined);
     render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} onChanged={onChanged} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^fix it$/i }));
     const field = screen.getByRole('textbox');
     await userEvent.clear(field);
     await userEvent.type(field, 'Kuih lapis is RM14 a box');
@@ -115,7 +113,7 @@ describe('ReviewQueue', () => {
       .mockRejectedValue(new ApiError(409, 'FACT_DUPLICATE', 'You already have a fact that says this.'));
     render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} onChanged={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^fix it$/i }));
     const field = screen.getByRole('textbox');
     await userEvent.clear(field);
     await userEvent.type(field, 'Kuih lapis is RM14 a box');
@@ -149,7 +147,9 @@ describe('ReviewQueue', () => {
 
     expect(await screen.findByRole('heading', { name: /nothing left to review/i })).toBeInTheDocument();
     expect(screen.getByText(/already live on your page/i)).toBeInTheDocument();
-    expect(screen.getByText('1 of 1 done')).toBeInTheDocument();
+    // The board's done state: a way on to the facts, and no progress line.
+    expect(screen.getByRole('link', { name: 'See your facts' })).toHaveAttribute('href', '/app/knowledge?tab=facts');
+    expect(screen.queryByText(/of 1 done/)).toBeNull();
   });
 
   it('does not call an unpublished page live when everything is checked', async () => {
@@ -168,102 +168,95 @@ describe('ReviewQueue', () => {
     // The read is bounded at 50; the progress line counts what is waiting.
     render(<ReviewQueue facts={facts} pending={73} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
 
-    expect(screen.getByText('73 facts to check')).toBeInTheDocument();
+    expect(screen.getByText('73 left')).toBeInTheDocument();
     expect(screen.getByText('0 of 73 done')).toBeInTheDocument();
   });
 
-  it('keeps a decision in this session, and the card stays on failure', async () => {
+  it('keeps the card on a failed decision, and lets the owner try again', async () => {
     const onReject = vi.fn().mockRejectedValueOnce(new ApiError(500, 'INTERNAL', 'The server is having a moment.'));
     render(<ReviewQueue facts={facts} onAccept={vi.fn().mockResolvedValue(undefined)} onEdit={vi.fn()} onReject={onReject} onChanged={vi.fn()} />);
 
-    expect(screen.getByText(/what you accept or reject shows up here/i)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole('button', { name: /^reject$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^reject this fact$/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('The server is having a moment.');
     expect(screen.getByRole('button', { name: /^accept$/i })).not.toBeDisabled();
-
-    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
-    expect(await screen.findByText('1 accepted · 0 rejected')).toBeInTheDocument();
-    expect(screen.getByRole('listitem')).toHaveTextContent('Accepted Kuih lapis is RM12 a box');
+    expect(topCard()).toHaveTextContent(/kuih lapis is rm12 a box/i);
   });
 
-  it('shows this session eight decisions at a time, newest first', async () => {
-    const many = Array.from({ length: 10 }, (_, i) => ({ ...facts[0]!, id: `f-${i}`, claim: `Fact number ${i + 1}` }));
+  it('draws the header, then the notice, then the fact, in one column', () => {
     render(
-      <ReviewQueue facts={many} onAccept={vi.fn().mockResolvedValue(undefined)} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />,
+      <ReviewQueue facts={facts} head={<h1>Review</h1>} footer={<p>Your page is live</p>} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />,
     );
-
-    for (let i = 1; i <= 9; i++) {
-      await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
-      await waitFor(() => expect(topCard()).toHaveTextContent(`Fact number ${i + 1}`));
+    const order = [screen.getByRole('heading', { level: 1 }), screen.getByText('Your page is live'), topCard()];
+    for (let i = 1; i < order.length; i++) {
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     }
+    expect(screen.queryByText(/once accepted, the chat can say/i)).toBeNull();
+    expect(screen.queryByText(/this session/i)).toBeNull();
+  });
 
-    const session = () => screen.getByRole('list');
-    const pages = screen.getByRole('navigation', { name: /this session/i });
-    expect(pages).toHaveTextContent('1 of 2');
-    expect(within(session()).getAllByRole('listitem')).toHaveLength(8);
-    expect(within(session()).getAllByRole('listitem')[0]).toHaveTextContent('Fact number 9');
+  it('lists what is up next and what is done, beside the card', async () => {
+    const three = [...facts, { ...facts[0]!, id: 'f-3', claim: 'Closed on Mondays' }];
+    render(<ReviewQueue facts={three} onAccept={vi.fn().mockResolvedValue(undefined)} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
 
-    await userEvent.click(within(pages).getByRole('button', { name: 'Older' }));
-    expect(within(session()).getAllByRole('listitem')).toHaveLength(1);
-    expect(within(session()).getByRole('listitem')).toHaveTextContent('Fact number 1');
-    expect(within(pages).getByRole('button', { name: 'Older' })).toBeDisabled();
+    const side = screen.getByRole('complementary', { name: 'Up next and done' });
+    expect(side).toHaveTextContent('Up next 2');
+    expect(side).toHaveTextContent('NextOpen 9am to 6pm, Tuesday to Sunday');
+    expect(side).toHaveTextContent('ThenClosed on Mondays');
+    expect(side).not.toHaveTextContent('Done');
+    expect(screen.getByText('3 left')).toBeInTheDocument();
 
-    // A new decision brings the newest page back.
     await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
-    await waitFor(() => expect(within(session()).getAllByRole('listitem')[0]).toHaveTextContent('Fact number 10'));
-    expect(pages).toHaveTextContent('1 of 2');
-    // Ten cards, each leaving over LEAVE_MS.
-  }, 15_000);
-
-  it('draws the chat’s reply as plain text under "{Name}’s page"', () => {
-    render(<ReviewQueue facts={facts} pageName="Nadia" onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
-    const label = screen.getByText('Nadia’s page');
-    expect(label.parentElement!.nextElementSibling).toHaveTextContent('Kuih lapis is RM12 a box');
+    await waitFor(() => expect(topCard()).toHaveTextContent(/open 9am to 6pm/i));
+    expect(side).toHaveTextContent('Done 1');
+    expect(side).toHaveTextContent('AcceptedKuih lapis is RM12 a box');
+    expect(screen.getByText('2 left')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: '1 of 3 checked' })).toBeInTheDocument();
   });
 
-  // Dashboard v2: the preview is the owner's tool, a normal AI chat on the dashboard's neutral
-  // panel. It is not an island of the page's own colours, so it follows dark mode.
-  it('draws the chat preview as a dashboard chat, not in the page’s colours', () => {
-    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
-    const chat = screen.getByText('On your page').parentElement!;
-    expect(chat).not.toHaveAttribute('data-island');
-    expect(chat).not.toHaveAttribute('data-on-accent');
-    expect(chat.querySelector('[data-on-page]')).toBeNull();
-    const css = readFileSync(join(import.meta.dirname, 'review.module.css'), 'utf8');
-    const body = /\n\.chat \{([^}]*)\}/.exec(css.replace(/\r/g, ''))?.[1] ?? '';
-    expect(body).toMatch(/background: var\(--chat\);/);
-    expect(body).toMatch(/border-radius: 10px;/);
+  it('puts a skipped fact off without discarding it, and brings it back last', async () => {
+    const onAccept = vi.fn().mockResolvedValue(undefined);
+    const onReject = vi.fn();
+    const onChanged = vi.fn();
+    render(<ReviewQueue facts={facts} onAccept={onAccept} onEdit={vi.fn()} onReject={onReject} onChanged={onChanged} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+
+    // The next fact is on top, the skipped one waits behind it, and nothing was sent or counted done.
+    expect(topCard()).toHaveTextContent(/open 9am to 6pm/i);
+    expect(screen.getByText('2 left')).toBeInTheDocument();
+    expect(screen.getByText('0 of 2 done')).toBeInTheDocument();
+    expect(screen.getByRole('complementary', { name: 'Up next and done' })).toHaveTextContent('NextKuih lapis is RM12 a box');
+    expect(onAccept).not.toHaveBeenCalled();
+    expect(onReject).not.toHaveBeenCalled();
+    expect(onChanged).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('Skipped. It comes back later.');
+
+    // Checking the other one brings the skipped fact back.
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    await waitFor(() => expect(topCard()).toHaveTextContent(/kuih lapis is rm12 a box/i));
+    // With one fact left there is nothing to put it behind.
+    expect(screen.getByRole('button', { name: /^skip$/i })).toBeDisabled();
   });
 
-  it('draws the header at the top of the left column', () => {
-    render(<ReviewQueue facts={facts} head={<h1>Review</h1>} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
-    const side = screen.getByRole('complementary', { name: 'What this changes' });
-    expect(side.contains(screen.getByRole('heading', { level: 1 }))).toBe(false);
-    expect(side.previousElementSibling?.firstElementChild).toContainElement(screen.getByRole('heading', { level: 1 }));
-  });
-
-  it('shows what the chat would say, live as the claim is edited', async () => {
-    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
-
-    const chat = screen.getByText('On your page').parentElement!;
-    expect(chat).toHaveTextContent('Berapa harga kuih lapis?');
-    expect(chat).toHaveTextContent('Kuih lapis is RM12 a box');
-
-    await userEvent.click(screen.getByRole('button', { name: /^edit$/i }));
-    const field = screen.getByRole('textbox');
-    await userEvent.clear(field);
-    await userEvent.type(field, 'Kuih lapis is RM14 a box');
-
-    expect(chat).toHaveTextContent('Kuih lapis is RM14 a box');
-  });
-
-  it('offers only the top card to act on', () => {
+  it('puts a fact that is skipped twice behind the other skipped ones', async () => {
     render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
 
-    // One fact at a time: the card behind shows, but has no controls.
-    expect(screen.getAllByRole('button', { name: /^accept$/i })).toHaveLength(1);
-    expect(screen.getByText(/open 9am to 6pm/i).closest('article')).toHaveAttribute('aria-hidden', 'true');
+    await userEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^skip$/i }));
+    expect(topCard()).toHaveTextContent(/kuih lapis is rm12 a box/i);
+  });
+
+  it('acts on the keys F, S and A for the card on top', async () => {
+    const onAccept = vi.fn().mockResolvedValue(undefined);
+    render(<ReviewQueue facts={facts} onAccept={onAccept} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+
+    await userEvent.keyboard('s');
+    expect(topCard()).toHaveTextContent(/open 9am to 6pm/i);
+    await userEvent.keyboard('f');
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    await userEvent.keyboard('a');
+    expect(onAccept).toHaveBeenCalledWith('f-2');
   });
 
   it('offers no control that acts on more than one fact, mirrored at the container', () => {
