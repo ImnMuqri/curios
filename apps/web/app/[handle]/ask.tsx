@@ -35,6 +35,7 @@ export function Ask({
   canCapture,
   faqTotal = 0,
   language = 'en',
+  avatarUrl = null,
 }: {
   handle: string;
   questions: string[];
@@ -45,6 +46,8 @@ export function Ask({
   faqTotal?: number;
   /** The page's language: the opening line, the reply label and the product card speak it. */
   language?: string;
+  /** The owner's picture, for the chat's reply label. */
+  avatarUrl?: string | null;
 }) {
   const copy = shopCopy(language);
   const [open, setOpen] = useState(false);
@@ -312,6 +315,7 @@ export function Ask({
           onAddToBasket={onAddToBasket}
           basketItemIds={basketItemIds}
           replyLabel={copy.askLabel(displayName)}
+          avatarUrl={avatarUrl}
           thinkingLabel={copy.askThinking}
           cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed, pick: copy.pickATime, soldOut: copy.soldOut, ask: copy.askPill }}
           initialDraft={prefill}

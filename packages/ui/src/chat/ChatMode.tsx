@@ -117,6 +117,8 @@ export interface ChatModeProps {
   cardCopy?: ProductCardCopy;
   /** The label over each reply; "{displayName}’s page" when left out. */
   replyLabel?: string;
+  /** The owner's picture, drawn small in place of the dot beside each reply label. Left out, the dot stays. */
+  avatarUrl?: string | null;
   /** The word beside the o while a reply is on its way; "Inquiring" when left out. */
   thinkingLabel?: string;
   /** Typed into the box when chat mode mounts, for the visitor to read and send. Never sent by itself. */
@@ -143,6 +145,7 @@ export function ChatMode({
   basketItemIds,
   cardCopy = CARD_COPY,
   replyLabel,
+  avatarUrl,
   thinkingLabel,
   initialDraft,
   enquiry,
@@ -530,7 +533,10 @@ export function ChatMode({
               <p className={styles.question}>{turn.question}</p>
             )}
             <div className={styles.reply}>
-              <span className={styles.who}>{replyLabel ?? `${displayName}’s page`}</span>
+              <span className={styles.who}>
+                {avatarUrl ? <img className={styles.whoPic} src={avatarUrl} alt="" width={22} height={22} onError={(e) => { e.currentTarget.hidden = true; }} /> : null}
+                {replyLabel ?? `${displayName}’s page`}
+              </span>
               <AnswerBubble
                 text={turn.answer}
                 waiting={busy && index === turns.length - 1 ? <Thinking label={thinkingLabel} /> : null}

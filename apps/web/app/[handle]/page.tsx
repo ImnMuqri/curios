@@ -175,6 +175,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
           }, freeLeads)}
           faqTotal={faq?.total ?? 0}
           language={page.language}
+          avatarUrl={avatarUrl(page.avatarKey)}
         />
         <script dangerouslySetInnerHTML={{ __html: OPEN_SCROLLED }} />
       </BentoPage>

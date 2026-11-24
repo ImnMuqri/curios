@@ -736,6 +736,12 @@ a.headLink {
   padding-bottom: 76px;
 }
 
+/* A Full-page cover fills the page it belongs to, scrolling with it, as on the live page: positioned,
+   so the photo is anchored to the page and not to the phone's fixed screen. */
+.scroll > [data-bento-page][data-cover-layout='FULL'] {
+  position: relative;
+}
+
 /* The board's .fnote under the phone. */
 .previewNote {
   max-width: 280px;

@@ -68,6 +68,19 @@
   background: var(--accent-mark, var(--accent, var(--sky)));
 }
 
+.dot {
+  position: relative;
+}
+
+.dotPic {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .words {
   display: block;
 }

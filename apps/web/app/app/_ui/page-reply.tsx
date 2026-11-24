@@ -17,12 +17,15 @@ export function PageReply({
   children,
   label,
   onPage = false,
+  avatarUrl,
 }: {
   name?: string;
   className?: string;
   children: ReactNode;
   label?: string;
   onPage?: boolean;
+  /** The owner's picture, in place of the dot, on their page's preview. */
+  avatarUrl?: string | null;
 }) {
   return (
     <span
@@ -32,7 +35,9 @@ export function PageReply({
     >
       <span className={styles.who}>
         {onPage ? (
-          <i className={styles.dot} aria-hidden="true" />
+          <i className={styles.dot} aria-hidden="true">
+            {avatarUrl ? <img className={styles.dotPic} src={avatarUrl} alt="" width={12} height={12} onError={(e) => { e.currentTarget.hidden = true; }} /> : null}
+          </i>
         ) : (
           <svg className={styles.peek} viewBox="0 0 16 16" aria-hidden="true">
             <rect width="16" height="16" rx="5" className={styles.peekFace} />

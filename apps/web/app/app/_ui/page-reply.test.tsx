@@ -69,3 +69,17 @@ describe('the previews draw no reply bubble', () => {
     if (body !== null) expect(body).not.toMatch(/background|border|padding|radius/);
   });
 });
+
+describe('PageReply, the picture', () => {
+  it('draws it in the dot on the owner page, with no alt', () => {
+    const { container } = render(<PageReply name="Kek Lina" onPage avatarUrl="/a.webp">Hi</PageReply>);
+    const img = container.querySelector('img');
+    expect(img).toHaveAttribute('src', '/a.webp');
+    expect(img).toHaveAttribute('alt', '');
+  });
+
+  it('is the plain dot with no picture', () => {
+    const { container } = render(<PageReply name="Kek Lina" onPage>Hi</PageReply>);
+    expect(container.querySelector('img')).toBeNull();
+  });
+});

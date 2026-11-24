@@ -495,3 +495,23 @@ describe('BentoPage, the picture and the cover layout', () => {
     expect(container.querySelector('[data-cover-photo]')).toBeNull();
   });
 });
+
+describe('BentoPage, the picture in Ask', () => {
+  const css = () => readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+
+  it('keeps the picture in the markup on Ask, and the stylesheet shows it small instead of hiding it', () => {
+    const { container } = render(<BentoPage {...base} mode="chat" avatarUrl="/a.webp" avatarSize="LARGE" avatarBorder={false} />);
+    expect(container.querySelector('img[src="/a.webp"]')).not.toBeNull();
+    const source = css();
+    expect(source).not.toMatch(/\[data-mode='chat'\] :is\([^)]*\.avatar/);
+    // A fixed small size, after the owner's size rules so it wins; the border choice is honoured.
+    expect(source).toMatch(/\.page\[data-mode='chat'\] \.head\s*\{[^}]*--avatar-size:\s*42px;/s);
+    expect(source.indexOf("[data-avatar-size='LARGE'] .head")).toBeLessThan(source.indexOf("[data-mode='chat'] .head {\n  --avatar-size"));
+    expect(source).toMatch(/\[data-mode='chat'\]\[data-avatar-border='off'\] \.head > \.avatar\s*\{\s*box-shadow:\s*none;/);
+  });
+
+  it('has no picture, no avatar in Ask either', () => {
+    const { container } = render(<BentoPage {...base} mode="chat" avatarUrl={null} />);
+    expect(container.querySelector('header img')).toBeNull();
+  });
+});
