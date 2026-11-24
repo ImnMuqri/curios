@@ -499,7 +499,7 @@ describe('status and read', () => {
     expect(await app.prisma.adminAction.count({ where: { adminUserId: adminId } })).toBe(before);
   });
 
-  it('moves DONE to OPEN and SPAM to OPEN, and rejects SPAM as a target', async () => {
+  it('moves DONE to OPEN and SPAM to OPEN, and marks SPAM, which also keeps an address in Spam', async () => {
     const done = await aThread({ status: 'DONE' });
     const spam = await aThread({ status: 'SPAM' });
     expect((await send('POST', `/admin/support/threads/${done.id}/status`, { status: 'OPEN' })).statusCode).toBe(204);
@@ -509,8 +509,25 @@ describe('status and read', () => {
 
     expect((await send('POST', `/admin/support/threads/${done.id}/status`, { status: 'DONE' })).statusCode).toBe(204);
     expect((await app.prisma.supportThread.findUniqueOrThrow({ where: { id: done.id } })).status).toBe('DONE');
-    expect((await send('POST', `/admin/support/threads/${done.id}/status`, { status: 'SPAM' })).statusCode).toBe(400);
+    expect((await send('POST', `/admin/support/threads/${done.id}/status`, { status: 'SPAM' })).statusCode).toBe(204);
+    expect((await app.prisma.supportThread.findUniqueOrThrow({ where: { id: done.id } })).status).toBe('SPAM');
+    const audit = await app.prisma.adminAction.findMany({ where: { targetId: done.id }, orderBy: { createdAt: 'desc' }, take: 1 });
+    expect(audit[0]).toMatchObject({ action: 'CHANGED_SUPPORT_STATUS', metadata: { status: 'SPAM' } });
+    expect((await send('POST', `/admin/support/threads/${done.id}/status`, { status: 'BOGUS' })).statusCode).toBe(400);
     expect((await send('POST', '/admin/support/threads/nope/status', { status: 'OPEN' })).statusCode).toBe(404);
+  });
+
+  it('Not spam brings back every spam thread of that address, and leaves other addresses and Done alone', async () => {
+    const a = await aThread({ status: 'SPAM' });
+    const b = await app.prisma.supportThread.create({
+      data: { address: a.address, subject: 'Second', status: 'SPAM', unread: true, lastMessageAt: tick() },
+    });
+    const other = await aThread({ status: 'SPAM' });
+    expect((await send('POST', `/admin/support/threads/${a.id}/status`, { status: 'OPEN' })).statusCode).toBe(204);
+    const status = async (id: string) => (await app.prisma.supportThread.findUniqueOrThrow({ where: { id } })).status;
+    expect(await status(a.id)).toBe('OPEN');
+    expect(await status(b.id)).toBe('OPEN');
+    expect(await status(other.id)).toBe('SPAM');
   });
 
   it('read clears unread', async () => {

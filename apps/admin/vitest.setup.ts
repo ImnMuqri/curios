@@ -24,11 +24,8 @@ if (!window.HTMLElement.prototype.scrollIntoView) {
   window.HTMLElement.prototype.scrollIntoView = () => {};
 }
 
-// next/font/google downloads real font files at build time, which a unit test can
-// neither do nor should. The mock returns the loader's shape for the three faces
-// apps/admin/lib/fonts.ts uses.
-vi.mock('next/font/google', () => ({
-  Bricolage_Grotesque: () => ({ variable: 'font-bricolage', className: 'font-bricolage' }),
-  IBM_Plex_Mono: () => ({ variable: 'font-plex-mono', className: 'font-plex-mono' }),
-  IBM_Plex_Sans: () => ({ variable: 'font-plex-sans', className: 'font-plex-sans' }),
+// next/font/local reads the font files through a build-time loader that a unit test does not run.
+// The mock returns the loader's shape; apps/admin/lib/fonts.ts loads three faces.
+vi.mock('next/font/local', () => ({
+  default: () => ({ variable: 'font-face', className: 'font-face' }),
 }));
