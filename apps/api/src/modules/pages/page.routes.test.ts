@@ -367,6 +367,23 @@ describe('PATCH /pages/notifications', () => {
     expect(await flags()).toEqual({ notifyLeads: true, notifyOrders: false, notifyReceipts: false });
   });
 
+  it('starts the question email off and the plan-ending email on, and switches each on its own', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'BUSINESS');
+    const flags = async () =>
+      app.prisma.page.findUniqueOrThrow({ where: { handle }, select: { notifyLeads: true, notifyQuestions: true, notifyPlanEnding: true } });
+    expect(await flags()).toEqual({ notifyLeads: true, notifyQuestions: false, notifyPlanEnding: true });
+
+    const questions = await call(cookie, 'PATCH', '/pages/notifications', { questions: true });
+    expect(questions.json()).toEqual({ questions: true });
+    expect(await flags()).toEqual({ notifyLeads: true, notifyQuestions: true, notifyPlanEnding: true });
+
+    const plan = await call(cookie, 'PATCH', '/pages/notifications', { planEnding: false });
+    expect(plan.json()).toEqual({ planEnding: false });
+    expect(await flags()).toEqual({ notifyLeads: true, notifyQuestions: true, notifyPlanEnding: false });
+  });
+
   it('refuses a body that switches nothing', async () => {
     const res = await call(await anOwner(), 'PATCH', '/pages/notifications', {});
     expect(res.statusCode).toBe(400);

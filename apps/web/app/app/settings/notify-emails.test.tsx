@@ -7,15 +7,16 @@ const LEADS = { name: 'Email me when someone leaves their number' };
 const ORDERS = { name: 'Email me when a new order comes in' };
 const RECEIPTS = { name: 'Email me when a receipt is uploaded' };
 
+const QUESTIONS = { name: 'Email me when a question is asked 3 times' };
 const PLAN = { name: 'Email me when my plan is ending' };
 
-const all = { leads: true, orders: true, receipts: true };
+const all = { leads: true, orders: true, receipts: true, questions: false, planEnding: true };
 
 describe('NotifyForm', () => {
-  it('lists the board’s emails, order and receipt first, the plan ending last', () => {
+  it('lists the board’s emails, order and receipt first, a question asked 3 times, the plan ending last', () => {
     render(<NotifyForm on={all} onChange={vi.fn()} />);
 
-    expect(screen.getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([ORDERS.name, RECEIPTS.name, LEADS.name, PLAN.name]);
+    expect(screen.getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([ORDERS.name, RECEIPTS.name, LEADS.name, QUESTIONS.name, PLAN.name]);
     expect(screen.getByText('A new order')).toBeInTheDocument();
     expect(screen.getByText('With the total, so you can check the receipt.')).toBeInTheDocument();
     expect(screen.getByText('A receipt is uploaded')).toBeInTheDocument();
@@ -67,20 +68,34 @@ describe('NotifyForm', () => {
     expect(screen.getByRole('switch', ORDERS)).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('shows the plan-ending email as on and not changeable, and says why', async () => {
-    // Nothing stores a choice about it: the worker sends it to every business
-    // page with a plan. A switch that moved would save nothing.
+  it('starts the question email off, as the board draws it, and turns it on', async () => {
+    const onChange = vi.fn(async () => undefined);
+    render(<NotifyForm on={all} onChange={onChange} />);
+
+    expect(screen.getByRole('switch', QUESTIONS)).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Off. Questions that need you still wait in Questions.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('switch', QUESTIONS));
+
+    expect(onChange).toHaveBeenCalledWith({ questions: true });
+    expect(screen.getByRole('switch', QUESTIONS)).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('A sign it needs your answer.')).toBeInTheDocument();
+  });
+
+  it('lets the plan-ending email be turned off, on its own', async () => {
     const onChange = vi.fn(async () => undefined);
     render(<NotifyForm on={all} onChange={onChange} />);
 
     const plan = screen.getByRole('switch', PLAN);
     expect(plan).toHaveAttribute('aria-checked', 'true');
-    expect(plan).toBeDisabled();
+    expect(plan).toBeEnabled();
     expect(screen.getByText('Your plan is ending')).toBeInTheDocument();
-    expect(screen.getByText(/^3 days before, and on the day\. Always sent/)).toBeInTheDocument();
+    expect(screen.getByText('3 days before, and on the day.')).toBeInTheDocument();
 
     await userEvent.click(plan);
-    expect(onChange).not.toHaveBeenCalled();
-    expect(plan).toHaveAttribute('aria-checked', 'true');
+
+    expect(onChange).toHaveBeenCalledWith({ planEnding: false });
+    expect(plan).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', ORDERS)).toHaveAttribute('aria-checked', 'true');
   });
 });

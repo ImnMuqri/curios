@@ -5,15 +5,16 @@ import { apiFetch } from '../../../lib/api.js';
 import { SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
 
-type Kind = 'orders' | 'receipts' | 'leads';
+type Kind = 'orders' | 'receipts' | 'leads' | 'questions' | 'planEnding';
 export type NotifySwitches = Record<Kind, boolean>;
 
 /**
  * The Dash board's "Email me when", in its order. Off, the thing still
  * lands in the app; only the email stops, and the line says where it waits.
- * The board's fourth switch, a question asked three times, is left out: no
- * such email exists to switch. Its fifth, the plan ending, is `PlanEndingRow`
- * below.
+ * The fourth, a question asked three times, starts off as the board draws it.
+ * The last, the plan ending, is a switch too (owner, 24 Nov 2026): a plan's
+ * end date stays on Billing, and the notice that a saved card will be charged
+ * is a billing notice, and the notice that the shop has stopped taking orders is sent too, whatever it says.
  */
 const ROWS: { kind: Kind; title: string; label: string; on: string; off: string }[] = [
   {
@@ -36,6 +37,20 @@ const ROWS: { kind: Kind; title: string; label: string; on: string; off: string 
     label: 'Email me when someone leaves their number',
     on: 'Leads go cold. Reply within the day.',
     off: 'Off. New leads still wait in Leads.',
+  },
+  {
+    kind: 'questions',
+    title: 'A question is asked 3 times',
+    label: 'Email me when a question is asked 3 times',
+    on: 'A sign it needs your answer.',
+    off: 'Off. Questions that need you still wait in Questions.',
+  },
+  {
+    kind: 'planEnding',
+    title: 'Your plan is ending',
+    label: 'Email me when my plan is ending',
+    on: '3 days before, and on the day.',
+    off: 'Off. The end date stays on Billing. We still tell you if your shop stops taking orders.',
   },
 ];
 
@@ -90,37 +105,13 @@ function NotifyRow({ row, on: initial, onChange }: { row: (typeof ROWS)[number];
   );
 }
 
-/**
- * "Your plan is ending", the board's last row. The reminder three days before
- * and the mail on the day (plan-mail.ts, sent by the renewal-reminder worker)
- * go to every business page and nothing stores a choice about them: plan-mail
- * says why, each one says something is about to stop and the owner would
- * otherwise hear it from a customer. So the switch is drawn on and cannot be
- * moved, and the line under it says so, rather than a switch that would save
- * nothing.
- */
-function PlanEndingRow() {
-  return (
-    <SettingRow
-      title="Your plan is ending"
-      note="3 days before, and on the day. Always sent, so a plan never ends without warning."
-      action={
-        <button type="button" role="switch" aria-checked="true" aria-label="Email me when my plan is ending" className={styles.switch} disabled>
-          <i />
-        </button>
-      }
-    />
-  );
-}
-
-/** The three switches, each change sending only its own, then the plan row that has none. */
+/** The five switches, each change sending only its own. */
 export function NotifyForm({ on, onChange }: { on: NotifySwitches; onChange: (patch: Partial<NotifySwitches>) => Promise<unknown> }) {
   return (
     <>
       {ROWS.map((row) => (
         <NotifyRow key={row.kind} row={row} on={on[row.kind]} onChange={(next) => onChange({ [row.kind]: next })} />
       ))}
-      <PlanEndingRow />
     </>
   );
 }

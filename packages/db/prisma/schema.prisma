@@ -339,6 +339,12 @@ model Page {
   /// Whether the owner is emailed when a receipt comes in, so Mark paid is not
   /// left until they next open the dashboard.
   notifyReceipts      Boolean             @default(true)
+  /// Whether the owner is emailed when a question has been asked 3 times and has no answer
+  /// (Settings, "Email me when"). Off by default, as the Dash board draws it.
+  notifyQuestions     Boolean             @default(false)
+  /// Whether the owner is emailed when the plan is ending (3 days before, and on the day).
+  /// On by default, as the board draws it. A saved card's charge notice is not switched by it.
+  notifyPlanEnding    Boolean             @default(true)
   createdAt           DateTime            @default(now())
   links               Link[]
   items               Item[]
@@ -868,6 +874,9 @@ model Topic {
   /// answered topics, kept so the owner can pick.
   conflictAnswer  String?
   askCount        Int           @default(0)
+  /// When the owner was emailed that this topic had been asked 3 times and was still
+  /// unanswered. Null means not yet; claimed by a conditional update, so once per topic.
+  askedMailedAt   DateTime?
   /// Never changed or cleared once set; retired into FaqRedirect on merge/delete.
   faqSlug         String?
   faqSuppressed   Boolean       @default(false)

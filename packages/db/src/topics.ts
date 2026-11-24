@@ -76,7 +76,7 @@ export async function mergeTopics(
   input: { fromTopicId: string; intoTopicId: string; answer: 'from' | 'into' | 'auto' },
 ): Promise<void> {
   await lockTopics(tx, [input.fromTopicId, input.intoTopicId]);
-  const select = { id: true, pageId: true, answer: true, answeredAt: true, askCount: true, faqSlug: true, conflictAnswer: true, faqSuppressed: true } as const;
+  const select = { id: true, pageId: true, answer: true, answeredAt: true, askCount: true, faqSlug: true, conflictAnswer: true, faqSuppressed: true, askedMailedAt: true } as const;
   const from = await tx.topic.findUniqueOrThrow({ where: { id: input.fromTopicId }, select });
   const into = await tx.topic.findUniqueOrThrow({ where: { id: input.intoTopicId }, select });
   if (from.pageId !== into.pageId) throw new Error('mergeTopics: topics are on different pages');
@@ -128,7 +128,8 @@ export async function mergeTopics(
 
   await tx.topic.update({
     where: { id: into.id },
-    data: { answer, answeredAt, faqSlug, faqSuppressed, ...(conflictAnswer !== undefined ? { conflictAnswer } : {}) },
+    // The 3-asks email goes once per question, not once per topic: a merge keeps the mark of either side.
+    data: { answer, answeredAt, faqSlug, faqSuppressed, askedMailedAt: into.askedMailedAt ?? from.askedMailedAt, ...(conflictAnswer !== undefined ? { conflictAnswer } : {}) },
   });
   await refreshTopic(tx, into.id);
 }

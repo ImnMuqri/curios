@@ -1,4 +1,4 @@
-import { renderMailHtml } from './mail.js';
+import { OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
 import { ringgit } from './money.js';
 import type { OrderState } from './plan.js';
 
@@ -9,12 +9,17 @@ import type { OrderState } from './plan.js';
  * shows"); the words are written in its banners' voice, since the board draws
  * these emails only by their subjects.
  *
- * Not switchable in Settings, unlike the lead email: each says something has
- * stopped, or is about to, and the owner would otherwise find out from a
- * customer.
+ * The trial and limit emails are not switchable in Settings: each says something has
+ * stopped, and the owner would otherwise find out from a customer. The plan ending
+ * (three days before, and on the day) is switchable (Page.notifyPlanEnding; owner, 24 Nov 2026),
+ * except the three-days notice to an owner with a saved card (it says a charge is coming) and
+ * the plan-ended mail when it tells the owner the shop stopped taking orders; those, and every
+ * auto-renew email, are always sent.
  */
 
 export const PLAN_MAIL_FOOTER = 'You get this because it’s about your Curios plan.';
+/** The footer of the plan-ending reminder, which Settings can switch off. */
+export const PLAN_ENDING_FOOTER = OWNER_MAIL_FOOTER;
 
 interface Mail {
   subject: string;
@@ -148,7 +153,7 @@ export function planEndingMail(input: {
         { kind: 'buttons', primary: { label: 'Renew your plan', href: url } },
         { kind: 'small', text: keep },
       ],
-      footer: PLAN_MAIL_FOOTER,
+      footer: PLAN_ENDING_FOOTER,
     }),
   };
 }

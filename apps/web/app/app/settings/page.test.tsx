@@ -65,7 +65,7 @@ describe('SettingsPage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockReset();
     getOwnerPage.mockResolvedValue(null);
-    getNotifications.mockResolvedValue({ leads: true, orders: true, receipts: true });
+    getNotifications.mockResolvedValue({ leads: true, orders: true, receipts: true, questions: false, planEnding: true });
     SearchIndexing.mockClear();
   });
 
@@ -137,9 +137,11 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText(/\/nadia$/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
-    expect(screen.getByText(/can't go back to personal/)).toBeInTheDocument();
-    // The board's card line: a business page is always in search, with no switch.
-    expect(screen.getByText('Always shows up in search')).toBeInTheDocument();
+    expect(screen.getByText(/can’t go back to personal/)).toBeInTheDocument();
+    // The board's row line: a business page is always in search, with no switch.
+    expect(screen.getByText(/^Business page · always shows up in search\./)).toBeInTheDocument();
+    // Nothing can change an address yet, so the board's Change is not drawn.
+    expect(screen.queryByRole('link', { name: 'Change' })).toBeNull();
     expect(SearchIndexing).not.toHaveBeenCalled();
   });
 
@@ -178,15 +180,18 @@ describe('SettingsPage', () => {
       id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'BUSINESS',
       paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
     });
-    getNotifications.mockResolvedValue({ leads: false, orders: true, receipts: false });
+    getNotifications.mockResolvedValue({ leads: false, orders: true, receipts: false, questions: true, planEnding: false });
 
     await renderWith({}, methods({}));
 
     expect(screen.getByRole('heading', { name: 'Email me when' })).toBeInTheDocument();
+    expect(screen.getByText('Account')).toBeInTheDocument();
     expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app and under the bell.')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Email me when someone leaves their number' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('switch', { name: 'Email me when a new order comes in' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('switch', { name: 'Email me when a receipt is uploaded' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', { name: 'Email me when a question is asked 3 times' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Email me when my plan is ending' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByText('Your address, how you sign in, and what we email you about.')).toBeInTheDocument();
   });
 
@@ -202,11 +207,12 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Your address, and how you sign in.')).toBeInTheDocument();
   });
 
-  it('still says which address is signed in, now on the sign-out row', async () => {
+  it('still says which address is signed in, on the This device row', async () => {
     // The header used to say "Signed in as ..."; the board's summary does not,
     // and an account without Google or the emails would otherwise show it nowhere.
     await renderWith({}, methods({}));
 
-    expect(screen.getByText(/^Signed in as nadia@example\.com\./)).toBeInTheDocument();
+    expect(screen.getByText('This device')).toBeInTheDocument();
+    expect(screen.getByText('Your page stays live while you’re signed out. Signed in as nadia@example.com.')).toBeInTheDocument();
   });
 });

@@ -1,7 +1,6 @@
 /*
- * Settings, from the design handoff's Dash board. Dashboard v2: two plain
- * columns on the sheet, no cards. Left, the page as one grey card, then
- * Signing in and This device; right, "Email me when". Every list is rows
+ * Settings, from the design handoff's Dash board: one column of sections (Your
+ * page, Signing in, Email me when), no cards. Every list is rows
  * between hairlines: what it is with a line under it, and on the right what it
  * is set to or the one thing to do about it.
  */
@@ -19,7 +18,7 @@
 }
 
 .wrap {
-  max-width: 1440px;
+  max-width: 760px;
   padding: 4px 40px 56px;
   container-type: inline-size;
 }
@@ -40,87 +39,6 @@
   color: var(--merah-deep);
 }
 
-.cols {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 56px;
-}
-
-/* A personal page gets no emails, so its one column keeps a readable width. */
-.cols[data-single] {
-  grid-template-columns: minmax(0, 640px);
-}
-
-.col {
-  min-width: 0;
-}
-
-/* ---- Your page ---- */
-
-.pageCard {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  border-radius: 10px;
-  background: var(--field);
-}
-
-.pageAvatar {
-  display: grid;
-  place-items: center;
-  width: 52px;
-  height: 52px;
-  flex: none;
-  border-radius: 10px;
-  object-fit: cover;
-  background: var(--rose);
-  color: var(--on-photo);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.pageText {
-  flex: 1;
-  min-width: 0;
-}
-
-.pageText h2 {
-  margin: 0;
-  font-size: 12.5px;
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.pageText b {
-  display: block;
-  margin: 2px 0 6px;
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-.pageText > span {
-  font-size: 13px;
-  color: var(--muted);
-}
-
-.pageText em {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-right: 10px;
-  font-style: normal;
-  font-weight: 600;
-  color: color-mix(in srgb, var(--hijau) 80%, var(--ink));
-}
-
-.pageText em[data-tone='personal'] {
-  color: var(--ink-soft);
-}
-
-.pageText em::before,
 .ok::before {
   content: '';
   width: 7px;
@@ -128,13 +46,6 @@
   flex: none;
   border-radius: 50%;
   background: currentColor;
-}
-
-.pageActions {
-  display: flex;
-  flex: none;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .note {
@@ -155,9 +66,9 @@
   font-weight: 600;
 }
 
-/* The right column's heading lines up with the page card's top. */
+/* The first section sits close under the header. */
 .h[data-first] {
-  margin-top: 0;
+  margin-top: 12px;
 }
 
 /* A list of setting rows: hairlines above, between and under. */
@@ -428,27 +339,7 @@
   }
 }
 
-/* One column, the emails last, where two would leave each too narrow. */
-@container (max-width: 940px) {
-  .cols {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 0;
-  }
-
-  .h[data-first] {
-    margin-top: 34px;
-  }
-}
-
 @container (max-width: 520px) {
-  .pageCard {
-    flex-wrap: wrap;
-  }
-
-  .pageActions {
-    width: 100%;
-  }
-
   .row {
     flex-wrap: wrap;
   }
@@ -498,18 +389,3 @@
   border-radius: var(--r-pill);
 }
 
-/* Notify this device on its own: a 16px card group, its rows drawn as the email rows are. */
-.pushCard {
-  border: 1px solid var(--line);
-  border-radius: var(--r-box);
-  background: var(--card);
-  padding: 0 16px;
-}
-
-.pushCard .rowWrap:last-child {
-  border-bottom: 0;
-}
-
-.pushCard:empty {
-  display: none;
-}

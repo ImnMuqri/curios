@@ -153,7 +153,7 @@ leadWorker.on('failed', (job, err) =>
 leadWorker.on('error', (err) => log.error({ err: err.message }, 'lead worker error'));
 
 // One at a time (QUEUE_CONCURRENCY.group), on its own connection like the rest.
-const groupWorker = createGroupWorker({ connection: redis(), prisma, gateway, embedder, log });
+const groupWorker = createGroupWorker({ connection: redis(), prisma, gateway, embedder, log, mailQueue: mailProducer, appUrl });
 groupWorker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'grouping failed'));
 groupWorker.on('error', (err) => log.error({ err: err.message }, 'group worker error'));
 

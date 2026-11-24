@@ -32,6 +32,7 @@ async function aPage(options: {
   ordersPlaced?: number;
   storeEnabled?: boolean;
   card?: { label: string | null; plan: 'MONTHLY' | 'ANNUAL' };
+  notifyPlanEnding?: boolean;
 }) {
   const slug = `rem-${randomUUID().slice(0, 8)}`;
   const account = await prisma.account.create({
@@ -47,6 +48,7 @@ async function aPage(options: {
           renewalReminderFor: options.renewalReminderFor ?? null,
           ordersPlaced: options.ordersPlaced ?? 0,
           storeEnabled: options.storeEnabled ?? false,
+          notifyPlanEnding: options.notifyPlanEnding ?? true,
           renewalCard: options.card
             ? { create: { token: `tok-${randomUUID()}`, plan: options.card.plan, cardLabel: options.card.label } }
             : undefined,
@@ -82,6 +84,24 @@ describe('runRenewalReminders', () => {
     expect(mail?.audience).toBe('owner');
     expect(mail?.text).toContain(`${APP_URL}/app/billing`);
     expect(await reminderMark(page.pageId)).toEqual(paidUntil);
+  });
+
+  it('sends nothing when the owner switched the plan-ending email off in Settings', async () => {
+    const page = await aPage({ paidUntil: inDays(2), notifyPlanEnding: false });
+    const mailQueue = aMailQueue();
+
+    expect(await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings })).toEqual({ reminded: 0 });
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    // Not claimed either: switching it back on within the window still sends it.
+    expect(await reminderMark(page.pageId)).toBeNull();
+  });
+
+  it('still sends the notice that a saved card will be charged, whatever the switch says', async () => {
+    await aPage({ paidUntil: inDays(2), notifyPlanEnding: false, card: { label: 'Visa ending 1111', plan: 'MONTHLY' } });
+    const mailQueue = aMailQueue();
+
+    expect(await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings })).toEqual({ reminded: 1 });
+    expect(mailQueue.add.mock.calls[0]?.[1]?.text).toContain("We'll charge");
   });
 
   it('tells an owner with a saved card what will be charged, from the card plan', async () => {
@@ -281,6 +301,24 @@ describe('runPlanEndedMails', () => {
     await runPlanEndedMails({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings: reader({ ...defaultSettings(), freeOrders: 5 }) });
 
     expect(mailQueue.add.mock.calls[0]?.[1]?.text).toContain('Your shop still has 2 free orders.');
+  });
+
+  it('still sends the plan-ended mail when the switch is off but the shop stopped taking orders', async () => {
+    const page = await aPage({ paidUntil: inDays(-0.5), notifyPlanEnding: false, ordersPlaced: 3, storeEnabled: true });
+    const mailQueue = aMailQueue();
+
+    expect(await run(mailQueue)).toEqual({ told: 1 });
+    const mail = mailQueue.add.mock.calls[0]?.[1];
+    expect(mail?.to).toBe(page.email);
+    expect(mail?.text).toContain('your shop has stopped taking orders');
+  });
+
+  it('sends no plan-ended mail when the owner switched the plan-ending email off', async () => {
+    await aPage({ paidUntil: inDays(-0.5), notifyPlanEnding: false });
+    const mailQueue = aMailQueue();
+
+    expect(await run(mailQueue)).toEqual({ told: 0 });
+    expect(mailQueue.add).not.toHaveBeenCalled();
   });
 
   it('skips the plan-ended mail while a renewal card exists', async () => {

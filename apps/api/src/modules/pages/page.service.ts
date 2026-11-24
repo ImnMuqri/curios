@@ -230,16 +230,16 @@ export async function upgradeToBusiness(prisma: PrismaClient, accountId: string)
  */
 /**
  * Which owner emails are on (Settings, "Email me when"): each lead, each new
- * order, each receipt. Only the switches given change.
+ * order, each receipt, a question asked 3 times, the plan ending. Only the switches given change.
  */
 export async function setNotifications(
   prisma: PrismaClient,
   accountId: string,
-  input: { leads?: boolean; orders?: boolean; receipts?: boolean },
+  input: { leads?: boolean; orders?: boolean; receipts?: boolean; questions?: boolean; planEnding?: boolean },
 ): Promise<void> {
   const updated = await prisma.page.updateMany({
     where: { accountId },
-    data: { notifyLeads: input.leads, notifyOrders: input.orders, notifyReceipts: input.receipts },
+    data: { notifyLeads: input.leads, notifyOrders: input.orders, notifyReceipts: input.receipts, notifyQuestions: input.questions, notifyPlanEnding: input.planEnding },
   });
   if (updated.count !== 1) throw new NoPageError();
 }

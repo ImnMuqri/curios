@@ -76,8 +76,9 @@ export { SOCIAL_KINDS, normalizeSocial, socialUrl, tidySocials } from './socials
 export type { SocialKind, Socials } from './socials.js';
 export { ACCOUNT_MAIL_FOOTER, escapeHtml, OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
 export type { MailBlock, MailButton, MailContent, MailTone } from './mail.js';
-export { autoRenewStoppedMail, capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, planEndedSaid, planEndingMail, renewalFailedMail, trialSpentMail } from './plan-mail.js';
+export { autoRenewStoppedMail, capReachedMail, PLAN_ENDING_FOOTER, PLAN_MAIL_FOOTER, planEndedMail, planEndedSaid, planEndingMail, renewalFailedMail, trialSpentMail } from './plan-mail.js';
 export type { PlanEndedShop } from './plan-mail.js';
+export { QUESTION_MAIL_ASKS, questionAskedMail, topicUrl } from './question-mail.js';
 export { newOrderMail, paidAfterCancelMail, paidOrderMail, paidTwiceMail, receiptMail } from './order-mail.js';
 export { leadPush, newOrderPush, paidOrderPush, PUSH_QUEUE, receiptPush, testPush, type PushJobData, type PushMessage } from './push.js';
 export type { NewOrderMailInput, PaidAfterCancelMailInput, PaidOrderMailInput, PaidTwiceMailInput, ReceiptMailInput } from './order-mail.js';

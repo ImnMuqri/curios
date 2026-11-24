@@ -1031,6 +1031,79 @@ describe('the monthly cap', () => {
     expect(mail?.html).toContain('Limit reached');
   });
 
+  describe('the question asked 3 times email', () => {
+    // The chat is unsure by default: the topic waits for the owner. A reply it could give makes it chat-answered.
+    const ask = (mailQueue: { add: unknown }, question = 'harga?', reply = '[?] I am not sure.') => {
+      const gateway = gatewaySaying(reply);
+      return collect(answer({ prisma, gateway, settings, embedder: null, mailQueue: mailQueue as never }, { handle: 'nadia', question }));
+    };
+    const aQueue = () => ({ add: vi.fn(async (_name: string, _data: { subject: string; html?: string; text?: string; audience?: 'owner' }, _opts?: unknown) => ({})) });
+    const switchOn = (on: boolean) => prisma.page.update({ where: { handle: 'nadia' }, data: { notifyQuestions: on } });
+
+    it('sends nothing on the 2nd ask, one email on the 3rd, none on the 4th', async () => {
+      await switchOn(true);
+      const mailQueue = aQueue();
+
+      await ask(mailQueue);
+      await ask(mailQueue);
+      expect(mailQueue.add).not.toHaveBeenCalled();
+
+      await ask(mailQueue);
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+      const mail = mailQueue.add.mock.calls[0]?.[1];
+      expect(mail?.subject).toBe('People keep asking: “harga?”');
+      expect(mail?.audience).toBe('owner');
+      expect(mail?.text).toContain('/app/questions?topic=');
+      expect(mail?.html).toContain('>Answer it</a>');
+      const topic = await prisma.topic.findFirstOrThrow({ select: { askedMailedAt: true } });
+      expect(topic.askedMailedAt).not.toBeNull();
+
+      await ask(mailQueue);
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends nothing while the switch is off, and still sends once it is on and the topic is asked again', async () => {
+      const mailQueue = aQueue();
+      await ask(mailQueue);
+      await ask(mailQueue);
+      await ask(mailQueue);
+      expect(mailQueue.add).not.toHaveBeenCalled();
+      expect((await prisma.topic.findFirstOrThrow({ select: { askedMailedAt: true } })).askedMailedAt).toBeNull();
+
+      await switchOn(true);
+      await ask(mailQueue);
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends nothing when the chat could answer the topic itself, as Questions does not list it under "Needs your answer"', async () => {
+      await switchOn(true);
+      const mailQueue = aQueue();
+      await ask(mailQueue, 'harga?', 'Yes, we do.');
+      await ask(mailQueue, 'harga?', 'Yes, we do.');
+      await ask(mailQueue, 'harga?', 'Yes, we do.');
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('sends one email when three visitors ask at once', async () => {
+      await switchOn(true);
+      const mailQueue = aQueue();
+      await ask(mailQueue);
+      await Promise.all([ask(mailQueue), ask(mailQueue), ask(mailQueue)]);
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('sends nothing for a topic the owner has answered', async () => {
+      await switchOn(true);
+      const mailQueue = aQueue();
+      await ask(mailQueue);
+      await prisma.topic.updateMany({ data: { answer: 'RM30.', answeredAt: new Date() } });
+
+      await ask(mailQueue);
+      await ask(mailQueue);
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
+  });
+
   it('answers in Malay first, then English, and persists that reply as an assistant message', async () => {
     // #4/#5 of the fix wave: the degraded reply used to be English-only,
     // contradicting prompt.ts's own rule that the model answers in the

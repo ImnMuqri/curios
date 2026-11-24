@@ -139,7 +139,7 @@ describe('runLeadJob', () => {
     expect(html).toContain('>Reply on WhatsApp</a>');
     expect(html).toContain('href="https://curios.my/app/leads"');
     expect(html).toContain('nak kek butter 2kg');
-    expect(html).toContain('Settings, under Notifications');
+    expect(html).toContain('Settings, under Email me when');
   });
 
   it('says which free lead this is on a trial', async () => {

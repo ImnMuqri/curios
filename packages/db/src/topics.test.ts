@@ -91,6 +91,20 @@ describe('mergeTopics', () => {
     expect(merged.questions.map((q) => q.text).sort()).toEqual(['Iman full name', 'his full name']);
   });
 
+  it('keeps the sent mark of either side on the survivor, so a merge cannot cause a second email', async () => {
+    const pageId = await aPage();
+    const mailed = new Date('2026-11-20T00:00:00Z');
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 2 }], { askedMailedAt: mailed });
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }]);
+    await mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'auto' });
+    expect((await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).askedMailedAt).toEqual(mailed);
+
+    const other = await aTopic(pageId, [{ text: 'c', askCount: 1 }], { askedMailedAt: new Date('2026-11-21T00:00:00Z') });
+    const clean = await aTopic(pageId, [{ text: 'd', askCount: 1 }]);
+    await mergeTopics(prisma, { fromTopicId: clean.id, intoTopicId: other.id, answer: 'auto' });
+    expect((await prisma.topic.findUniqueOrThrow({ where: { id: other.id } })).askedMailedAt).toEqual(new Date('2026-11-21T00:00:00Z'));
+  });
+
   it('keeps the named side’s answer', async () => {
     const pageId = await aPage();
     const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }], { answer: 'FROM' });

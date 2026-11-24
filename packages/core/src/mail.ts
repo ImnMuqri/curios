@@ -259,4 +259,4 @@ ${mail.blocks.map(block).join('\n')}
 /** Why an account email came: someone used this address on Curios. */
 export const ACCOUNT_MAIL_FOOTER = 'You get this because someone used this address on Curios.';
 /** Why an owner email came, and where to turn it off. */
-export const OWNER_MAIL_FOOTER = 'You get this because this email is on in Settings, under Notifications.';
+export const OWNER_MAIL_FOOTER = 'You get this because this email is on in Settings, under Email me when.';
