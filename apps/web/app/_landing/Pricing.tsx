@@ -164,7 +164,7 @@ export function Pricing({ locale, terms }: { locale: Locale; terms: PlanTerms })
                 </li>
               ))}
             </ul>
-            <a href="/signup" className={`${calm.btn} ${calm.dark} ${calm.wide}`}>
+            <a href="/signup" className={`${calm.btn} ${calm.dark} ${calm.wide} ${styles.bzBtn}`}>
               {business.cta}
             </a>
           </article>

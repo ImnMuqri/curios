@@ -452,17 +452,7 @@
   --cl-mark-ink: #035a7a;
   --cl-fact-next: #f2f9fc;
   --cl-amber-ink: #b4541b;
-  /* A marketplace receipt's fee lines: the amber darkened to 4.5:1 on white (19 Nov review). */
-  --cl-fee-ink: #9a4314;
-  --cl-paid-wash: #eaf6ef;
   --cl-mint-on-ink: #9fe3bd;
-  --cl-hot: #fde6dc;
-  --cl-hot-ink: #9a3412;
-  --cl-miss: #e8a33a;
-  --cl-sys: #d9f2e3;
-  --cl-sent: #eef8fc;
-  --cl-zone-empty: #a6b2ba;
-  --cl-receipt-rule: #dcebf2;
   --cl-mock-line: #e3e6ec;
   --cl-mock-soft: #f2f3f6;
   --cl-mock-hair: #eef0f3;
@@ -485,4 +475,27 @@
   --cl-word-5-ink: #c2410c;
   --cl-word-6: #f8f1dc;
   --cl-word-6-ink: #8a6410;
+
+  /* What lands in your hands, and Every sale is yours (Landing2 board, 24 Nov): the stage tints, the cards' secondary inks and the lock screen. */
+  --cl-wl-svc: #eef8fc;
+  --cl-wl-prod: #fdf0f7;
+  --cl-text-4: #62707a;
+  --cl-rule: #e7f1f5;
+  --cl-wa: #e5f2ea;
+  --cl-wa-ink: #1d6b45;
+  --cl-miss-bg: #fbf1df;
+  --cl-miss-ink: #8a5a0c;
+  --cl-avatar: #efe6da;
+  --cl-avatar-ink: #7a5a3a;
+  --cl-typing: #b6cfd9;
+  --cl-kafe-bg: #f1e6d6;
+  --cl-kafe-ink: #4a3420;
+  --cl-kafe-gold: #c58a12;
+  --cl-kafe-ring: #e2d6c4;
+  --cl-cake-bg: #f3e1e3;
+  --cl-cake-body: #7a4a3a;
+  --cl-cake-candle: #e6b45a;
+  --cl-lock-ring: #cce3ed;
+  --cl-lock-icon: #e4f0f5;
+  --cl-lock-edge: #e2eef3;
 }
