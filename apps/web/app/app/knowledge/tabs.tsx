@@ -39,7 +39,7 @@ export function KnowledgeTabs({ current, counts }: { current: KnowledgeTab; coun
         >
           {LABELS[tab]}
           {counts?.[tab] !== undefined ? (
-            <span className={`${pills.count} ${styles.tabCount}`}>
+            <span className={pills.count}>
               <span className={styles.sr}>, </span>
               {counts[tab]}
             </span>

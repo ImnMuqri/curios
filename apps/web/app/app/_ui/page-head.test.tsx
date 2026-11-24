@@ -32,9 +32,9 @@ describe('PageHead', () => {
     expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.title \{\s*font-size: 32px;/);
   });
 
-  it('sits at the top of the screen: no top padding, on a desktop or a phone (the board .pg, 24 Nov)', () => {
+  it('sits at the top of the screen on a desktop (the board .pg, 24 Nov), with a gap under the top bar on a phone only (owner, 25 Nov)', () => {
     expect(css).toMatch(/\.head \{[^}]*padding: 0 var\(--head-x\) 20px;/);
-    expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.head \{[^}]*padding: 0 var\(--head-x\) 14px;/);
+    expect(css).toMatch(/@media \(max-width: 760px\) \{[\s\S]*?\.head \{[^}]*padding: 18px var\(--head-x\) 14px;/);
   });
 
   it('sets the kicker, the summary and the actions as the board does', () => {

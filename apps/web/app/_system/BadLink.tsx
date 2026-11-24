@@ -1,4 +1,4 @@
-import { SystemCard, SystemShell, systemStyles as styles } from './SystemShell.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles as styles } from './SystemShell.js';
 import { BrokenLinkArt } from './art.js';
 
 /**
@@ -25,14 +25,16 @@ export function BadLink({ kind = 'reset', detail }: { kind?: 'reset' | 'verify';
             {detail}
           </p>
         ) : null}
-        {kind === 'reset' ? (
-          <a className={`${styles.go} ${styles.next}`} href="/forgot">
-            Send me a new link
+        <SystemActions>
+          {kind === 'reset' ? (
+            <a className={styles.go} href="/forgot">
+              Send me a new link
+            </a>
+          ) : null}
+          <a className={kind === 'reset' ? styles.ghost : styles.go} href="/signin">
+            Back to sign in
           </a>
-        ) : null}
-        <a className={kind === 'reset' ? styles.ghost : `${styles.ghost} ${styles.next}`} href="/signin">
-          Back to sign in
-        </a>
+        </SystemActions>
       </SystemCard>
     </SystemShell>
   );

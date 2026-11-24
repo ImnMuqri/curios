@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 // is deliberate -- see the comment in middleware.ts.
 import { orderState, planState, SESSION_COOKIE } from '@curios/core';
 import { countNavBadges, getConversationUsage, getOwnerPage, getSettings } from '@curios/db-read';
+import { buildVersion } from '../../lib/build-version.js';
 import { avatarUrl } from '../../lib/avatar-url.js';
 import { AppFrame } from './app-frame.js';
 import { alertsFor, billingNeedsYou } from './alerts.js';
@@ -86,6 +87,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       billingDot={billingNeedsYou(plan, orders)}
       theme={parseTheme(jar.get(THEME_COOKIE)?.value)}
       bellSeen={parseBellSeen(jar.get(BELL_COOKIE)?.value)}
+      version={buildVersion()}
     >
       {children}
     </AppFrame>

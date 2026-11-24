@@ -60,15 +60,17 @@ describe('ProductView', () => {
     expect(screen.getByTestId('price')).toHaveTextContent('RM25');
   });
 
-  it('has a top bar: back to the shop, the shop’s name, the basket with its count', () => {
+  it('has a top bar: back to the shop, the page’s name, the basket with its count, and share', () => {
     writeBasket(key, [
       { itemId: 'cookie', optionId: null, quantity: 2 },
       { itemId: 'gone', optionId: null, quantity: 5 },
     ]);
     render(<ProductView {...base} />);
     expect(screen.getByRole('link', { name: 'Back to the shop' })).toHaveAttribute('href', '/keklina/shop');
-    expect(screen.getByText('Kek Lina’s shop')).toBeInTheDocument();
-    const basket = screen.getByRole('link', { name: 'Basket' });
+    expect(screen.getByText('Kek Lina')).toBeInTheDocument();
+    expect(screen.queryByText('Kek Lina’s shop')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Share this item' })).toBeInTheDocument();
+    const basket = screen.getByRole('link', { name: 'Basket (2)' });
     expect(basket).toHaveAttribute('href', '/keklina/shop/checkout');
     expect(basket).toHaveTextContent('2');
   });
@@ -85,7 +87,7 @@ describe('ProductView', () => {
     await user.click(screen.getByRole('radio', { name: /2kg/ }));
     expect(screen.getByRole('radio', { name: /2kg/ })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByTestId('price')).toHaveTextContent('RM170');
-    expect(screen.getByRole('button', { name: 'Add to basket · RM170' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add · RM170' })).toBeInTheDocument();
   });
 
   it('says how much notice it needs and the earliest day', () => {
@@ -129,7 +131,7 @@ describe('ProductView', () => {
     await user.click(screen.getByRole('button', { name: 'One more' }));
     await user.click(screen.getByRole('button', { name: 'One more' }));
     expect(screen.getByTestId('qty')).toHaveTextContent('3');
-    expect(screen.getByRole('button', { name: 'Add to basket · RM75' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add · RM75' })).toBeInTheDocument();
   });
 
   it('adds the chosen size and quantity to the shop’s basket, says so, and goes back to the shop', async () => {
@@ -138,7 +140,7 @@ describe('ProductView', () => {
     render(<ProductView {...base} />);
     await user.click(screen.getByRole('radio', { name: /2kg/ }));
     await user.click(screen.getByRole('button', { name: 'One more' }));
-    await user.click(screen.getByRole('button', { name: 'Add to basket · RM340' }));
+    await user.click(screen.getByRole('button', { name: 'Add · RM340' }));
     expect(readBasket(key)).toEqual([{ itemId: 'cake', optionId: 'k2', quantity: 3 }]);
     expect(screen.getByRole('status')).toHaveTextContent('Kek Coklat Moist added. 3 in basket.');
     expect(base.onDone).toHaveBeenCalledTimes(1);
@@ -165,24 +167,43 @@ describe('ProductView', () => {
   it('adds an item with no sizes with no option', async () => {
     const user = userEvent.setup();
     render(<ProductView {...base} item={cookie} />);
-    await user.click(screen.getByRole('button', { name: 'Add to basket · RM25' }));
+    await user.click(screen.getByRole('button', { name: 'Add · RM25' }));
     expect(readBasket(key)).toEqual([{ itemId: 'cookie', optionId: null, quantity: 1 }]);
+  });
+
+  it('has the note field, “Note for Kek Lina”, and carries what is written into the basket line', async () => {
+    const user = userEvent.setup();
+    render(<ProductView {...base} item={cookie} />);
+    await user.type(screen.getByLabelText('Note for Kek Lina'), 'Write Selamat Hari Jadi Mak');
+    await user.click(screen.getByRole('button', { name: 'Add · RM25' }));
+    expect(readBasket(key)).toEqual([{ itemId: 'cookie', optionId: null, quantity: 1, note: 'Write Selamat Hari Jadi Mak' }]);
+  });
+
+  it('shares the item’s own address', async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', { value: share, configurable: true });
+    const user = userEvent.setup();
+    render(<ProductView {...base} item={cookie} />);
+    await user.click(screen.getByRole('button', { name: 'Share this item' }));
+    expect(share).toHaveBeenCalledWith(expect.objectContaining({ title: cookie.name, url: expect.stringContaining(`/keklina/shop/${cookie.slug}`) }));
+    Reflect.deleteProperty(navigator, 'share');
   });
 
   it('speaks Malay on a Malay page', () => {
     render(<ProductView {...base} language="ms" halal />);
     expect(screen.getByRole('link', { name: 'Kembali ke kedai' })).toBeInTheDocument();
-    expect(screen.getByText('Kedai Kek Lina')).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina')).toBeInTheDocument();
+    expect(screen.getByLabelText('Nota untuk Kek Lina')).toBeInTheDocument();
     expect(screen.getByText('Perlu 2 hari. Awal ambil Sab 17 Okt.')).toBeInTheDocument();
     expect(screen.getByText('Bahan halal.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Masuk bakul · RM95' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Tambah · RM95' })).toBeInTheDocument();
   });
 
   it('writes the preview’s own basket and stays put when it is inline', async () => {
     const user = userEvent.setup();
     const onDone = vi.fn();
     render(<ProductView {...base} inline storageKey="curios-store-preview" onDone={onDone} />);
-    await user.click(screen.getByRole('button', { name: 'Add to basket · RM95' }));
+    await user.click(screen.getByRole('button', { name: 'Add · RM95' }));
     expect(readBasket('curios-store-preview')).toHaveLength(1);
     expect(window.sessionStorage.getItem('curios-added:keklina')).toBeNull();
     expect(readBasket(key)).toHaveLength(0);
@@ -377,7 +398,7 @@ describe('ProductView, an Ask item', () => {
   it('never counts an Ask item a stored basket holds', () => {
     writeBasket(key, [{ itemId: 'custom', optionId: null, quantity: 2 }, { itemId: 'cookie', optionId: null, quantity: 1 }]);
     render(<ProductView {...props} />);
-    expect(screen.getByRole('link', { name: 'Basket' })).toHaveTextContent('1');
+    expect(screen.getByRole('link', { name: 'Basket (1)' })).toHaveTextContent('1');
   });
 
   it('speaks Malay', async () => {

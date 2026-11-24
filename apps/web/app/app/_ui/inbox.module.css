@@ -296,8 +296,9 @@
   background: var(--calm-row-hover);
 }
 
+/* A light wash of the pick (owner, 25 Nov), clearly deeper than the row hover above it; the frame sets --pick-weight to the whole pick in dark. */
 .li[aria-current='true'] {
-  background: var(--calm-pick);
+  background: color-mix(in srgb, var(--calm-pick) var(--pick-weight, 80%), var(--card));
 }
 
 .li:focus-visible {

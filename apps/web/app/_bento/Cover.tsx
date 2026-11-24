@@ -9,14 +9,16 @@ import styles from './Bento.module.css';
  * alt is empty. Like the Avatar, a cover that fails to load disappears rather
  * than leaving a broken-image box; the page reads as one without a cover.
  *
+ * `full` makes it the page's whole background (the owner's Full page layout) instead of the band at the top.
+ *
  * Loaded eagerly at high priority: on a page with a cover, it is the largest
  * thing a visitor sees first.
  */
-export function Cover({ src }: { src: string }) {
+export function Cover({ src, full = false }: { src: string; full?: boolean }) {
   const [failed, setFailed] = useState(false);
   if (failed) return null;
   return (
-    <div className={styles.cover} data-cover-photo>
+    <div className={full ? `${styles.cover} ${styles.coverFull}` : styles.cover} data-cover-photo>
       <img src={src} alt="" width={1440} height={900} fetchPriority="high" onError={() => setFailed(true)} />
     </div>
   );

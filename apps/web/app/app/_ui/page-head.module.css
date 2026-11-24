@@ -130,7 +130,8 @@
 @media (max-width: 760px) {
   .head {
     --head-x: 16px;
-    padding: 0 var(--head-x) 14px;
+    /* A gap under the top bar on a phone only (the board's desktop head sits flush); the loading bar rides in it. */
+    padding: 18px var(--head-x) 14px;
   }
 
   .title {

@@ -373,6 +373,7 @@
 
   /* The calm pages (page phase, batch 1): lists, the urgent strip, sparklines, switches. The frame's dark scope maps each --calm-X that has a --calm-dark-X; a preview island takes the light value back (--light-calm-X). --calm-hover-ring and switch-off have no dark twin. --calm-twice* dark twins come from the dark red tag family (DEVIATIONS 351). */
   --calm-pick: #e2f4fb;
+  --pick-weight: 80%;
   --calm-row-hover: #f2f9fc;
   /* Attention is hot pink, not amber (Dash.dc 24 Nov): the urgent stat card, the warn banner and a receipt not received. */
   --calm-urgent: #fdf0f7;
@@ -391,6 +392,9 @@
   --calm-twice: #fdf3f2;
   --calm-twice-ring: #f3d4d0;
   --calm-dark-pick: #232321;
+  /* How much of the pick the chosen inbox row takes: a light wash in light, the whole pick in dark, where a wash would vanish. */
+  --dark-pick-weight: 100%;
+  --light-pick-weight: var(--pick-weight);
   --calm-dark-row-hover: #1b1b1a;
   --calm-dark-urgent: #3a1430;
   --calm-dark-urgent-ring: #5c1f4a;
@@ -517,4 +521,11 @@
   --cl-lock-ring: #cce3ed;
   --cl-lock-icon: #e4f0f5;
   --cl-lock-edge: #e2eef3;
+
+  /* The Site pages (Site board, 24 Nov): the green of a done badge and a strong password, the amber of a middling one, the shadow under a badge and a sign, the soft ink under a number. */
+  --cl-ok: #1d7a4c;
+  --cl-warn: #e8a33a;
+  --cl-faint-ink: #7b8891;
+  --cl-lift: rgba(0, 0, 0, 0.3);
+  --cl-sky-wash: rgba(5, 147, 198, 0.12);
 }

@@ -51,7 +51,7 @@ export function checkSource(
     return { error: 'That file is over 5 MB. Try a smaller one, or paste the text instead.' };
   }
   if (way === 'text' && input.pastedText.trim() === '') {
-    return { error: 'Paste something first — a bio, captions, an About section, whatever says it best.' };
+    return { error: 'Paste something first: a bio, captions, an About section, whatever says it best.' };
   }
   if (way === 'text' && input.pastedText.trim().length > pastedTextMax) {
     return { error: `That is more than ${count(pastedTextMax)} characters. Paste the part that says the most.` };

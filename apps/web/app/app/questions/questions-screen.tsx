@@ -153,6 +153,10 @@ export function QuestionsScreen({
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [saved, setSaved] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
+  // Topics the chat answers already: the ones whose answer box the owner opened.
+  const [writing, setWriting] = useState<Record<string, boolean>>({});
+  // The topic whose box was just opened by a click: its textarea takes focus as it mounts, and never on a later remount.
+  const focusNext = useRef<string | null>(null);
   const { say, fail, toast } = useToast();
   const screenRef = useRef<HTMLDivElement>(null);
   const inFlight = useRef(false);
@@ -357,6 +361,14 @@ export function QuestionsScreen({
                               <p className={styles.ans}>{answer}</p>
                             ) : state === 'conflict' ? (
                               <p className={styles.ans}>Two topics with answers became one. Open it to pick the answer to keep.</p>
+                            ) : state === 'chat' && !writing[t.id] && drafts[t.id] === undefined ? (
+                              // The chat already answers this from the facts: the box opens only when the owner asks for it.
+                              <button type="button" className={`${styles.litePill} ${styles.writeOwn}`} onClick={() => {
+                                focusNext.current = t.id;
+                                setWriting((current) => ({ ...current, [t.id]: true }));
+                              }}>
+                                Write your own answer
+                              </button>
                             ) : (
                               <form
                                 className={styles.in}
@@ -367,6 +379,12 @@ export function QuestionsScreen({
                               >
                                 <textarea
                                   rows={1}
+                                  ref={(el) => {
+                                    if (el && focusNext.current === t.id) {
+                                      focusNext.current = null;
+                                      el.focus();
+                                    }
+                                  }}
                                   value={text}
                                   aria-label={`Your answer to ${t.title}`}
                                   placeholder="Write your answer once. The page uses it every time."
@@ -376,6 +394,21 @@ export function QuestionsScreen({
                                 <button type="submit" className={styles.darkPill} disabled={saving !== null || text.trim() === '' || over}>
                                   Save answer
                                 </button>
+                                {state === 'chat' ? (
+                                  <button
+                                    type="button"
+                                    className={styles.litePill}
+                                    onClick={() => {
+                                      setWriting((current) => ({ ...current, [t.id]: false }));
+                                      setDrafts((current) => {
+                                        const { [t.id]: _gone, ...rest } = current;
+                                        return rest;
+                                      });
+                                    }}
+                                  >
+                                    Cancel
+                                  </button>
+                                ) : null}
                               </form>
                             )}
                           </li>

@@ -1,0 +1,74 @@
+/* The owner-themed top bar of the customer sub-pages: the page's own colours, over the light sheet. */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 60px;
+  /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
+  padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
+  background: var(--page-bg);
+  color: var(--page-fg);
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ib {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--veil-2, color-mix(in srgb, var(--page-fg) 12%, transparent));
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ib svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.ib:focus-visible {
+  outline: 2px solid var(--accent-mark, var(--page-fg));
+  outline-offset: 2px;
+}
+
+/* The count on the basket: the page's text colour with the page's colour on it, so it reads on any band. */
+.bk i {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--page-fg);
+  color: var(--page-bg);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}

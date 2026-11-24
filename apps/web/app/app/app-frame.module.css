@@ -214,6 +214,30 @@
   margin: 0 -6px;
   padding: 0 6px 12px;
   overflow-y: auto;
+  /* A thin, rounded scrollbar that only shows once the pointer is over the list. --edge is the ring colour, dark-mapped. */
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+.nav:hover {
+  scrollbar-color: var(--edge) transparent;
+}
+
+.nav::-webkit-scrollbar {
+  width: 6px;
+}
+
+.nav::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.nav::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: transparent;
+}
+
+.nav:hover::-webkit-scrollbar-thumb {
+  background: var(--edge);
 }
 
 .groupTitle {
@@ -555,8 +579,6 @@
   --nf-red-ink: var(--tag-red-ink);
   --nf-ok: var(--tag-ok);
   --nf-ok-ink: var(--tag-ok-ink);
-  --nf-alert: color-mix(in srgb, var(--tag-wait) 60%, var(--card));
-  --nf-alert-hover: var(--tag-wait);
   --nf-alert-icon: color-mix(in srgb, var(--tag-wait) 88%, var(--tag-wait-ink));
   width: 384px;
   max-width: calc(100vw / var(--page-zoom, 1) - 32px);
@@ -861,6 +883,7 @@
     --tag-red-ink: var(--calm-dark-tag-red-ink);
     --badge: var(--calm-dark-badge);
     --calm-pick: var(--calm-dark-pick);
+    --pick-weight: var(--dark-pick-weight);
     --calm-scrim: var(--calm-dark-scrim);
     --calm-row-hover: var(--calm-dark-row-hover);
     --calm-urgent: var(--calm-dark-urgent);
@@ -974,6 +997,7 @@
   --tag-red-ink: var(--calm-dark-tag-red-ink);
   --badge: var(--calm-dark-badge);
   --calm-pick: var(--calm-dark-pick);
+  --pick-weight: var(--dark-pick-weight);
   --calm-scrim: var(--calm-dark-scrim);
   --calm-row-hover: var(--calm-dark-row-hover);
   --calm-urgent: var(--calm-dark-urgent);
@@ -1064,6 +1088,7 @@
   --tag-red-ink: var(--light-tag-red-ink);
   --badge: var(--light-badge);
   --calm-pick: var(--light-calm-pick);
+  --pick-weight: var(--light-pick-weight);
   --calm-scrim: var(--light-calm-scrim);
   --calm-row-hover: var(--light-calm-row-hover);
   --calm-urgent: var(--light-calm-urgent);
@@ -1185,4 +1210,79 @@
 
 .frame[data-theme='dark'] .notifications {
   --nf-alert-icon: color-mix(in srgb, var(--tag-wait) 80%, var(--tag-wait-ink));
+}
+
+/*
+ * The boot overlay (the Curios loader over the first paint of a full page load, 25 Nov 2026). It is in the
+ * server HTML and shows only after 150ms (the loader's own CSS delay); the frame removes it once it has
+ * hydrated and the fonts are ready (at most ~1s in). Dark swaps the loader's hooks to the frame's.
+ */
+/* The failsafe, in CSS alone: if the script never removes the overlay (a failed hydration, a blocked bundle), it still shows after 150ms and then ends itself by 2.5s, hidden and out of the pointer's way. The script's removal normally wins well before. */
+.frame .boot {
+  /* Catches no tap until it is showing (bootShow turns this on). */
+  pointer-events: none;
+  animation:
+    bootShow 200ms ease-out 150ms forwards,
+    bootFailsafe 300ms ease-out 2500ms forwards;
+}
+
+@keyframes bootShow {
+  to {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+@keyframes bootFailsafe {
+  to {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+  }
+}
+
+.boot.bootLeaving {
+  pointer-events: none;
+  /* The list keeps bootShow (a list of one would drop it), with the fade last so it wins on opacity. */
+  animation:
+    bootShow 200ms ease-out 150ms forwards,
+    bootOut 200ms ease-out forwards;
+}
+
+@keyframes bootOut {
+  to {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .frame:not([data-theme='light']) .boot {
+    --loader-bg: var(--calm-dark-bg);
+    --loader-ink: var(--calm-dark-ink);
+    --loader-muted: var(--calm-dark-muted);
+    --loader-line: var(--calm-dark-line);
+  }
+}
+
+.frame[data-theme='dark'] .boot {
+  --loader-bg: var(--calm-dark-bg);
+  --loader-ink: var(--calm-dark-ink);
+  --loader-muted: var(--calm-dark-muted);
+  --loader-line: var(--calm-dark-line);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No motion: it appears and is hidden at the end, each in a blink. */
+  .frame .boot {
+    animation:
+      bootShow 1ms linear 150ms forwards,
+      bootFailsafe 1ms linear 2500ms forwards;
+  }
+
+  .frame .boot.bootLeaving {
+    animation:
+      bootShow 1ms linear 150ms forwards,
+      bootOut 1ms linear forwards;
+  }
 }

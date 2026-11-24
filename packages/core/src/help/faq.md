@@ -321,9 +321,9 @@ Open: /app/settings
 Source: apps/web/app/app/settings/notify-emails.tsx; settings/page.tsx; packages/db/src/question-mail.ts; apps/workers/src/billing/renewal-reminder.ts
 
 ### acc-home-screen · How do I put Curios on my phone’s home screen?
-On Android, open curios.my in Chrome, tap the ⋮ menu, then Add to Home screen (or Install app). On iPhone, open curios.my in Safari, tap the Share button (the square with an arrow), then Add to Home Screen, then Add. On a computer, Chrome and Edge show an install icon at the end of the address bar. Curios then opens from its own icon, straight to your dashboard, without the browser bar. On iPhone you sign in once more inside it.
+On Android, open curios.my in Chrome, tap the ⋮ menu, then Add to Home screen (or Install app). On iPhone, open curios.my in Safari, tap the Share button (the square with an arrow), then Add to Home Screen, then Add. On a computer, Chrome and Edge show an install icon at the end of the address bar. Curios then opens from its own icon, straight to your dashboard, without the browser bar. On iPhone you sign in once more inside it. On a phone, the dashboard also offers this itself from your second visit: a card that says Put Curios on your phone, with an Install button on Android and the Share steps on iPhone. Dismiss it and it stays away for 30 days.
 Open: none
-Source: apps/web/public/manifest.webmanifest (start_url /app, standalone); app/app/pwa-metadata.ts
+Source: apps/web/public/manifest.webmanifest (start_url /app, standalone); app/app/pwa-metadata.ts; apps/web/app/app/_ui/install-prompt.tsx
 
 ### acc-push · How do I get notifications on my phone?
 In Settings, under Signing in, turn on Notifications on this device and allow notifications when your phone asks. You’ll get one for each new order, each online payment, each receipt uploaded and each person who leaves their number, and tapping it opens that order or Leads. Tap Send a test to check it works. Turn it on on each phone or computer you want, as each one has its own switch. It works whatever your email switches are set to. On iPhone, put Curios on your Home Screen first and open it from there.

@@ -164,6 +164,24 @@
   text-underline-offset: 3px;
 }
 
+/* On a narrow column the address (or Publish) takes its own line under the words, lined up with them,
+   so the sentence isn't squeezed into a sliver beside it (owner, 25 Nov 2026). */
+@container (max-width: 560px) {
+  .xpub {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .xpub > div {
+    flex-basis: calc(100% - 42px);
+  }
+
+  .xpub > .xurl,
+  .xpub > .publish {
+    margin-left: 42px;
+  }
+}
+
 .publish {
   display: inline-flex;
   align-items: center;
@@ -622,10 +640,10 @@
 /* ---- Nothing yet: a new account ---- */
 
 /* No card around it, as the empty states on Questions and Leads sit (owner, 29 Oct 2026). */
+/* The whole content column, like Facts & sources' empty tab: the box spans it and its content is centred in it. */
 .esCard {
   width: 100%;
-  max-width: 640px;
-  margin-top: 24px;
+  margin-top: 8px;
 }
 
 .es {
@@ -634,6 +652,8 @@
   align-items: center;
   gap: 6px;
   padding: 44px 24px 40px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 16px;
   text-align: center;
   animation: fadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
@@ -760,7 +780,7 @@
   align-items: center;
   height: 38px;
   padding: 0 16px;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--action);
   color: var(--action-fg);
   font-weight: 500;

@@ -11,7 +11,22 @@ import styles from './footer.module.css';
  * Return pages (DEVIATIONS 138) and who runs Curios (its SSM number in both
  * formats, and the support address).
  */
-export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) {
+export function Footer({
+  copy,
+  locale,
+  sectionsBase = '',
+  note,
+  showOperator = true,
+}: {
+  copy: LandingCopy;
+  locale: Locale;
+  /** Where the section links point: empty on the landing itself, the landing's path on the legal pages. */
+  sectionsBase?: string;
+  /** Another line in place of "every sample is made up" (the legal pages name who runs Curios). */
+  note?: string;
+  /** False where `note` already says who runs Curios. */
+  showOperator?: boolean;
+}) {
   const { nav } = copy;
   return (
     <footer className={calm.wrap}>
@@ -20,11 +35,11 @@ export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) 
           <Wordmark />
         </a>
         <nav aria-label={nav.sections} className={styles.links}>
-          <a href="#who">{nav.who}</a>
-          <a href="#how">{nav.how}</a>
-          <a href="#business">{nav.business}</a>
-          <a href="#pricing">{nav.pricing}</a>
-          <a href="#faq">{nav.faq}</a>
+          <a href={`${sectionsBase}#who`}>{nav.who}</a>
+          <a href={`${sectionsBase}#how`}>{nav.how}</a>
+          <a href={`${sectionsBase}#business`}>{nav.business}</a>
+          <a href={`${sectionsBase}#pricing`}>{nav.pricing}</a>
+          <a href={`${sectionsBase}#faq`}>{nav.faq}</a>
         </nav>
         <div className={styles.links}>
           <a href="/signin">{copy.footer.signIn}</a>
@@ -32,7 +47,7 @@ export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) 
             {nav.other.name}
           </a>
         </div>
-        <p className={styles.note}>{copy.footer.note}</p>
+        <p className={styles.note}>{note ?? copy.footer.note}</p>
         <div className={styles.legal}>
           <div className={styles.legalLinks}>
             {LEGAL_DOCS.map((doc) => (
@@ -41,13 +56,15 @@ export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) 
               </a>
             ))}
           </div>
-          <p className={styles.co}>
-            <span>{OPERATOR.name}</span>
-            <span>
-              {OPERATOR.registration} ({OPERATOR.oldRegistration})
-            </span>
-            <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
-          </p>
+          {showOperator ? (
+            <p className={styles.co}>
+              <span>{OPERATOR.name}</span>
+              <span>
+                {OPERATOR.registration} ({OPERATOR.oldRegistration})
+              </span>
+              <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+            </p>
+          ) : null}
         </div>
       </div>
     </footer>

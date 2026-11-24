@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { REPORT_DETAILS_MAX, REPORT_REASONS, type ReportReasonKey } from '@curios/core/report';
-import { SystemCard, SystemShell, systemStyles } from '../../_system/SystemShell.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles } from '../../_system/SystemShell.js';
+import { DoneArt, FlagArt } from '../../_system/art.js';
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import { reportCopy } from './copy.js';
 import styles from './report.module.css';
@@ -15,14 +16,18 @@ export interface ReportInput {
 }
 
 /**
- * "Report this page": the Site board's shell, a list of reasons and an optional note.
- * Not drawn on any board (DEVIATIONS 219). The owner is never told who reported.
+ * "Report this page", from the Site board: a flag badge, a list of reasons (none
+ * chosen to begin with, and Send waits for one) and an optional note; "Back to {name}"
+ * in the nav, and again once it is sent. The owner is never told who reported.
  */
 export function ReportForm({
+  handle,
   displayName,
   language,
   onSubmit,
 }: {
+  /** The page's address, for the way back to it. */
+  handle: string;
   displayName: string;
   language: string;
   onSubmit: (input: ReportInput) => Promise<unknown>;
@@ -52,17 +57,25 @@ export function ReportForm({
     }
   }
 
+  const back = { label: copy.back(displayName), href: `/${handle}` };
+
   if (sent) {
     return (
-      <SystemShell>
-        <SystemCard art={null} title={copy.heading(displayName)} lede={copy.done} ledeRole="status" />
+      <SystemShell action={back} locale={lang}>
+        <SystemCard art={<DoneArt />} title={copy.thanks} lede={copy.done} ledeRole="status">
+          <SystemActions>
+            <a className={systemStyles.ghost} href={back.href}>
+              {back.label}
+            </a>
+          </SystemActions>
+        </SystemCard>
       </SystemShell>
     );
   }
 
   return (
-    <SystemShell>
-      <SystemCard art={null} title={copy.heading(displayName)} lede={copy.lede}>
+    <SystemShell action={back} locale={lang}>
+      <SystemCard art={<FlagArt />} title={copy.heading(displayName)} lede={copy.lede}>
         <form onSubmit={(event) => void submit(event)} className={styles.form}>
           <fieldset className={styles.reasons}>
             <legend className={styles.legend}>{copy.heading(displayName)}</legend>
@@ -75,14 +88,20 @@ export function ReportForm({
           </fieldset>
           <label className={styles.note}>
             <span>{copy.details}</span>
-            <textarea value={details} maxLength={REPORT_DETAILS_MAX} rows={4} onChange={(event) => setDetails(event.target.value)} />
+            <textarea
+              value={details}
+              maxLength={REPORT_DETAILS_MAX}
+              rows={4}
+              placeholder={copy.detailsHint}
+              onChange={(event) => setDetails(event.target.value)}
+            />
           </label>
           {error ? (
             <p className={systemStyles.alert} role="alert">
               {error}
             </p>
           ) : null}
-          <button type="submit" className={systemStyles.go} disabled={!reason || busy}>
+          <button type="submit" className={`${systemStyles.go} ${styles.send}`} disabled={!reason || busy}>
             {copy.send}
           </button>
         </form>
@@ -95,6 +114,7 @@ export function ReportForm({
 export function Report({ handle, displayName, language }: { handle: string; displayName: string; language: string }) {
   return (
     <ReportForm
+      handle={handle}
       displayName={displayName}
       language={language}
       onSubmit={(input) => apiFetch(`/pages/${encodeURIComponent(handle)}/report`, { method: 'POST', body: JSON.stringify(input) })}

@@ -8,7 +8,7 @@ import { ringgit } from '@curios/core/money';
 import { Onboarding } from './onboarding.js';
 
 /**
- * Onboarding, from the design handoff's More board: claim the address,
+ * Onboarding, from the More board (ob1 to ob4): claim the address,
  * say what the page is for, give it something to read, watch it read. Full
  * screen (the frame steps aside here). An owner who already has a page starts
  * at the third step, to add a source.
@@ -22,8 +22,8 @@ export default async function OnboardingPage() {
 
   const page = await getOwnerPage(owner.accountId);
   const facts = page ? await getReviewQueue(owner.accountId, { limit: 50 }) : [];
-  // The price and free leads in force, as Billing and the landing page quote them.
-  const { prices, freeLeads } = await getSettings();
+  // The price and the free leads and orders in force, as Billing and the landing page quote them.
+  const { prices, freeLeads, freeOrders } = await getSettings();
 
   return (
     <Onboarding
@@ -31,6 +31,7 @@ export default async function OnboardingPage() {
       facts={facts.map((fact) => ({ id: fact.id, category: fact.category, claim: fact.claim, question: fact.question }))}
       monthlyPrice={ringgit(prices.MONTHLY)}
       freeLeads={freeLeads}
+      freeOrders={freeOrders}
       pastedTextMax={PASTED_TEXT_MAX}
     />
   );

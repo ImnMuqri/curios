@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { getPageAvailability } from '@curios/db-read';
-import { SystemCard, SystemShell } from './SystemShell.js';
-import { PadlockArt } from './art.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles as styles } from './SystemShell.js';
+import { LockedArt } from './art.js';
 import { unavailableCopy } from './unavailable-copy.js';
 
 /** Not for search results, and not followed: a suspended page leaves the index. */
@@ -10,13 +10,19 @@ export const UNAVAILABLE_METADATA: Metadata = { title: 'Unavailable · Curios', 
 /**
  * What a visitor sees at any address of a suspended page, in the page's own
  * language: the Site board's shell, one line, a way out. The reason is the
- * owner's to read, never the visitor's.
+ * owner's to read, never the visitor's. "Go to Curios" is the way out.
  */
 export function UnavailableScreen({ language }: { language: string }) {
   const copy = unavailableCopy(language);
   return (
-    <SystemShell>
-      <SystemCard art={<PadlockArt />} title={copy.title} lede={copy.lede} />
+    <SystemShell locale={language === 'ms' ? 'ms' : 'en'}>
+      <SystemCard art={<LockedArt />} title={copy.title} lede={copy.lede}>
+        <SystemActions>
+          <a className={styles.ghost} href="/">
+            {copy.home}
+          </a>
+        </SystemActions>
+      </SystemCard>
     </SystemShell>
   );
 }

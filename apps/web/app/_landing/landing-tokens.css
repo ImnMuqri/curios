@@ -1,7 +1,6 @@
 /*
- * What is left of the old landing's tokens: the few the auth screens still
- * read (auth.module.css, through _auth/AuthShell.tsx), the wordmark's size,
- * and the nav height the in-page links stop below. The calm landing's own
+ * What is left of the old landing's tokens: the wordmark's size and the nav
+ * height the in-page links stop below (the Site pages' nav reads them too). The calm landing's own
  * values live in packages/ui/src/tokens.css ("The calm landing (Landing2
  * board)"), and its scope in calm.module.css.
  *
@@ -9,12 +8,6 @@
  * A token nothing reads is deleted (landing.test.tsx checks).
  */
 [data-landing] {
-  /* Taken from the deleted TanyaJe board (16 Oct 2026); auth's muted labels read it. */
-  --tj-ink-500: #8a8f9b;
-
-  /* The deep end of the biru ramp (parent --biru #0479a3, sky deep); auth's links read it. */
-  --l-biru-800: #035a7a; /* sky ink -- links and the pressed state; white on it 7.6:1 */
-
   --l-wordmark: 28px; /* the logotype; a mark, not a step of the text scale */
   --l-header-h: 72px; /* the calm nav; anchors stop below it */
 }

@@ -1,14 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { normalizeMalaysianPhone } from '@curios/core/phone';
 import { formatRinggit } from '@curios/core/store';
 import { whatsappOrderUrl } from '../basket.js';
 import type { ShopCopy } from '../copy.js';
+import { ResultMark } from './result-mark.js';
 import styles from './checkout.module.css';
-
-/** The confetti around the check: twelve pieces, a twelfth of a turn apart. */
-const BURST = Array.from({ length: 12 }, (_, i) => i);
 
 /**
  * The customer's own number as wa.me wants it: digits, Malaysian 60….
@@ -53,6 +51,8 @@ export function Placed(props: {
   holds?: boolean;
   /** The order came to RM0, so it was placed paid: nothing to pay, only the order to see. */
   free?: boolean;
+  /** The board's summary card: how it is got (when and where), and what it holds (a few photos and the total). */
+  summary?: { how: { label: string; value: string } | null; count: number; thumbs: { name: string; url: string | null }[] } | null;
 }) {
   const { copy } = props;
   const [copied, setCopied] = useState(false);
@@ -91,15 +91,7 @@ export function Placed(props: {
 
   return (
     <div className={styles.placed}>
-      <div className={styles.burst} aria-hidden="true">
-        {BURST.map((i) => (
-          <span key={i} style={{ '--a': `${i * 30}deg`, animationDelay: `${120 + (i % 3) * 40}ms` } as CSSProperties} />
-        ))}
-        <svg viewBox="0 0 96 96" width="96" height="96">
-          <circle cx="48" cy="48" r="40" />
-          <path d="M31 49l11 11 23-24" className={styles.tick} />
-        </svg>
-      </div>
+      <ResultMark tone="ok" />
       <h1 ref={heading} className={styles.placedTitle} tabIndex={-1}>
         {paid ? (props.paidDigital ? copy.paidPlacedDigital : copy.paidPlaced) : copy.orderPlaced}
       </h1>
@@ -134,10 +126,35 @@ export function Placed(props: {
         <button type="button" className={styles.copy} onClick={copyCode}>
           {copied ? copy.copied : copy.copyCode}
         </button>
-        <p>
-          <b>{copy.keepCode}</b> {copy.askLater(props.displayName, props.code)}
-        </p>
       </div>
+
+      {props.summary ? (
+        <ul className={styles.sumc} aria-label={copy.items}>
+          {props.summary.how ? (
+            <li>
+              <span>{props.summary.how.label}</span>
+              <b>{props.summary.how.value}</b>
+            </li>
+          ) : null}
+          <li>
+            <span>{copy.itemCount(props.summary.count)}</span>
+            <b>
+              {props.summary.thumbs.length > 0 ? (
+                <span className={styles.sumThumbs} aria-hidden="true">
+                  {props.summary.thumbs.slice(0, 3).map((thumb, i) => (
+                    <i key={i}>{thumb.url ? <img src={thumb.url} alt="" /> : thumb.name.trim().charAt(0).toUpperCase()}</i>
+                  ))}
+                </span>
+              ) : null}
+              {total}
+            </b>
+          </li>
+        </ul>
+      ) : null}
+
+      <p className={styles.placedHint}>
+        <b>{copy.keepCode}</b> {copy.askLater(props.displayName, props.code)}
+      </p>
 
       {paid ? (
         <button type="button" className={styles.pay} onClick={props.onSeeOrder}>
@@ -159,6 +176,11 @@ export function Placed(props: {
           {arrow}
         </a>
       )}
+      {(paid || free) && props.whatsapp && props.number !== undefined ? (
+        <a className={styles.placedLite} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(props.number, props.code))} rel="noopener">
+          {copy.whatsappShop(props.displayName)}
+        </a>
+      ) : null}
       {props.digitalNote ? <p className={styles.digitalNote}>{props.digitalNote}</p> : null}
       {/* Nothing left to do here once it is paid: a way back to the shop (owner, 12 Nov 2026). */}
       {paid || free ? (

@@ -121,7 +121,7 @@ describe('AppearanceEditor', () => {
   // (`setCustom(hex)`, so the two controls agree on the current colour); no
   // test read the custom field's value after a preset click.
   it('syncs the custom colour field to a chosen preset', async () => {
-    setup();
+    render(<Controlled save={vi.fn(async () => undefined)} />);
     await userEvent.click(screen.getByRole('button', { name: 'Violet' }));
     expect(screen.getByLabelText('Accent colour as hex')).toHaveValue('6d3fb3');
   });
@@ -169,7 +169,7 @@ describe('AppearanceEditor background', () => {
 });
 
 describe('AppearanceEditor, a custom background', () => {
-  it("starts Custom as a light tint of the accent, saves it, and offers a picker and a hex box", async () => {
+  it("starts Custom as a light tint of the accent, saves it, and offers a hex box", async () => {
     const onChange = vi.fn();
     const save = vi.fn(async () => undefined);
     render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
@@ -180,20 +180,47 @@ describe('AppearanceEditor, a custom background', () => {
     await vi.waitFor(() => expect(save).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#d7ddf5' }));
   });
 
-  it('shows the picker and hex box only while Custom is chosen, and refuses bad hex without saving', async () => {
+  it('shows the hex box only while Custom is chosen, the same one the button colour has, and refuses bad hex without saving', async () => {
     const save = vi.fn(async () => undefined);
     const first = render(
       <AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />,
     );
-    expect(screen.queryByLabelText('Pick a background colour')).toBeNull();
+    expect(screen.queryByLabelText('Background colour as hex')).toBeNull();
     first.unmount();
 
     render(<AppearanceEditor displayName="Kek Lina" background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
-    expect(screen.getByLabelText('Pick a background colour')).toHaveValue('#f4d9c8');
+    expect(screen.queryByLabelText('Pick a background colour')).toBeNull();
     const hex = screen.getByLabelText('Background colour as hex');
+    expect(hex).toHaveValue('f4d9c8');
+    expect(hex).toHaveAttribute('maxLength', '6');
     await userEvent.clear(hex);
     await userEvent.type(hex, 'pink');
-    expect(screen.getByRole('alert')).toHaveTextContent(/six-digit hex/);
+    // Only hex digits go in, exactly as the button colour's box takes them; the message is the same one.
+    expect(hex).toHaveValue('');
+    await userEvent.type(hex, 'ff00');
+    expect(screen.getByRole('alert')).toHaveTextContent('Type a colour as six-digit hex, like 2340c8.');
+    expect(save).not.toHaveBeenCalled();
+  });
+
+  it('saves a whole typed colour at once, lowercased, as the button colour does', async () => {
+    const save = vi.fn(async () => undefined);
+    const onChange = vi.fn();
+    render(<AppearanceEditor displayName="Kek Lina" background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
+    const hex = screen.getByLabelText('Background colour as hex');
+    await userEvent.clear(hex);
+    await userEvent.type(hex, 'EAF0FF');
+    expect(onChange).toHaveBeenLastCalledWith({ background: 'CUSTOM', backgroundColor: '#eaf0ff' });
+    expect(save).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#eaf0ff' });
+  });
+});
+
+describe('AppearanceEditor, a custom background already in force', () => {
+  it('does not save a typed page colour equal to the one it has', async () => {
+    const save = vi.fn(async () => undefined);
+    render(<AppearanceEditor displayName="Kek Lina" background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
+    const hex = screen.getByLabelText('Background colour as hex');
+    await userEvent.clear(hex);
+    await userEvent.type(hex, 'F4D9C8');
     expect(save).not.toHaveBeenCalled();
   });
 });

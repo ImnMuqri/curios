@@ -31,6 +31,52 @@ export function fold(line: string): string {
   return parts.join('\r\n ');
 }
 
+/** The file's lines, joined and folded: the one ending every calendar here shares. */
+function calendarFile(event: string[]): string {
+  const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Curios//Order//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT', ...event, 'END:VEVENT', 'END:VCALENDAR'];
+  return `${lines.map(fold).join('\r\n')}\r\n`;
+}
+
+/** Malaysia is UTC+8 all year, with no daylight saving: a pickup window is kept in its minutes after midnight there. */
+const MALAYSIA_MS = 8 * 60 * 60_000;
+
+/** `20261121` for the day after an ISO day, as an all-day event's exclusive end. */
+function nextDayValue(day: string): string {
+  const next = new Date(`${day}T00:00:00.000Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  return next.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+/**
+ * The calendar file for a pickup order: its window on its day (Malaysia time) at its place, or the whole
+ * day when the order kept no window. `day` is the order's ISO day (2026-11-21), `from` and `to` are minutes after midnight.
+ */
+export function pickupCalendar(input: {
+  uid: string;
+  now: Date;
+  day: string;
+  from: number | null;
+  to: number | null;
+  title: string;
+  where: string | null;
+  shopName: string;
+  orderUrl: string;
+}): string {
+  const timed = input.from !== null && input.to !== null;
+  const midnight = Date.parse(`${input.day}T00:00:00.000Z`) - MALAYSIA_MS;
+  const when = timed
+    ? [`DTSTART:${icsTime(new Date(midnight + input.from! * 60_000))}`, `DTEND:${icsTime(new Date(midnight + input.to! * 60_000))}`]
+    : [`DTSTART;VALUE=DATE:${input.day.replace(/-/g, '')}`, `DTEND;VALUE=DATE:${nextDayValue(input.day)}`];
+  return calendarFile([
+    `UID:${input.uid}`,
+    `DTSTAMP:${icsTime(input.now)}`,
+    ...when,
+    `SUMMARY:${icsText(input.title)}`,
+    ...(input.where ? [`LOCATION:${icsText(input.where)}`] : []),
+    `DESCRIPTION:${icsText(`${input.shopName}\n${input.orderUrl}`)}`,
+  ]);
+}
+
 /** The calendar file for one session line. */
 export function sessionCalendar(input: {
   uid: string;

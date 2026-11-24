@@ -133,6 +133,8 @@ describe('getPublicPage', () => {
     const page = await getPublicPage('nadia');
 
     expect(page).toMatchObject({ style: 'SOFT', accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, coverKey: null, background: 'PAPER' });
+    // A page that never chose keeps today's look: Medium, the ring, the cover at the top.
+    expect(page).toMatchObject({ avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP' });
     expect(page?.links[0]).toMatchObject({ size: null });
   });
 

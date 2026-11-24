@@ -35,6 +35,7 @@
   color: var(--ink);
 }
 
+.pill[aria-checked='true']:hover,
 .pill[aria-selected='true']:hover,
 .pill[aria-current='page']:hover,
 .pill[aria-current='true']:hover,
@@ -42,6 +43,7 @@
   color: var(--select-fg);
 }
 
+.pill[aria-checked='true'],
 .pill[aria-selected='true'],
 .pill[aria-current='page'],
 .pill[aria-current='true'],
@@ -49,6 +51,11 @@
   background: var(--select);
   color: var(--select-fg);
   box-shadow: none;
+}
+
+.pill:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .pill:focus-visible {
@@ -60,6 +67,7 @@
 .count {
   font-size: 12px;
   font-weight: 500;
+  background: none;
   opacity: 0.7;
 }
 

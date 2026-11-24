@@ -2,12 +2,22 @@
 
 import { useId, useRef, useState, type ChangeEvent } from 'react';
 import { Callout } from '@curios/ui';
-import { BIO_MAX } from '@curios/core/bento';
+import { BIO_MAX, type AvatarSize } from '@curios/core/bento';
 import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import { SectionHead } from '../_ui/section-head.js';
+import { Segmented } from '../_ui/segmented.js';
+import { Switch } from '../_ui/switch.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
+
+type ProfilePatch = { displayName?: string; bio?: string | null; avatarSize?: AvatarSize; avatarBorder?: boolean };
+
+const SIZES: { id: AvatarSize; label: string }[] = [
+  { id: 'SMALL', label: 'Small' },
+  { id: 'MEDIUM', label: 'Medium' },
+  { id: 'LARGE', label: 'Big' },
+];
 
 /**
  * The picture, name and bio, saved as the owner chooses or types. The picture
@@ -17,6 +27,8 @@ import styles from './curios.module.css';
 export function ProfileEditor({
   displayName,
   bio,
+  avatarSize,
+  avatarBorder,
   onChange,
   save,
   avatarUrl,
@@ -27,8 +39,11 @@ export function ProfileEditor({
 }: {
   displayName: string;
   bio: string | null;
-  onChange: (change: { displayName?: string; bio?: string | null }) => void;
-  save: (patch: { displayName?: string; bio?: string | null }) => Promise<unknown>;
+  /** How big the picture is on the page, and whether it wears its ring. */
+  avatarSize: AvatarSize;
+  avatarBorder: boolean;
+  onChange: (change: ProfilePatch) => void;
+  save: (patch: ProfilePatch) => Promise<unknown>;
   /** The current picture's URL, or null when there is none. */
   avatarUrl: string | null;
   /** Whether storage is configured at all; false shows the picture control disabled, with the reason. */
@@ -46,6 +61,21 @@ export function ProfileEditor({
   // failed once.
   const [avatarFailed, setAvatarFailed] = useState(false);
   const file = useRef<HTMLInputElement>(null);
+  const [lookError, setLookError] = useState('');
+  // The preview follows at once; a save that fails puts the old choice back and says so.
+  // A failed save puts its choice back only if no newer choice of the same control has been made since.
+  const sent = useRef({ avatarSize: 0, avatarBorder: 0 });
+  const setLook = (patch: { avatarSize: AvatarSize } | { avatarBorder: boolean }, before: ProfilePatch) => {
+    const field = 'avatarSize' in patch ? 'avatarSize' : 'avatarBorder';
+    const mine = ++sent.current[field];
+    setLookError('');
+    onChange(patch);
+    save(patch).catch(() => {
+      if (sent.current[field] !== mine) return;
+      onChange(before);
+      setLookError('That did not save. Try again.');
+    });
+  };
   const bioLength = [...(bio ?? '')].length;
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -70,6 +100,7 @@ export function ProfileEditor({
   const nameId = useId();
   const bioId = useId();
   const hintId = useId();
+  const borderId = useId();
 
   const handleRemove = async () => {
     try {
@@ -117,6 +148,14 @@ export function ProfileEditor({
                   Remove
                 </button>
               ) : null}
+            </div>
+            <div className={styles.pictureLook}>
+              <Segmented label="Picture size" disabled={!hasPicture} options={SIZES} value={avatarSize} onChange={(next) => setLook({ avatarSize: next }, { avatarSize })} />
+              <span className={styles.borderRow}>
+                <span id={borderId}>Border</span>
+                <Switch checked={avatarBorder} aria-labelledby={borderId} disabled={!hasPicture} onChange={(next) => setLook({ avatarBorder: next }, { avatarBorder })} />
+              </span>
+              {hasPicture ? null : <small className={styles.pictureHint}>Add a picture first to choose its size.</small>}
             </div>
           </div>
           {uploadsEnabled ? (
@@ -171,6 +210,7 @@ export function ProfileEditor({
         </p>
       </div>
       {avatarError ? <Callout tone="error">{avatarError}</Callout> : null}
+      {lookError ? <Callout tone="error">{lookError}</Callout> : null}
     </section>
   );
 }

@@ -31,6 +31,13 @@ export type PageBackground = (typeof PAGE_BACKGROUNDS)[number];
 export const STOCK_COVERS = ['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis'] as const;
 export type StockCover = (typeof STOCK_COVERS)[number];
 
+/**
+ * The stock covers the editor offers a new choice of (25 Nov: the pink flower only). The rest stay in
+ * STOCK_COVERS, so a page that saved one keeps rendering it and the API keeps accepting it; the
+ * editor shows such a page's own stock cover as its current choice until the owner picks another.
+ */
+export const OFFERED_COVERS: readonly StockCover[] = ['bunga'];
+
 /** A cover's colours at its top and foot, six-digit hex (the API's cover-tint.ts works them out). */
 export interface CoverTint {
   top: string;
@@ -67,6 +74,18 @@ export function coverTintOf(page: { coverKey: string | null; coverTop?: string |
   return page.coverKey && page.coverTop && page.coverBottom ? { top: page.coverTop, bottom: page.coverBottom } : null;
 }
 export type HeadingFont = (typeof HEADING_FONTS)[number];
+
+/**
+ * The picture on the page's head: Small, Medium or Big. Medium is the size every page had before
+ * there was a choice, so a page that never chose looks as it always did. The pixels are the page's
+ * stylesheet's (Bento.module.css); this is the choice.
+ */
+export const AVATAR_SIZES = ['SMALL', 'MEDIUM', 'LARGE'] as const;
+export type AvatarSize = (typeof AVATAR_SIZES)[number];
+
+/** Where the cover sits: Top is the band at the head of the page; Full fills the whole page behind the content. */
+export const COVER_LAYOUTS = ['TOP', 'FULL'] as const;
+export type CoverLayout = (typeof COVER_LAYOUTS)[number];
 
 export const MAX_LINKS = 30;
 export const LABEL_MAX = 40;

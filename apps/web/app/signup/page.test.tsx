@@ -26,7 +26,8 @@ describe('/signup', () => {
     expect(screen.getByText('Curios is full for now. Try again soon.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Email')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Continue with Google' })).toBeNull();
-    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/signin');
+    expect(screen.getAllByRole('link', { name: 'Sign in' })[0]).toHaveAttribute('href', '/signin');
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Create your free page.');
   });
 
   it('shows the form on ?closed=1 once sign-ups are open again: only the switch decides', async () => {

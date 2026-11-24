@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Callout, Field } from '@curios/ui';
-import { AuthShell, GoogleButton, OrWithEmail } from '../_auth/AuthShell.js';
+import { Callout } from '@curios/ui';
+import { AuthShell, GoogleButton, Or } from '../_auth/AuthShell.js';
+import { CuriosLoader } from '../_ui/curios-loader.js';
+import { AuthPeek } from '../_auth/AuthPeek.js';
+import { PillField } from '../_auth/PillField.js';
 import { apiFetch } from '../../lib/api.js';
-import { Peek } from '../_peek/Peek.js';
 import styles from '../auth.module.css';
 import { oauthErrorMessage } from '../../lib/oauth-errors.js';
-import { lastUsedSignIn, noteGoogleSignIn, rememberEmailSignIn, type SignInMethod } from './last-used.js';
 
 export function SignInForm({
   onSubmit,
@@ -31,12 +32,9 @@ export function SignInForm({
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  // Read after mount: the server has no browser storage, and a guess there would mismatch.
-  const [lastUsed, setLastUsed] = useState<SignInMethod | null>(null);
-
-  useEffect(() => {
-    setLastUsed(lastUsedSignIn(cancelled || Boolean(oauthError)));
-  }, [cancelled, oauthError]);
+  // Peek covers his eyes while the password has the cursor (the board's `shy`).
+  const [shy, setShy] = useState(false);
+  const errorId = useId();
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -44,7 +42,6 @@ export function SignInForm({
     setBusy(true);
     try {
       await onSubmit({ email, password });
-      rememberEmailSignIn();
     } catch (failure) {
       // Rendered verbatim. The API returns one message for every cause on
       // purpose -- wrong password, unknown address, unverified -- and
@@ -56,42 +53,39 @@ export function SignInForm({
   }
 
   return (
-    <AuthShell
-      title="Welcome back"
-      lede="Sign in to see your leads and what customers keep asking."
-      switchTo={{ prompt: 'New to Curios?', label: 'Create your free page', href: '/signup' }}
-    >
-      {cancelled ? (
-        <Callout tone="info">Sign-in was cancelled. Try again when you are ready.</Callout>
-      ) : null}
+    <AuthShell title="Welcome back." lede="Sign in to see your leads and what customers keep asking.">
+      {cancelled ? <Callout tone="info">Sign-in was cancelled. Try again when you are ready.</Callout> : null}
       {oauthError ? <Callout tone="error">{oauthErrorMessage(oauthError)}</Callout> : null}
 
-      <GoogleButton lastUsed={lastUsed === 'google'} onClick={noteGoogleSignIn} />
-      <OrWithEmail lastUsed={lastUsed === 'email'} />
-
-      <form onSubmit={(event) => void submit(event)}>
-        <Field
+      <form className={styles.fields} onSubmit={(event) => void submit(event)}>
+        <PillField
           id="email"
-          adornment={<Peek variant="auth" width={84} right={18} top={-18.8} />}
           label="Email"
           type="email"
           autoComplete="email"
-          placeholder="you@example.com"
+          placeholder="Email"
           required
           value={email}
           onChange={setEmail}
+          describedBy={error ? errorId : undefined}
+          peek={<AuthPeek shy={shy} />}
         />
-        <Field
+        <PillField
           id="password"
           label="Password"
           type="password"
           autoComplete="current-password"
+          placeholder="Password"
           required
           value={password}
           onChange={setPassword}
-          labelAside={
-            <a className={styles.aside} href="/forgot">
-              Forgot your password?
+          describedBy={error ? errorId : undefined}
+          invalid={Boolean(error)}
+          onFocus={() => setShy(true)}
+          onBlur={() => setShy(false)}
+          trailing={
+            <a className={styles.aside} href="/forgot" aria-label="Forgot your password?">
+              Forgot?
             </a>
           }
         />
@@ -100,12 +94,25 @@ export function SignInForm({
             purpose -- wrong password, unknown address, unverified -- and
             rewriting it here to be more helpful would rebuild the account
             enumeration oracle it was written to remove. */}
-        {error ? <Callout tone="error">{error}</Callout> : null}
+        {error ? (
+          <p className={styles.error} id={errorId} role="alert">
+            {error}
+          </p>
+        ) : null}
 
-        <Button type="submit" busy={busy}>
+        <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>
           {busy ? 'Signing in…' : 'Sign in'}
-        </Button>
+        </button>
       </form>
+      {/* The sign-in succeeded and the dashboard is on its way (busy stays on until the page changes): a wait of seconds on a slow phone, so the Curios loader (it shows after 150ms; a failure clears busy and hides it). */}
+      {busy ? <CuriosLoader label="Signing you in" /> : null}
+
+      <Or />
+      <GoogleButton />
+
+      <p className={styles.fine}>
+        New to Curios? <a href="/signup">Create your free page</a>
+      </p>
     </AuthShell>
   );
 }

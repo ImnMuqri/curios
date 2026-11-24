@@ -105,3 +105,22 @@
     display: none;
   }
 }
+
+/* A long name in "Back to {name}" must not push the nav off a phone. */
+.right .cta {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 560px) {
+  .right {
+    min-width: 0;
+    gap: 0;
+  }
+
+  .right .cta {
+    max-width: 42vw;
+  }
+}

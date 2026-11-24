@@ -1,9 +1,15 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import ui from '../_ui/editor.module.css';
 import { bankFor, banksMatching, type Bank } from './banks.js';
 import styles from './store.module.css';
+
+/** The list's tallest (the CSS max), the room it wants before it would rather open upward, its smallest, and its gap from the field. */
+const LIST_MAX = 288;
+const LIST_MIN_ROOM = 220;
+const LIST_MIN = 140;
+const GAP = 12;
 
 /**
  * The bank name as a combobox: every bank in Malaysia with its logo (banks.ts), narrowed as the owner
@@ -27,6 +33,28 @@ export function BankPicker({ value, onChange, maxLength }: { value: string; onCh
     };
     document.addEventListener('pointerdown', away);
     return () => document.removeEventListener('pointerdown', away);
+  }, [open]);
+
+  // The list opens below the field, or above it when there isn't room below and there is more above, and
+  // is never taller than the room it has, so it never runs past the screen and stretches the page.
+  const [place, setPlace] = useState<{ up: boolean; max: number }>({ up: false, max: LIST_MAX });
+  useLayoutEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const box = root.current?.getBoundingClientRect();
+      if (!box) return;
+      const below = window.innerHeight - box.bottom - GAP;
+      const above = box.top - GAP;
+      const up = below < Math.min(LIST_MAX, LIST_MIN_ROOM) && above > below;
+      setPlace({ up, max: Math.max(LIST_MIN, Math.min(LIST_MAX, up ? above : below)) });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+    };
   }, [open]);
 
   // The active option stays in view as the arrow keys move through a long list.
@@ -91,7 +119,15 @@ export function BankPicker({ value, onChange, maxLength }: { value: string; onCh
         </svg>
       </label>
       {open && options.length > 0 ? (
-        <ul ref={list} id={`${id}-banks`} role="listbox" aria-label="Banks" className={styles.bankList}>
+        <ul
+          ref={list}
+          id={`${id}-banks`}
+          role="listbox"
+          aria-label="Banks"
+          className={styles.bankList}
+          data-up={place.up ? '' : undefined}
+          style={{ maxHeight: place.max }}
+        >
           {options.map((bank, i) => (
             <li
               key={bank.id}

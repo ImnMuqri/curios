@@ -60,6 +60,14 @@ export interface Chrome {
   home: string;
   questions: string;
   back: string;
+  /** The small label above the title. */
+  eyebrow: string;
+  /** The table of contents' name, and its button on a phone. */
+  contents: string;
+  /** The footer's line: who runs Curios. */
+  runBy: string;
+  /** The segmented language toggle's name. */
+  languages: string;
 }
 
 const who = `${OPERATOR.name} (${OPERATOR.registration})`;
@@ -74,6 +82,10 @@ export const CHROME: Record<Locale, Chrome> = {
     home: 'Curios home',
     questions: 'Questions about this page? Write to {email}.',
     back: 'Back to Curios',
+    eyebrow: 'Legal',
+    contents: 'On this page',
+    runBy: `Curios is run by ${OPERATOR.name} (${OPERATOR.registration} · ${OPERATOR.oldRegistration}).`,
+    languages: 'Language',
   },
   ms: {
     tab: { terms: 'Terma', privacy: 'Privasi', refunds: 'Bayaran balik', returns: 'Pemulangan' },
@@ -84,6 +96,10 @@ export const CHROME: Record<Locale, Chrome> = {
     home: 'Laman utama Curios',
     questions: 'Ada soalan tentang halaman ini? Tulis kepada {email}.',
     back: 'Kembali ke Curios',
+    eyebrow: 'Undang-undang',
+    contents: 'Dalam halaman ini',
+    runBy: `Curios dikendalikan oleh ${OPERATOR.name} (${OPERATOR.registration} · ${OPERATOR.oldRegistration}).`,
+    languages: 'Bahasa',
   },
 };
 

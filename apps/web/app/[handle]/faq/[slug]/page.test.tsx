@@ -20,10 +20,12 @@ const FaqEntryPage = (await import('./page.js')).default;
 const entry: FaqAnswer = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
+  language: 'en',
   theme: { accentColor: '#2340c8', headingFont: 'JAKARTA', background: 'PAPER', backgroundColor: null },
   question: 'Berapa harga kek lapis?',
   answer: 'RM12 sekotak, RM60 lima kotak.',
   askCount: 14,
+  answeredAt: new Date('2026-11-12T03:00:00.000Z'),
   related: [{ slug: 'ada-halal', question: 'Ada sertifikasi halal?' }],
 };
 
@@ -39,17 +41,41 @@ describe('one FAQ answer', () => {
 
     expect(screen.getByRole('heading', { name: 'Berapa harga kek lapis?' })).toBeInTheDocument();
     expect(screen.getByText('RM12 sekotak, RM60 lima kotak.')).toBeInTheDocument();
-    expect(screen.getByText(/Answered by Nadia Bakes · asked 14 times/)).toBeInTheDocument();
+    expect(screen.getByText('Answered by Nadia Bakes · updated 12 Nov')).toBeInTheDocument();
+    expect(screen.getByText('Nadia Bakes · FAQ')).toBeInTheDocument();
+    // No count of how often it was asked.
+    expect(screen.queryByText(/asked/)).toBeNull();
   });
 
-  it('offers the conversation, and the page\'s other answers', async () => {
+  it('leaves the date out of an answer from before dates were kept', async () => {
+    getFaqEntry.mockResolvedValueOnce({ ...entry, answeredAt: null });
+    render(await FaqEntryPage(params('nadia', 'berapa-harga')));
+    expect(screen.getByText('Answered by Nadia Bakes')).toBeInTheDocument();
+  });
+
+  it('speaks Malay on a Malay page', async () => {
+    getFaqEntry.mockResolvedValueOnce({ ...entry, language: 'ms' });
+    render(await FaqEntryPage(params('nadia', 'berapa-harga')));
+    expect(screen.getByText('Dijawab oleh Nadia Bakes · dikemas kini 12 Nov')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Semua soalan' })).toHaveAttribute('href', '/nadia/faq');
+  });
+
+  it('offers the conversation through an ask bar, and the other answers under "More questions"', async () => {
     getFaqEntry.mockResolvedValueOnce(entry);
 
     render(await FaqEntryPage(params('nadia', 'berapa-harga')));
 
-    expect(screen.getByRole('link', { name: 'Ask' })).toHaveAttribute('href', '/nadia#ask');
-    expect(screen.getByRole('link', { name: 'Ada sertifikasi halal?' })).toHaveAttribute('href', '/nadia/faq/ada-halal');
-    expect(screen.getByRole('link', { name: 'All questions' })).toHaveAttribute('href', '/nadia/faq');
+    const bar = screen.getByRole('textbox', { name: 'Ask Nadia Bakes anything' });
+    expect(bar.closest('form')).toHaveAttribute('action', '/nadia#ask');
+    expect(bar).toHaveAttribute('name', 'q');
+    const more = screen.getByRole('navigation', { name: 'More questions' });
+    // All questions first, then the related ones: plain links, which is what search engines follow.
+    const links = Array.from(more.querySelectorAll('a'));
+    expect(links.map((link) => link.textContent)).toEqual(['All questions', 'Ada sertifikasi halal?']);
+    expect(links[0]).toHaveAttribute('href', '/nadia/faq');
+    expect(links[1]).toHaveAttribute('href', '/nadia/faq/ada-halal');
+    expect(screen.queryByText('Still wondering?')).toBeNull();
+    expect(screen.queryByText('People also ask')).toBeNull();
   });
 
   it('carries FAQPage structured data holding the pair', async () => {

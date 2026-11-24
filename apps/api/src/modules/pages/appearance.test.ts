@@ -54,6 +54,29 @@ describe('PATCH /pages/appearance', () => {
     expect(res.json().appearance).toMatchObject({ style: 'CONTRAST', accentColor: '#6d3fb3', headingFont: 'FRAUNCES' });
   });
 
+  it('saves the picture size and border and the cover layout, each alone', async () => {
+    const cookie = await anOwner();
+    const first = await patch(cookie, { avatarSize: 'LARGE' });
+    expect(first.statusCode).toBe(200);
+    expect(first.json().appearance).toMatchObject({ avatarSize: 'LARGE', avatarBorder: true, coverLayout: 'TOP' });
+
+    const second = await patch(cookie, { avatarBorder: false, coverLayout: 'FULL' });
+    expect(second.json().appearance).toMatchObject({ avatarSize: 'LARGE', avatarBorder: false, coverLayout: 'FULL' });
+  });
+
+  it('gives a page that never chose Medium, the border on and the cover at the top', async () => {
+    const cookie = await anOwner();
+    expect((await patch(cookie, { style: 'SOFT' })).json().appearance).toMatchObject({ avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP' });
+  });
+
+  it('refuses a size, a border or a layout it does not know, saving nothing', async () => {
+    const cookie = await anOwner();
+    for (const payload of [{ avatarSize: 'HUGE' }, { avatarSize: 'medium' }, { avatarBorder: 'yes' }, { avatarBorder: 1 }, { coverLayout: 'BOTTOM' }]) {
+      expect((await patch(cookie, payload)).statusCode).toBe(400);
+    }
+    expect((await patch(cookie, { style: 'SOFT' })).json().appearance).toMatchObject({ avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP' });
+  });
+
   it('refuses a colour that is not six-digit hex', async () => {
     const cookie = await anOwner();
     for (const accentColor of ['red', '#fff', '#0c7a62;background:url(x)']) {

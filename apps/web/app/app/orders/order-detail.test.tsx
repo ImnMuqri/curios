@@ -647,6 +647,14 @@ describe('orders.module.css', () => {
     expect(css).toMatch(/\.soft\[data-tone='warn'\] \{\s*background: var\(--calm-urgent\);/);
   });
 
+  it('labels Older orders in sentence case and washes the chosen row lightly', () => {
+    expect(css).toMatch(/\.old \{[^}]*font-weight: 500;[^}]*\}/);
+    expect(css.match(/\.old \{[^}]*\}/)![0]).not.toMatch(/uppercase|letter-spacing/);
+    expect(css).not.toMatch(/\.rowBtn\[aria-current='true'\]/);
+    const inbox = readFileSync(join(import.meta.dirname, '../_ui/inbox.module.css'), 'utf8');
+    expect(inbox).toMatch(/\.li\[aria-current='true'\] \{[^}]*color-mix\(in srgb, var\(--calm-pick\) var\(--pick-weight, 80%\), var\(--card\)\);/);
+  });
+
   it('draws the steps as 3px lines, ink once reached, and the move as a full-width pill in the action fill', () => {
     // In a box (owner, 12 Nov 2026), with the calm 16px box corner instead of the old 10px.
     expect(css).toMatch(/\.steps \{[^}]*border: 1px solid var\(--line\);[^}]*border-radius: var\(--r-box\);[^}]*background: var\(--surface\);/);

@@ -265,7 +265,7 @@
 
 .voucher {
   margin: 4px 0 0;
-  color: var(--accent);
+  color: var(--sheet-accent, var(--accent));
   font-size: 13.5px;
   font-weight: 600;
 }

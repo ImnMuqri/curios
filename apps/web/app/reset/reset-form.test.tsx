@@ -12,8 +12,23 @@ const form = (onReset = vi.fn().mockResolvedValue({})) => {
 describe('ResetForm', () => {
   it('names the address and says this device stays signed in', () => {
     form();
-    expect(screen.getByRole('heading', { name: 'Choose a new password' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Choose a new password.' })).toBeInTheDocument();
     expect(screen.getByText('For lina@keklina.example. You’ll stay signed in on this device.')).toBeInTheDocument();
+  });
+
+  it('draws the password as one pill, with the strength bars beneath it tied by aria-describedby', async () => {
+    const { container } = render(<ResetForm token="t" email="lina@keklina.example" onReset={vi.fn()} />);
+    const field = screen.getByLabelText('New password');
+    expect(field).toHaveAttribute('placeholder', 'New password');
+    expect(field).toHaveAttribute('autocomplete', 'new-password');
+    expect(container.querySelector('[data-auth-peek]')).not.toBeNull();
+    expect(document.getElementById(field.getAttribute('aria-describedby') as string)).toHaveTextContent('8 characters or more.');
+
+    expect(container.querySelectorAll('[data-on]')).toHaveLength(0);
+    await userEvent.type(field, 'abc');
+    expect(container.querySelectorAll('[data-on]')).toHaveLength(1);
+    await userEvent.type(field, 'defgh1');
+    expect(container.querySelectorAll('[data-on]')).toHaveLength(3);
   });
 
   it('rates the password as it is typed, in the board’s words', async () => {
@@ -26,6 +41,7 @@ describe('ResetForm', () => {
     // Under eight characters the button does nothing.
     await userEvent.click(screen.getByRole('button', { name: 'Change my password' }));
     expect(onReset).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('8 characters or more.');
 
     await userEvent.type(field, 'defgh');
     expect(screen.getByText('Okay. A number makes it stronger.')).toBeInTheDocument();

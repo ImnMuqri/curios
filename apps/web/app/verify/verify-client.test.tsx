@@ -54,6 +54,7 @@ describe('ExpiredLink', () => {
 
     expect(resend).toHaveBeenCalledWith('old');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sent. Check your inbox' })).toBeDisabled());
-    expect(screen.getByRole('link', { name: 'I’ll do it later' })).toBeInTheDocument();
+    // The board offers only the one way on: no "I’ll do it later".
+    expect(screen.queryByRole('link', { name: 'I’ll do it later' })).toBeNull();
   });
 });

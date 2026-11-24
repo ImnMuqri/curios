@@ -2,10 +2,11 @@
 
 import { useRef, useState } from 'react';
 import { Callout } from '@curios/ui';
-import { STOCK_COVERS, stockCoverName, type HeadingFont, type PageBackground, type StockCover } from '@curios/core/bento';
+import { OFFERED_COVERS, stockCoverName, type CoverLayout, type HeadingFont, type PageBackground, type StockCover } from '@curios/core/bento';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { SectionHead } from '../_ui/section-head.js';
+import { Segmented } from '../_ui/segmented.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
@@ -32,6 +33,9 @@ export function CoverEditor({
   coverUrl,
   uploadsEnabled,
   look,
+  coverLayout,
+  onLayout,
+  saveLayout,
   onCover,
   chooseStock,
   uploadCover,
@@ -42,6 +46,10 @@ export function CoverEditor({
   uploadsEnabled: boolean;
   /** The page's colours, for the no-photo tile. */
   look: { accentColor: string; headingFont: HeadingFont; background: PageBackground; backgroundColor: string | null };
+  /** Top (the band at the head of the page) or Full page (behind everything); saved at once, the preview following. */
+  coverLayout: CoverLayout;
+  onLayout: (change: { coverLayout: CoverLayout }) => void;
+  saveLayout: (patch: { coverLayout: CoverLayout }) => Promise<unknown>;
   onCover: (cover: { coverKey: string | null; coverUrl: string | null }) => void;
   chooseStock: (name: StockCover) => Promise<{ coverKey: string; coverUrl: string | null }>;
   uploadCover: (file: File) => Promise<{ coverKey: string; coverUrl: string | null }>;
@@ -64,6 +72,19 @@ export function CoverEditor({
     } finally {
       setBusy(false);
     }
+  };
+  const layoutSent = useRef(0);
+  const chooseLayout = (next: CoverLayout) => {
+    const before = coverLayout;
+    const mine = ++layoutSent.current;
+    setError('');
+    onLayout({ coverLayout: next });
+    saveLayout({ coverLayout: next }).catch(() => {
+      // Only the latest choice is put back: an older failure must not undo a newer one that saved.
+      if (layoutSent.current !== mine) return;
+      onLayout({ coverLayout: before });
+      setError('That did not save. Try again.');
+    });
   };
   const remove = () =>
     void run(async () => {
@@ -105,7 +126,8 @@ export function CoverEditor({
             </button>
           </span>
         ) : null}
-        {STOCK_COVERS.map((name) => (
+        {/* The offered covers, and the page's own stock cover when it is one no longer offered, so the owner sees what they have. */}
+        {[...OFFERED_COVERS, ...(chosenStock && !OFFERED_COVERS.includes(chosenStock) ? [chosenStock] : [])].map((name) => (
           <button
             key={name}
             type="button"
@@ -115,7 +137,7 @@ export function CoverEditor({
             disabled={busy}
             onClick={() => (chosenStock === name ? undefined : void run(() => chooseStock(name), 'That did not save. Try again.'))}
           >
-            {/* A 480px thumbnail: the tile is at most about 200px wide, and the six full covers were
+            {/* A 480px thumbnail: the tile is at most about 200px wide, and the full covers were
                 half of everything My Curios downloaded on opening. */}
             <img src={`/covers/thumbs/${name}.webp`} alt="" loading="lazy" />
             <span className={styles.caption} aria-hidden="true">{STOCK_NAMES[name]}</span>
@@ -149,6 +171,22 @@ export function CoverEditor({
           }}
         />
       ) : null}
+
+      <div className={styles.layoutRow}>
+        <b id="cover-layout-label">Where it sits</b>
+        <Segmented
+          labelledBy="cover-layout-label"
+          options={[
+            { id: 'TOP', label: 'Top' },
+            { id: 'FULL', label: 'Full page' },
+          ]}
+          value={coverLayout}
+          onChange={chooseLayout}
+        />
+        <small>
+          {coverKey ? 'Top keeps the photo at the head of your page. Full page puts it behind everything.' : 'Pick a photo first: Full page fills the page with it.'}
+        </small>
+      </div>
 
       {error ? <Callout tone="error">{error}</Callout> : null}
     </section>

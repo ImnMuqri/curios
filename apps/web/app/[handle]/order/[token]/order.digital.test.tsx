@@ -129,7 +129,8 @@ describe('a digital order before it is paid', () => {
   it('has no method or day: "By email", and the 3-step timeline still on Placed', () => {
     render(<OrderView {...unpaid([filesLine()])} />);
     expect(steps()).toEqual(['Placed, done', 'Paid ←', 'Sent']);
-    expect(within(screen.getByRole('region', { name: copy.yourOrder })).getByText(copy.byEmail)).toBeInTheDocument();
+    expect(screen.getByText(copy.byEmail).tagName).toBe('P');
+    expect(screen.getByRole('heading', { name: copy.whatYouOrdered })).toBeInTheDocument();
     expect(screen.getByText(copy.statusWaiting)).toBeInTheDocument();
   });
 });
@@ -151,8 +152,8 @@ describe('a digital order after it is paid', () => {
 
   it('files: a Download per file to the API with the order token, and the uses left', () => {
     render(<OrderView {...digital()} />);
-    const section = screen.getByRole('region', { name: 'Your downloads' });
-    expect(within(section).getByText('Also sent to mira@example.com')).toBeInTheDocument();
+    const section = screen.getByRole('region', { name: 'Digital items' });
+    expect(within(section).getByText('Sent to mira@example.com. It’s on your order page too.')).toBeInTheDocument();
     const links = within(section).getAllByRole('link', { name: copy.download });
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       'http://localhost:3001/store/orders/tok_abc/files/g1',
@@ -165,7 +166,7 @@ describe('a digital order after it is paid', () => {
 
   it('a used-up file says 0 left and has no button', () => {
     render(<OrderView {...digital({}, [filesLine([file('g1', 'recipe.pdf', 0, FUTURE), file('g2', 'ganache.pdf', 3, FUTURE)])])} />);
-    const section = screen.getByRole('region', { name: 'Your downloads' });
+    const section = screen.getByRole('region', { name: 'Digital items' });
     expect(within(section).getByText('4.2 MB · 0 left')).toBeInTheDocument();
     expect(within(section).getAllByRole('link', { name: copy.download })).toHaveLength(1);
     expect(within(section).getByText(copy.linksSomeDead('Kek Lina'))).toBeInTheDocument();
@@ -173,7 +174,7 @@ describe('a digital order after it is paid', () => {
 
   it('an expired file says so and has no button', () => {
     render(<OrderView {...digital({}, [filesLine([file('g1', 'recipe.pdf', 5, '2026-10-01T00:00:00.000Z')])])} />);
-    const section = screen.getByRole('region', { name: 'Your downloads' });
+    const section = screen.getByRole('region', { name: 'Digital items' });
     expect(within(section).getByText('4.2 MB · Expired')).toBeInTheDocument();
     expect(within(section).queryByRole('link', { name: copy.download })).toBeNull();
   });
@@ -233,8 +234,10 @@ describe('a digital order after it is paid', () => {
       />,
     );
     expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Ready ←', 'Done']);
-    expect(screen.getByRole('region', { name: 'Your downloads' })).toBeInTheDocument();
-    expect(within(screen.getByRole('region', { name: copy.yourOrder })).getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Digital items' })).toBeInTheDocument();
+    // The pickup card sits above the lines it is for.
+    const card = screen.getByText('Pickup · Sat 17 Oct').closest('div') as HTMLElement;
+    expect(card.compareDocumentPosition(screen.getByRole('list', { name: copy.whatYouOrdered })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('a suspended shop still shows what was paid for, without buttons the API would refuse', () => {
@@ -264,7 +267,7 @@ describe('the placed screen after an online payment', () => {
     expect(screen.getByText('RM25 paid. Your files are ready now.')).toBeInTheDocument();
     expect(screen.getByText('Sent to mira@example.com. It’s on your order page too.')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Get your files' }));
-    expect(screen.getByRole('region', { name: 'Your downloads' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Digital items' })).toBeInTheDocument();
     expect(scroll).toHaveBeenCalled();
   });
 
@@ -354,7 +357,7 @@ describe('the order page route', () => {
   it('renders a digital-only order instead of a 404', async () => {
     vi.mocked(getOrderByToken).mockResolvedValue(order({}));
     render(await OrderPage({ params: Promise.resolve({ handle: 'keklina', token: 'tok_abc' }) }));
-    expect(screen.getByRole('region', { name: 'Your downloads' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Digital items' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: copy.download })).toHaveAttribute('href', 'http://localhost:3001/store/orders/tok_abc/files/g1');
   });
 });

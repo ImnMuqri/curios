@@ -7,6 +7,7 @@ import { MAX_ITEMS } from '@curios/core/store';
 import { Callout } from '@curios/ui';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
+import panel from '../panel.module.css';
 import { Popover } from '../_ui/popover.js';
 import { ownerPriceLine } from './pricing.js';
 import { timeLabel } from './session-time.js';
@@ -158,6 +159,11 @@ export function ItemsList({
 
   return (
     <section className={styles.shelf} aria-label="Items">
+      {items.length >= MAX_ITEMS ? null : (
+        <Link className={`${panel.primaryLink} ${ui.headLink} ${styles.addTop}`} href={NEW_ITEM_HREF} prefetch={false}>
+          + Add item
+        </Link>
+      )}
       <div className={inbox.fbar}>
         <div className={inbox.chips} role="group" aria-label="Show items">
           {FILTERS.map((f) => (

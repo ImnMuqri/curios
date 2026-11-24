@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
-import { SystemCard, SystemShell, systemStyles as styles } from '../_system/SystemShell.js';
-import { ChangedArt, PadlockArt } from '../_system/art.js';
+import { useId, useState, type FormEvent } from 'react';
+import { AuthShell } from '../_auth/AuthShell.js';
+import { AuthPeek } from '../_auth/AuthPeek.js';
+import { PillField } from '../_auth/PillField.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles as systemCss } from '../_system/SystemShell.js';
+import { DoneArt } from '../_system/art.js';
 import { BadLink } from '../_system/BadLink.js';
 import { strength } from '../../lib/password-strength.js';
 import { apiFetch, ApiError } from '../../lib/api.js';
+import styles from '../auth.module.css';
 
 /** Under the meter, as the board words each strength. */
 const STRENGTH_TEXT = ['8 characters or more.', 'Too short. 8 characters or more.', 'Okay. A number makes it stronger.', 'Good.', 'Strong.'];
@@ -33,11 +37,17 @@ export function ResetForm({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [outcome, setOutcome] = useState<'form' | 'changed' | 'bad'>('form');
+  const [focused, setFocused] = useState(false);
+  const strengthId = useId();
+  const errorId = useId();
   const level = strength(password);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (password.length < 8) return;
+    if (password.length < 8) {
+      setError('8 characters or more.');
+      return;
+    }
     setError('');
     setBusy(true);
     try {
@@ -59,65 +69,67 @@ export function ResetForm({
   if (outcome === 'changed') {
     return (
       <SystemShell>
-        <SystemCard art={<ChangedArt />} title="Password changed" lede="You can sign in with it now, on any device.">
-          <a className={`${styles.go} ${styles.next}`} href="/app">
-            Go to my page
-          </a>
+        <SystemCard art={<DoneArt />} title="Password changed" lede="You can sign in with it now, on any device.">
+          <SystemActions>
+            <a className={systemCss.go} href="/app">
+              Go to my page
+            </a>
+          </SystemActions>
         </SystemCard>
       </SystemShell>
     );
   }
 
   return (
-    <SystemShell>
-      <SystemCard art={<PadlockArt />} title="Choose a new password" lede={`For ${email}. You’ll stay signed in on this device.`}>
-        <form onSubmit={(event) => void submit(event)} noValidate>
-          <label className={styles.fld}>
-            <span>New password</span>
-            <span className={styles.inp}>
-              <input
-                type={shown ? 'text' : 'password'}
-                name="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                aria-describedby="reset-strength"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-              <button
-                type="button"
-                className={styles.eye}
-                aria-label={shown ? 'Hide password' : 'Show password'}
-                aria-pressed={shown}
-                onClick={() => setShown(!shown)}
-              >
-                <svg viewBox="0 0 24 24" aria-hidden="true">
-                  <path d={EYE} />
-                </svg>
-              </button>
-            </span>
-          </label>
-          <div className={styles.meter} data-strength={level} aria-hidden="true">
-            <i />
-            <i />
-            <i />
-            <i />
-          </div>
-          <p className={styles.mtx} id="reset-strength">
-            {STRENGTH_TEXT[level]}
+    <AuthShell title="Choose a new password." lede={`For ${email}. You’ll stay signed in on this device.`}>
+      <form className={styles.fields} onSubmit={(event) => void submit(event)} noValidate>
+        <PillField
+          id="password"
+          label="New password"
+          type={shown ? 'text' : 'password'}
+          autoComplete="new-password"
+          placeholder="New password"
+          required
+          minLength={8}
+          value={password}
+          onChange={setPassword}
+          describedBy={error ? `${strengthId} ${errorId}` : strengthId}
+          invalid={Boolean(error)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          peek={<AuthPeek shy={focused && !shown} />}
+          trailing={
+            <button
+              type="button"
+              className={styles.eye}
+              aria-label={shown ? 'Hide password' : 'Show password'}
+              aria-pressed={shown}
+              onClick={() => setShown(!shown)}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d={EYE} />
+              </svg>
+            </button>
+          }
+        />
+        <div className={styles.str} data-good={level >= 3 ? '' : undefined} aria-hidden="true">
+          {[1, 2, 3, 4].map((bar) => (
+            <i key={bar} data-on={bar <= level ? '' : undefined} />
+          ))}
+        </div>
+        <p className={styles.strt} id={strengthId}>
+          {STRENGTH_TEXT[level]}
+        </p>
+        {error ? (
+          <p className={styles.error} id={errorId} role="alert">
+            {error}
           </p>
-          {error ? (
-            <p className={styles.alert} role="alert">
-              {error}
-            </p>
-          ) : null}
-          <button type="submit" className={styles.go} data-ready={password.length >= 8 && !busy} disabled={busy}>
-            {busy ? 'Changing…' : 'Change my password'}
-          </button>
-        </form>
-      </SystemCard>
-    </SystemShell>
+        ) : null}
+        <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>
+          {busy ? 'Changing…' : 'Change my password'}
+        </button>
+      </form>
+    </AuthShell>
   );
 }
 

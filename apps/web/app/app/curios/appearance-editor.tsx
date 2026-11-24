@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Button, Callout } from '@curios/ui';
 import { ACCENT_PRESETS, HEADING_FONTS, isHexColor, PAGE_BACKGROUNDS, readableOn, tintOf, type HeadingFont, type PageBackground, type PageStyle } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../../lib/heading-fonts.js';
@@ -10,6 +10,7 @@ import type { AppearancePatch as FullPatch } from './my-curios.js';
 
 /** What this tab changes: the look, never the socials (the Links tab's). */
 type AppearancePatch = Omit<FullPatch, 'socials'>;
+import { CustomColour, COLOUR_ERROR } from './custom-colour.js';
 import { SectionHead } from '../_ui/section-head.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
@@ -91,16 +92,8 @@ export function AppearanceEditor({
   onChange: (change: AppearancePatch) => void;
   save: (patch: AppearancePatch) => Promise<unknown>;
 }) {
-  const [hex, setHex] = useState(accentColor.replace(/^#/, ''));
   // A first Custom pick starts as a light tint of the accent, so it already belongs to the page.
   const [customBg, setCustomBg] = useState(backgroundColor ?? tintOf(accentColor, 0.18));
-  const bgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(
-    () => () => {
-      if (bgTimer.current) clearTimeout(bgTimer.current);
-    },
-    [],
-  );
   const [error, setError] = useState('');
   // The patch a failed save should send again. Cleared on success, replaced
   // by whatever the owner tries next -- retry always sends the latest
@@ -125,23 +118,16 @@ export function AppearanceEditor({
     attempt(patch);
   };
 
-  /**
-   * The custom background: the preview follows every move of the picker at
-   * once, and the save waits until the owner pauses, so dragging across the
-   * picker is one save, not a hundred.
-   */
+  /** The custom background, chosen as a whole colour: the preview and the save both follow at once, as the button colour does. */
   const chooseBackgroundColor = (value: string) => {
-    setCustomBg(value);
-    if (!isHexColor(value)) {
-      setError('Type a colour as six-digit hex, like #eaf0ff.');
-      setFailedPatch(null);
-      return;
-    }
-    const patch: AppearancePatch = { background: 'CUSTOM', backgroundColor: value.toLowerCase() };
-    setError('');
-    onChange(patch);
-    if (bgTimer.current) clearTimeout(bgTimer.current);
-    bgTimer.current = setTimeout(() => attempt(patch), 400);
+    setCustomBg(value.toLowerCase());
+    if (background === 'CUSTOM' && backgroundColor?.toLowerCase() === value.toLowerCase()) return;
+    choose({ background: 'CUSTOM', backgroundColor: value.toLowerCase() });
+  };
+  /** Not a failed save -- nothing was sent -- so there is nothing for a Retry button to resend. */
+  const wrongColour = () => {
+    setError(COLOUR_ERROR);
+    setFailedPatch(null);
   };
 
   const look = { accentColor, headingFont, backgroundColor: isHexColor(customBg) ? customBg : null };
@@ -182,16 +168,12 @@ export function AppearanceEditor({
             </div>
             {background === 'CUSTOM' ? (
               <div className={styles.customBg}>
-                <input
-                  type="color"
-                  aria-label="Pick a background colour"
-                  className={styles.colorWell}
-                  value={isHexColor(customBg) ? customBg : '#ffffff'}
-                  onChange={(event) => chooseBackgroundColor(event.target.value)}
+                <CustomColour
+                  value={isHexColor(customBg) ? customBg : tintOf(accentColor, 0.18)}
+                  label="Background colour as hex"
+                  onColour={chooseBackgroundColor}
+                  onInvalid={wrongColour}
                 />
-                <span className={styles.hex}>
-                  <input aria-label="Background colour as hex" value={customBg} onChange={(event) => chooseBackgroundColor(event.target.value.trim())} />
-                </span>
               </div>
             ) : null}
           </div>
@@ -212,35 +194,19 @@ export function AppearanceEditor({
                   aria-label={ACCENT_NAMES[preset] ?? 'Your colour'}
                   title={preset}
                   aria-pressed={accentColor === preset}
-                  onClick={() => {
-                    setHex(preset.slice(1));
-                    if (accentColor !== preset) choose({ accentColor: preset });
-                  }}
+                  onClick={() => (accentColor !== preset ? choose({ accentColor: preset }) : undefined)}
                 >
                   <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
                     <path d="M5 12.5l4.5 4.5L19 7.5" />
                   </svg>
                 </button>
               ))}
-              <span className={styles.hex}>
-                #
-                <input
-                  aria-label="Accent colour as hex"
-                  value={hex}
-                  maxLength={6}
-                  onChange={(event) => {
-                    const value = event.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 6);
-                    setHex(value);
-                    if (isHexColor(`#${value}`)) choose({ accentColor: `#${value.toLowerCase()}` });
-                    else {
-                      // Not a failed save -- nothing was sent -- so there is
-                      // nothing for a Retry button here to resend.
-                      setError('Type a colour as six-digit hex, like 2340c8.');
-                      setFailedPatch(null);
-                    }
-                  }}
-                />
-              </span>
+              <CustomColour
+                value={accentColor}
+                label="Accent colour as hex"
+                onColour={(hex) => (hex !== accentColor ? choose({ accentColor: hex }) : undefined)}
+                onInvalid={wrongColour}
+              />
             </div>
           </div>
         </div>

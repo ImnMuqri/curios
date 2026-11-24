@@ -1,17 +1,30 @@
 /*
- * The Terms, Privacy and Refund pages. No board draws them; they borrow the
- * Site board's paper, type and wordmark header, and set the words in one
- * column narrow enough to read.
+ * The Terms, Privacy, Refund and Return pages, from the Site board (.lg-h,
+ * .lg, .toc, .lgs): the landing's nav and footer around a header (eyebrow,
+ * 56px title, date and language toggle, lede, document tabs) and a text column
+ * beside a sticky table of contents. Light only, like the landing.
  */
 
 .legal {
+  /* The calm scope (light), as on the landing. */
+  --paper: var(--calm-bg);
+  --card: var(--calm-surface);
+  --surface: var(--calm-soft);
+  --ink: var(--calm-ink);
+  --muted: var(--calm-muted);
+  --line: var(--calm-line);
+  --edge: var(--calm-ring);
+  --mono: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+  position: relative;
   min-height: calc(100vh / var(--page-zoom, 1));
   min-height: calc(100dvh / var(--page-zoom, 1));
   background: var(--paper);
   color: var(--ink);
-  font-family: var(--font-plex-sans), system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
 }
 
 .legal *,
@@ -20,171 +33,314 @@
   box-sizing: border-box;
 }
 
-.legal a:not(.brand, .lang, .back) {
-  /* A taller hit area (19 px to 27) that moves no line of the text; .lang and .back do the same. */
-  padding-block: 4px;
-  margin-block: -4px;
-  color: var(--biru);
-  overflow-wrap: anywhere;
+.legal :where(h1, h2, p, ul) {
+  margin: 0;
 }
 
-.legal a:not(.brand, .lang, .back):hover {
-  color: var(--biru-deep);
-}
-
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 28px 40px;
-}
-
-.brand {
-  display: inline-block;
-  font-size: 26px;
-  color: var(--ink);
+:where(.legal a) {
+  color: inherit;
   text-decoration: none;
 }
 
-.lang {
-  padding-block: 4px;
-  margin-block: -4px;
-  font-size: 14px;
-  color: var(--ink-soft);
-  text-decoration: none;
-}
+/* ---- The header ---- */
 
-.lang:hover {
-  color: var(--ink);
-}
-
-.main {
-  max-width: 680px;
+.head {
+  position: relative;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 24px 20px 96px;
+  padding: 56px 24px 40px;
 }
 
-.tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 32px;
+.dots {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 360px;
+  background-image: radial-gradient(var(--cl-dot) 1.6px, transparent 1.7px);
+  background-size: 22px 22px;
+  -webkit-mask-image: linear-gradient(black, transparent 92%);
+  mask-image: linear-gradient(black, transparent 92%);
+  pointer-events: none;
 }
 
-.tabs a {
-  padding: 6px 14px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  font-size: 14px;
-  text-decoration: none;
+.headIn {
+  position: relative;
 }
 
-.legal .tabs a {
-  color: var(--ink-soft);
-}
-
-.legal .tabs a:hover {
-  color: var(--ink);
-  border-color: var(--hint);
-}
-
-.legal .tabs a[aria-current='page'] {
-  border-color: var(--ink);
-  background: var(--ink);
-  color: var(--paper);
+.kick {
+  color: var(--calm-faint);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .h {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 36px;
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  margin-top: 10px;
+  font-size: 56px;
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
 }
 
-.updated {
-  margin: 10px 0 0;
-  font-size: 13px;
-  color: var(--hint);
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+  color: var(--calm-faint);
+  font-size: 14px;
+}
+
+/* English | Bahasa Melayu: the language you are reading is filled, the other is the link. */
+.langs {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.lang {
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+a.lang:hover {
+  color: var(--ink);
+}
+
+.langOn {
+  background: var(--ink);
+  color: var(--card);
 }
 
 .lede {
-  margin: 20px 0 8px;
-  font-size: 17px;
-  color: var(--ink-soft);
+  max-width: 40em;
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.5;
+}
+
+/* The four documents, below the lede. */
+.docs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 22px;
+}
+
+.docs a {
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.docs a:hover {
+  background: var(--surface);
+}
+
+.docs a[aria-current='page'] {
+  background: var(--surface);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---- The body: contents beside the text ---- */
+
+.body {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 60px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px 24px 80px;
+}
+
+.toc {
+  position: sticky;
+  top: 96px;
+  align-self: start;
+  font-size: 14px;
+}
+
+.tocButton {
+  display: none;
+}
+
+.tocList {
+  display: grid;
+  gap: 2px;
+}
+
+.tocList a {
+  padding: 6px 0 6px 14px;
+  border-left: 1.5px solid var(--line);
+  color: var(--cl-faint-ink);
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.tocList a:hover {
+  color: var(--ink);
+}
+
+.tocList a[aria-current='location'] {
+  border-color: var(--ink);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.text {
+  min-width: 0;
 }
 
 .section {
-  margin-top: 36px;
-  padding-top: 28px;
+  padding: 28px 0;
   border-top: 1px solid var(--line);
+}
+
+.section:first-child {
+  padding-top: 0;
+  border-top: 0;
 }
 
 .h2 {
   display: flex;
   align-items: baseline;
   gap: 12px;
-  margin: 0 0 12px;
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
+  margin-bottom: 12px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
   line-height: 1.3;
 }
 
 .num {
   flex: none;
-  min-width: 1.6em;
-  font-family: var(--font-plex-mono), monospace;
+  color: var(--cl-placeholder);
+  font-family: var(--mono);
   font-size: 13px;
-  font-weight: 400;
-  color: var(--hint);
+  font-style: normal;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 .p {
-  margin: 0 0 12px;
+  max-width: 40em;
+  margin-top: 10px;
+  color: var(--cl-text-3);
+  font-size: 16.5px;
+  line-height: 1.65;
 }
 
 .list {
-  margin: 0 0 12px;
-  padding-left: 22px;
-}
-
-.list li {
-  margin: 0 0 8px;
+  display: grid;
+  gap: 8px;
+  max-width: 40em;
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--cl-text-3);
+  font-size: 16.5px;
+  line-height: 1.65;
 }
 
 .list li::marker {
-  color: var(--hint);
+  color: var(--calm-faint);
 }
 
+.p a,
+.list a,
+.foot a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--cl-ring-hover);
+  overflow-wrap: anywhere;
+}
+
+/* The way to write to us: legal pages need one. */
 .foot {
-  margin: 48px 0 0;
+  margin-top: 28px;
   padding: 16px 18px;
-  border-radius: 14px;
+  border-radius: var(--r-box);
   background: var(--surface);
+  color: var(--cl-text-3);
   font-size: 14.5px;
 }
 
-.back {
-  display: inline-block;
-  margin-top: 16px;
-  padding-block: 4px;
-  font-size: 14px;
-  color: var(--ink-soft);
-}
+/* ---- Narrower: the contents fold above the text behind one button ---- */
 
-@media (max-width: 600px) {
-  .top {
-    padding: 20px 16px;
+@media (max-width: 980px) {
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
   }
 
-  .main {
-    padding: 8px 16px 72px;
+  .toc {
+    position: static;
+  }
+
+  .tocButton {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
+    border-radius: 999px;
+    background: var(--card);
+    box-shadow: inset 0 0 0 1px var(--edge);
+    color: var(--ink);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .tocButton::after {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 0.2s;
+  }
+
+  .toc[data-open] .tocButton::after {
+    transform: translateY(2px) rotate(-135deg);
+  }
+
+  .tocList {
+    display: none;
+    margin-top: 10px;
+  }
+
+  .toc[data-open] .tocList {
+    display: grid;
+  }
+}
+
+@media (max-width: 560px) {
+  .head {
+    padding-top: 40px;
   }
 
   .h {
-    font-size: 30px;
+    font-size: 38px;
+  }
+
+  .h2 {
+    font-size: 22px;
   }
 }

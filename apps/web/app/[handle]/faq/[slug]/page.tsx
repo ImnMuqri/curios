@@ -4,6 +4,11 @@ import { serialiseJsonLd } from '@curios/core';
 import { getFaqEntry, getFaqRedirect } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
+import { TopBar } from '../../top-bar.js';
+import sheet from '../../sheet.module.css';
+import { shopCopy } from '../../shop/copy.js';
+import { AskBar } from '../ask-bar.js';
+import { faqCopy } from '../faq-copy.js';
 import styles from '../faq.module.css';
 
 export const runtime = 'nodejs';
@@ -62,7 +67,7 @@ export async function generateMetadata({
   const entry = await getFaqEntry(handle, slug);
   if (!entry) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   return {
-    title: `${entry.question} — ${entry.displayName}`,
+    title: faqCopy(entry.language).entryTitle(entry.question, entry.displayName),
     // The answer is the description: it is what a searcher wants to see in the
     // result, and it is the owner's own words.
     description: truncateForDescription(entry.answer),
@@ -101,56 +106,39 @@ export default async function FaqEntryPage({
     ],
   });
 
+  const copy = faqCopy(entry.language);
+  const updated = entry.answeredAt ? shopCopy(entry.language).shortDate(entry.answeredAt.toISOString()) : null;
+
   return (
     <PageTheme theme={entry.theme} className={styles.stage} paintDocument>
       <main className={styles.page}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
-        <div className={styles.top}>
-          <a className={styles.back} href={`/${entry.handle}/faq`} aria-label="All questions">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M15 6l-6 6 6 6" />
-            </svg>
-          </a>
-          <span className={styles.crumb}>
-            <a href={`/${entry.handle}`}>{entry.displayName}</a> / <a href={`/${entry.handle}/faq`}>Questions</a>
-          </span>
+        <TopBar title={entry.displayName} back={{ href: `/${entry.handle}`, label: copy.backTo(entry.displayName) }} />
+        <div className={`${sheet.sheet} ${styles.sheet}`}>
+          <p className={styles.kicker}>{copy.kicker(entry.displayName)}</p>
+          <h1 className={styles.heading}>{entry.question}</h1>
+          <p className={styles.answer}>{entry.answer}</p>
+          <p className={styles.by}>{copy.answeredBy(entry.displayName, updated)}</p>
+          {/* The board's "More questions": all of them first, then the nearest few (the links search engines follow). */}
+          <nav className={styles.more} aria-label={copy.moreQuestions}>
+            <b>{copy.moreQuestions}</b>
+            <a href={`/${entry.handle}/faq`}>
+              {copy.allQuestions}
+              <svg className={styles.chev} viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M9 6l6 6-6 6" />
+              </svg>
+            </a>
+            {entry.related.map((other) => (
+              <a key={other.slug} href={`/${entry.handle}/faq/${other.slug}`}>
+                {other.question}
+                <svg className={styles.chev} viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </a>
+            ))}
+          </nav>
+          <AskBar handle={entry.handle} placeholder={copy.askPlaceholder(entry.displayName)} send={copy.askSend} />
         </div>
-        <h1 className={styles.heading}>{entry.question}</h1>
-        <div className={styles.answer}>
-          <p>{entry.answer}</p>
-          <small className={styles.by}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
-            Answered by {entry.displayName} · asked {entry.askCount} {entry.askCount === 1 ? 'time' : 'times'}
-          </small>
-        </div>
-        <div className={styles.askMore}>
-          <span>
-            <b>Still wondering?</b>
-            <span>Ask {entry.displayName}&rsquo;s page anything.</span>
-          </span>
-          <a className={styles.lite} href={`/${entry.handle}#ask`}>
-            Ask
-          </a>
-        </div>
-        {entry.related.length > 0 ? (
-          <>
-            <h2 className={styles.also}>People also ask</h2>
-            <ul className={styles.list}>
-              {entry.related.map((other) => (
-                <li key={other.slug}>
-                  <a className={styles.question} href={`/${entry.handle}/faq/${other.slug}`}>
-                    <b>{other.question}</b>
-                    <svg className={styles.chev} viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M9 6l6 6-6 6" />
-                    </svg>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </>
-        ) : null}
       </main>
     </PageTheme>
   );

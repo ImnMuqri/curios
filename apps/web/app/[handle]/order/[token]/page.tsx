@@ -93,6 +93,7 @@ export default async function OrderPage({ params }: Params) {
           receiptRejectedAt: iso(order.receiptRejectedAt),
           paidAt: iso(order.paidAt),
           refundedAt: iso(order.refundedAt),
+          completedAt: iso(order.completedAt),
           paidVia: order.paidVia,
           paidMethodLabel: order.paidMethodLabel,
           paidRef: order.paidRef,
@@ -104,6 +105,7 @@ export default async function OrderPage({ params }: Params) {
             optionLabel: line.optionLabel,
             unitPriceCents: line.unitPriceCents,
             quantity: line.quantity,
+            photoUrl: avatarUrl(line.photoKey),
             digital: digitalLine(line, page.suspended),
           })),
         }}

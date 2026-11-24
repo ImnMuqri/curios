@@ -1,10 +1,8 @@
 /*
- * /[handle]/shop/[slug], copied from the deleted Public board's .sp-* rules
- * (deleted Public.dc.html ~100-104, 132-157). As on the shop page, the board's one dark
- * page becomes the owner's own: --page-bg / --page-fg from PageTheme and their
- * accent. Surfaces are the page's text at a low strength. The same rules wear
- * the Store editor's preview (`.view` sets its own veils from whatever
- * --page-fg the preview's page gives it).
+ * /[handle]/shop/[slug] as the More board draws it (citem, 24 Nov): the owner-themed top bar (../../top-bar.tsx)
+ * over a light Curios sheet (../../sheet.module.css, which redefines --page-bg / --page-fg / --veil-* for
+ * everything inside it); the owner's accent stays on the Add button. The same rules wear the Store
+ * editor's preview.
  */
 
 .stage {
@@ -23,7 +21,7 @@
   max-width: 460px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 0 0 110px;
+  padding: 0;
   background: var(--page-bg);
   color: var(--page-fg);
   font-family: var(--font-body);
@@ -40,73 +38,6 @@
   position: relative;
   display: block;
   isolation: isolate;
-}
-
-.top {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 60px;
-  /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
-  padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
-  background: var(--page-bg);
-}
-
-.top > span {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  opacity: 0.85;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ib {
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--veil-2);
-  color: inherit;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.ib svg {
-  width: 18px;
-  height: 18px;
-  fill: none;
-  stroke: currentcolor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2.2;
-}
-
-.bk i {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  display: grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--card);
-  color: var(--ink);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
 }
 
 /* Heard, not seen: what the add did. */
@@ -320,10 +251,10 @@
 .pd h1 {
   margin: 10px 0 0;
   font-family: var(--font-heading), var(--font-display);
-  font-size: 32px;
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.015em;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
 }
 
 .price {
@@ -375,8 +306,8 @@
   padding: 12px 14px;
   border: 0;
   border-radius: 16px;
-  background: var(--veil-1);
-  box-shadow: inset 0 0 0 1.5px var(--veil-2);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--sheet-ring, var(--veil-2));
   color: inherit;
   font: inherit;
   text-align: left;
@@ -393,8 +324,43 @@
 }
 
 .opts button[aria-checked='true'] {
-  background: var(--veil-3);
+  background: var(--card);
   box-shadow: inset 0 0 0 2px var(--page-fg);
+}
+
+/* "Note for {shop}": the board's pill field; its words go to checkout's note. */
+.noteInput {
+  box-sizing: border-box;
+  width: 100%;
+  height: 48px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--sheet-ring, var(--veil-2));
+  color: inherit;
+  font: inherit;
+  font-size: 14.5px;
+}
+
+.noteInput:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.toast {
+  position: fixed;
+  top: 68px;
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+  transform: translateX(-50%);
 }
 
 .opts button:disabled {
@@ -594,7 +560,6 @@
   cursor: default;
 }
 
-.ib:focus-visible,
 .opts button:focus-visible,
 .askit:focus-visible,
 .qty button:focus-visible,

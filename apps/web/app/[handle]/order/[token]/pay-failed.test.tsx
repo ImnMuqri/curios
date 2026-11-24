@@ -32,9 +32,12 @@ afterEach(() => {
 
 describe('PayFailed', () => {
   it('says nothing was taken and the order is held 30 minutes, with the code, lines and total', () => {
-    render(<PayFailed {...props} />);
+    const { container } = render(<PayFailed {...props} />);
 
     expect(screen.getByRole('heading', { level: 1, name: 'Payment didn’t go through' })).toBeInTheDocument();
+    // The mascot, not a red cross, with a "!" on its badge.
+    expect(container.querySelector('svg[viewBox="0 0 160 150"]')).not.toBeNull();
+    expect(container.textContent).toContain('!');
     expect(screen.getByText(/Nothing was taken\. Kek Lina has saved your order for/)).toHaveTextContent('Nothing was taken. Kek Lina has saved your order for 30 minutes.');
     expect(screen.getByText('30 minutes').tagName).toBe('B');
     const code = screen.getByRole('img', { name: 'Order code 7Q4M' });

@@ -1,5 +1,5 @@
 import { tidySocials, type SocialKind } from '@curios/core/socials';
-import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
+import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
 import { countTopicsNeedingOwner } from './topics.query.js';
@@ -14,8 +14,13 @@ export interface MyCurios {
   accentColor: string;
   headingFont: HeadingFont;
   avatarKey: string | null;
+  /** The picture's size and whether it wears its ring (Medium with the ring is how every page began). */
+  avatarSize: AvatarSize;
+  avatarBorder: boolean;
   /** `stock/<name>` or a storage key; null is no cover. */
   coverKey: string | null;
+  /** Top is the cover as a band at the head of the page; Full fills the page behind the content. */
+  coverLayout: CoverLayout;
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
@@ -54,7 +59,10 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       accentColor: true,
       headingFont: true,
       avatarKey: true,
+      avatarSize: true,
+      avatarBorder: true,
       coverKey: true,
+      coverLayout: true,
       background: true,
       backgroundColor: true,
       socials: true,

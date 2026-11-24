@@ -181,7 +181,6 @@ describe('the calm rules on the shared pieces', () => {
     'apps/web/app/app/leads/leads.module.css',
     'apps/web/app/app/questions/questions.module.css',
     'apps/web/app/auth.module.css',
-    'apps/web/app/_auth/scene.module.css',
   ];
 
   function walk(dir: string, keep: (name: string) => boolean): string[] {

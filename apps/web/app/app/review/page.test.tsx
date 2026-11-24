@@ -128,6 +128,8 @@ describe('the review screen, assembled', () => {
       'href',
       '/app/knowledge?tab=sources&add=1',
     );
+    // The header's create action is the one primary button, as "+ Add a fact" is.
+    expect(screen.getByRole('link', { name: '+ Add another source' }).className).toMatch(/primaryLink/);
   });
 
   // The 24 Nov board: one column. The header, then the notice with Publish, then the fact.

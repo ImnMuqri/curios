@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { shopCopy } from './copy.js';
-import { addToBasket, basketMessage, priceBasket, QUANTITY_MAX, whatsappNumber, whatsappOrderUrl } from './basket.js';
+import { addToBasket, basketMessage, basketNote, priceBasket, QUANTITY_MAX, whatsappNumber, whatsappOrderUrl } from './basket.js';
 
 const items = [
   { id: 'cake', name: 'Kek Batik', slug: 'cake', category: null, tag: null, description: null, photoKey: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
@@ -78,5 +78,33 @@ describe('addToBasket', () => {
     expect(full).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 99 }]);
     expect(addToBasket(full, { itemId: 'cake', optionId: 'k1', quantity: 1 })[0]?.quantity).toBe(99);
     expect(addToBasket([], { itemId: 'cookie', optionId: null, quantity: 150 })[0]?.quantity).toBe(99);
+  });
+});
+
+describe('a line’s note', () => {
+  it('rides on the line, and a line added again keeps it, or takes a newer one', () => {
+    const one = addToBasket([], { itemId: 'cake', optionId: 'k1', quantity: 1, note: 'Write Mak' });
+    expect(one).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 1, note: 'Write Mak' }]);
+    expect(addToBasket(one, { itemId: 'cake', optionId: 'k1', quantity: 1 })).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 2, note: 'Write Mak' }]);
+    expect(addToBasket(one, { itemId: 'cake', optionId: 'k1', quantity: 1, note: 'Write Ayah' })[0]?.note).toBe('Write Ayah');
+  });
+
+  it('starts checkout’s note: the note alone for one, each under its item’s name for several, never longer than the limit', () => {
+    const names = [{ id: 'cake', name: 'Kek' }, { id: 'cookie', name: 'Cookies' }];
+    expect(basketNote([{ itemId: 'cake', optionId: null, quantity: 1 }], names, 500)).toBe('');
+    expect(basketNote([{ itemId: 'cake', optionId: null, quantity: 1, note: ' Write Mak ' }], names, 500)).toBe('Write Mak');
+    expect(
+      basketNote([{ itemId: 'cake', optionId: null, quantity: 1, note: 'A' }, { itemId: 'cookie', optionId: null, quantity: 1, note: 'B' }], names, 500),
+    ).toBe('Kek: A' + String.fromCharCode(10) + 'Cookies: B');
+    expect(basketNote([{ itemId: 'cake', optionId: null, quantity: 1, note: 'x'.repeat(40) }], names, 10)).toBe('x'.repeat(10));
+    // The same note on two items is that note alone.
+    expect(
+      basketNote([{ itemId: 'cake', optionId: null, quantity: 1, note: 'Less sweet' }, { itemId: 'cookie', optionId: null, quantity: 1, note: 'Less sweet' }], names, 500),
+    ).toBe('Less sweet');
+    // An item taken off the shelf leaves no ": note" behind.
+    expect(
+      basketNote([{ itemId: 'gone', optionId: null, quantity: 1, note: 'Old' }, { itemId: 'cake', optionId: null, quantity: 1, note: 'A' }, { itemId: 'cookie', optionId: null, quantity: 1, note: 'B' }], names, 500),
+    ).toBe('Kek: A' + String.fromCharCode(10) + 'Cookies: B');
+    expect(basketNote([{ itemId: 'gone', optionId: null, quantity: 1, note: 'Old' }], names, 500)).toBe('');
   });
 });

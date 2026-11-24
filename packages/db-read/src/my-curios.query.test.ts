@@ -55,7 +55,10 @@ describe('getMyCurios', () => {
       accentColor: '#6d3fb3',
       headingFont: 'JAKARTA',
       avatarKey: null,
+      avatarSize: 'MEDIUM',
+      avatarBorder: true,
       coverKey: null,
+      coverLayout: 'TOP',
       background: 'PAPER', backgroundColor: null,
       // Known kinds only, in display order.
       socials: [{ kind: 'instagram', value: 'iman' }, { kind: 'youtube', value: 'iman' }],
@@ -129,6 +132,9 @@ describe('getMyCurios', () => {
             style: 'CONTRAST',
             headingFont: 'OUTFIT',
             avatarKey: 'avatars/enums.png',
+            avatarSize: 'LARGE',
+            avatarBorder: false,
+            coverLayout: 'FULL',
             links: {
               create: [
                 { label: 'A', url: 'https://a.example', position: 0, size: 'SMALL' },
@@ -144,7 +150,7 @@ describe('getMyCurios', () => {
 
     const page = await getMyCurios(account.id);
 
-    expect(page).toMatchObject({ style: 'CONTRAST', headingFont: 'OUTFIT', avatarKey: 'avatars/enums.png' });
+    expect(page).toMatchObject({ style: 'CONTRAST', headingFont: 'OUTFIT', avatarKey: 'avatars/enums.png', avatarSize: 'LARGE', avatarBorder: false, coverLayout: 'FULL' });
     expect(page?.links.map((l) => l.size)).toEqual(['SMALL', 'TALL', 'BIG']);
   });
 });

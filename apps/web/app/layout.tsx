@@ -31,12 +31,21 @@ export const metadata: Metadata = { title: 'Curios' };
  */
 const JS_CLASS_SCRIPT = "document.documentElement.classList.add('js')";
 
+/*
+ * Chrome and Edge fire beforeinstallprompt as soon as the page qualifies, often before React has
+ * hydrated the dashboard. This keeps the event (and notes an install) for the dashboard's
+ * "Put Curios on your phone" card to read on mount (app/app/_ui/install-prompt.tsx).
+ */
+const INSTALL_SCRIPT =
+  "addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__curiosInstall=e});addEventListener('appinstalled',function(){window.__curiosInstalled=true;window.__curiosInstall=null})";
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   lookUpApi();
   return (
     <html lang="en" className={fontVariables} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: JS_CLASS_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_SCRIPT }} />
       </head>
       <body>
         <Providers>{children}</Providers>

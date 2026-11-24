@@ -139,17 +139,6 @@
   flex: none;
 }
 
-/* A quiet number on the grey track; the chosen tab's number in the brand's pale. */
-.tabCount {
-  background: transparent;
-  color: var(--ink-soft);
-}
-
-.tab[aria-current='page'] .tabCount {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
-}
-
 .wrap {
   max-width: 820px;
   padding-top: 22px;

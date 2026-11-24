@@ -1,74 +1,55 @@
 import type { ReactNode } from 'react';
 import '../_landing/landing-tokens.css';
-import { Wordmark } from '../_landing/Wordmark.js';
-import { AuthScene } from './AuthScene.js';
+import { SiteNav } from '../_site/SiteNav.js';
+import { SiteFooterLine } from '../_site/SiteFooterLine.js';
 import styles from '../auth.module.css';
 
 /**
- * The frame for the screens outside the dashboard -- sign in, sign up, forgot,
- * reset, verify, and claiming a page -- from the design handoff's Site board.
+ * The frame for sign in, sign up, forgot and reset, from the Site board
+ * ("hero-style auth"): the landing's nav over the dotted ground, one centred
+ * column with a big headline and a line under it, the form (400px) beneath,
+ * and the small footer. Peek sits over the email pill, inside the form.
  *
- * Left: the form on paper, under the wordmark. Right, on wide screens: Peek on
- * a tinted panel (AuthScene). `scene` picks which: sign in's (the default) or
- * sign up's, which shows `handle` on Peek's sign.
- *
- * Server-safe, so the client forms render it directly. `switchTo` is the
- * link under the form to the other way in ("Create your free page" from sign
- * in, "Sign in" from sign up); screens with their own next step leave it out.
+ * Server-safe, so the client forms render it directly. `chip` is the line
+ * above the headline (sign up's "We'll fill in curios.my/keklina for you").
  */
 export function AuthShell({
   title,
   lede,
-  switchTo,
-  scene = 'signin',
-  handle,
+  chip,
   children,
 }: {
-  title: string;
+  title: ReactNode;
   lede?: string;
-  switchTo?: { prompt: string; label: string; href: string };
-  scene?: 'signin' | 'signup';
-  /** The address being claimed, for sign up's sign. */
-  handle?: string;
-  children: ReactNode;
+  chip?: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <div className={styles.auth} data-landing data-laptop-scale>
-      <main className={styles.panel}>
-        <a href="/" className={styles.brand}>
-          <Wordmark />
-          <span className={styles.srOnly}>Curios home</span>
-        </a>
-
-        <div className={styles.body}>
-          <h1 className={styles.title}>{title}</h1>
-          {lede ? <p className={styles.lede}>{lede}</p> : null}
-          <div className={styles.content}>{children}</div>
-          {switchTo ? (
-            <p className={styles.switch}>
-              {switchTo.prompt} <a href={switchTo.href}>{switchTo.label}</a>
-            </p>
-          ) : null}
-        </div>
+      <SiteNav />
+      <div className={styles.dots} aria-hidden="true" />
+      <main className={styles.stage}>
+        {chip}
+        <h1 className={styles.title}>{title}</h1>
+        {lede ? <p className={styles.lede}>{lede}</p> : null}
+        {children ? <div className={styles.form}>{children}</div> : null}
       </main>
-
-      <AuthScene scene={scene} handle={handle} />
+      <SiteFooterLine />
     </div>
   );
 }
 
 /**
  * "Continue with Google": an anchor, never a button -- it must leave the app for the API origin.
- * Sign in passes `lastUsed` to pin its badge on the button's corner, and `onClick` to note the try.
+ * `onClick` lets sign in note the try.
  */
-export function GoogleButton({ lastUsed = false, onClick }: { lastUsed?: boolean; onClick?: () => void } = {}) {
+export function GoogleButton({ onClick }: { onClick?: () => void } = {}) {
   return (
     <a
       className={styles.google}
       href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google`}
       onClick={onClick}
     >
-      {lastUsed ? <LastUsed /> : null}
       <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20">
         <path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.3-4.8 3.3-8z" />
         <path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8A11 11 0 0 0 12 23z" />
@@ -80,16 +61,7 @@ export function GoogleButton({ lastUsed = false, onClick }: { lastUsed?: boolean
   );
 }
 
-/** The rule between Google and the email form; sign in marks it when email was the way in last time. */
-export function OrWithEmail({ lastUsed = false }: { lastUsed?: boolean } = {}) {
-  return (
-    <p className={styles.or}>
-      or with email
-      {lastUsed ? <LastUsed /> : null}
-    </p>
-  );
-}
-
-function LastUsed() {
-  return <span className={styles.lastUsed}>Last used</span>;
+/** The word between the email form and Google. */
+export function Or() {
+  return <p className={styles.or}>or</p>;
 }

@@ -1,0 +1,34 @@
+.mark {
+  position: relative;
+  display: block;
+  width: 140px;
+  height: 130px;
+  margin: 0 auto 6px;
+}
+
+.mark > svg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+}
+
+.badge {
+  position: absolute;
+  top: 2px;
+  right: -2px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--tag-ok-ink);
+  box-shadow: 0 10px 20px -10px rgb(0 0 0 / 30%);
+  color: var(--calm-surface);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.badge[data-tone='bad'] {
+  background: var(--calm-surface);
+  color: var(--cl-amber-ink);
+}

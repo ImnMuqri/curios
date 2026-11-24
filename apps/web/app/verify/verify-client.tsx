@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { SystemCard, SystemShell, systemStyles as styles } from '../_system/SystemShell.js';
-import { HourglassArt, LetterArt, VerifyingArt } from '../_system/art.js';
+import { SystemActions, SystemCard, SystemShell, systemStyles as styles } from '../_system/SystemShell.js';
+import { DoneArt, ExpiredArt, VerifyingArt } from '../_system/art.js';
 import { BadLink } from '../_system/BadLink.js';
 import { useCountdown } from '../_system/use-countdown.js';
 import { apiFetch, ApiError } from '../../lib/api.js';
@@ -15,13 +15,15 @@ export function Verified({ email, name }: Who) {
   return (
     <SystemShell>
       <SystemCard
-        art={<LetterArt confirmed />}
+        art={<DoneArt />}
         title="Your email is confirmed"
         lede={`Thanks${first ? `, ${first}` : ''}. Receipts, new orders and leads will come to ${email}.`}
       >
-        <a className={`${styles.go} ${styles.next}`} href="/app/onboarding">
-          Set up my page
-        </a>
+        <SystemActions>
+          <a className={styles.go} href="/app/onboarding">
+            Set up my page
+          </a>
+        </SystemActions>
       </SystemCard>
     </SystemShell>
   );
@@ -84,7 +86,7 @@ export function ExpiredLink({ token, email, resend }: { token: string; email: st
   return (
     <SystemShell>
       <SystemCard
-        art={<HourglassArt />}
+        art={<ExpiredArt />}
         title="This link has expired"
         lede={`Confirmation links last 24 hours. We can send a fresh one to ${email}.`}
       >
@@ -93,12 +95,11 @@ export function ExpiredLink({ token, email, resend }: { token: string; email: st
             {error}
           </p>
         ) : null}
-        <button type="button" className={`${styles.go} ${styles.next}`} disabled={wait > 0} onClick={() => void send()}>
-          {wait > 0 ? 'Sent. Check your inbox' : 'Send a new link'}
-        </button>
-        <a className={styles.ghost} href="/">
-          I’ll do it later
-        </a>
+        <SystemActions>
+          <button type="button" className={styles.go} disabled={wait > 0} onClick={() => void send()}>
+            {wait > 0 ? 'Sent. Check your inbox' : 'Send a new link'}
+          </button>
+        </SystemActions>
       </SystemCard>
     </SystemShell>
   );

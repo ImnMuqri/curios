@@ -13,6 +13,9 @@ import { NavProgressProvider } from './_ui/nav-progress.js';
 import { countLabel } from './_ui/count-label.js';
 import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
 import { OverlayContext } from './_ui/overlay-context.js';
+import { NewVersion } from './_ui/new-version.js';
+import { InstallPrompt } from './_ui/install-prompt.js';
+import { CuriosLoader } from '../_ui/curios-loader.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
 import { SaveStatusProvider, SaveStatusSlot } from './_ui/save-status.js';
 import { announceOverlay, Popover } from './_ui/popover.js';
@@ -71,6 +74,10 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
+/** How long, from the start of the page load, the boot overlay may stay; and how long its fade takes. */
+export const BOOT_CAP_MS = 1000;
+export const BOOT_FADE_MS = 220;
+
 const BELL = 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4';
 
 /** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
@@ -118,6 +125,7 @@ export function AppFrame({
   bare = false,
   theme: savedTheme = 'system',
   bellSeen: savedBellSeen = { counts: {}, alerts: [] },
+  version = 'development',
   children,
 }: {
   /** The page's name: on the sidebar card, and in the account buttons' names. */
@@ -144,6 +152,8 @@ export function AppFrame({
   theme?: Theme;
   /** What the bell held when it was last marked read (bell-seen.ts); the layout reads it from the cookie. */
   bellSeen?: BellSeen;
+  /** The build this page was rendered by (lib/build-version.ts): the dashboard asks now and then whether a newer one is live. */
+  version?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
@@ -232,6 +242,35 @@ export function AppFrame({
       undo();
     };
   }, [theme]);
+
+  // The boot overlay (the Curios loader): in the server HTML, so the first paint of a full page load has it; gone once
+  // this frame has hydrated and the fonts are ready, at most BOOT_CAP_MS after the navigation began (measured from
+  // performance.now()). The frame outlives client navigations, so it is not drawn again on those. A client
+  // navigation that mounts the frame fresh (router.push from /signin) has long passed the cap by then, so the
+  // overlay is removed at once and is never seen (it also waits 150ms in CSS before showing).
+  const [boot, setBoot] = useState<'show' | 'leaving' | 'gone'>('show');
+  // The new-version card wins the corner: the install card queues behind it.
+  const [versionShowing, setVersionShowing] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let left = false;
+    const leave = () => {
+      if (left) return;
+      left = true;
+      clearTimeout(cap);
+      setBoot('leaving');
+      timer = setTimeout(() => setBoot('gone'), BOOT_FADE_MS);
+    };
+    const cap = setTimeout(leave, Math.max(0, BOOT_CAP_MS - Math.round(performance.now())));
+    // Older browsers without the Font Loading API just leave once hydrated.
+    if ('fonts' in document) void document.fonts.ready.then(leave, leave);
+    else leave();
+    return () => {
+      left = true;
+      clearTimeout(cap);
+      clearTimeout(timer);
+    };
+  }, []);
 
   // The bell, worked out before the frameless return below so its hook runs on every render.
   const framed = !bare && !pathname.startsWith('/app/onboarding');
@@ -354,7 +393,7 @@ export function AppFrame({
     <ThemeContext.Provider value={{ theme, choose }}>
      <HelpContext.Provider value={help}>
      <SaveStatusProvider>
-      <div ref={frameRef} className={styles.frame} data-theme={theme} data-help-open={helpOpen || undefined} data-sheet-open={sheets ? true : undefined} data-laptop-scale>
+      <div ref={frameRef} className={styles.frame} data-theme={theme} aria-busy={boot !== 'gone' || undefined} data-help-open={helpOpen || undefined} data-sheet-open={sheets ? true : undefined} data-laptop-scale>
         <aside ref={sideRef} className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
             <Wordmark />
@@ -486,6 +525,9 @@ export function AppFrame({
         </div>
 
         <PhoneMenu pathname={pathname} items={items} badges={badges} billingDot={billingDot} className={styles.phoneMenu} />
+        <NewVersion version={version} onShowing={setVersionShowing} />
+        <InstallPrompt held={versionShowing} />
+        {boot !== 'gone' ? <CuriosLoader className={boot === 'leaving' ? `${styles.boot} ${styles.bootLeaving}` : styles.boot} /> : null}
         {/* SideSheet, Dialog and the toast render here (_ui/overlay-context): inside the frame for its tokens and dark mode, outside the screen so nothing in it can trap a fixed layer. */}
         <div ref={setLayerHost} className={styles.layers} />
         {helpOpen ? <HelpPanel firstName={ownerName?.trim().split(/\s+/)[0] || null} email={ownerEmail ?? null} onClose={closeHelp} /> : null}

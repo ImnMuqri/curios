@@ -8,7 +8,7 @@ import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
-  style: 'SOFT', accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null,
+  style: 'SOFT', accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
   socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
@@ -140,7 +140,7 @@ describe('the save status', () => {
     show(initial, calls);
     expect(within(topBar()).getByText('Saved')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Flowers' }));
     expect(within(topBar()).getByText('Saving…')).toBeInTheDocument();
 
     await act(async () => finish());
@@ -149,13 +149,13 @@ describe('the save status', () => {
 
   it('says Not saved after a save fails, until the next one lands', async () => {
     const calls = api();
-    calls.chooseStockCover = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ coverKey: 'stock/teh', coverUrl: '/covers/teh.webp' });
+    calls.chooseStockCover = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ coverKey: 'stock/bunga', coverUrl: '/covers/bunga.webp' });
     show(initial, calls);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Flowers' }));
     expect(await within(topBar()).findByText('Not saved')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Tea and flowers' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Flowers' }));
     expect(await within(topBar()).findByText('Saved')).toBeInTheDocument();
   });
 
