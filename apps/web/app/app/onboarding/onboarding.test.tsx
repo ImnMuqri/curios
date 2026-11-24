@@ -177,6 +177,22 @@ describe('OnboardingFlow', () => {
     expect(a.navigate).toHaveBeenCalledWith('/app/curios');
   });
 
+  it('shows the Curios loader while the page is being claimed, and not before', async () => {
+    let done: (value: { pageId: string }) => void = () => {};
+    const claim = vi.fn(() => new Promise<{ pageId: string }>((resolve) => (done = resolve)));
+    const { a } = flow({ actions: actions({ claim }) });
+    expect(document.querySelector('[data-curios-loader]')).toBeNull();
+    await claimStep();
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(document.querySelector('[data-curios-loader]')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
+    expect(document.querySelector('[data-curios-loader]')).toHaveTextContent('Getting your page ready');
+    done({ pageId: 'p1' });
+    await waitFor(() => expect(a.navigate).toHaveBeenCalledWith('/app/curios'));
+  });
+
   it('will not read a login-walled profile, and says to paste instead', async () => {
     flow({ page: { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' } });
     await userEvent.type(screen.getByLabelText('Your website address'), 'instagram.com/keklina');

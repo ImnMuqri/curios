@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Callout } from '@curios/ui';
 import { AuthShell, GoogleButton, Or } from '../_auth/AuthShell.js';
+import { CuriosLoader } from '../_ui/curios-loader.js';
 import { AuthPeek } from '../_auth/AuthPeek.js';
 import { PillField } from '../_auth/PillField.js';
 import { apiFetch } from '../../lib/api.js';
@@ -103,6 +104,8 @@ export function SignInForm({
           {busy ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      {/* The sign-in succeeded and the dashboard is on its way (busy stays on until the page changes): a wait of seconds on a slow phone, so the Curios loader (it shows after 150ms; a failure clears busy and hides it). */}
+      {busy ? <CuriosLoader label="Signing you in" /> : null}
 
       <Or />
       <GoogleButton />

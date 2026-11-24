@@ -24,6 +24,22 @@ describe('SignInForm', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the Curios loader, "Signing you in", while the sign-in goes through, and clears it on a failure', async () => {
+    let fail: (reason: Error) => void = () => {};
+    const submit = vi.fn(() => new Promise<void>((_, reject) => (fail = reject)));
+    render(<SignInForm onSubmit={submit} />);
+    expect(document.querySelector('[data-curios-loader]')).toBeNull();
+
+    await userEvent.type(screen.getByLabelText('Email'), 'nadia@example.com');
+    await userEvent.type(screen.getByLabelText('Password'), 'a-long-enough-passphrase');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    expect(document.querySelector('[data-curios-loader]')).toHaveTextContent('Signing you in');
+
+    fail(new Error('Nope.'));
+    expect(await screen.findByText('Nope.')).toBeInTheDocument();
+    expect(document.querySelector('[data-curios-loader]')).toBeNull();
+  });
+
   // /forgot existed from slice 2 with nothing linking to it, so an owner who
   // mistyped a password at signup had no way back in.
   it('links to the forgotten-password page', () => {

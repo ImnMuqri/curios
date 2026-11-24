@@ -1,0 +1,84 @@
+/*
+ * The Curios loader (owner's screenshot, 25 Nov 2026). Colours come from --loader-* hooks that fall back
+ * to the calm light tokens; the dashboard's frame sets the dark ones.
+ */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: var(--loader-bg, var(--calm-bg));
+  color: var(--loader-ink, var(--calm-ink));
+  /* Hidden for the first 150ms: a wait that short is never seen. */
+  opacity: 0;
+  animation: loaderIn 200ms ease-out 150ms forwards;
+}
+
+.mark {
+  --l-wordmark: 44px;
+}
+
+.track {
+  position: relative;
+  display: block;
+  width: 150px;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--loader-line, var(--calm-line));
+}
+
+.bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 40%;
+  border-radius: 999px;
+  background: var(--sky);
+  animation: loaderSlide 1.2s ease-in-out infinite;
+}
+
+.label {
+  margin: 0;
+  color: var(--loader-muted, var(--calm-muted));
+  font-family: var(--font-inter, system-ui), system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+@keyframes loaderIn {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes loaderSlide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes loaderBreathe {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bar {
+    left: 30%;
+    animation: loaderBreathe 2.4s ease-in-out infinite;
+  }
+}

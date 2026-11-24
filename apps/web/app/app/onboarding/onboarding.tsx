@@ -6,6 +6,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { loginWalledSite } from '../../../lib/social-links.js';
 import { forgetWantedHandle, readWantedHandle } from '../../../lib/wanted-handle.js';
 import { AuthPeek } from '../../_auth/AuthPeek.js';
+import { CuriosLoader } from '../../_ui/curios-loader.js';
 import { Wordmark } from '../../_landing/Wordmark.js';
 import { KIND_LABELS } from '../knowledge/facts-tab.js';
 import { checkSource, FILE_ACCEPT, fileSize, ingestSource, type IngestionResult, type Source, type SourceWay } from './source-input.js';
@@ -644,6 +645,8 @@ export function OnboardingFlow({
           </div>
         ) : null}
       </main>
+      {/* Claiming the page and starting the read (or skipping to the dashboard): the wait is the loader's, after 150ms. */}
+      {busy ? <CuriosLoader /> : null}
     </div>
   );
 }

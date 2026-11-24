@@ -100,25 +100,36 @@ export function useNewVersion(current: string, force = false): { newer: string |
   return { newer, dismiss };
 }
 
+/** Peek's eyes on a sky tile: the leading mark of the dashboard's cards (the new-version and install toasts). */
+export function PeekTile() {
+  return (
+    <svg className={styles.tile} viewBox="0 0 32 32" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="var(--sky)" />
+      <ellipse cx="10.8" cy="16" rx="4.9" ry="5.8" fill="white" />
+      <ellipse cx="21.2" cy="16" rx="4.9" ry="5.8" fill="white" />
+      <circle cx="11.7" cy="17.2" r="2.9" fill="var(--light-ink)" />
+      <circle cx="22.1" cy="17.2" r="2.9" fill="var(--light-ink)" />
+    </svg>
+  );
+}
+
 /**
  * "A new version of Curios is ready": a card at the foot of the dashboard with Refresh and Dismiss.
  * The live region is in the page from the start and only its card comes and goes, so it is read once
  * when it appears. The frame renders it before its layer host (which stays the last child); it sits at the right, so the centred toast pill does not cover it.
  */
-export function NewVersion({ version, force = false }: { version: string; force?: boolean }) {
+export function NewVersion({ version, force = false, onShowing }: { version: string; force?: boolean; onShowing?: (showing: boolean) => void }) {
   const { newer, dismiss } = useNewVersion(version, force);
+  // Told to the frame, so the install card waits its turn (they share the corner).
+  useEffect(() => {
+    onShowing?.(newer !== null);
+  }, [newer, onShowing]);
 
   return (
       <div className={styles.slot} role="status" aria-live="polite">
         {newer ? (
           <div className={styles.card} data-new-version={newer}>
-            <svg className={styles.tile} viewBox="0 0 32 32" aria-hidden="true">
-              <rect width="32" height="32" rx="8" fill="var(--sky)" />
-              <ellipse cx="10.8" cy="16" rx="4.9" ry="5.8" fill="white" />
-              <ellipse cx="21.2" cy="16" rx="4.9" ry="5.8" fill="white" />
-              <circle cx="11.7" cy="17.2" r="2.9" fill="var(--light-ink)" />
-              <circle cx="22.1" cy="17.2" r="2.9" fill="var(--light-ink)" />
-            </svg>
+            <PeekTile />
             <div className={styles.words}>
               <p className={styles.title}>A new version of Curios is ready</p>
               <p className={styles.sub}>Refresh to get the latest.</p>
