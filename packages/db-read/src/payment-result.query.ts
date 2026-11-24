@@ -1,6 +1,6 @@
 import { prismaRead } from './client.js';
 
-/** What the paid and failed pages say about one plan payment. */
+/** What Billing's payment toast says about one plan payment. */
 export interface PaymentResult {
   plan: 'MONTHLY' | 'ANNUAL';
   amountCents: number;
@@ -16,7 +16,7 @@ export interface PaymentResult {
 }
 
 /**
- * One payment, for the page the owner lands on after CHIP.
+ * One payment, for the toast the owner sees on Billing after CHIP.
  *
  * Scoped to the page inside the query, as `getRecentPayments` is: the id arrives in a
  * URL, and a URL someone edited must not show another owner's money. Null for an id

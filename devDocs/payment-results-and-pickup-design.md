@@ -25,6 +25,12 @@ Status: draft for the owner's review (2 Nov 2026).
 
 ## 1. Plan payment result pages (Billing)
 
+> **Changed 24 Nov 2026 (owner):** the paid and failed pages are gone. CHIP returns to
+> `/app/billing?paid=<id>`, `?failed=<id>` or `?checking=<id>` and Billing shows a toast (Peek, "Paid RM49 /
+> Business runs until ...", or "Payment didn’t go through / Nothing was charged"), from the payment’s own
+> record; a pending one says "Checking your payment…" and asks again until it settles. `/app/billing/paid`
+> and `/failed` stay only as redirects for old links. The text below is the design as first built.
+
 - After CHIP, `GET /billing/chip/return` redirects to new pages instead of
   `/app/billing?payment=…`:
   - **`/app/billing/paid?payment=<id>`** when the purchase is paid;

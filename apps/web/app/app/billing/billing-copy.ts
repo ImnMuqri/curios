@@ -1,6 +1,6 @@
 import type { PlanState } from '@curios/core';
 import { ringgit } from '@curios/core/money';
-import type { OwnerPayment } from '@curios/db-read';
+import type { OwnerPayment, PaymentResult } from '@curios/db-read';
 
 const MALAYSIAN_DATE: Intl.DateTimeFormatOptions = {
   day: 'numeric',
@@ -31,12 +31,6 @@ export function shortDate(date: Date, withYear = false): string {
   return withYear ? `${day} ${part('year')}` : day;
 }
 
-/** A short date, with its year only when that is not this year's. */
-export function shortDateFrom(date: Date, now: Date): string {
-  const withYear = shortDate(date, true);
-  return withYear.endsWith(shortDate(now, true).slice(-4)) ? shortDate(date) : withYear;
-}
-
 /** Whole days left until `until`, counting a part day as one; never below zero. */
 export function daysLeft(until: Date, now: Date): number {
   return Math.max(0, Math.ceil((until.getTime() - now.getTime()) / 86_400_000));
@@ -45,6 +39,15 @@ export function daysLeft(until: Date, now: Date): number {
 /** When this month's conversations start again: the first of next month, as the counter keys it (UTC). */
 export function usageResets(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+}
+
+/**
+ * The plan card's line for a paid plan, as the board says it: the days, the date, and whether a card
+ * will pay again. "18 days left. Paid until 2 Dec 2026. No auto-renew, so nothing is charged without you."
+ */
+export function paidLine(days: number, until: string, renews: boolean): string {
+  const left = `${days} ${days === 1 ? 'day' : 'days'} left. Paid until ${until}.`;
+  return renews ? `${left} Renews by card on ${until}.` : `${left} No auto-renew, so nothing is charged without you.`;
 }
 
 /** `freeLeads`: the allowance in force, the one `state` was counted against. */
@@ -65,22 +68,6 @@ export function planSummary(state: PlanState, freeLeads: number): string {
       return `All ${freeLeads} of your free leads are used. Pay to keep the capture card on your page.`;
     case 'lapsed':
       return `Your plan ended on ${formatDate(state.paidUntil)}. Pay to turn the capture card back on.`;
-  }
-}
-
-/** The plan as its tag says it, and how loudly: amber once it has run out. */
-export function planBadge(state: PlanState): { text: string; tone: 'biru' | 'muda' | 'kuning' } {
-  switch (state.kind) {
-    case 'personal':
-      return { text: 'Personal', tone: 'muda' };
-    case 'paid':
-      return { text: 'Business', tone: 'biru' };
-    case 'trial':
-      return state.lapsedOn ? { text: 'Business · plan ended', tone: 'kuning' } : { text: 'Business · free trial', tone: 'biru' };
-    case 'trialSpent':
-      return { text: 'Business · trial used up', tone: 'kuning' };
-    case 'lapsed':
-      return { text: 'Business · plan ended', tone: 'kuning' };
   }
 }
 
@@ -111,12 +98,6 @@ export function paymentParts(payment: OwnerPayment): {
   };
 }
 
-/** The receipt's price as the board prints it: RM49.00, never RM49. */
-export function receiptPrice(cents: number): string {
-  const price = ringgit(cents);
-  return price.includes('.') ? price : `${price}.00`;
-}
-
 export interface PaymentBanner {
   tone: 'info' | 'error';
   text: string;
@@ -129,7 +110,7 @@ export interface PaymentBanner {
  */
 export function paymentBanner(value: string | undefined): PaymentBanner | null {
   switch (value) {
-    // A confirmed 'paid' is a page of its own (paid/page.tsx), not a banner.
+    // Only for a return with no payment id to look up; one with an id is a toast (paymentNotice).
     case 'pending':
       return {
         tone: 'info',
@@ -145,8 +126,41 @@ export function paymentBanner(value: string | undefined): PaymentBanner | null {
   }
 }
 
+/** What the toast says on coming back from CHIP: paid, not paid, or still being confirmed. */
+export type PaymentNotice =
+  | { kind: 'paid'; title: string; sub: string; note: string | null }
+  | { kind: 'failed'; title: string; short: string; sub: string }
+  | { kind: 'checking'; title: string; sub: string };
+
 /**
- * The paid page's line when the return redirect carried `card=off`: auto-renew was asked for but CHIP
+ * The toast for a payment, from what the SERVER holds about it, never from the query string: the
+ * redirect only says which payment to look at and what CHIP told us, and "Paid" is shown only for a
+ * payment our own record says was granted (the return confirms with CHIP and grants before it
+ * redirects; the webhook can also land first). Anything not settled yet is "checking", which the page
+ * polls until it is.
+ *
+ * `via` is which redirect brought the owner here. A payment CHIP failed but our record still has
+ * pending is a failure (`failed`); a return that could not reach CHIP (`checking`) is not decided.
+ * An unknown payment, or someone else's, gives nothing.
+ */
+export function paymentNotice(result: PaymentResult | null, via: 'paid' | 'failed' | 'checking', cardOff: boolean): PaymentNotice | null {
+  if (!result) return null;
+  if (result.status === 'PAID') {
+    if (!result.grantedUntil) return { kind: 'checking', title: 'Checking your payment…', sub: 'This takes a moment.' };
+    return {
+      kind: 'paid',
+      title: `Paid ${ringgit(result.amountCents)}`,
+      sub: `Business runs until ${shortDate(result.grantedUntil, true)}`,
+      // Auto-renew was asked for and CHIP kept no card: the plan is paid, but nothing will renew itself.
+      note: result.autoRenew && cardOff ? cardOffBanner().text : null,
+    };
+  }
+  if (result.status === 'PENDING' && via !== 'failed') return { kind: 'checking', title: 'Checking your payment…', sub: 'This takes a moment.' };
+  return { kind: 'failed', title: 'Payment didn’t go through', short: 'Didn’t go through', sub: 'Nothing was charged' };
+}
+
+/**
+ * The toast's second line when the return redirect carried `card=off`: auto-renew was asked for but CHIP
  * kept no card. The plan itself is paid, so this is information, not an error.
  */
 export function cardOffBanner(): PaymentBanner {

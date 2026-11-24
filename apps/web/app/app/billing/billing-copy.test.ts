@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_LEADS, planState } from '@curios/core';
-import { daysLeft, formatDate, cardOffBanner, paymentBanner, paymentParts, planBadge, planSummary, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import type { PaymentResult } from '@curios/db-read';
+import { daysLeft, formatDate, cardOffBanner, paidLine, paymentBanner, paymentNotice, paymentParts, planSummary, shortDate, usageResets } from './billing-copy.js';
 
 const NOW = new Date('2026-09-14T08:00:00.000Z');
 
@@ -93,13 +94,67 @@ describe('planSummary, after a lapse', () => {
   });
 });
 
-describe('planBadge', () => {
-  it('names each plan as its tag says it, loud only when the plan has run out', () => {
-    expect(planBadge(stateOf({ mode: 'PERSONAL' }))).toEqual({ text: 'Personal', tone: 'muda' });
-    expect(planBadge(stateOf({ leadsCaptured: 1 }))).toEqual({ text: 'Business · free trial', tone: 'biru' });
-    expect(planBadge(stateOf({ paidUntil: new Date('2099-01-01T00:00:00.000Z') }))).toEqual({ text: 'Business', tone: 'biru' });
-    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS }))).toEqual({ text: 'Business · trial used up', tone: 'kuning' });
-    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2020-01-01T00:00:00.000Z') }))).toEqual({ text: 'Business · plan ended', tone: 'kuning' });
+describe('paidLine', () => {
+  it('says the days, the date, and that nothing is charged without the owner', () => {
+    expect(paidLine(18, '2 Dec 2026', false)).toBe('18 days left. Paid until 2 Dec 2026. No auto-renew, so nothing is charged without you.');
+  });
+
+  it('says a card renews it, on the day the plan ends', () => {
+    expect(paidLine(18, '2 Dec 2026', true)).toBe('18 days left. Paid until 2 Dec 2026. Renews by card on 2 Dec 2026.');
+  });
+
+  it('says a day, not days, for the last one', () => {
+    expect(paidLine(1, '2 Dec 2026', false)).toMatch(/^1 day left\./);
+  });
+});
+
+describe('paymentNotice', () => {
+  const result: PaymentResult = {
+    plan: 'MONTHLY',
+    amountCents: 4900,
+    status: 'PAID',
+    paidVia: 'FPX · Maybank2u',
+    reference: 'ABCD1234',
+    grantedUntil: new Date('2027-01-02T04:00:00.000Z'),
+    autoRenew: false,
+  };
+
+  it('says Paid, the price and the date, for a payment the record says was granted', () => {
+    expect(paymentNotice(result, 'paid', false)).toEqual({ kind: 'paid', title: 'Paid RM49', sub: 'Business runs until 2 Jan 2027', note: null });
+  });
+
+  it('believes the record, not the redirect: a "paid" return for a payment still pending is only checking', () => {
+    expect(paymentNotice({ ...result, status: 'PENDING', grantedUntil: null }, 'paid', false)).toMatchObject({ kind: 'checking' });
+    expect(paymentNotice({ ...result, status: 'PENDING', grantedUntil: null }, 'checking', false)).toMatchObject({ kind: 'checking' });
+  });
+
+  it('does not say Paid for a paid row that has granted nothing yet', () => {
+    expect(paymentNotice({ ...result, grantedUntil: null }, 'paid', false)).toMatchObject({ kind: 'checking' });
+  });
+
+  it('says it did not go through, and that nothing was charged, for a failed or expired payment', () => {
+    for (const status of ['FAILED', 'EXPIRED'] as const) {
+      expect(paymentNotice({ ...result, status, grantedUntil: null }, 'failed', false)).toEqual({
+        kind: 'failed',
+        title: 'Payment didn’t go through',
+        short: 'Didn’t go through',
+        sub: 'Nothing was charged',
+      });
+    }
+  });
+
+  it('says it did not go through when CHIP said so and the record is still pending', () => {
+    expect(paymentNotice({ ...result, status: 'PENDING', grantedUntil: null }, 'failed', false)).toMatchObject({ kind: 'failed' });
+  });
+
+  it('says nothing for a payment that is not this owner’s', () => {
+    expect(paymentNotice(null, 'paid', false)).toBeNull();
+  });
+
+  it('adds the card-not-kept line only when auto-renew was asked for and CHIP kept no card', () => {
+    expect(paymentNotice({ ...result, autoRenew: true }, 'paid', true)).toMatchObject({ note: cardOffBanner().text });
+    expect(paymentNotice({ ...result, autoRenew: true }, 'paid', false)).toMatchObject({ note: null });
+    expect(paymentNotice({ ...result, autoRenew: false }, 'paid', true)).toMatchObject({ note: null });
   });
 });
 
@@ -141,12 +196,6 @@ describe('the board’s short dates', () => {
     // 20:00 UTC on the 13th is already the 14th in Kuala Lumpur.
     expect(shortDate(new Date('2026-09-13T20:00:00.000Z'))).toBe('14 Sep');
     expect(shortDate(new Date('2026-09-13T20:00:00.000Z'), true)).toBe('14 Sep 2026');
-  });
-
-  it('adds the year only when it is not this year', () => {
-    const now = new Date('2026-10-15T04:00:00.000Z');
-    expect(shortDateFrom(new Date('2026-12-14T04:00:00.000Z'), now)).toBe('14 Dec');
-    expect(shortDateFrom(new Date('2027-10-15T04:00:00.000Z'), now)).toBe('15 Oct 2027');
   });
 
   it('counts a part day as a day left, and never below none', () => {

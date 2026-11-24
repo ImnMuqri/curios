@@ -203,10 +203,7 @@ describe('the calm rules on the shared pieces', () => {
    * Brand marks keep the brand's blue: they are Curios itself, not an action. Each is named by file
    * and selector, so a new biru fill has to be argued for here, not slipped in.
    */
-  const brandMarks = [
-    // Happy Peek's art panel on the paid page, drawn on his biru-muda.
-    "apps/web/app/app/billing/result.module.css: .art[data-tone='ok']",
-  ];
+  const brandMarks: string[] = [];
 
   /**
    * A biru fill in any spelling: the token, its deep step, the landing's --l-biru-* ramp and every

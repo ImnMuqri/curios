@@ -97,7 +97,7 @@ describe('billing logs', () => {
 
     const res = await app.inject({ method: 'GET', url: `/billing/chip/return?payment=${payment.id}`, remoteAddress: from() });
 
-    expect(res.headers.location).toMatch(/payment=pending$/);
+    expect(res.headers.location).toBe(`http://localhost:3000/app/billing?checking=${payment.id}`);
     expect(logged('chip purchase could not be confirmed')).toMatchObject({ purchaseId: providerRef, err: 'Error' });
     expect(lines.join('')).not.toContain(BODY_EMAIL);
   });

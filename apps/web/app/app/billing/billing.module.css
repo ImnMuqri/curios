@@ -1,11 +1,8 @@
 /*
- * Billing, from the design handoff's Dash board: your plan (what is left,
- * a line from today to where this payment takes you, the two plans and one
- * Pay button) beside what this month has used, then the payments as a table.
- *
- * Dashboard v2 (v3 on the board): full width on the sheet, no cards -- the plan
- * and the month are two plain columns -- the plans are rows, and every box,
- * field and button has 10px corners.
+ * Billing, from the Dash board (24 Nov 2026): status cards above the plan (auto-renew on, a renewal
+ * that failed, a personal page), then the plan card (its name, what is left, a plain bar, the two
+ * plans, one Pay button, Peek) beside the month's usage as cards, then the payments as a table.
+ * The pay dialog and the payment toast are the shared Dialog and payment-toast.module.css.
  */
 
 @keyframes fadeUp {
@@ -17,19 +14,6 @@
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes popin {
-  from {
-    opacity: 0;
-    transform: scale(0.94) translateY(8px);
   }
 }
 
@@ -51,6 +35,12 @@
   }
 }
 
+@keyframes grow {
+  from {
+    width: 0;
+  }
+}
+
 .sr {
   position: absolute;
   width: 1px;
@@ -68,7 +58,7 @@
   container-type: inline-size;
 }
 
-/* What the screen says on coming back from CHIP. */
+/* What the screen says on coming back from CHIP with no payment to look up. */
 .banner {
   margin: 0 0 16px;
   padding: 12px 16px;
@@ -84,86 +74,161 @@
   color: var(--merah-deep);
 }
 
-.top {
+/* ---- Status cards ---- */
+
+.stc {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 56px;
-  align-items: start;
+  gap: 12px;
 }
 
-.top[data-personal] {
-  grid-template-columns: minmax(0, 640px);
+.stc:not(:empty) {
+  margin-top: 18px;
 }
 
-/* A column, not a box: v2 dropped the cards, so this only keeps the grid cell from overflowing. */
-.card {
+.xcard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.xok {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+}
+
+.xok svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.xok[data-bad] {
+  background: var(--tag-red);
+  color: var(--tag-red-ink);
+  font-weight: 700;
+}
+
+.xct {
+  flex: 1;
   min-width: 0;
 }
 
-.lab {
+.xct > b {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.xct p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.xbtns {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  margin-top: 12px;
+}
+
+/* Turning auto-renew off asks first, in place. */
+.ask {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.ask > p {
   margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
+  font-weight: 500;
+  color: var(--ink);
 }
 
-.tag {
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  padding: 0 9px;
-  border-radius: 999px;
-  background: var(--biru-muda);
-  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
-  font-size: 11.5px;
-  font-weight: 600;
-}
-
-.tag[data-tone='muda'] {
-  background: var(--surface);
-  color: var(--ink-soft);
-}
-
-.tag[data-tone='kuning'] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
+.ask .xbtns {
+  margin-top: 0;
 }
 
 /* ---- Your plan ---- */
 
-.big {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin: 14px 0 0;
+.plan2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 30px;
+  align-items: start;
 }
 
-.big b {
-  font-size: 44px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: -0.02em;
-  font-variant-numeric: tabular-nums;
+.pc2 {
+  position: relative;
+  min-width: 0;
+  padding: 28px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
+  overflow: hidden;
 }
 
-.big span {
-  font-size: 15px;
+.pkc {
+  position: absolute;
+  right: 20px;
+  top: 18px;
+  width: 76px;
+}
+
+.k {
+  margin: 0;
+  padding-right: 96px;
+  font-size: 13px;
   color: var(--muted);
 }
 
-.sub {
-  margin: 6px 0 0;
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--ink-soft);
+.pc2 h2 {
+  margin: 6px 0;
+  padding-right: 96px;
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
 }
 
-.sub b {
-  font-weight: 600;
-  color: var(--ink);
+.pline {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* A plain bar: how much of a month is left. */
+.bar2 {
+  height: 8px;
+  margin: 18px 0 10px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.bar2 i {
+  display: block;
+  height: 100%;
+  background: var(--ink);
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: grow 700ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
 }
 
 /* The free leads, one segment each: solid once used. */
@@ -190,139 +255,49 @@
   color: var(--muted);
 }
 
-/* Today, paid until, and where this payment takes it. */
-.tl {
-  margin-top: 26px;
-}
-
-.trk {
-  display: flex;
-  height: 14px;
-  overflow: hidden;
-  border-radius: 7px;
-  background: var(--surface);
-}
-
-.tsegPaid,
-.tsegAdd {
-  height: 100%;
-  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
-  /* As the board opens: the line fills in from nothing. */
-  animation: grow 700ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
-}
-
-@keyframes grow {
-  from {
-    width: 0;
-  }
-}
-
-.tsegPaid {
-  background: var(--select);
-}
-
-.tsegAdd {
-  background: repeating-linear-gradient(135deg, var(--blob-blue) 0 6px, var(--biru-muda) 6px 12px);
-}
-
-.lbls {
-  position: relative;
-  height: 34px;
-  margin-top: 8px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.lbls > span {
-  position: absolute;
-  top: 0;
-  white-space: nowrap;
-  transition: left 700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.lbls b {
-  display: block;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink);
-}
-
-.lbls b.after {
-  color: var(--biru);
-}
-
 /*
- * The plans, one row each: the radio on the left, the name, its note and any
- * saving in the middle, the price on the right. The markup keeps its order
- * (dot, name, price, note, saving) for screen readers; the grid places it.
+ * The plans, two cards: the name (and any saving), the price, its note. The radio dot stays in the
+ * markup for the screen reader's order; the ring shows which is chosen.
  */
 .pick {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 10px;
-  margin-top: 20px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+  margin-top: 18px;
 }
 
 .opt {
-  position: relative;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
-    'dot name price'
-    'dot note price'
-    'dot save price';
+    'name save'
+    'price price'
+    'note note';
   align-items: center;
-  column-gap: 14px;
-  padding: 16px 18px;
-  border: 1.5px solid var(--edge);
-  border-radius: 10px;
-  background: var(--card);
+  gap: 4px 8px;
+  padding: 14px 16px;
+  border: 0;
+  border-radius: 16px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--edge);
   color: var(--ink);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 160ms, background 160ms, box-shadow 160ms;
-}
-
-.opt:hover {
-  border-color: color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
+  transition: box-shadow 160ms;
 }
 
 .opt[aria-checked='true'] {
-  border-color: var(--sky);
-  background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
-  box-shadow: 0 0 0 1px var(--sky);
+  box-shadow: inset 0 0 0 2px var(--ink);
+}
+
+.opt:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
 }
 
 .on {
-  grid-area: dot;
-  display: grid;
-  place-items: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
-  transition: background 200ms, box-shadow 200ms;
-}
-
-.on svg {
-  width: 11px;
-  height: 11px;
-  fill: none;
-  stroke: var(--select-fg);
-  stroke-width: 3.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0;
-}
-
-.opt[aria-checked='true'] .on {
-  background: var(--select);
-  box-shadow: none;
-}
-
-.opt[aria-checked='true'] .on svg {
-  opacity: 1;
+  display: none;
 }
 
 .opt small {
@@ -334,9 +309,9 @@
 
 .opt b {
   grid-area: price;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
 }
 
 .opt > span:not(.on) {
@@ -347,8 +322,6 @@
 
 .opt em {
   grid-area: save;
-  justify-self: start;
-  margin-top: 6px;
   padding: 2px 8px;
   border-radius: 999px;
   background: var(--hijau-muda);
@@ -356,63 +329,15 @@
   font-size: 11.5px;
   font-style: normal;
   font-weight: 600;
-}
-
-/* The box that keeps the card for renewing, and what it does. */
-.tick {
-  margin-top: 16px;
-}
-
-.tick label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13.5px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.tick input {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  accent-color: var(--sky);
-}
-
-.tick small {
-  display: block;
-  margin: 2px 0 0 28px;
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-/* The saved card's line, and turning it off: quiet, under the plan, like the reset. */
-.renew {
-  margin-top: 16px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
-}
-
-.renew[data-failed] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
-}
-
-.renew p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  white-space: nowrap;
 }
 
 .pay {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  margin-top: 16px;
+  gap: 8px 14px;
+  margin-top: 20px;
 }
 
 .go {
@@ -420,14 +345,14 @@
   flex: none;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 22px;
+  height: 40px;
+  padding: 0 18px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--action);
   color: var(--action-fg);
   font: inherit;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: background 160ms, transform 160ms;
@@ -441,31 +366,22 @@
   transform: scale(0.97);
 }
 
-.go svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .pay p {
+  flex: 1 1 200px;
   margin: 0;
-  font-size: 12.5px;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--muted);
 }
 
-/* The one-time trial reset, and the switch to business: quiet, under the plan. */
-.reset,
-.upgrade {
+/* The one-time trial reset: quiet, under the plan. */
+.reset {
   margin-top: 20px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
 }
 
-.reset p,
-.upgrade p {
+.reset p {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
@@ -474,12 +390,6 @@
 
 .reset b {
   color: var(--ink);
-}
-
-.upgrade h3 {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 600;
 }
 
 .buttons {
@@ -492,19 +402,24 @@
 
 .buttons > p {
   flex-basis: 100%;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink);
 }
 
 .prim {
   display: inline-flex;
   align-items: center;
-  height: 40px;
+  height: 38px;
   padding: 0 16px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 999px;
   background: var(--action);
   color: var(--action-fg);
   font: inherit;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
 }
 
@@ -515,26 +430,33 @@
 .btn2 {
   display: inline-flex;
   align-items: center;
-  height: 40px;
-  padding: 0 14px;
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  background: var(--card);
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
   color: var(--ink);
   font: inherit;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
 }
 
 .btn2:hover:not(:disabled) {
-  background: var(--paper);
+  background: var(--edge);
 }
 
 .prim:disabled,
 .btn2:disabled {
   opacity: 0.6;
   cursor: default;
+}
+
+.prim:focus-visible,
+.btn2:focus-visible,
+.go:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
 }
 
 .error {
@@ -550,21 +472,24 @@
 /* ---- This month ---- */
 
 .use {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
+  min-width: 0;
 }
 
-/* Each meter ends on a hairline, as the board's plain column separates them. */
-.meter {
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--line);
+.u {
+  padding: 18px 20px;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
-.meter small {
+.u small {
   display: block;
-  margin-top: 6px;
-  font-size: 12px;
+  margin-top: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
   color: var(--muted);
 }
 
@@ -575,34 +500,32 @@
   justify-content: space-between;
   gap: 4px 12px;
   margin: 0;
-  font-size: 13.5px;
+  font-size: 14px;
 }
 
-.mh span:last-child {
+.mh span {
   color: var(--muted);
 }
 
 .mh b {
-  font-size: 18px;
   font-weight: 600;
-  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
 .mbar {
   position: relative;
-  height: 8px;
-  margin-top: 8px;
+  height: 6px;
+  margin-top: 10px;
   overflow: hidden;
-  border-radius: 4px;
+  border-radius: 3px;
   background: var(--surface);
 }
 
 .mbar i {
   position: absolute;
   inset: 0 auto 0 0;
-  border-radius: 4px;
-  background: var(--select);
+  border-radius: 3px;
+  background: var(--ink);
   transition: width 1000ms cubic-bezier(0.22, 1, 0.36, 1);
   animation: grow 1000ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
 }
@@ -615,99 +538,51 @@
   background: var(--merah);
 }
 
-.mbar[data-tone='hijau'] i {
-  background: repeating-linear-gradient(135deg, var(--blob-mint) 0 6px, var(--hijau-muda) 6px 12px);
-}
-
-.mbar[data-tone='rose'] i {
-  background: repeating-linear-gradient(135deg, var(--blob-pink) 0 6px, var(--rose-muda) 6px 12px);
-}
-
-.inc {
-  padding-top: 4px;
-}
-
-.inc .lab {
-  font-size: 12.5px;
-}
-
-.inc ul {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin: 6px 0 0;
-  padding: 0;
-  list-style: none;
-}
-
-.inc li {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 12.5px;
-  color: var(--ink-soft);
-}
-
-.inc svg {
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: var(--hijau);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 /* ---- Payments ---- */
 
-.h {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-  margin: 30px 0 10px;
+.pays {
+  margin-top: 40px;
+  /* "See receipt" scrolls here, clear of the phone's top bar. */
+  scroll-margin-top: 16px;
 }
 
-.h h2 {
+.pays h2 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 600;
+  letter-spacing: -0.015em;
 }
 
-.h span {
-  font-size: 12.5px;
+.recv {
+  margin: 4px 0 0;
+  font-size: 14px;
   color: var(--muted);
   overflow-wrap: anywhere;
 }
 
 .tab {
   width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 10px;
+  margin-top: 16px;
+  border: 1px solid var(--edge);
+  border-radius: 16px;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
   background: var(--card);
-  font-size: 13.5px;
+  font-size: 14.5px;
 }
 
 .tab th,
 .tab td {
-  height: 54px;
-  padding: 0 18px;
+  height: 52px;
+  padding: 0 20px;
   text-align: left;
 }
 
 .tab th {
   height: 40px;
-  background: var(--paper);
-  font-size: 12px;
+  background: var(--surface);
+  font-size: 12.5px;
   font-weight: 600;
   color: var(--muted);
 }
@@ -720,20 +595,25 @@
   border-top: 1px solid var(--line);
 }
 
+.tab tbody tr:first-child td {
+  border-top: 0;
+}
+
 .tab th:nth-child(1) {
   width: 140px;
 }
 
 .tab th:nth-child(3) {
-  width: 100px;
+  width: 160px;
 }
 
-.tab th:nth-child(4) {
-  width: 140px;
+.tab th:nth-child(4),
+.tab td:nth-child(4) {
+  width: 100px;
+  text-align: right;
 }
 
 .am {
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -755,7 +635,7 @@
 }
 
 .st[data-paid] {
-  color: var(--hijau);
+  color: var(--hijau-ink);
 }
 
 .st[data-declined] {
@@ -768,9 +648,10 @@
   flex-direction: column;
   align-items: center;
   gap: 6px;
+  margin-top: 16px;
   padding: 28px 16px;
   border: 1.5px dashed var(--edge);
-  border-radius: 10px;
+  border-radius: 16px;
   text-align: center;
 }
 
@@ -883,70 +764,72 @@
   color: var(--muted);
 }
 
-/* ---- Before CHIP ---- */
-
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 30;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: var(--scrim);
-  animation: fadeIn 200ms ease both;
-}
-
-.box {
-  width: 100%;
-  max-width: 420px;
-  padding: 26px;
-  border-radius: 10px;
-  background: var(--card);
-  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 40%);
-  animation: popin 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
-}
-
-.box h2 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 600;
-}
-
-.box > p {
-  margin: 8px 0 0;
-  font-size: 13.5px;
-  line-height: 1.55;
-  color: var(--ink-soft);
-}
+/* ---- The pay dialog's body ---- */
 
 .line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 16px;
-  padding: 14px 16px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
-  font-size: 14px;
+  margin: 18px 0 14px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--edge);
+}
+
+.line b {
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .line small {
   display: block;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted);
 }
 
-.line b {
-  font-size: 18px;
+.line .price {
+  font-size: 20px;
 }
 
-.foot {
+/* The box that keeps the card for renewing, and what it does. */
+.tick {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tick input {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--ink);
+}
+
+.tick label {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tick small {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.continue {
+  width: 100%;
+}
+
+.hint {
+  margin: 10px 0 0;
+  text-align: center;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 .wait {
@@ -981,19 +864,22 @@
 }
 
 @container (max-width: 760px) {
-  .top {
+  .plan2 {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @container (max-width: 520px) {
-  .big b {
-    font-size: 36px;
+  .pc2 {
+    padding: 22px;
   }
 
-  .pay {
-    flex-direction: column;
-    align-items: stretch;
+  .pc2 h2 {
+    font-size: 32px;
+  }
+
+  .xcard {
+    flex-wrap: wrap;
   }
 
   .tab thead {
@@ -1005,45 +891,32 @@
     padding: 0 12px;
   }
 
-  /* Date, amount and status only, as the board's phone. */
+  /* Date, status and amount only, as the board's phone. */
   .tab td:nth-child(2) {
     display: none;
   }
 
-  .tab tbody tr:first-child td {
-    border-top: 0;
-  }
-
-  /* The date takes the room; amount and status shrink to fit, together on the right. */
+  /* The date takes the room; status and amount shrink to fit, together on the right. */
   .tab td:nth-child(3),
   .tab td:nth-child(4) {
     width: 1%;
     white-space: nowrap;
   }
-
-  .tab td:nth-child(3) {
-    text-align: right;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .tsegPaid,
-  .tsegAdd,
-  .lbls > span,
+  .bar2 i,
   .mbar i,
   .opt,
   .go {
     transition: none;
   }
 
-  .tsegPaid,
-  .tsegAdd,
+  .bar2 i,
   .mbar i,
   .tab tbody tr,
   .esRows > span,
   .esBadge,
-  .modal,
-  .box,
   .spin {
     animation: none;
   }

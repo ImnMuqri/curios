@@ -1,0 +1,214 @@
+/*
+ * The payment toast, from the Dash board's `.ptoast`: a dark pill at the foot of the screen (light in
+ * dark mode, as the board flips it) with Peek, what happened, and one action. Under 1100px it spans the
+ * screen above the phone's menu and drops its second line.
+ */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.slot {
+  position: fixed;
+  left: calc(50% + 124px);
+  bottom: 28px;
+  /* Over the sheet (85) and the dialog (87), like the other toast. */
+  z-index: 88;
+  width: max-content;
+  max-width: calc(100vw / var(--page-zoom, 1) - 32px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.ptoast {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 10px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  box-shadow: 0 24px 50px -20px rgb(0 0 0 / 50%);
+  pointer-events: auto;
+  animation: rise 550ms cubic-bezier(0.3, 1.35, 0.5, 1) both;
+}
+
+/* A second line (card not kept) needs room to wrap; the pill becomes a rounded box. */
+.ptoast[data-note] {
+  max-width: 520px;
+  border-radius: 28px;
+}
+
+.face,
+.spin {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--ink) 80%, var(--paper));
+}
+
+.face svg {
+  width: 44px;
+  margin-top: 6px;
+}
+
+.face {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.spin {
+  box-sizing: border-box;
+  border: 3px solid color-mix(in srgb, var(--paper) 25%, var(--ink));
+  border-top-color: var(--paper);
+  background: transparent;
+  animation: spin 800ms linear infinite;
+}
+
+.words {
+  min-width: 0;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+
+.words b {
+  font-weight: 600;
+}
+
+.words small {
+  margin-left: 6px;
+  font-size: 13.5px;
+  color: color-mix(in srgb, var(--paper) 62%, var(--ink));
+}
+
+.words em {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  font-style: normal;
+  line-height: 1.45;
+  color: color-mix(in srgb, var(--paper) 62%, var(--ink));
+}
+
+.short {
+  display: none;
+}
+
+.act {
+  display: flex;
+  flex: none;
+  align-items: center;
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.x {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: color-mix(in srgb, var(--paper) 55%, var(--ink));
+  cursor: pointer;
+}
+
+.x:hover {
+  color: var(--paper);
+}
+
+.x svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.act:focus-visible,
+.x:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1100px) {
+  .slot {
+    left: 50%;
+    bottom: 92px;
+    width: calc(100vw / var(--page-zoom, 1) - 24px);
+    max-width: none;
+  }
+
+  .ptoast {
+    box-sizing: border-box;
+    width: 100%;
+  }
+
+  .ptoast[data-note] {
+    max-width: none;
+  }
+
+  .words {
+    flex: 1;
+  }
+
+  .words small {
+    display: none;
+  }
+
+  /* The give-up line says where the payment will show: it stays. */
+  .ptoast[data-lost] .words small {
+    display: block;
+    margin: 0;
+  }
+
+  .ptoast:not([data-note]) .words b {
+    display: block;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (max-width: 500px) {
+  .long {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ptoast,
+  .spin {
+    animation: none;
+  }
+}

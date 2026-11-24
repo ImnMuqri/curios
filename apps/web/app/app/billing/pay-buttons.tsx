@@ -1,8 +1,11 @@
 'use client';
 
 import type { BillingPlan } from '@curios/core';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
+import { Dialog } from '../_ui/dialog.js';
+import { SheetAction } from '../_ui/side-sheet.js';
+import { usePayDialog } from './pay-context.js';
 import styles from './billing.module.css';
 
 export interface PayOption {
@@ -17,17 +20,8 @@ export interface PayOption {
   unit: string;
   /** "2 months free", on the yearly one. */
   save?: string;
-  /** Where paid-until lands after paying for this: "14 Dec", "14 Dec 2026". */
-  afterShort: string;
+  /** Where paid-until lands after paying for this: "2 January 2027". The dialog says it, so the plan card does not draw it. */
   afterLong: string;
-  /** How much of the line from today to `after` is already paid, 0 to 100. */
-  paidPct: number;
-}
-
-/** Today, and paid-until when there is one, for the line over the plans. */
-export interface PayTimeline {
-  today: string;
-  paidUntil: string | null;
 }
 
 /**
@@ -47,50 +41,60 @@ export function payError(failure: unknown): string {
 }
 
 /**
- * Choosing how much time to add, and paying for it: the two plans as rows,
- * one Pay button, and a dialog that says what is about to happen before the
- * browser leaves for CHIP. With a paid-until date, a line above shows
- * today, paid-until and where paid-until lands after this payment.
+ * Choosing how much time to add, and paying for it: the two plans as rows, one
+ * Pay button, and a dialog that says what is about to happen (and where paid-until
+ * lands) before the browser leaves for CHIP.
  *
- * A box asks to keep the card for renewing. Ticked, CHIP is sent to take a card
- * only, since a card is the one thing that can be charged again; the API is
- * told with `autoRenew`, and `?card=off` says so if CHIP kept none.
+ * The dialog holds a box that asks to keep the card for renewing. Ticked, CHIP is
+ * sent to take a card only, since a card is the one thing that can be charged
+ * again; the API is told with `autoRenew`, and `?card=off` says so if CHIP kept
+ * none. It starts unticked each time the dialog opens: consent is given for the
+ * payment in front of the owner, never carried over from the last one.
  *
  * Presentational half of the wrapper split. Nothing is charged here: a purchase
  * is opened and the browser goes to CHIP, where the owner pays or does not.
  */
 export function PlanPay({
   options,
-  timeline,
   initialOpen = false,
   onPay,
   navigate,
 }: {
   options: PayOption[];
-  timeline?: PayTimeline;
-  /** The dialog is already open on arrival: "Try again" on a failed payment's page lands here. */
+  /** The dialog is already open on arrival (an old "Try again" link lands here). */
   initialOpen?: boolean;
   onPay: (plan: BillingPlan, autoRenew: boolean) => Promise<{ url: string }>;
   navigate: (url: string) => void;
 }) {
   const [chosen, setChosen] = useState<BillingPlan>(options[0]?.plan ?? 'MONTHLY');
   const [autoRenew, setAutoRenew] = useState(false);
-  const [open, setOpen] = useState(initialOpen);
+  // Shared with "Pay another way" and the payment toast when Billing provides it.
+  const shared = usePayDialog();
+  const [localOpen, setLocalOpen] = useState(initialOpen);
+  const open = shared ? shared.open : localOpen;
+  const setOpen = shared ? shared.setOpen : setLocalOpen;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const option = options.find((o) => o.plan === chosen) ?? options[0]!;
   const payButton = useRef<HTMLButtonElement>(null);
-  const firstInDialog = useRef<HTMLButtonElement>(null);
+  const hintId = useId();
+  const boxId = useId();
 
+  // Back from CHIP by the browser's Back button, the page can come out of the back-forward cache exactly
+  // as it was left: still "Opening CHIP…". Nothing is opening any more.
   useEffect(() => {
-    if (open) firstInDialog.current?.focus();
-  }, [open]);
+    const restored = (event: PageTransitionEvent) => {
+      if (event.persisted) setBusy(false);
+    };
+    window.addEventListener('pageshow', restored);
+    return () => window.removeEventListener('pageshow', restored);
+  }, []);
 
   function close() {
     if (busy) return;
     setOpen(false);
     setError('');
-    payButton.current?.focus();
+    setAutoRenew(false);
   }
 
   async function pay() {
@@ -106,36 +110,8 @@ export function PlanPay({
     }
   }
 
-  const paid = Math.max(0, Math.min(100, option.paidPct));
-  // The paid-until label moves with the line, and hides where it would crowd an end.
-  const untilAt = paid;
-  const untilShown = timeline?.paidUntil && untilAt >= 20 && untilAt <= 80;
-
   return (
     <>
-      {timeline ? (
-        <div className={styles.tl} aria-hidden="true">
-          <div className={styles.trk}>
-            <span className={styles.tsegPaid} style={{ width: `${paid}%` }} />
-            <span className={styles.tsegAdd} style={{ width: `${100 - paid}%` }} />
-          </div>
-          <div className={styles.lbls}>
-            <span style={{ left: 0 }}>
-              <b>Today</b>
-              {timeline.today}
-            </span>
-            {untilShown ? (
-              <span style={{ left: `${untilAt}%`, transform: untilAt > 70 ? 'translateX(-100%)' : 'translateX(-50%)' }}>
-                <b>{timeline.paidUntil}</b>Paid until
-              </span>
-            ) : null}
-            <span style={{ right: 0, textAlign: 'right' }}>
-              <b className={styles.after}>{option.afterShort}</b>After this payment
-            </span>
-          </div>
-        </div>
-      ) : null}
-
       <div className={styles.pick} role="radiogroup" aria-label="How much time to add">
         {options.map((o) => (
           <button key={o.plan} type="button" role="radio" aria-checked={o.plan === chosen} className={styles.opt} onClick={() => setChosen(o.plan)}>
@@ -152,74 +128,54 @@ export function PlanPay({
         ))}
       </div>
 
-      <div className={styles.tick}>
-        <label>
-          <input type="checkbox" checked={autoRenew} onChange={(event) => setAutoRenew(event.target.checked)} aria-describedby="renew-hint" />
-          Renew automatically by card
-        </label>
-        <small id="renew-hint">We’ll charge your card when this period ends. Turn it off any time.</small>
-      </div>
-
       <div className={styles.pay}>
         <button ref={payButton} type="button" className={styles.go} onClick={() => setOpen(true)}>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d="M3 6h18v13H3zM3 10h18" />
-          </svg>
           Pay {option.price}
         </button>
-        <p>
-          FPX, card or e-wallet, through CHIP.
-          <br />
-          It adds to the time you already have.
-        </p>
+        <p>FPX, e-wallet or card, through CHIP. It adds to the time you already have.</p>
       </div>
 
-      {open ? (
-        <div
-          className={styles.modal}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) close();
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') close();
-          }}
-        >
-          <div className={styles.box} role="dialog" aria-modal="true" aria-labelledby="pay-title">
-            {busy ? (
-              <div className={styles.wait} role="status">
-                <span className={styles.spin} aria-hidden="true" />
-                <b id="pay-title">Opening CHIP…</b>
-                <span>CHIP’s payment page opens next.</span>
-              </div>
-            ) : (
-              <>
-                <h2 id="pay-title">Add {option.period}</h2>
-                <p>You’ll go to CHIP to pay by {autoRenew ? 'card' : 'FPX, card or e-wallet'}, then come straight back here.</p>
-                <div className={styles.line}>
-                  <span>
-                    Business, 1 {option.unit}
-                    <small>Paid until becomes {option.afterLong}</small>
-                  </span>
-                  <b>{option.price}</b>
-                </div>
-                {error ? (
-                  <p className={styles.error} role="alert">
-                    {error}
-                  </p>
-                ) : null}
-                <div className={styles.foot}>
-                  <button ref={firstInDialog} type="button" className={styles.btn2} onClick={close}>
-                    Cancel
-                  </button>
-                  <button type="button" className={styles.prim} onClick={() => void pay()}>
-                    Continue to CHIP
-                  </button>
-                </div>
-              </>
-            )}
+      <Dialog
+        open={open}
+        onClose={close}
+        title={`Add ${option.period}`}
+        description={`You’ll go to CHIP to pay by ${autoRenew ? 'card' : 'FPX, card or e-wallet'}, then come straight back here.`}
+        returnFocusTo={payButton}
+      >
+        {busy ? (
+          <div className={styles.wait} role="status">
+            <span className={styles.spin} aria-hidden="true" />
+            <b>Opening CHIP…</b>
+            <span>CHIP’s payment page opens next.</span>
           </div>
-        </div>
-      ) : null}
+        ) : (
+          <>
+            <div className={styles.line}>
+              <span>
+                <b>Business, 1 {option.unit}</b>
+                <small>Paid until becomes {option.afterLong}</small>
+              </span>
+              <b className={styles.price}>{option.price}</b>
+            </div>
+            <div className={styles.tick}>
+              <input id={boxId} type="checkbox" checked={autoRenew} onChange={(event) => setAutoRenew(event.target.checked)} aria-describedby={hintId} />
+              <div>
+                <label htmlFor={boxId}>Renew automatically by card</label>
+                <small id={hintId}>We’ll charge your card when this period ends. Turn it off any time.</small>
+              </div>
+            </div>
+            {error ? (
+              <p className={styles.error} role="alert">
+                {error}
+              </p>
+            ) : null}
+            <SheetAction className={styles.continue} onClick={() => void pay()}>
+              Continue to CHIP
+            </SheetAction>
+            <p className={styles.hint}>CHIP’s payment page opens next.</p>
+          </>
+        )}
+      </Dialog>
     </>
   );
 }
@@ -230,11 +186,10 @@ export function PlanPay({
  * options arrive as plain data: this file must not import the @curios/core barrel,
  * whose node:crypto import has no place in a browser bundle.
  */
-export function PayButtons({ options, timeline, initialOpen }: { options: PayOption[]; timeline?: PayTimeline; initialOpen?: boolean }) {
+export function PayButtons({ options, initialOpen }: { options: PayOption[]; initialOpen?: boolean }) {
   return (
     <PlanPay
       options={options}
-      timeline={timeline}
       initialOpen={initialOpen}
       onPay={(plan, autoRenew) => apiFetch<{ url: string }>('/billing/purchases', { method: 'POST', body: JSON.stringify({ plan, autoRenew }) })}
       navigate={(url) => window.location.assign(url)}
