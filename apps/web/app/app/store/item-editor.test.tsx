@@ -43,7 +43,7 @@ function api(over: Partial<ItemsApi> = {}): ItemsApi {
 
 function show(item: EditorItem | null, calls = api(), uploadsEnabled = true, categories: string[] = [], paysOnline = false) {
   const props = { onSaved: vi.fn(), onPreview: vi.fn(), onRemoved: vi.fn(), onClose: vi.fn() };
-  render(<ItemEditor item={item} tint={0} uploadsEnabled={uploadsEnabled} paysOnline={paysOnline} api={calls} categories={categories} {...props} />);
+  render(<ItemEditor item={item} tint={0} uploadsEnabled={uploadsEnabled} paysOnline={paysOnline} api={calls} categories={categories} shop={{ handle: 'keklina', open: true }} {...props} />);
   return { calls, ...props };
 }
 
@@ -102,15 +102,14 @@ describe('ItemEditor, a new item', () => {
     expect(screen.queryByRole('button', { name: 'Remove item' })).toBeNull();
   });
 
-  it('will not close on Done while it cannot be saved, and says how to leave it', async () => {
-    const { onClose } = show(null);
+  it('leaves a draft that cannot be saved out, from All items, saying what it lacked on the way', async () => {
+    const { calls, onClose } = show(null);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Done' })); });
-    expect(onClose).not.toHaveBeenCalled();
-    expect(screen.getByRole('alert')).toHaveTextContent(/go back to All items to leave it out/);
+    expect(screen.getByText(/price does not look right/)).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'All items' }));
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /All items/ })); });
     expect(onClose).toHaveBeenCalled();
+    expect(calls.add).not.toHaveBeenCalled();
   });
 });
 
@@ -195,22 +194,42 @@ describe('ItemEditor, an existing item', () => {
     expect(calls.update).toHaveBeenCalledWith('a', { name: 'Kek Batik Raya', description: 'Ten slices.', category: null, tag: null, sku: null, pricing: { kind: 'single', priceCents: 4500 } });
   });
 
-  it('Done sends a change still waiting, at once, then closes', async () => {
+  it('All items sends a change still waiting, at once, then goes back', async () => {
     vi.useFakeTimers();
     const { calls, onClose } = show(batik);
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '50' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Done' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /All items/ })); });
     expect(calls.update).toHaveBeenCalledWith('a', expect.objectContaining({ pricing: { kind: 'single', priceCents: 5000 } }));
     expect(onClose).toHaveBeenCalled();
     await pause();
     expect(calls.update).toHaveBeenCalledTimes(1);
   });
 
+  it('stays when an earlier save failed and nothing is waiting, rather than leave it unsaved', async () => {
+    vi.useFakeTimers();
+    const calls = api({ update: vi.fn(async () => { throw new Error('offline'); }) });
+    const { onClose } = show(batik, calls);
+    fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '50' } });
+    await pause();
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /All items/ })); });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('sends what is waiting when the screen goes away any other way', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(batik);
+    fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '50' } });
+    cleanup();
+    await act(async () => {});
+    expect(calls.update).toHaveBeenCalledWith('a', expect.objectContaining({ pricing: { kind: 'single', priceCents: 5000 } }));
+  });
+
   it('stays open, with Retry, when that last save fails', async () => {
     const calls = api({ update: vi.fn(async () => { throw new Error('offline'); }) });
     const { onClose } = show(batik, calls);
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '50' } });
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Done' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('link', { name: /All items/ })); });
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
@@ -344,7 +363,7 @@ describe('ItemEditor, how they order', () => {
 
   it('opens a physical item on Add to basket, with the hint, and no starting price', () => {
     show(batik);
-    expect(screen.getByText('Made-to-order things, like custom cakes, work best as Ask')).toBeInTheDocument();
+    expect(screen.getByText('Made-to-order things, like custom cakes, work best as Ask.')).toBeInTheDocument();
     expect(tile(/^Add to basket/)).toHaveAttribute('aria-pressed', 'true');
     expect(tile(/^Ask for a price/)).toHaveAttribute('aria-pressed', 'false');
     expect(screen.queryByLabelText('Starting price in ringgit')).toBeNull();
@@ -361,8 +380,7 @@ describe('ItemEditor, how they order', () => {
     const from = screen.getByLabelText('Starting price in ringgit');
     expect(from).toHaveValue('45');
     expect(from).toHaveAttribute('placeholder', 'Leave empty');
-    expect(screen.getByText('What they fill in')).toBeInTheDocument();
-    expect(screen.getByText(/One message box, plus their name and WhatsApp/)).toBeInTheDocument();
+    expect(screen.getByText(/one message box, plus their name and WhatsApp/)).toBeInTheDocument();
 
     fireEvent.change(from, { target: { value: '' } });
     expect(screen.getByText('Customers see Price on request')).toBeInTheDocument();

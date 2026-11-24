@@ -28,14 +28,19 @@ export function sizeLabel(bytes: number): string {
 }
 
 /** "What it is": Physical or Digital, above Price. */
-export function KindSwitch({ draft, onDraft }: { draft: DigitalDraft; onDraft: (change: Partial<DigitalDraft>) => void }) {
+export const KIND_NOTE = { DIGITAL: 'No day, pickup or delivery at checkout', PHYSICAL: 'Customers pick a day, and pickup or delivery' } as const;
+
+/** With `headless`, the screen's own section heading (id `kind-title`) names the choice, so no heading of its own is drawn. */
+export function KindSwitch({ draft, onDraft, headless = false }: { draft: DigitalDraft; onDraft: (change: Partial<DigitalDraft>) => void; headless?: boolean }) {
   const digital = draft.kind === 'DIGITAL';
   return (
     <>
-      <div className={styles.sub}>
-        <b id="kind-title">What it is</b>
-        <span>{digital ? 'No day, pickup or delivery at checkout' : 'Customers pick a day, and pickup or delivery'}</span>
-      </div>
+      {headless ? null : (
+        <div className={styles.sub}>
+          <b id="kind-title">What it is</b>
+          <span>{KIND_NOTE[digital ? 'DIGITAL' : 'PHYSICAL']}</span>
+        </div>
+      )}
       <div className={styles.pricedBy} role="radiogroup" aria-labelledby="kind-title" style={{ '--at': digital ? 1 : 0 } as CSSProperties}>
         {(
           [
@@ -67,13 +72,18 @@ const NOT_YET = 'That has not saved yet. Give it a moment, then try again.';
 const NEEDS_ITEM = 'Give it a name and a price first';
 
 /** "How they get it": the four ways, and the panel for the one picked. Shown only for a digital item. */
-export function DigitalPanels({ draft, onDraft, ...panel }: PanelProps & DraftProps) {
+export const GET_NOTE = 'Sent after they pay, on their order page and by email';
+
+/** With `headless`, the screen's own section heading (id `get-title`) names the choice, so no heading of its own is drawn. */
+export function DigitalPanels({ draft, onDraft, headless = false, ...panel }: PanelProps & DraftProps & { headless?: boolean }) {
   return (
     <>
-      <div className={styles.sub}>
-        <b id="get-title">How they get it</b>
-        <span>Sent after they pay, on their order page and by email</span>
-      </div>
+      {headless ? null : (
+        <div className={styles.sub}>
+          <b id="get-title">How they get it</b>
+          <span>{GET_NOTE}</span>
+        </div>
+      )}
       <div className={styles.digitalTiles} role="group" aria-labelledby="get-title">
         {DELIVERIES.map((option) => (
           <button

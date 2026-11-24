@@ -1,6 +1,7 @@
 'use client';
 
 import type { OwnerVoucher } from '@curios/core/vouchers';
+import type { ItemStats } from '@curios/db-read';
 import { API_BASE, apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { sendFile } from '../../../lib/send-file.js';
@@ -20,6 +21,7 @@ const frameHeader = (frame: Frame) => ({ 'x-photo-frame': `${frame.x},${frame.y}
 export function StoreScreen({
   initial,
   items,
+  stats,
   look,
   qrUrl,
   uploadsEnabled,
@@ -31,9 +33,12 @@ export function StoreScreen({
   vouchers,
   pickupPlaces,
   initialTab,
+  editingId,
 }: {
   initial: StoreSettings;
   items: EditorItem[];
+  /** What each item has done lately, by item id. */
+  stats?: Record<string, ItemStats>;
   look: ShopLook;
   qrUrl: string | null;
   uploadsEnabled: boolean;
@@ -48,6 +53,8 @@ export function StoreScreen({
   pickupPlaces?: PickupPlaceView[];
   /** The tab to open on (`?tab=payment`); Items when there is none. */
   initialTab?: 'items' | 'payment' | 'delivery' | 'vouchers';
+  /** The item open on its own screen: an id, 'new', or null for the Store. */
+  editingId?: string | null;
 }) {
   const settingsApi: SettingsApi = {
     save: async (patch) => (await apiFetch<{ settings: StoreSettings }>('/store/settings', { method: 'PATCH', body: JSON.stringify(patch) })).settings,
@@ -122,9 +129,12 @@ export function StoreScreen({
   };
 
   return (
+    // A new key per read: a refresh brings fresh items, and they must replace the ones held.
     <StoreEditor
+      key={now.getTime()}
       initial={initial}
       items={items}
+      stats={stats}
       look={look}
       qrUrl={qrUrl}
       uploadsEnabled={uploadsEnabled}
@@ -135,6 +145,7 @@ export function StoreScreen({
       vouchers={vouchers}
       pickupPlaces={pickupPlaces}
       initialTab={initialTab}
+      editingId={editingId}
       settingsApi={settingsApi}
       itemsApi={itemsApi}
       chipApi={chipApi}

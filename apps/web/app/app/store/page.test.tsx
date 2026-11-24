@@ -121,6 +121,32 @@ describe('StorePage', () => {
     expect(StoreScreen.mock.calls[3]![0].initialTab).toBe('vouchers');
   });
 
+  it('hands over what each item has done lately, from the same store read', async () => {
+    const stats = { a: { sold: 12, enquiries: 0, seats: null } };
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], itemStats: stats, chip: noChip });
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
+    expect(StoreScreen.mock.calls[0]![0].stats).toEqual(stats);
+    expect(StoreScreen.mock.calls[0]![0].editingId).toBeNull();
+  });
+
+  it('opens an item on its own address, and sends a stale or foreign one back to the Store', async () => {
+    const item = { id: 'a', name: 'Kek batik', photoKey: null };
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [item], itemStats: {}, chip: noChip });
+    const { renderStore } = await import('./store-page.js');
+    render(await renderStore({ editing: 'a' }));
+    expect(StoreScreen.mock.calls[0]![0].editingId).toBe('a');
+    render(await renderStore({ editing: 'new' }));
+    expect(StoreScreen.mock.calls[1]![0].editingId).toBe('new');
+    await expect(renderStore({ editing: 'gone' })).rejects.toThrow('NEXT_REDIRECT:/app/store');
+  });
+
+  it('sends a new item back to the Store when the shop already holds the most it can', async () => {
+    const full = Array.from({ length: 60 }, (_u, i) => ({ id: `i${i}`, name: `Item ${i}`, photoKey: null }));
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: full, itemStats: {}, chip: noChip });
+    const { renderStore } = await import('./store-page.js');
+    await expect(renderStore({ editing: 'new' })).rejects.toThrow('NEXT_REDIRECT:/app/store');
+  });
+
   it('hands over the owner’s vouchers', async () => {
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
     getOwnerVouchers.mockResolvedValue([{ id: 'v1' }]);

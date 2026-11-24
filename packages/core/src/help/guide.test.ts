@@ -41,7 +41,7 @@ describe('the help guide file', () => {
   it('points every Open: at a real dashboard screen, and every tab at a tab that screen has', () => {
     const tabsOf: Record<string, string> = {
       knowledge: /KNOWLEDGE_TABS = \[([^\]]+)\]/.exec(readFileSync(join(repo, 'apps/web/app/app/knowledge/tabs.tsx'), 'utf8'))![1]!,
-      store: /TAB_NAMES = \[([^\]]+)\]/.exec(readFileSync(join(repo, 'apps/web/app/app/store/page.tsx'), 'utf8'))![1]!,
+      store: /TAB_NAMES = \[([^\]]+)\]/.exec(readFileSync(join(repo, 'apps/web/app/app/store/store-page.tsx'), 'utf8'))![1]!,
     };
     for (const e of helpGuide().entries) {
       if (!e.open) continue;
