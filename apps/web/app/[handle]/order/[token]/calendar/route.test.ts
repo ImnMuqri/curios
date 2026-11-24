@@ -90,7 +90,7 @@ const pickup = (patch: Partial<PublicOrder> = {}) =>
     pickupPlaceName: 'Rumah Lina',
     pickupPlaceAddress: 'No. 12, Jalan Kenanga 7/3, Seksyen 7, Shah Alam',
     ...patch,
-  } as Partial<PublicOrder>);
+  });
 
 describe('GET /[handle]/order/[token]/calendar?pickup=1', () => {
   it('sends an .ics for the pickup window, in Malaysia time, at the place', async () => {

@@ -262,8 +262,8 @@ export function AppFrame({
       timer = setTimeout(() => setBoot('gone'), BOOT_FADE_MS);
     };
     const cap = setTimeout(leave, Math.max(0, BOOT_CAP_MS - Math.round(performance.now())));
-    const fonts = document.fonts?.ready;
-    if (fonts) void fonts.then(leave, leave);
+    // Older browsers without the Font Loading API just leave once hydrated.
+    if ('fonts' in document) void document.fonts.ready.then(leave, leave);
     else leave();
     return () => {
       left = true;

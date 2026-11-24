@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const css = readFileSync(join(import.meta.dirname, 'store.module.css'), 'utf8');
-const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.[\]()]/g, '\$&')} \{[^}]*\}`))?.[0] ?? '';
+const rule = (selector: string) => css.match(new RegExp(`${selector.replace(/[.[\]()]/g, '\\$&')} \\{[^}]*\\}`))?.[0] ?? '';
 
 describe('store.module.css, after the owner review of 24 Nov 2026', () => {
   it('draws the ready box on one surface, and only a step control washes on hover', () => {

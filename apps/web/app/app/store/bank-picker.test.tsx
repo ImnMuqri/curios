@@ -5,7 +5,7 @@ import { BankPicker } from './bank-picker.js';
 /** Puts the picker's box at `top`..`bottom` on a screen `height` tall. */
 function placeAt(top: number, bottom: number, height = 800) {
   vi.spyOn(window, 'innerHeight', 'get').mockReturnValue(height);
-  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ top, bottom, left: 0, right: 400, width: 400, height: bottom - top, x: 0, y: top, toJSON: () => ({}) } as DOMRect);
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ top, bottom, left: 0, right: 400, width: 400, height: bottom - top, x: 0, y: top, toJSON: () => ({}) });
 }
 
 afterEach(() => vi.restoreAllMocks());

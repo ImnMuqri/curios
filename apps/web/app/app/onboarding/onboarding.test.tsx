@@ -340,13 +340,14 @@ describe('OnboardingFlow, from the More board', () => {
 
 describe('reduced motion', () => {
   it('stills the entrance, the scan and the bar', async () => {
-    const { readFileSync } = await import('node:fs');
-    const { join } = await import('node:path');
-    const css = readFileSync(join(import.meta.dirname, 'onboarding.module.css'), 'utf8');
+    const fs = await import('node:fs');
+    const path = await import('node:path');
+    const join = (...parts: string[]) => path.join(...parts);
+    const css = fs.readFileSync(join(import.meta.dirname, 'onboarding.module.css'), 'utf8');
     const block = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
     expect(block).toMatch(/\.body,\s*\.rl,\s*\.res\s*\{\s*animation: none;/);
     expect(block).toMatch(/\.pbar i\s*\{\s*transition: none;/);
-    const sys = readFileSync(join(import.meta.dirname, '..', '..', '_system', 'system.module.css'), 'utf8');
+    const sys = fs.readFileSync(join(import.meta.dirname, '..', '..', '_system', 'system.module.css'), 'utf8');
     expect(sys.slice(sys.indexOf('@media (prefers-reduced-motion: reduce)'))).toMatch(/\.sb\s*\{\s*animation: none;/);
   });
 });
