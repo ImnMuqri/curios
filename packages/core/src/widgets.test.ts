@@ -197,6 +197,12 @@ describe('SoundCloud', () => {
     refused('https://soundcloud.com/a/b%22c');
     refused('https://soundcloud.com/a/b/c/d');
   });
+  it("refuses an artist's own pages, which are not a track", () => {
+    for (const page of ['likes', 'reposts', 'albums', 'tracks', 'popular-tracks', 'followers', 'following', 'comments', 'sets', 'Likes']) {
+      refused(`https://soundcloud.com/some-artist/${page}`);
+    }
+    expect(parseWidgetLink('https://soundcloud.com/some-artist/my-likes-mix')).toMatchObject({ ok: true });
+  });
 });
 
 describe('Google Maps', () => {

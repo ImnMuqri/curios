@@ -138,7 +138,7 @@ function refOk(provider: WidgetProvider, ref: string): boolean {
       return x.length === 0 && (kind === 'v' || kind === 'list') && ID.test(id ?? '');
     }
     case 'SOUNDCLOUD':
-      return SOUNDCLOUD_CANON.test(ref);
+      return SOUNDCLOUD_CANON.test(ref) && !SOUNDCLOUD_PROFILE_PAGES.includes(ref.split('/')[4]!.toLowerCase());
     case 'GOOGLE_MAPS':
       return placeOk(ref);
     case 'CALCOM':
@@ -202,10 +202,13 @@ function parseYouTube(u: URL): WidgetParse {
   return refuse('YOUTUBE');
 }
 
+/** Second segments that are a profile's own pages, not a track (and `sets` with no playlist after it). */
+const SOUNDCLOUD_PROFILE_PAGES = ['likes', 'reposts', 'albums', 'tracks', 'popular-tracks', 'followers', 'following', 'comments', 'sets'];
+
 function parseSoundCloud(u: URL): WidgetParse {
   const parts = segments(u.pathname);
   const word = /^[A-Za-z0-9_-]+$/;
-  if (parts.length === 2 && parts.every((p) => word.test(p))) {
+  if (parts.length === 2 && parts.every((p) => word.test(p)) && !SOUNDCLOUD_PROFILE_PAGES.includes(parts[1]!.toLowerCase())) {
     return ok('SOUNDCLOUD', `https://soundcloud.com/${parts[0]}/${parts[1]}`);
   }
   if (parts.length === 3 && parts[1] === 'sets' && parts.every((p) => word.test(p))) {
