@@ -1055,7 +1055,7 @@
 
 .bentoGrid > li > .shopLink {
   display: flex;
-  align-items: center;
+  align-items: stretch;
 }
 
 .bentoGrid > li > .shopLink > .shopIn {
@@ -1094,4 +1094,29 @@
   .bentoGrid > li > .link > span {
     padding: 8px 10px;
   }
+}
+
+/* A tile is never a stadium: Soft's 999px would turn a Tall tile into an oval, so the corner stops at a card's. */
+.bentoGrid > li > .shopLink,
+.bentoGrid > li > .link,
+.bentoGrid > li > .link > span,
+.bentoGrid > li > .shopLink > .shopIn {
+  border-radius: min(var(--btn-radius), 26px);
+}
+
+/* The shop in a tile that is not wide: photos over words, no chevron. */
+.bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopIn {
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px;
+  text-align: center;
+}
+
+.bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopIn > svg {
+  display: none;
+}
+
+.bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopText {
+  flex: none;
+  max-width: 100%;
 }
