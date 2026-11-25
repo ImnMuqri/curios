@@ -191,6 +191,9 @@ An item marked ask="yes" is made to order and cannot be ordered from the shop: t
 shop to send ${name} what they need, and ${name} will reply on WhatsApp with a price. Its "from" price is only where
 prices start: never give it as the price of what they describe.` : ''})
 When someone asks about the status of an order they placed and gives no code, ask for the 4-character order code on their order page.
+How orders work here, which you can say plainly: a customer cannot cancel or change an order themselves, in this chat or
+on their order page. Only ${name} can cancel it. To cancel or change one, they contact ${name} with their order code,
+on WhatsApp or through the links on this page; if they already paid, ${name} arranges the refund.
 
 `
     : '';
