@@ -62,14 +62,24 @@ Open: /app/curios
 Source: devDocs/slice-13-build-spec.md; My Curios copy
 
 ### page-links · How do I add, reorder or resize links?
-In My Curios, on Links, add a link (a website, WhatsApp, Instagram, an email or a phone number) or a widget. To put them in order, open Layout and drag each row by its handle, or focus a row, press Space, move it with the arrow keys and press Space again. You can have up to 30 links. Your page’s chat can point people to them too.
+In My Curios, on Links, add a link (a website, WhatsApp, Instagram, an email or a phone number) or a widget. To put them in order, open Layout and drag each row by its handle, or focus a row, press Space, move it with the arrow keys and press Space again. To make a link bigger or smaller, open Layout, choose Bento, and pick a size on its row. You can have up to 30 links. Your page’s chat can point people to them too.
 Open: /app/curios
 Source: packages/core/src/bento.ts (MAX_LINKS); apps/web/app/app/curios/links-editor.tsx; apps/web/app/app/curios/layout-editor.tsx
 
 ### page-shop-tile · How do I remove the shop link from my page?
-The Shop button shows on your page whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. In Layout you can drag it (and People often ask) to any place among your links. It can’t be resized.
+The Shop button shows on your page whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. In Layout you can drag it (and People often ask) to any place among your links. In Bento you can also pick a size for it there: Auto, Small, Wide, Tall or Big.
 Open: /app/curios
 Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
+
+### page-widgets · How do I add a song, a map or a booking calendar to my page?
+Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s.
+Open: /app/curios
+Source: packages/core/src/widgets.ts; apps/web/app/app/curios/links-editor.tsx
+
+### page-layout-bento · What is the difference between List and Bento?
+List shows your links one under another, all the same size. Bento shows them as a grid of tiles, and you choose how big each one is. In My Curios, open Layout and pick List or Bento. In Bento, each row has a size: Auto, Small, Wide, Tall or Big. Auto lets your page fill the grid for you. Your shop button can be sized too, and you can drag anything into a new place.
+Open: /app/curios
+Source: packages/core/src/bento.ts; apps/web/app/app/curios/layout-editor.tsx
 
 ### page-google · Why isn’t my page on Google?
 Personal pages start out of search results, because most people don’t want an AI page about themselves ranking for their name. You can switch that on in Settings. Business pages are always in search results. New pages can take Google a while to find.

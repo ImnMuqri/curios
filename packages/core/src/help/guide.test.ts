@@ -38,6 +38,15 @@ describe('the help guide file', () => {
     }
   });
 
+  it('explains widgets and List versus Bento, and no longer says the shop cannot be resized', () => {
+    const byId = new Map(helpGuide().entries.map((e) => [e.id, e]));
+    expect(byId.get('page-widgets')?.answer).toMatch(/Spotify.*Apple Music.*YouTube Music.*SoundCloud.*Google Maps.*Cal\.com.*Calendly.*Canva/);
+    expect(byId.get('page-widgets')?.answer).toContain('Add a widget');
+    expect(byId.get('page-layout-bento')?.answer).toMatch(/List.*Bento/);
+    expect(byId.get('page-shop-tile')?.answer).not.toContain('resized');
+    expect(byId.get('page-links')?.answer).toContain('Bento');
+  });
+
   it('points every Open: at a real dashboard screen, and every tab at a tab that screen has', () => {
     const tabsOf: Record<string, string> = {
       knowledge: /KNOWLEDGE_TABS = \[([^\]]+)\]/.exec(readFileSync(join(repo, 'apps/web/app/app/knowledge/tabs.tsx'), 'utf8'))![1]!,
