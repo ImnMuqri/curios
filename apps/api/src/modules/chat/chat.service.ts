@@ -213,6 +213,14 @@ export class PageNotFoundError extends Error {
  */
 export const MAX_HISTORY_MESSAGES = 10;
 
+/**
+ * Messages one conversation holds (the visitor's and the replies) before the next question starts a
+ * new one. The month's meter counts conversations, so without this one conversation was an unmetered
+ * stream of model calls, bounded only by the per-IP limits a spread of addresses gets around. Thirty
+ * questions is far past any real visitor's; the next one starts afresh, and costs the owner one more.
+ */
+export const MAX_MESSAGES_PER_CONVERSATION = 60;
+
 export class ConversationNotFoundError extends Error {
   readonly statusCode = 404;
   readonly code = 'CONVERSATION_NOT_FOUND';
@@ -518,6 +526,10 @@ export async function* answer(
   // Whether this turn is the conversation's first real one: a new
   // conversation, or one that so far held only order lookups.
   let firstQuestion: boolean;
+
+  // A full conversation is closed to new questions: the next one opens a new conversation, on the meter.
+  // The client takes the new id from the reply's `done`, as it does for a first question.
+  if (thread && thread._count.messages >= MAX_MESSAGES_PER_CONVERSATION) thread = null;
 
   if (!thread) {
     const created = await prisma.conversation.create({

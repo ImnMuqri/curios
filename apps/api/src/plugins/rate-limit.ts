@@ -420,6 +420,25 @@ export function authPerEmailLimit(redis: IORedis): RateLimitPluginOptions {
 }
 
 /**
+ * The admin sign-in, per address as well as per IP: the per-IP limit alone lets guesses at one admin's
+ * password come from many addresses at once. Its own bucket, tighter than an owner's: there are a
+ * handful of admins, and none of them signs in often.
+ */
+export function adminSigninPerEmailLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('admin-signin-email:'),
+    max: limit('RATE_LIMIT_ADMIN_SIGNIN_PER_EMAIL', 5),
+    timeWindow: '15 minutes',
+    keyGenerator: perRouteEmailKey,
+    errorResponseBuilder: tooMany((after) => `Too many attempts. Try again in ${after}.`),
+  };
+}
+
+/**
  * Per account, on starting a payment. Every request starts a purchase at CHIP, so an
  * owner or a runaway loop must not be able to start them without bound.
  *

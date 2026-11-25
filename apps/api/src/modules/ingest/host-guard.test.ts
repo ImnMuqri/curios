@@ -11,7 +11,9 @@ describe('createHostGuard', () => {
   });
 
   it('rejects a host that resolves into a private range', async () => {
+    // As production runs: a developer's .env may allow private addresses, which must not pass this test for it.
     const guard = createHostGuard({
+      allowPrivate: false,
       lookup: async () => [{ address: '10.0.0.5', family: 4 }],
     });
     await expect(guard('internal.example')).rejects.toBeInstanceOf(BlockedAddressError);

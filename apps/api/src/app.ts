@@ -27,6 +27,7 @@ import { adminPaymentsRoutes } from './modules/admin/admin-payments.routes.js';
 import { adminSettingsRoutes } from './modules/admin/admin-settings.routes.js';
 import { adminSourcesRoutes } from './modules/admin/admin-sources.routes.js';
 import {
+  adminSigninPerEmailLimit,
   adminSigninPerIpLimit,
   authPerEmailLimit,
   authPerIpLimit,
@@ -409,6 +410,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await app.register(adminSessionPlugin);
     await app.register(async (scope) => {
       await scope.register(rateLimit, adminSigninPerIpLimit(app.rateLimitRedis));
+      await scope.register(rateLimit, adminSigninPerEmailLimit(app.rateLimitRedis));
       await scope.register(adminSigninRoutes);
     });
     await app.register(adminSessionRoutes);
