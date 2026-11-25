@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEAD_RETENTION_MONTHS, SESSION_COOKIE } from '@curios/core';
@@ -8,6 +9,9 @@ import { resolveOwner } from '../session.js';
 import { Leads } from './leads-screen.js';
 import { PageHead } from '../_ui/page-head.js';
 import panel from '../panel.module.css';
+
+/** The tab's name: "Curios - Leads" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Leads' };
 
 /**
  * The number, the conversation behind it, and what to do about it.

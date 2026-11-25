@@ -23,6 +23,8 @@ export interface MyCurios {
   coverKey: string | null;
   /** Top is the cover as a band at the head of the page; Full fills the page behind the content. */
   coverLayout: CoverLayout;
+  /** Full page only: the page colour over the photo (true) or the photo as it is. */
+  coverWash: boolean;
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
@@ -66,6 +68,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       avatarBorder: true,
       coverKey: true,
       coverLayout: true,
+      coverWash: true,
       background: true,
       backgroundColor: true,
       socials: true,

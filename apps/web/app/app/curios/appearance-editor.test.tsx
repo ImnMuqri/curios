@@ -162,7 +162,7 @@ describe('AppearanceEditor background', () => {
     const save = vi.fn(async () => undefined);
     const onChange = vi.fn();
     render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
-    await userEvent.click(within(screen.getByRole('group', { name: 'Page' })).getByRole('button', { name: 'Ink' }));
+    await userEvent.click(within(screen.getByRole('group', { name: 'Page colour' })).getByRole('button', { name: 'Ink' }));
     expect(save).toHaveBeenCalledWith({ background: 'INK' });
     expect(onChange).toHaveBeenCalledWith({ background: 'INK' });
   });

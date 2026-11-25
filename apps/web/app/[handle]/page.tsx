@@ -142,6 +142,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         backgroundColor={page.backgroundColor}
         coverUrl={coverUrl(page.coverKey)}
         coverLayout={page.coverLayout}
+        coverWash={page.coverWash}
         language={page.language}
         socials={page.socials}
         faq={faq}

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { PASTED_TEXT_MAX, SESSION_COOKIE } from '@curios/core';
@@ -6,6 +7,9 @@ import { getOwnerPage, getReviewQueue, getSettings } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { ringgit } from '@curios/core/money';
 import { Onboarding } from './onboarding.js';
+
+/** The tab's name: "Curios - Set up your page" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Set up your page' };
 
 /**
  * Onboarding, from the More board (ob1 to ob4): claim the address,

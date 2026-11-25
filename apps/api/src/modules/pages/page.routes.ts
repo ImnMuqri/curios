@@ -153,6 +153,7 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
           avatarSize: z.enum(AVATAR_SIZES).optional(),
           avatarBorder: z.boolean().optional(),
           coverLayout: z.enum(COVER_LAYOUTS).optional(),
+          coverWash: z.boolean().optional(),
           displayName: z.string().max(400).optional(),
           bio: z.string().max(2000).nullable().optional(),
           // Strict, so a kind this does not know is refused rather than stored.

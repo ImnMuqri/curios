@@ -702,6 +702,8 @@ a.headLink {
   --phone-inset-x: 24px;
   /* The home bar: what floats at a page's foot (a basket, an ask bar) stays above it. */
   --phone-inset-bottom: 20px;
+  /* The phone's screen height, for what fills one screen (a Full page cover's photo). */
+  --screen-h: 780px;
   position: absolute;
   top: 0;
   left: 0;

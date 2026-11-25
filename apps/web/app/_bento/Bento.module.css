@@ -307,11 +307,13 @@
 
 /* The photo is one screen tall and stays put as the page scrolls, so its crop is the screen's, sharp
    and the same however long the content grows. */
+/* One screen tall: the browser's, or the phone preview's own (--screen-h, set by the dashboard's preview),
+   which a browser window shorter than the phone would otherwise leave a strip of page colour under. */
 .coverFull img {
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100lvh;
+  height: var(--screen-h, 100lvh);
   mask-image: none;
 }
 
@@ -325,6 +327,30 @@
     color-mix(in srgb, var(--page-bg) 70%, transparent),
     color-mix(in srgb, var(--page-bg) 84%, transparent) calc(100vh * 0.55)
   );
+}
+
+/* No wash: the photo as it is. The words take a soft shadow of the page colour instead, so they still read. */
+.page[data-cover-wash='off'] .coverFull::after {
+  content: none;
+}
+
+.page[data-cover-wash='off'] .head :is(h1, h2, p, a, span, small) {
+  text-shadow:
+    0 1px 2px color-mix(in srgb, var(--page-bg) 90%, transparent),
+    0 0 10px color-mix(in srgb, var(--page-bg) 80%, transparent),
+    0 0 22px color-mix(in srgb, var(--page-bg) 60%, transparent);
+}
+
+/* The quieter lines under the name (the address, the bio) take the full text colour over a bare photo. */
+.page[data-cover-wash='off'] .head {
+  --page-soft: var(--page-fg);
+}
+
+/* The questions card holds small text: a frosted backing of the page colour, so it reads on any photo. */
+.page[data-cover-wash='off'] .faq {
+  background: color-mix(in srgb, var(--page-bg) 62%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
 @supports (height: 100lvh) {

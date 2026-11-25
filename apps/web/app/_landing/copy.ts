@@ -286,9 +286,9 @@ const SAMPLE_SALE = { start: 100, fees: [5, 4, 2.16], bank: 1 };
 const EN: LandingBase = {
   locale: 'en',
   meta: {
-    title: 'Curios: a link in bio people can ask',
+    title: 'Curios: one link that answers for you',
     description:
-      'Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English. Free for anyone.',
+      'Share one link and let it answer what people keep asking: your work, your rates, your shop. Curios replies from facts you approve, in Malay or English. Free for anyone.',
     ogAlt: 'Aisyah’s Curios page, asked if she is taking commissions, answering that two November slots are left.',
     ogLocale: 'en_MY',
   },
@@ -305,11 +305,11 @@ const EN: LandingBase = {
     other: { href: '/ms', short: 'BM', name: 'Bahasa Melayu', lang: 'ms' },
   },
   hero: {
-    eyebrow: 'Link in bio, for Malaysia',
+    eyebrow: 'One link. Every answer.',
     line: 'Don’t read the bio.',
     ask: 'Ask',
     title: 'Don’t read the bio. Ask Aisyah.',
-    lede: 'Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English, and never makes anything up.',
+    lede: 'Curios is one page that answers the questions people keep asking you: your work, your rates, your shop. It replies from facts you approve, in Malay or English, and never makes anything up.',
     claimLabel: 'The address you want for your page',
     placeholder: 'yourname',
     button: 'Claim it, free',
@@ -348,7 +348,7 @@ const EN: LandingBase = {
   },
   how: {
     eyebrow: 'How it works',
-    title: 'Ten minutes from blank to bio link',
+    title: 'Ten minutes from blank to answering',
     steps: [
       { title: 'Tell it about you', body: 'Paste your website, your Linktree, or just a few honest paragraphs. It reads them and pulls out the facts.' },
       { title: 'Approve what’s right', body: 'Each fact comes up as a card. Keep the right ones, fix the rest. It never says anything you didn’t approve.' },
@@ -495,9 +495,9 @@ const EN: LandingBase = {
 const MS: LandingBase = {
   locale: 'ms',
   meta: {
-    title: 'Curios: link bio yang orang boleh tanya',
+    title: 'Curios: satu link yang menjawab untuk anda',
     description:
-      'Curios ialah link bio yang orang boleh tanya. Tentang anda, kerja anda, harga anda, kedai anda. Ia jawab ikut fakta yang anda luluskan, dalam BM atau English. Percuma untuk semua.',
+      'Kongsi satu link, biar ia jawab soalan orang: kerja, harga, kedai anda. Curios jawab ikut fakta yang anda luluskan, dalam BM atau English. Percuma untuk semua.',
     ogAlt: 'Halaman Curios Aisyah, ditanya sama ada dia ambil tempahan, menjawab tinggal dua slot November.',
     ogLocale: 'ms_MY',
   },
@@ -514,11 +514,11 @@ const MS: LandingBase = {
     other: { href: '/', short: 'EN', name: 'English', lang: 'en' },
   },
   hero: {
-    eyebrow: 'Link bio, untuk Malaysia',
+    eyebrow: 'Satu link. Semua jawapan.',
     line: 'Tak payah baca bio.',
     ask: 'Tanya',
     title: 'Tak payah baca bio. Tanya Aisyah.',
-    lede: 'Curios ialah link bio yang orang boleh tanya. Tentang anda, kerja anda, harga anda, kedai anda. Ia jawab ikut fakta yang anda luluskan, dalam BM atau English, dan tak pernah reka jawapan.',
+    lede: 'Curios ialah satu page yang menjawab soalan orang selalu tanya anda: kerja anda, harga anda, kedai anda. Ia jawab ikut fakta yang anda luluskan, dalam BM atau English, dan tak pernah reka jawapan.',
     claimLabel: 'Alamat yang anda mahu untuk halaman anda',
     placeholder: 'namaanda',
     button: 'Ambil, percuma',
@@ -557,7 +557,7 @@ const MS: LandingBase = {
   },
   how: {
     eyebrow: 'Cara ia berfungsi',
-    title: 'Sepuluh minit dari kosong ke link bio',
+    title: 'Sepuluh minit dari kosong ke siap menjawab',
     steps: [
       { title: 'Beritahu tentang anda', body: 'Tampal laman web anda, Linktree anda, atau beberapa perenggan jujur. Ia baca dan keluarkan faktanya.' },
       { title: 'Luluskan yang betul', body: 'Setiap fakta keluar sebagai kad. Simpan yang betul, betulkan yang lain. Ia tak cakap apa yang anda tak luluskan.' },

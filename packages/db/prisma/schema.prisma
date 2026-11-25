@@ -310,6 +310,8 @@ model Page {
   coverBottom         String?
   /// TOP is the cover as a band at the head of the page; FULL fills the whole page behind the content.
   coverLayout         CoverLayout         @default(TOP)
+  /// Full page only: the page's colour washed over the photo (true, how Full began) or the photo as it is.
+  coverWash           Boolean             @default(true)
   background          PageBackground      @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.

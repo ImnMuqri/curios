@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Callout } from '@curios/ui';
 import { OFFERED_COVERS, stockCoverName, type CoverLayout, type HeadingFont, type PageBackground, type StockCover } from '@curios/core/bento';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { SectionHead } from '../_ui/section-head.js';
 import { Segmented } from '../_ui/segmented.js';
+import { Switch } from '../_ui/switch.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
@@ -34,6 +35,7 @@ export function CoverEditor({
   uploadsEnabled,
   look,
   coverLayout,
+  coverWash = true,
   onLayout,
   saveLayout,
   onCover,
@@ -48,8 +50,10 @@ export function CoverEditor({
   look: { accentColor: string; headingFont: HeadingFont; background: PageBackground; backgroundColor: string | null };
   /** Top (the band at the head of the page) or Full page (behind everything); saved at once, the preview following. */
   coverLayout: CoverLayout;
-  onLayout: (change: { coverLayout: CoverLayout }) => void;
-  saveLayout: (patch: { coverLayout: CoverLayout }) => Promise<unknown>;
+  /** Full page only: the page colour over the photo (true) or the photo as it is. */
+  coverWash?: boolean;
+  onLayout: (change: { coverLayout: CoverLayout } | { coverWash: boolean }) => void;
+  saveLayout: (patch: { coverLayout: CoverLayout } | { coverWash: boolean }) => Promise<unknown>;
   onCover: (cover: { coverKey: string | null; coverUrl: string | null }) => void;
   chooseStock: (name: StockCover) => Promise<{ coverKey: string; coverUrl: string | null }>;
   uploadCover: (file: File) => Promise<{ coverKey: string; coverUrl: string | null }>;
@@ -86,6 +90,18 @@ export function CoverEditor({
       setError('That did not save. Try again.');
     });
   };
+  const washSent = useRef(0);
+  const chooseWash = (next: boolean) => {
+    const mine = ++washSent.current;
+    setError('');
+    onLayout({ coverWash: next });
+    saveLayout({ coverWash: next }).catch(() => {
+      if (washSent.current !== mine) return;
+      onLayout({ coverWash: !next });
+      setError('That did not save. Try again.');
+    });
+  };
+  const washId = useId();
   const remove = () =>
     void run(async () => {
       await removeCover();
@@ -187,6 +203,17 @@ export function CoverEditor({
           {coverKey ? 'Top keeps the photo at the head of your page. Full page puts it behind everything.' : 'Pick a photo first: Full page fills the page with it.'}
         </small>
       </div>
+
+      {/* Full page only: the page colour washed over the photo keeps any photo readable; off, the photo shows as it is. */}
+      {coverKey && coverLayout === 'FULL' ? (
+        <div className={styles.washRow}>
+          <span className={styles.washText}>
+            <b id={washId}>Page colour over the photo</b>
+            <small>{coverWash ? 'Softens the photo so your words stay easy to read.' : 'The photo as it is. Your words get a soft shadow to stay readable.'}</small>
+          </span>
+          <Switch checked={coverWash} aria-labelledby={washId} onChange={chooseWash} />
+        </div>
+      ) : null}
 
       {error ? <Callout tone="error">{error}</Callout> : null}
     </section>

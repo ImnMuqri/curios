@@ -33,6 +33,7 @@ export type AppearancePatch = Partial<{
   avatarSize: AvatarSize;
   avatarBorder: boolean;
   coverLayout: CoverLayout;
+  coverWash: boolean;
   displayName: string;
   bio: string | null;
   socials: Socials;
@@ -217,6 +218,7 @@ export function MyCuriosEditor({
               uploadsEnabled={uploadsEnabled}
               look={page}
               coverLayout={page.coverLayout}
+              coverWash={page.coverWash}
               onLayout={update}
               saveLayout={api.saveAppearance}
               onCover={update}

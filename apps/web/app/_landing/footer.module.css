@@ -33,6 +33,16 @@
   font-size: 13px;
 }
 
+.badge {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin-top: -16px;
+}
+
+.badge img {
+  display: block;
+}
+
 .legal {
   grid-column: 1 / -1;
   display: flex;

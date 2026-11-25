@@ -1,4 +1,8 @@
+import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
+
+/** The tab's name: "Curios - Billing" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Billing' };
 
 /**
  * Where CHIP's return used to land after a plan payment that did not complete. The result is now a toast

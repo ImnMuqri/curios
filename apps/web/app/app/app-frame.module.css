@@ -103,7 +103,7 @@
 }
 
 .brand {
-  --l-wordmark: 25px;
+  --l-wordmark: 30px;
   display: inline-flex;
   align-self: flex-start;
   margin: 4px 12px 22px;
@@ -771,7 +771,7 @@
   }
 
   .topBrand {
-    --l-wordmark: 22px;
+    --l-wordmark: 26px;
     display: inline-flex;
     margin-right: auto;
     color: var(--ink);

@@ -45,7 +45,7 @@ export function helpPrompt(guide: HelpGuide, terms: GuideTerms): string {
   const entries = guide.entries
     .map((e) => `<entry id="${e.id}" section="${e.section}">\nQ: ${e.question}\nA: ${fillPlaceholders(e.answer, terms)}\n</entry>`)
     .join('\n');
-  return `You are Curios help, inside the dashboard of Curios, a link-in-bio page that visitors can ask questions. You answer the page owner's questions about using Curios.
+  return `You are Curios help, inside the dashboard of Curios, a single-link page that answers visitors' questions. You answer the page owner's questions about using Curios.
 
 Answer ONLY from the help guide below. Each entry has an id, a question and an answer.
 

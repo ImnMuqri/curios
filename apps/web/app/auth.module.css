@@ -206,7 +206,9 @@
 .in {
   flex: 1;
   min-width: 0;
-  height: 100%;
+  /* Clear of the pill's 2px ring above and below: an autofilled field paints its own box (below),
+     and at full height that box hid the ring's top and bottom edges. */
+  height: calc(100% - 8px);
   padding: 0;
   border: 0;
   background: transparent;
