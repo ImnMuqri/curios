@@ -15,7 +15,7 @@
     "@curios/core": "workspace:*",
     "@curios/db-read": "workspace:*",
     "@sentry/nextjs": "10.76.2",
-    "next": "^15.1.3",
+    "next": "^15.5.29",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
