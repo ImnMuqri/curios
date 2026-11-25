@@ -188,18 +188,24 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
     await tx.link.delete({ where: { id } });
     // Close the gap, so positions stay 0..n-1 and the next add lands last.
     await tx.link.updateMany({ where: { pageId, position: { gt: link.position } }, data: { position: { decrement: 1 } } });
-    // The shop tile's position is an index into the same list, so a link removed above it
-    // would otherwise slide the tile down one place past its neighbour. While the shop is
-    // closed the stored position is not in play, and reorderLinks rewrites it when it opens.
-    await tx.page.updateMany({
-      where: { id: pageId, storeEnabled: true, shopTilePosition: { gt: link.position } },
-      data: { shopTilePosition: { decrement: 1 } },
+    // link.position counts links only; the shop and FAQ positions index the full list. Find the
+    // removed link's index in the full list (lowest tile first, so the second comparison sees the
+    // first's effect), then pull down every tile that sat after it. While the shop is closed its
+    // stored position is not in play, and reorderLinks rewrites it when it opens.
+    const page = await tx.page.findUnique({
+      where: { id: pageId },
+      select: { storeEnabled: true, shopTilePosition: true, faqPosition: true },
     });
-    // The same for the FAQ block, whose position (when it has one) indexes the same list.
-    await tx.page.updateMany({
-      where: { id: pageId, faqPosition: { gt: link.position } },
-      data: { faqPosition: { decrement: 1 } },
-    });
+    if (!page) return;
+    const tiles: { key: 'shopTilePosition' | 'faqPosition'; position: number }[] = [];
+    if (page.storeEnabled) tiles.push({ key: 'shopTilePosition', position: page.shopTilePosition });
+    if (page.faqPosition !== null) tiles.push({ key: 'faqPosition', position: page.faqPosition });
+    tiles.sort((x, y) => x.position - y.position);
+    let removedAt = link.position;
+    for (const tile of tiles) if (tile.position <= removedAt) removedAt += 1;
+    const data: { shopTilePosition?: number; faqPosition?: number } = {};
+    for (const tile of tiles) if (tile.position > removedAt) data[tile.key] = tile.position - 1;
+    if (Object.keys(data).length > 0) await tx.page.update({ where: { id: pageId }, data });
   });
 }
 
@@ -214,8 +220,10 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
  * any link. Its index is the page's shopTilePosition.
  *
  * The FAQ block travels as FAQ_TILE_ID, once on a business page and never on a personal one; its
- * index is faqPosition. Compatibility until the editor sends it (Task 9): a business list WITHOUT
- * FAQ_TILE_ID is accepted and leaves faqPosition unchanged.
+ * index is faqPosition. TEMPORARY compatibility: a business list WITHOUT FAQ_TILE_ID is accepted and
+ * leaves faqPosition unchanged. Remove this when the Layout tab ships (Task 9: business lists must
+ * then contain 'faq'): a list without 'faq' stores the shop as an index into a list without the FAQ
+ * block, which shifts the shop when faqPosition is non-null.
  */
 export async function reorderLinks(prisma: PrismaClient, accountId: string, ids: string[]): Promise<void> {
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true, mode: true } });

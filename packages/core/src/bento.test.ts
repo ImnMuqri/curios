@@ -236,6 +236,11 @@ describe('pageEntries', () => {
     expect(ids({ position: 4 }, { position: 3 })).toEqual(['a', 'b', 'c', FAQ_TILE_ID, SHOP_TILE_ID]);
   });
 
+  it('keeps the shop at its saved index when a business page passes faq', () => {
+    // saved from [faq, a, shop, b, c]: faq 0, shop 2
+    expect(ids({ position: 2 }, { position: 0 })).toEqual([FAQ_TILE_ID, 'a', SHOP_TILE_ID, 'b', 'c']);
+  });
+
   it('gives the FAQ a wide size', () => {
     expect(pageEntries(links, null, { position: null }).at(-1)).toMatchObject({ kind: 'faq', size: 'WIDE' });
   });

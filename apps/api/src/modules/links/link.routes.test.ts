@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import { LABEL_MAX, MAX_LINKS } from '@curios/core/bento';
+import { LABEL_MAX, MAX_LINKS, pageEntries } from '@curios/core/bento';
 import { LinkLimitError } from './link.service.js';
 import { addWidget } from './link.service.js';
 import { buildApp } from '../../app.js';
@@ -322,6 +322,46 @@ describe('PUT /links/order with the FAQ block', () => {
     expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['faq', a, 'shop', b] })).statusCode).toBe(200);
     const page = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } });
     expect([page.faqPosition, page.shopTilePosition]).toEqual([0, 2]);
+  });
+});
+
+describe('DELETE /links/:id with the shop tile and the FAQ block', () => {
+  async function arranged(order: string[]) {
+    const owner = await anOwner();
+    await app.prisma.page.update({
+      where: { id: owner.pageId },
+      data: { mode: 'BUSINESS', storeEnabled: true, pickupEnabled: true, paymentQrKey: 'qr/x.png' },
+    });
+    const a = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link.id as string;
+    const b = (await call(owner.cookie, 'POST', '/links', { label: 'B', url: 'b.com' })).json().link.id as string;
+    const ids = order.map((x) => (x === 'a' ? a : x === 'b' ? b : x));
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids })).statusCode).toBe(200);
+    return { owner, a, b };
+  }
+  async function rebuilt(owner: { cookie: string; pageId: string }) {
+    const page = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } });
+    const links = await app.prisma.link.findMany({ where: { pageId: owner.pageId }, orderBy: { position: 'asc' }, select: { id: true, label: true, size: true } });
+    return pageEntries(links, { position: page.shopTilePosition, size: null }, { position: page.faqPosition }).map((e) =>
+      e.kind === 'link' ? e.link.label : e.id,
+    );
+  }
+
+  it('[shop, a, faq, b] minus b is [shop, a, faq]', async () => {
+    const { owner, b } = await arranged(['shop', 'a', 'faq', 'b']);
+    await call(owner.cookie, 'DELETE', `/links/${b}`);
+    expect(await rebuilt(owner)).toEqual(['shop', 'A', 'faq']);
+  });
+
+  it('[faq, a, shop, b] minus b is [faq, a, shop]', async () => {
+    const { owner, b } = await arranged(['faq', 'a', 'shop', 'b']);
+    await call(owner.cookie, 'DELETE', `/links/${b}`);
+    expect(await rebuilt(owner)).toEqual(['faq', 'A', 'shop']);
+  });
+
+  it('[a, shop, faq, b] minus a is [shop, faq, b]', async () => {
+    const { owner, a } = await arranged(['a', 'shop', 'faq', 'b']);
+    await call(owner.cookie, 'DELETE', `/links/${a}`);
+    expect(await rebuilt(owner)).toEqual(['shop', 'faq', 'B']);
   });
 });
 

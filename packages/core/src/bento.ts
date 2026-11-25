@@ -311,8 +311,11 @@ export type PageEntry<L> = BentoEntry<L> | { kind: 'faq'; id: typeof FAQ_TILE_ID
 
 /**
  * Everything on the page in visitor order: the links, with the shop tile (when the shop is open) and
- * the FAQ block (when `faq` is not null -- the caller passes null when there is nothing to show)
- * inserted at their positions. A null FAQ position means after the last item.
+ * the FAQ block (when `faq` is not null) inserted at their positions. A null FAQ position means after the last item.
+ *
+ * Every caller on a BUSINESS page passes `faq: { position: page.faqPosition }` whether or not answers
+ * exist, so the editor's list and the public page agree; the renderer draws nothing for a faq entry
+ * with no answers. A personal page passes null.
  *
  * Positions are indexes into the finished list, as the editor sends it, so the pieces are inserted
  * lowest position first. Each is clamped rather than trusted: an owner who parks the shop tile last
