@@ -1,6 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react';
 import {
   isHexColor,
+  arrangeTiles,
+  pageEntries,
   accentShowsOn,
   readableOn,
   type AvatarSize,
@@ -8,13 +10,16 @@ import {
   type CoverTint,
   type HeadingFont,
   type PageBackground,
+  type PageLayout,
   type PageStyle,
   type TileSize,
 } from '@curios/core/bento';
+import { minWidgetSize, type LinkKind, type WidgetProvider } from '@curios/core/widgets';
 import { socialUrl, type SocialKind } from '@curios/core/socials';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
 import { Cover } from './Cover.js';
+import { Widget } from './Widget.js';
 import { pageCopy } from './page-copy.js';
 import { DocumentColor } from './document-color.js';
 import styles from './Bento.module.css';
@@ -25,7 +30,16 @@ export interface BentoPageProps {
   bio: string | null;
   avatarUrl: string | null;
   /** In the order visitors see them. `size` is kept on the rows but no longer drawn: every link is a pill. */
-  links: { id: string; label: string; url: string; size: TileSize | null }[];
+  links: {
+    id: string;
+    label: string;
+    url: string;
+    size: TileSize | null;
+    /** A widget row draws its service's player; left out, a plain link. */
+    kind?: LinkKind;
+    provider?: WidgetProvider | null;
+    embedRef?: string | null;
+  }[];
   style: PageStyle;
   accentColor: string;
   /** The buttons' edge and shadow; unset or null, the page's text colour. */
@@ -44,7 +58,15 @@ export interface BentoPageProps {
    * initial stands in for a missing one), `label`, and the `caption` under it
    * ("3 items · next pickup Sat 17 Oct"). There is no Shop tab.
    */
-  shop?: { label: string; caption: string; photos: { url: string | null; name: string }[] } | null;
+  shop?: {
+    label: string;
+    caption: string;
+    photos: { url: string | null; name: string }[];
+    /** Its place among the links (an index into the whole page); 0, first, when left out. */
+    position?: number;
+    /** Its tile's size in a Bento layout; automatic when null or left out. */
+    size?: TileSize | null;
+  } | null;
   /**
    * Which tab the page is drawn on. Left out, it is Links; the public page's
    * Ask flips to chat at runtime by setting the same attribute (ChatMode).
@@ -53,6 +75,8 @@ export interface BentoPageProps {
    * FAQ fold away.
    */
   mode?: 'chat' | 'shop';
+  /** How the pieces are laid out: one column of pills (List, the default) or a two-column grid of tiles (Bento). */
+  layout?: PageLayout;
   /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
   background?: PageBackground;
   /** The owner's own colour, used when `background` is CUSTOM. */
@@ -71,6 +95,13 @@ export interface BentoPageProps {
   language?: string;
   /** The most asked answered questions, opened in place, and how many there are in all. */
   faq?: { entries: { slug: string; question: string; answer: string }[]; total: number } | null;
+  /**
+   * Where "People often ask" sits among the links; null is after the last. Left out
+   * (undefined), the page has no such block (a personal page). A business page passes
+   * its stored position whether or not there are answers, so saved indexes agree with
+   * the editor; with no answers nothing is drawn.
+   */
+  faqPosition?: number | null;
   /**
    * The page on its own, at a URL: a 460px column over a darker field of its
    * own colour on a wide screen. Left out wherever the page sits inside
@@ -94,6 +125,13 @@ const SOCIAL_ICON: Record<SocialKind, { label: string; d: string }> = {
   facebook: { label: 'Facebook', d: 'M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z' },
   youtube: { label: 'YouTube', d: 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9l5 3-5 3z' },
 };
+
+/** The glyph on a link's tile in Bento, read off its address: WhatsApp and Instagram have theirs, anything else a chain link. */
+function tileGlyph(url: string): string {
+  if (/^(https?:\/\/)?([\w-]+\.)*(wa\.me|whatsapp\.com)(\/|$)/i.test(url)) return SOCIAL_ICON.whatsapp.d;
+  if (/^(https?:\/\/)?([\w-]+\.)*instagram\.com(\/|$)/i.test(url)) return SOCIAL_ICON.instagram.d;
+  return 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1';
+}
 
 /** How many FAQ entries open in place under the links; the rest are a tap away. */
 export const FAQ_SHOWN = 3;
@@ -208,6 +246,103 @@ export function BentoPage(props: BentoPageProps) {
   ];
   const faqHref = `${home}/faq`;
 
+  // The page's pieces in the owner's order, then cut into runs of list items with the FAQ block standing between them.
+  const faq = props.faq && props.faq.entries.length > 0 ? props.faq : null;
+  const entries = pageEntries(
+    props.links,
+    props.shop ? { position: props.shop.position ?? 0, size: props.shop.size ?? null } : null,
+    props.faq || props.faqPosition !== undefined ? { position: props.faqPosition ?? null } : null,
+  );
+  type Run = { kind: 'list'; entries: typeof entries } | { kind: 'faq' };
+  const runs: Run[] = [];
+  for (const entry of entries) {
+    if (entry.kind === 'faq') {
+      // No answers: nothing drawn, and the links around it stay one list.
+      if (faq) runs.push({ kind: 'faq' });
+      continue;
+    }
+    const last = runs[runs.length - 1];
+    if (last?.kind === 'list') last.entries.push(entry);
+    else runs.push({ kind: 'list', entries: [entry] });
+  }
+  // The first link that draws a button wears the accent (a widget is a player, with no button to colour).
+  const isWidgetRow = (link: BentoPageProps['links'][number]) => link.kind === 'WIDGET' && !!link.provider && !!link.embedRef;
+  const leadId = props.links.find((link) => !isWidgetRow(link))?.id;
+  const bento = props.layout === 'BENTO';
+
+  const faqBlock = (
+    <section key="faq" className={styles.faq} aria-labelledby="often-ask">
+      <h2 id="often-ask" className={styles.faqTitle}>
+        {copy.oftenAsk}
+        <a href={faqHref}>{copy.seeAll(faq?.total ?? 0)}</a>
+      </h2>
+      {(faq?.entries ?? []).slice(0, FAQ_SHOWN).map((entry, i) => (
+        // <details>, so the accordion works before (and without) JavaScript.
+        <details key={entry.slug} className={styles.faqItem} open={i === 0}>
+          <summary>
+            {entry.question}
+            <span className={styles.faqSign} aria-hidden="true" />
+          </summary>
+          <p>{entry.answer}</p>
+        </details>
+      ))}
+    </section>
+  );
+
+  /** One list item for a link, widget or the shop; `size` is its tile in Bento, null in the List. */
+  const entryItem = (entry: (typeof entries)[number], size: TileSize | null) => {
+    if (entry.kind === 'shop' && props.shop) {
+      return (
+        <li key="shop" data-size={size ?? undefined}>
+          {interactive ? (
+            <a className={styles.shopLink} href={`${home}/shop`}>
+              <ShopPill shop={props.shop} />
+            </a>
+          ) : (
+            <span className={styles.shopLink}>
+              <ShopPill shop={props.shop} />
+            </span>
+          )}
+        </li>
+      );
+    }
+    if (entry.kind !== 'link') return null;
+    const link = entry.link;
+    // The first link that draws a button wears the accent, wherever the shop and the FAQ sit around it.
+    const lead = link.id === leadId ? true : undefined;
+    if (isWidgetRow(link)) {
+      // A page drawn mid-conversation (the landing's demos) shows no players.
+      return props.mode === 'chat' ? null : (
+        <li key={link.id} data-widget data-size={size ?? undefined}>
+          <Widget provider={link.provider!} embedRef={link.embedRef!} label={link.label} url={link.url} interactive={interactive} fill={size !== null} />
+        </li>
+      );
+    }
+    const inner = size ? (
+      <>
+        <svg className={styles.tileIcon} viewBox="0 0 24 24" aria-hidden="true">
+          <path d={tileGlyph(link.url)} />
+        </svg>
+        <span className={styles.tileLabel}>{link.label}</span>
+      </>
+    ) : (
+      link.label
+    );
+    return (
+      <li key={link.id} data-lead={lead} data-size={size ?? undefined}>
+        {interactive ? (
+          <a className={styles.link} href={link.url} rel="noopener">
+            <span>{inner}</span>
+          </a>
+        ) : (
+          <span className={styles.link}>
+            <span>{inner}</span>
+          </span>
+        )}
+      </li>
+    );
+  };
+
   const page = (
     <div
       className={styles.page}
@@ -266,59 +401,36 @@ export function BentoPage(props: BentoPageProps) {
 
       <div className={styles.foldaway} data-foldaway>
         <div className={styles.foldawayInner}>
-          {props.links.length > 0 || props.shop ? (
-            <ul className={styles.links} role="list" data-shop={props.shop ? 'yes' : undefined}>
-              {props.shop ? (
-                <li>
-                  {interactive ? (
-                    <a className={styles.shopLink} href={`${home}/shop`}>
-                      <ShopPill shop={props.shop} />
-                    </a>
-                  ) : (
-                    <span className={styles.shopLink}>
-                      <ShopPill shop={props.shop} />
-                    </span>
-                  )}
-                </li>
-              ) : null}
-              {props.links.map((link) => (
-                <li key={link.id}>
-                  {interactive ? (
-                    <a className={styles.link} href={link.url} rel="noopener">
-                      <span>{link.label}</span>
-                    </a>
-                  ) : (
-                    <span className={styles.link}>
-                      <span>{link.label}</span>
-                    </span>
-                  )}
-                </li>
-              ))}
+          {bento ? (
+            <ul className={`${styles.links} ${styles.bentoGrid}`} role="list" data-bento-grid>
+              {arrangeTiles(
+                entries.filter((entry) => (entry.kind === 'faq' ? !!faq : entry.kind === 'link' && isWidgetRow(entry.link) ? props.mode !== 'chat' : true)),
+                (entry) => (entry.kind === 'faq' ? 'WIDE' : entry.kind === 'link' && isWidgetRow(entry.link) ? minWidgetSize(entry.link.provider!, entry.link.embedRef!) : 'SMALL'),
+              ).map(({ link: entry, size }) =>
+                entry.kind === 'faq' ? (
+                  <li key="faq" data-size={size} data-faq>
+                    {faqBlock}
+                  </li>
+                ) : (
+                  entryItem(entry, size)
+                ),
+              )}
             </ul>
-          ) : null}
-
-          {props.faq && props.faq.entries.length > 0 ? (
-            <section className={styles.faq} aria-labelledby="often-ask">
-              <h2 id="often-ask" className={styles.faqTitle}>
-                {copy.oftenAsk}
-                <a href={faqHref}>{copy.seeAll(props.faq.total)}</a>
-              </h2>
-              {props.faq.entries.slice(0, FAQ_SHOWN).map((entry, index) => (
-                // <details>, so the accordion works before (and without) JavaScript.
-                <details key={entry.slug} className={styles.faqItem} open={index === 0}>
-                  <summary>
-                    {entry.question}
-                    <span className={styles.faqSign} aria-hidden="true" />
-                  </summary>
-                  <p>{entry.answer}</p>
-                </details>
-              ))}
-            </section>
-          ) : null}
+          ) : (
+            runs.map((run, index) =>
+              run.kind === 'faq' ? (
+                faqBlock
+              ) : (
+                <ul key={index} className={styles.links} role="list">
+                  {run.entries.map((entry) => entryItem(entry, null))}
+                </ul>
+              ),
+            )
+          )}
 
           {interactive ? (
             <p className={styles.foot}>
-              {props.faq && props.faq.entries.length > 0 ? (
+              {faq ? (
                 <>
                   <a href={faqHref}>{copy.questions}</a> ·{' '}
                 </>

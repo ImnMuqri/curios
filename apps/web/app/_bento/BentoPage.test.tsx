@@ -48,7 +48,7 @@ describe('BentoPage', () => {
     // Pill by default; Chunky and Outline square it off through the same knob.
     expect(css).toMatch(/^\.page\s*\{[^}]*--btn-radius:\s*999px;/m);
     expect(css).toMatch(/\.link > span\s*\{[^}]*border-radius:\s*var\(--btn-radius\);/s);
-    expect(css).toMatch(/\.links > li:first-child \.link > span,[^{]*\{[^}]*background:\s*var\(--accent\);/s);
+    expect(css).toMatch(/\.links > li\[data-lead\] \.link > span\s*\{[^}]*background:\s*var\(--accent\);/s);
   });
 
   it('carries the style, accent and readable text colour to the stylesheet', () => {
@@ -557,5 +557,164 @@ describe('BentoPage, a Top cover', () => {
     expect(css).toMatch(/\.cover:not\(\.coverFull\) \{[^}]*position: absolute;[^}]*height: calc\(\(56px \+ var\(--head-avatar, 88px\) \+ 10px\) \/ 0\.73/);
     expect(css).toMatch(/\.cover:not\(\.coverFull\) \+ \.head \{\s*padding-top: calc\(56px \+ env\(safe-area-inset-top, 0px\) \+ var\(--runway, 0px\)\);/);
     expect(css).not.toMatch(/margin-top: -29cqi/);
+  });
+});
+
+describe('the page in the owner\'s order', () => {
+  const shop = { label: 'Shop', caption: '3 items', photos: [], position: 0 };
+  const faq = { total: 1, entries: [{ slug: 'halal', question: 'Is it halal?', answer: 'Yes.' }] };
+  // Every drawn piece in document order: the shop pill, each link by label, the FAQ block.
+  const order = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('[data-bento-page] li a[href], [data-bento-page] section[aria-labelledby="often-ask"]'))
+      .filter((el) => !el.closest('footer, p'))
+      .map((el) => (el.tagName === 'SECTION' ? 'FAQ' : el.getAttribute('href') === '/imnmuqri/shop' ? 'SHOP' : (el.textContent ?? '')));
+
+  it('keeps today\'s look by default: the shop, the links, then People often ask', () => {
+    const { container } = render(<BentoPage {...base} shop={shop} faq={faq} faqPosition={null} />);
+    expect(order(container)).toEqual(['SHOP', 'Portfolio', 'Chat', 'Code', 'FAQ']);
+    // Left out entirely, the same.
+    const again = render(<BentoPage {...base} shop={{ ...shop, position: undefined }} faq={faq} />);
+    expect(order(again.container)).toEqual(['SHOP', 'Portfolio', 'Chat', 'Code', 'FAQ']);
+  });
+
+  it('draws the shop pill where its position puts it', () => {
+    const { container } = render(<BentoPage {...base} shop={{ ...shop, position: 2 }} faq={faq} faqPosition={null} />);
+    expect(order(container)).toEqual(['Portfolio', 'Chat', 'SHOP', 'Code', 'FAQ']);
+  });
+
+  it('draws People often ask before the links at position 0, and between them at 2', () => {
+    const first = render(<BentoPage {...base} faq={faq} faqPosition={0} />);
+    expect(order(first.container)).toEqual(['FAQ', 'Portfolio', 'Chat', 'Code']);
+    first.unmount();
+    const mid = render(<BentoPage {...base} faq={faq} faqPosition={2} />);
+    expect(order(mid.container)).toEqual(['Portfolio', 'Chat', 'FAQ', 'Code']);
+  });
+
+  it('draws nothing for a faq position when there are no answers, and leaves the first link in the accent', () => {
+    const { container } = render(<BentoPage {...base} shop={{ ...shop, position: 1 }} faq={null} faqPosition={0} />);
+    // The saved indexes count the FAQ's slot, answers or not: the shop at 1 sits after slot 0, as in the editor.
+    expect(order(container)).toEqual(['SHOP', 'Portfolio', 'Chat', 'Code']);
+    expect(container.querySelectorAll('[data-lead]')).toHaveLength(1);
+    expect(container.querySelector('[data-lead]')).toHaveTextContent('Portfolio');
+  });
+});
+
+describe('the Bento layout', () => {
+  const shopPill = { label: 'Shop', caption: '3 items', photos: [], position: 1, size: null };
+  const faqEntries = { entries: [{ slug: 'q', question: 'Open Sunday?', answer: 'Yes.' }], total: 1 };
+  const player: BentoPageProps['links'][number] = {
+    id: 'w',
+    label: 'Mix',
+    url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
+    size: null,
+    kind: 'WIDGET',
+    provider: 'SPOTIFY',
+    embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M',
+  };
+  const css = () => readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+
+  it('draws the list as one grid, each piece with its data-size', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" />);
+    const grid = container.querySelector('[data-bento-grid]')!;
+    expect([...grid.children].map((li) => li.getAttribute('data-size'))).toEqual(['TALL', 'SMALL', 'SMALL']);
+  });
+
+  it('keeps a chosen size, and lifts a player to its minimum', () => {
+    const { container } = render(
+      <BentoPage {...base} layout="BENTO" links={[{ ...base.links[0]!, size: 'BIG' }, { ...player, size: 'SMALL' }, base.links[1]!]} />,
+    );
+    const sizes = [...container.querySelectorAll('[data-bento-grid] > li')].map((li) => li.getAttribute('data-size'));
+    // A playlist cannot be Small: it is Wide, and the lone Small after the Big widens too.
+    expect(sizes.slice(0, 2)).toEqual(['BIG', 'WIDE']);
+  });
+
+  it('puts the shop and People often ask in the grid, the FAQ in a Wide tile', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" shop={shopPill} faq={faqEntries} faqPosition={null} />);
+    const items = [...container.querySelectorAll('[data-bento-grid] > li')];
+    expect(items).toHaveLength(5);
+    const faqTile = container.querySelector('[data-bento-grid] > li[data-faq]')!;
+    expect(faqTile).toHaveAttribute('data-size', 'WIDE');
+    expect(faqTile).toHaveTextContent('Open Sunday?');
+    expect(container.querySelector('a[href="/imnmuqri/shop"]')!.closest('li')).toHaveAttribute('data-size');
+  });
+
+  it("uses the shop's chosen size", () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" shop={{ ...shopPill, size: 'BIG' }} />);
+    expect(container.querySelector('a[href="/imnmuqri/shop"]')!.closest('li')).toHaveAttribute('data-size', 'BIG');
+  });
+
+  it('draws nothing for an empty FAQ, and no empty tile', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" faq={null} faqPosition={null} />);
+    expect(container.querySelector('[data-faq]')).toBeNull();
+    expect(container.querySelectorAll('[data-bento-grid] > li')).toHaveLength(3);
+  });
+
+  it('shows a link tile with its icon and a label clamped to two lines', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" links={base.links.map((link) => ({ ...link, size: 'SMALL' as const }))} />);
+    const tile = container.querySelector('[data-bento-grid] > li[data-size="SMALL"] a')!;
+    expect(tile.querySelector('svg')).not.toBeNull();
+    expect(tile).toHaveTextContent('Portfolio');
+    expect(css()).toMatch(/\.tileLabel\s*\{[^}]*-webkit-line-clamp:\s*2;/s);
+  });
+
+  it('is a dense two-column grid on every width, spans from the size', () => {
+    const sheet = css();
+    expect(sheet).toMatch(/\.bentoGrid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*grid-auto-flow:\s*dense;/s);
+    expect(sheet).toMatch(/\.bentoGrid > li\[data-size='WIDE'\]\s*\{[^}]*grid-column:\s*span 2;/s);
+    expect(sheet).toMatch(/\.bentoGrid > li\[data-size='TALL'\]\s*\{[^}]*grid-row:\s*span 2;/s);
+    expect(sheet).toMatch(/\.bentoGrid > li\[data-size='BIG'\]\s*\{[^}]*grid-column:\s*span 2;[^}]*grid-row:\s*span 2;/s);
+    // Nothing turns the grid into one column.
+    const grid = sheet.slice(sheet.indexOf('.bentoGrid {'));
+    expect(grid).not.toMatch(/grid-template-columns:\s*1fr\s*;/);
+  });
+
+  it('fills a tile with the player, never under its own height', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" links={[player, ...base.links]} />);
+    const frame = container.querySelector('iframe') as HTMLElement;
+    expect(frame.style.minHeight).toMatch(/px$/);
+    expect(frame.style.height).toBe('');
+    expect(container.querySelector('[data-widget]')).toHaveAttribute('data-size', 'WIDE');
+  });
+
+  it('lets the first link that is not a player wear the accent, in both layouts', () => {
+    const links = [player, base.links[0]!, base.links[1]!];
+    for (const layout of ['LIST', 'BENTO'] as const) {
+      const { container, unmount } = render(<BentoPage {...base} layout={layout} links={links} />);
+      const lead = container.querySelectorAll('[data-lead]');
+      expect(lead).toHaveLength(1);
+      expect(lead[0]).toHaveTextContent('Portfolio');
+      unmount();
+    }
+  });
+
+  it('leaves the List as it was: no grid, no sizes', () => {
+    const { container } = render(<BentoPage {...base} shop={shopPill} faq={faqEntries} faqPosition={null} />);
+    expect(container.querySelector('[data-bento-grid]')).toBeNull();
+    expect(container.querySelector('[data-size]')).toBeNull();
+  });
+});
+
+describe('BentoPage, the FAQ block at the head of the list', () => {
+  it('drops its top margin only when other pieces share the list, so a FAQ-only page keeps its gap', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.foldawayInner > \.faq:first-child:has\(\+ \.links\) \{\s*margin-top: 0;/);
+    expect(css).not.toMatch(/\.foldawayInner > \.faq:first-child \{/);
+  });
+});
+
+describe('BentoPage, the FAQ block structure the margin rule reads', () => {
+  const faq = { total: 1, entries: [{ slug: 'halal', question: 'Is it halal?', answer: 'Yes.' }] };
+  const block = (c: HTMLElement) => c.querySelector('section[aria-labelledby="often-ask"]')!;
+
+  it('has no links run after a FAQ-only page block, only the footer, so the zero-margin rule cannot match', () => {
+    const { container } = render(<BentoPage {...base} links={[]} faq={faq} />);
+    const next = block(container).nextElementSibling;
+    expect(next?.tagName).toBe('P');
+    expect(next?.matches('ul')).toBe(false);
+  });
+
+  it('has a links run right after the block when the FAQ comes first among links', () => {
+    const { container } = render(<BentoPage {...base} faq={faq} faqPosition={0} />);
+    expect(block(container).nextElementSibling?.tagName).toBe('UL');
   });
 });

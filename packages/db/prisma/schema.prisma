@@ -103,6 +103,25 @@ enum TileSize {
   BIG
 }
 
+/// What a Link row is: an ordinary link, or a widget the page embeds.
+enum LinkKind {
+  LINK
+  WIDGET
+}
+
+/// Which service a widget embeds. Same values, same order, as WIDGET_PROVIDERS
+/// in @curios/core/widgets.
+enum WidgetProvider {
+  SPOTIFY
+  APPLE_MUSIC
+  YOUTUBE
+  SOUNDCLOUD
+  GOOGLE_MAPS
+  CALCOM
+  CALENDLY
+  CANVA
+}
+
 enum PageStyle {
   SOFT
   CONTRAST
@@ -132,6 +151,12 @@ enum AvatarSize {
 enum CoverLayout {
   TOP
   FULL
+}
+
+/// How the page is laid out: LIST is a column of links, BENTO a grid of sized tiles.
+enum PageLayout {
+  LIST
+  BENTO
 }
 
 enum HeadingFont {
@@ -312,6 +337,8 @@ model Page {
   coverLayout         CoverLayout         @default(TOP)
   /// Full page only: the page's colour washed over the photo (true, how Full began) or the photo as it is.
   coverWash           Boolean             @default(true)
+  /// LIST is the page as a column of links (every page before this choice); BENTO lays the same pieces out as a grid of sized tiles.
+  layout              PageLayout          @default(LIST)
   background          PageBackground      @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.
@@ -346,6 +373,9 @@ model Page {
   shopTilePosition    Int                 @default(0)
   /// Null is automatic, as Link.size is.
   shopTileSize        TileSize?
+  /// The "People often ask" block's index among the page's pieces (clamped on read, like shopTilePosition).
+  /// Null is after the last item, which is where the block always was.
+  faqPosition         Int?
   /// Orders ever placed, and never decremented: the order number's source and
   /// the trial allowance's count. A counter rather than count(Order) so an
   /// owner cannot delete trial orders to get more, as with leadsCaptured.
@@ -405,6 +435,13 @@ model Link {
   /// Null is "automatic": arrangeTiles in @curios/core/bento decides from the
   /// tile's position.
   size     TileSize?
+  /// LINK for every row that existed before widgets.
+  kind     LinkKind  @default(LINK)
+  /// The service a WIDGET row embeds; null on a LINK.
+  provider WidgetProvider?
+  /// What the player address is built from (a track id, a map query, a booking
+  /// path), parsed from the pasted link by @curios/core/widgets; null on a LINK.
+  embedRef String?
 
   @@index([pageId, position])
 }

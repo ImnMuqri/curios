@@ -1,3 +1,5 @@
+import { WIDGET_FRAME_ORIGINS } from '@curios/core/widgets';
+
 /**
  * The headers on every response this app sends: pages, redirects, route
  * handlers and the error and not-found screens. next.config.ts applies them to
@@ -45,6 +47,9 @@ export function contentSecurityPolicy({ apiUrl, sentryDsn, dev }: SecurityHeader
     ['object-src', "'none'"],
     ['base-uri', "'self'"],
     ['form-action', "'self'"],
+    // The widget players an owner can embed; the list lives with the parser so the two cannot drift.
+    // Only the players, on purpose: nothing on curios.my frames itself, and frame-ancestors 'none' below stays.
+    ['frame-src', ...WIDGET_FRAME_ORIGINS],
     ['frame-ancestors', "'none'"],
   ];
   // In development the API is http://localhost:3001, which this would rewrite to https.

@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  positionsAfterAdd,
   accentShowsOn,
   coverTintOf,
+  FAQ_TILE_ID,
+  pageEntries,
+  placeTiles,
   STOCK_COVER_TINTS,
   arrangeTiles,
   charCount,
@@ -100,6 +104,30 @@ describe('readableOn', () => {
 });
 
 describe('arrangeTiles', () => {
+  it('makes an automatic first Tall Wide when it would leave a hole (auto, Wide, auto)', () => {
+    expect(arrangeTiles([{ size: null }, { size: 'WIDE' }, { size: null }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('widens a lone Small that is interior, with nothing to backfill it', () => {
+    expect(arrangeTiles([{ size: null }, { size: 'WIDE' }, { size: null }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE', 'WIDE']);
+    expect(arrangeTiles([{ size: 'SMALL' }, { size: 'WIDE' }, { size: 'WIDE' }, { size: 'SMALL' }, { size: 'WIDE' }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['SMALL', 'WIDE', 'WIDE', 'SMALL', 'WIDE', 'WIDE']);
+    // Dense flow backfills the first Small's hole with the second: both stay Small. With nothing after, a lone one widens.
+    expect(arrangeTiles([{ size: 'SMALL' }, { size: 'WIDE' }, { size: 'WIDE' }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('fills the half row above a Wide FAQ (auto, WIDE, auto, FAQ)', () => {
+    const items = [{ size: null }, { size: 'WIDE' as TileSize | null }, { size: null }, { size: 'WIDE' as TileSize | null }];
+    expect(arrangeTiles(items).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('leaves a full row of two Smalls alone', () => {
+    expect(arrangeTiles([{ size: 'SMALL' }, { size: 'SMALL' }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'WIDE']);
+  });
+
+  it('keeps a chosen Tall even when it leaves a hole', () => {
+    expect(arrangeTiles([{ size: 'TALL' }, { size: 'WIDE' }, { size: null }]).map((t) => t.size)[0]).toBe('TALL');
+  });
+
   it('gives one link a wide tile, never a tall one with a hole beside it', () => {
     expect(sizes(1)).toEqual(['WIDE']);
   });
@@ -124,10 +152,9 @@ describe('arrangeTiles', () => {
     expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL']);
   });
 
-  it('does not widen a chosen size even with odd cells', () => {
-    // 7 cells total (odd), last tile is chosen SMALL. Parity fix should not apply.
+  it('widens a chosen Small left alone in the last row (no half row wins over a chosen size)', () => {
     const tiles = arrangeTiles([{ size: 'BIG' }, { size: null }, { size: null }, { size: 'SMALL' }]);
-    expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL', 'SMALL']);
+    expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL', 'WIDE']);
   });
 
   it('colours the first tile with the accent and the second warm, whatever their size', () => {
@@ -137,6 +164,61 @@ describe('arrangeTiles', () => {
 
   it('returns nothing for no links', () => {
     expect(arrangeTiles([])).toEqual([]);
+  });
+
+  it('ends five owner-chosen Small tiles with the last one Wide', () => {
+    const five = Array.from({ length: 5 }, () => ({ size: 'SMALL' as TileSize | null }));
+    expect(arrangeTiles(five).map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'SMALL', 'SMALL', 'WIDE']);
+  });
+
+  it('keeps an automatic last tile Wide when its minimum is Wide', () => {
+    const items = [{ size: 'SMALL' as TileSize | null }, { size: 'SMALL' as TileSize | null }, { size: null }];
+    expect(arrangeTiles(items, () => 'WIDE').map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('widens an automatic Small at the end after a raise in the middle', () => {
+    const S = 'SMALL' as TileSize;
+    const items = [{ size: S as TileSize | null, min: S }, { size: S as TileSize | null, min: S }, { size: S as TileSize | null, min: 'WIDE' as TileSize }, { size: null, min: S }];
+    // Small, Small, (Small raised to Wide), then an automatic Small alone on row 3 -> Wide.
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'WIDE', 'WIDE']);
+  });
+
+  it('lets dense flow backfill a hole, so a raise that leaves the grid full changes nothing else', () => {
+    const items = [{ size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }];
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['SMALL', 'WIDE', 'SMALL']);
+  });
+
+  it('leaves no trailing half row for Tall, Small, then a Wide-minimum widget', () => {
+    const items = [{ size: 'TALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }];
+    const sizes = arrangeTiles(items, (i) => i.min).map((t) => t.size);
+    expect(sizes).toEqual(['TALL', 'SMALL', 'WIDE']);
+    // Wide cannot fit beside the Tall, so it drops to row 3 and fills it: no hole at the foot.
+    expect(placeTiles(sizes)).toEqual([{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 2, col: 0 }]);
+  });
+
+  it('leaves a lone cell beside the bottom of a Tall as it is', () => {
+    const tiles = arrangeTiles([{ size: 'TALL' }, { size: 'SMALL' }]);
+    expect(tiles.map((t) => t.size)).toEqual(['TALL', 'SMALL']);
+  });
+
+  it('raises a size below its minimum to the minimum, and never lowers one', () => {
+    const items = [{ size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'BIG' as TileSize | null, min: 'WIDE' as TileSize }];
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'BIG']);
+  });
+
+  it('lets Wide satisfy only a Wide minimum, Tall only Tall, and Big anything', () => {
+    const one = (size: TileSize, min: TileSize) => arrangeTiles([{ size }], () => min)[0]?.size;
+    expect(one('WIDE', 'WIDE')).toBe('WIDE');
+    expect(one('TALL', 'WIDE')).toBe('WIDE');
+    expect(one('WIDE', 'TALL')).toBe('TALL');
+    expect(one('SMALL', 'TALL')).toBe('TALL');
+    expect(one('BIG', 'TALL')).toBe('BIG');
+    expect(one('WIDE', 'BIG')).toBe('BIG');
+  });
+
+  it('keeps the FAQ Wide whatever else is set', () => {
+    const entries = pageEntries([{ id: 'a', size: 'SMALL' as TileSize | null }], null, { position: 0 });
+    expect(arrangeTiles(entries, () => 'SMALL')[0]).toMatchObject({ size: 'WIDE' });
   });
 });
 
@@ -204,6 +286,46 @@ describe('withShopTile', () => {
   });
 });
 
+describe('pageEntries', () => {
+  const links = [
+    { id: 'a', size: null },
+    { id: 'b', size: null },
+    { id: 'c', size: null },
+  ];
+  const ids = (shop: { position: number } | null, faq: { position: number | null } | null) =>
+    pageEntries(links, shop && { ...shop, size: null }, faq).map((e) => e.id);
+
+  it('puts a shop tile at position 9 among 3 links last', () => {
+    expect(ids({ position: 9 }, null)).toEqual(['a', 'b', 'c', SHOP_TILE_ID]);
+  });
+
+  it('puts the FAQ last when its position is null, first at 0, and nowhere when null is passed', () => {
+    expect(ids(null, { position: null })).toEqual(['a', 'b', 'c', FAQ_TILE_ID]);
+    expect(ids(null, { position: 0 })).toEqual([FAQ_TILE_ID, 'a', 'b', 'c']);
+    expect(ids(null, null)).toEqual(['a', 'b', 'c']);
+    expect(ids(null, { position: 99 })).toEqual(['a', 'b', 'c', FAQ_TILE_ID]);
+    expect(ids(null, { position: -2 })).toEqual([FAQ_TILE_ID, 'a', 'b', 'c']);
+  });
+
+  it('keeps shop and FAQ in the order they were sent', () => {
+    // sent as [a, faq, b, shop, c]
+    expect(ids({ position: 3 }, { position: 1 })).toEqual(['a', FAQ_TILE_ID, 'b', SHOP_TILE_ID, 'c']);
+    // sent as [shop, a, b, faq, c]
+    expect(ids({ position: 0 }, { position: 3 })).toEqual([SHOP_TILE_ID, 'a', 'b', FAQ_TILE_ID, 'c']);
+    // sent as [a, b, c, faq, shop]
+    expect(ids({ position: 4 }, { position: 3 })).toEqual(['a', 'b', 'c', FAQ_TILE_ID, SHOP_TILE_ID]);
+  });
+
+  it('keeps the shop at its saved index when a business page passes faq', () => {
+    // saved from [faq, a, shop, b, c]: faq 0, shop 2
+    expect(ids({ position: 2 }, { position: 0 })).toEqual([FAQ_TILE_ID, 'a', SHOP_TILE_ID, 'b', 'c']);
+  });
+
+  it('gives the FAQ a wide size', () => {
+    expect(pageEntries(links, null, { position: null }).at(-1)).toMatchObject({ kind: 'faq', size: 'WIDE' });
+  });
+});
+
 describe('accentShowsOn', () => {
   it('hides only an accent the page would swallow: ink on Dark, the darker accents on Biru', () => {
     expect(accentShowsOn('#191f2c', 'INK')).toBe(false);
@@ -233,5 +355,19 @@ describe('coverTintOf', () => {
 
   it('has colours for every stock cover', () => {
     for (const name of STOCK_COVERS) expect(STOCK_COVER_TINTS[name].top).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('positionsAfterAdd', () => {
+  it('joins the end of the links and moves the tiles at or after it', () => {
+    expect(positionsAfterAdd(2, 2, null)).toEqual({ shop: 3, faq: null });
+    expect(positionsAfterAdd(2, 1, null)).toEqual({ shop: 1, faq: null });
+    // No links yet: the first goes after every tile in play, and nothing moves.
+    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterAdd(0, 0, 1)).toEqual({ shop: 0, faq: 1 });
+    expect(positionsAfterAdd(0, null, 0)).toEqual({ shop: null, faq: 0 });
+    expect(positionsAfterAdd(2, null, 2)).toEqual({ shop: null, faq: 3 });
+    expect(positionsAfterAdd(2, 2, 3)).toEqual({ shop: 3, faq: 4 });
+    expect(positionsAfterAdd(3, null, null)).toEqual({ shop: null, faq: null });
   });
 });

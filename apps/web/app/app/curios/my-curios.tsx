@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
-import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
+import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, positionsAfterAdd, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageLayout, type PageStyle, type TileSize, type StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
@@ -16,6 +16,7 @@ import { PillTabs } from '../_ui/pill-tabs.js';
 import panel from '../panel.module.css';
 import { AppearanceEditor } from './appearance-editor.js';
 import { CoverEditor } from './cover-editor.js';
+import { LayoutEditor } from './layout-editor.js';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 import { ProfileEditor } from './profile-editor.js';
 import { ShopSwitch } from './shop-switch.js';
@@ -34,6 +35,7 @@ export type AppearancePatch = Partial<{
   avatarBorder: boolean;
   coverLayout: CoverLayout;
   coverWash: boolean;
+  layout: PageLayout;
   displayName: string;
   bio: string | null;
   socials: Socials;
@@ -45,11 +47,14 @@ export type AppearancePatch = Partial<{
 // rightly distrusts once detached from `api`.
 export interface CuriosApi {
   addLink: (input: { label: string; url: string }) => Promise<LinkItem>;
-  updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
+  addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
+  updateLink: (id: string, patch: Partial<{ label: string; url: string; size: TileSize | null }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
   /** Opens or closes the shop, which is what gives the page its Shop link. */
   setShopOpen: (open: boolean) => Promise<void>;
+  /** The shop button's tile size in a Bento layout. */
+  setShopSize: (size: TileSize | null) => Promise<void>;
   saveAppearance: (patch: AppearancePatch) => Promise<unknown>;
   /** Resolves to the new picture's URL. */
   uploadAvatar: (file: File) => Promise<string | null>;
@@ -77,6 +82,7 @@ export type EditorPage = MyCurios & {
 const TABS = [
   { id: 'profile', label: 'Profile' },
   { id: 'links', label: 'Links' },
+  { id: 'layout', label: 'Layout' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 type PreviewTab = 'links' | 'ask';
@@ -85,10 +91,12 @@ type PreviewTab = 'links' | 'ask';
 function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['track']): CuriosApi {
   return {
     addLink: (input) => track(api.addLink(input)),
+    addWidget: (input) => track(api.addWidget(input)),
     updateLink: (id, patch) => track(api.updateLink(id, patch)),
     removeLink: (id) => track(api.removeLink(id)),
     reorder: (ids) => track(api.reorder(ids)),
     setShopOpen: (open) => track(api.setShopOpen(open)),
+    setShopSize: (size) => track(api.setShopSize(size)),
     saveAppearance: (patch) => track(api.saveAppearance(patch)),
     uploadAvatar: (file) => track(api.uploadAvatar(file)),
     removeAvatar: () => track(api.removeAvatar()),
@@ -99,6 +107,25 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
     askPage: (question) => api.askPage(question),
   };
 }
+
+/**
+ * Where the shop and People often ask sit after the link at `linkAt` (its index among the links) is removed,
+ * as the API works it out: the link's place in the whole list is found lowest tile first, then every tile
+ * after it moves up one. An unset FAQ position (null, after the last item) stays null.
+ */
+export function positionsAfterRemoval(linkAt: number, shop: number | null, faq: number | null): { shop: number | null; faq: number | null } {
+  const tiles: { key: 'shop' | 'faq'; position: number }[] = [];
+  if (shop !== null) tiles.push({ key: 'shop', position: shop });
+  if (faq !== null) tiles.push({ key: 'faq', position: faq });
+  tiles.sort((x, y) => x.position - y.position);
+  let removedAt = linkAt;
+  for (const tile of tiles) if (tile.position <= removedAt) removedAt += 1;
+  const out = { shop, faq };
+  for (const tile of tiles) if (tile.position > removedAt) out[tile.key] = tile.position - 1;
+  return out;
+}
+
+export { positionsAfterAdd };
 
 /**
  * My Curios: the owner's page, arranged. The header, over the left column
@@ -135,13 +162,117 @@ export function MyCuriosEditor({
   const [previewTab, setPreviewTab] = useState<PreviewTab>('links');
   const [copied, setCopied] = useState(false);
 
+  // Everything on the page in visitor order, for the Layout tab. A business page (the one with a shop
+  // switch) always carries People often ask, answers or not, as the public page does.
+  const layoutEntries = useMemo(
+    () => pageEntries(page.links, page.shop, page.shopTab ? { position: page.faqPosition } : null),
+    [page.links, page.shop, page.shopTab, page.faqPosition],
+  );
+
+  /** The new order shows in the preview at once; a refused save puts the old one back and hands the error on. */
+  async function reorderPage(ids: string[]) {
+    const { links, shop, faqPosition } = page;
+    setPage((current) => {
+      const byId = new Map(current.links.map((link) => [link.id, link]));
+      const ordered = ids.flatMap((id) => byId.get(id) ?? []);
+      const unplaced = current.links.filter((link) => !ids.includes(link.id));
+      return {
+        ...current,
+        links: [...ordered, ...unplaced],
+        shop: current.shop ? { ...current.shop, position: ids.indexOf(SHOP_TILE_ID) } : null,
+        // Last is stored as null (after the last item), as the API does, so links added later land above it.
+        faqPosition: ids.includes(FAQ_TILE_ID) ? (ids.indexOf(FAQ_TILE_ID) === ids.length - 1 ? null : ids.indexOf(FAQ_TILE_ID)) : current.faqPosition,
+      };
+    });
+    try {
+      await api.reorder(ids);
+    } catch (failure) {
+      setPage((current) => ({ ...current, links, shop, faqPosition }));
+      throw failure;
+    }
+  }
+
+  /** A new link or widget joins the end of the links; the server moves the tiles that sat after it, and so does this. */
+  function afterAdd(added: LinkItem) {
+    setPage((current) => {
+      const moved = positionsAfterAdd(current.links.length, current.shop?.position ?? null, current.faqPosition);
+      return {
+        ...current,
+        shop: current.shop && moved.shop !== null ? { ...current.shop, position: moved.shop } : current.shop,
+        faqPosition: moved.faq,
+      };
+    });
+    return added;
+  }
+  const addLinkAndRepositionTiles = async (input: { label: string; url: string }) => afterAdd(await api.addLink(input));
+  const addWidgetAndRepositionTiles = async (input: { url: string; label: string | null }) => afterAdd(await api.addWidget(input));
+
+  /**
+   * The server pulls the shop and People often ask up a place when a link above them is removed (their
+   * positions index the whole list). Do the same here, so the preview and Layout match the public page; if
+   * the removal is refused the old positions come back, and the Links list restores the link itself.
+   */
+  async function removeLinkAndRepositionTiles(id: string) {
+    const { links, shop, faqPosition } = page;
+    const at = links.findIndex((link) => link.id === id);
+    if (at >= 0 && (shop || faqPosition !== null)) {
+      const moved = positionsAfterRemoval(at, shop?.position ?? null, faqPosition);
+      setPage((current) => ({
+        ...current,
+        shop: current.shop && moved.shop !== null ? { ...current.shop, position: moved.shop } : current.shop,
+        faqPosition: moved.faq,
+      }));
+    }
+    try {
+      await api.removeLink(id);
+    } catch (failure) {
+      setPage((current) => ({ ...current, shop: current.shop ? { ...current.shop, position: shop?.position ?? current.shop.position } : null, faqPosition }));
+      throw failure;
+    }
+  }
+
+  /** The layout shows in the preview at once; a refused save puts the old one back and hands the error on. */
+  async function chooseLayout(layout: PageLayout) {
+    const before = page.layout;
+    update({ layout });
+    try {
+      await api.saveAppearance({ layout });
+    } catch (failure) {
+      update({ layout: before });
+      throw failure;
+    }
+  }
+
+  /** A tile size, the same way: shown at once, put back only for that one piece if its save is refused. */
+  async function resizeEntry(id: string, size: TileSize | null) {
+    const isShop = id === SHOP_TILE_ID;
+    const before = isShop ? (page.shop?.size ?? null) : (page.links.find((link) => link.id === id)?.size ?? null);
+    const set = (value: TileSize | null) =>
+      setPage((current) =>
+        isShop
+          ? { ...current, shop: current.shop ? { ...current.shop, size: value } : null }
+          : { ...current, links: current.links.map((link) => (link.id === id ? { ...link, size: value } : link)) },
+      );
+    set(size);
+    try {
+      if (isShop) await api.setShopSize(size);
+      else await api.updateLink(id, { size });
+    } catch (failure) {
+      set(before);
+      throw failure;
+    }
+  }
+
   const shopOpen = page.shopTab?.open ?? false;
   const previewTabs: PreviewTab[] = ['links', 'ask'];
   const shownPreview = previewTab;
 
   // The shop pill as visitors see it, minus the pickup day (that needs the shop's terms the editor does not carry).
-  const previewPill = shopOpen && (page.shopTab?.itemCount ?? 0) > 0
+  // The public page draws it only when the read model hands it a tile (open) with items to order, so the editor asks for both.
+  const previewPill = page.shop !== null && shopOpen && (page.shopTab?.itemCount ?? 0) > 0
     ? {
+        position: page.shop?.position,
+        size: page.shop?.size ?? null,
         label: 'Shop',
         caption: shopCopy(page.language).itemCount(page.shopTab?.itemCount ?? 0),
         photos: page.shopItems.slice(0, 3).map((item) => ({ name: item.name, url: item.photoUrl })),
@@ -244,11 +375,10 @@ export function MyCuriosEditor({
             <LinksEditor
               links={page.links}
               onChange={(links) => update({ links })}
-              addLink={api.addLink}
+              addLink={addLinkAndRepositionTiles}
+              addWidget={addWidgetAndRepositionTiles}
               updateLink={api.updateLink}
-              removeLink={api.removeLink}
-              reorder={api.reorder}
-              shop={page.shop}
+              removeLink={removeLinkAndRepositionTiles}
               // The Shop link is the first row of the list (v3), with its switch.
               lead={
                 page.shopTab ? (
@@ -260,13 +390,27 @@ export function MyCuriosEditor({
                       setPage((current) => ({
                         ...current,
                         shopTab: current.shopTab ? { ...current.shopTab, open } : null,
-                        // The tile sits after the links when the shop opens, which is where the API puts it.
-                        shop: open ? { position: current.links.length, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
+                        // The button goes first when the shop opens, as the API puts it; whatever else is
+                        // placed in the list moves down one, so a stored FAQ position goes with it.
+                        faqPosition: open && !current.shop && current.faqPosition !== null ? current.faqPosition + 1 : current.faqPosition,
+                        shop: open ? { position: 0, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
                       }))
                     }
                   />
                 ) : null
               }
+            />
+          </div>
+
+          <div role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" hidden={tab !== 'layout'} className={`${ui.panel} ${styles.wide}`}>
+            <LayoutEditor
+              entries={layoutEntries}
+              onReorder={reorderPage}
+              faqEmpty={(page.faq?.entries.length ?? 0) === 0}
+              layout={page.layout}
+              onLayout={chooseLayout}
+              onResize={resizeEntry}
+              shopDrawn={previewPill !== null}
             />
           </div>
         </div>
@@ -297,6 +441,7 @@ export function MyCuriosEditor({
           {...page}
           shop={previewPill}
           faq={page.faq}
+          faqPosition={page.shopTab ? page.faqPosition : undefined}
           mode={shownPreview === 'ask' ? 'chat' : undefined}
           interactive={false}
           nameAs="p"

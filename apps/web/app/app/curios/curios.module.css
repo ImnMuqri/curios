@@ -653,6 +653,100 @@ input.youField {
   border-radius: 6px;
 }
 
+/* Layout: one row per piece of the page, lifted by its handle. */
+.layoutList {
+  user-select: none;
+}
+
+.layoutList[data-dragging] {
+  cursor: grabbing;
+}
+
+.layoutRow {
+  padding-left: 4px;
+  outline-offset: -2px;
+}
+
+.layoutRow:focus-visible {
+  outline: 2px solid var(--sky);
+  border-radius: 8px;
+}
+
+.layoutRow[data-lifted] {
+  z-index: 1;
+  background: var(--card);
+  box-shadow: 0 6px 20px rgb(20 30 60 / 16%);
+  border-radius: 10px;
+}
+
+.layoutRow[data-dim] > :not(.dragHandle) {
+  opacity: 0.55;
+}
+
+.layoutChoice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+
+.layoutChoice b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.layoutChoice small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* A row's size picker, on its own line under the row's words. */
+.layoutSize {
+  flex-basis: 100%;
+  padding: 0 0 10px 36px;
+}
+
+.layoutSize small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.dragHandle {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 44px;
+  color: var(--muted);
+  cursor: grab;
+  /* A finger that starts here drags; a finger anywhere else scrolls the page. */
+  touch-action: none;
+}
+
+.layoutText {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 0;
+}
+
+.layoutText b {
+  display: block;
+  font-weight: 600;
+}
+
+.layoutText > span {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 /* Move and remove: there, but quiet until the row is wanted. */
 .tools {
   display: flex;
@@ -689,6 +783,31 @@ input.youField {
 .addActions {
   display: flex;
   gap: 4px;
+}
+
+.widgetForm {
+  grid-template-columns: 2fr 1fr auto;
+}
+
+.widgetService {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addRows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.widgetHint {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  opacity: 0.8;
 }
 
 .addActions > button:last-child {
@@ -1181,7 +1300,8 @@ input.youField {
   }
 
   .addForm,
-  .editForm {
+  .editForm,
+  .widgetForm {
     grid-template-columns: minmax(0, 1fr);
   }
 }

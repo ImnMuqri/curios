@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { WIDGET_FRAME_ORIGINS } from '@curios/core/widgets';
 import { contentSecurityPolicy, securityHeaders } from './security-headers.js';
 
 const prod = { apiUrl: 'https://api.curios.my', sentryDsn: 'https://abc123@o42.ingest.us.sentry.io/7', dev: false };
@@ -12,6 +13,12 @@ describe('contentSecurityPolicy', () => {
     expect(directive(contentSecurityPolicy(prod), 'connect-src')).toBe(
       "connect-src 'self' https://api.curios.my https://o42.ingest.us.sentry.io",
     );
+  });
+
+  it('frames only the eight widget players', () => {
+    const frame = directive(contentSecurityPolicy(prod), 'frame-src')!;
+    expect(frame.split(' ').slice(1).sort()).toEqual([...WIDGET_FRAME_ORIGINS].sort());
+    expect(WIDGET_FRAME_ORIGINS).toHaveLength(8);
   });
 
   it('never puts the Sentry key into the header', () => {

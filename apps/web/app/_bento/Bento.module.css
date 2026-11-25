@@ -669,14 +669,12 @@
 }
 
 /* The first link is the one the owner most wants pressed: it wears the accent. */
-.links > li:first-child .link,
-.links[data-shop] > li:nth-child(2) .link {
+.links > li[data-lead] .link {
   background: var(--lead-ring);
   color: var(--on-accent);
 }
 
-.links > li:first-child .link > span,
-.links[data-shop] > li:nth-child(2) .link > span {
+.links > li[data-lead] .link > span {
   border-color: var(--lead-edge-color, var(--btn-edge-color));
   background: var(--accent);
 }
@@ -702,12 +700,22 @@
   }
 }
 
-/* "People often ask": the top few answers, opened in place. */
+/* "People often ask": the top few answers, opened in place. It can sit anywhere among the links, splitting the list in two. */
 .faq {
   margin-top: 22px;
   padding: 14px;
   border-radius: 24px;
   background: var(--veil-1);
+}
+
+/* First, with a links run after it, it starts where the links would. With nothing after it but the footer (a
+   business page with answers but no links or shop) it keeps its 22px, as it always has. */
+.foldawayInner > .faq:first-child:has(+ .links) {
+  margin-top: 0;
+}
+
+.faq + .links {
+  margin-top: 22px;
 }
 
 .faqTitle {
@@ -928,7 +936,189 @@
     border-radius: 18px;
   }
 
+  .faq + .links {
+    margin-top: 14px;
+  }
+
   .foot {
     margin-top: 16px;
   }
+}
+
+/* A widget row: the service's own player in a box with the page's button radius and frame colours. */
+.widget {
+  display: grid;
+  gap: 8px;
+}
+
+.widgetLabel {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.widgetBox {
+  position: relative;
+  padding: 5px;
+  /* Never a pill: a player is a rectangle, so Soft's 999px gives way to the card corner. */
+  border-radius: min(var(--btn-radius, 16px), 16px);
+  background: var(--pill-ring);
+  overflow: hidden;
+}
+
+.widgetFrame {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: calc(min(var(--btn-radius, 16px), 16px) - 5px);
+  background: var(--pill);
+  color-scheme: normal;
+}
+
+.widgetCover {
+  position: absolute;
+  inset: 0;
+  cursor: default;
+}
+
+.widgetOpen {
+  justify-self: center;
+  font-size: 13px;
+  color: inherit;
+  opacity: 0.75;
+}
+
+/* Bento: the same list as a two-column grid, dense so a Tall or Big leaves no hole (arrangeTiles places tiles the same way). Two columns on a phone too. */
+.bentoGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: dense;
+  grid-auto-rows: minmax(104px, auto);
+}
+
+.bentoGrid > li {
+  display: flex;
+  min-width: 0;
+}
+
+.bentoGrid > li[data-size='WIDE'] {
+  grid-column: span 2;
+}
+
+.bentoGrid > li[data-size='TALL'] {
+  grid-row: span 2;
+}
+
+.bentoGrid > li[data-size='BIG'] {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.bentoGrid > li > :is(.link, .shopLink, .widget) {
+  flex: 1;
+  min-width: 0;
+}
+
+.bentoGrid > li > .link > span {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: 100%;
+  padding: 12px;
+}
+
+.bentoGrid > li[data-size='WIDE'] > .link > span {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.tileIcon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A label of at most two lines, whatever the tile. */
+.tileLabel {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.bentoGrid > li > .shopLink {
+  display: flex;
+  align-items: stretch;
+}
+
+.bentoGrid > li > .shopLink > .shopIn {
+  flex: 1;
+  min-width: 0;
+}
+
+/* People often ask, in a Wide tile: the section as it is, without the gap it has between list blocks. */
+.bentoGrid > li > .faq {
+  flex: 1;
+  min-width: 0;
+  margin-top: 0;
+}
+
+/* A player in a tile fills it; YouTube and Canva keep their own shape (the frame's aspect ratio). */
+.widgetFill {
+  flex: 1;
+  grid-template-rows: auto 1fr auto;
+  align-content: stretch;
+}
+
+.widgetFill > .widgetBox {
+  display: flex;
+  flex-direction: column;
+}
+
+.widgetFill .widgetFrame {
+  flex: 1;
+}
+
+@media (max-width: 520px) {
+  .bentoGrid {
+    grid-auto-rows: minmax(92px, auto);
+  }
+
+  .bentoGrid > li > .link > span {
+    padding: 8px 10px;
+  }
+}
+
+/* A tile is never a stadium: Soft's 999px would turn a Tall tile into an oval, so the corner stops at a card's. */
+.bentoGrid > li > .shopLink,
+.bentoGrid > li > .link,
+.bentoGrid > li > .link > span,
+.bentoGrid > li > .shopLink > .shopIn {
+  border-radius: min(var(--btn-radius, 16px), 16px);
+}
+
+/* The shop in a tile that is not wide: photos over words, no chevron. */
+.bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopIn {
+  flex-direction: column;
+  justify-content: center;
+  padding: 10px;
+  text-align: center;
+}
+
+.bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopIn > svg {
+  display: none;
+}
+
+.bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopText {
+  flex: none;
+  max-width: 100%;
 }

@@ -8,6 +8,7 @@ import {
   type CoverLayout,
   type HeadingFont,
   type PageBackground,
+  type PageLayout,
   type PageStyle,
 } from '@curios/core/bento';
 import { normalizeSocial, SOCIAL_KINDS, tidySocials, type SocialKind, type Socials } from '@curios/core/socials';
@@ -35,6 +36,7 @@ export interface Appearance {
   coverLayout: CoverLayout;
   /** Full page only: the page colour over the photo, or the photo as it is. */
   coverWash: boolean;
+  layout: PageLayout;
   displayName: string;
   bio: string | null;
   /** The filled-in profiles, by kind. */
@@ -76,6 +78,7 @@ export async function updateAppearance(
   if (input.avatarBorder !== undefined) data.avatarBorder = input.avatarBorder;
   if (input.coverLayout !== undefined) data.coverLayout = input.coverLayout;
   if (input.coverWash !== undefined) data.coverWash = input.coverWash;
+  if (input.layout !== undefined) data.layout = input.layout;
   if (input.accentColor !== undefined) {
     if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #2340c8.');
     data.accentColor = input.accentColor.toLowerCase();
@@ -120,7 +123,7 @@ export async function updateAppearance(
   }
   const page = await prisma.page.findUnique({
     where: { accountId },
-    select: { style: true, background: true, backgroundColor: true, accentColor: true, secondaryColor: true, headingFont: true, avatarSize: true, avatarBorder: true, coverLayout: true, coverWash: true, displayName: true, bio: true, socials: true },
+    select: { style: true, background: true, backgroundColor: true, accentColor: true, secondaryColor: true, headingFont: true, avatarSize: true, avatarBorder: true, coverLayout: true, coverWash: true, layout: true, displayName: true, bio: true, socials: true },
   });
   if (!page) throw new NoPageError();
   return { ...page, socials: asSocials(page.socials) };

@@ -1,5 +1,6 @@
 import { tidySocials, type SocialKind } from '@curios/core/socials';
-import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
+import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
+import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageLayout, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
 import { countTopicsNeedingOwner } from './topics.query.js';
@@ -15,6 +16,8 @@ export interface MyCurios {
   /** The buttons' edge and shadow; null is the page's text colour. */
   secondaryColor: string | null;
   headingFont: HeadingFont;
+  /** Where "People often ask" sits among the links (an index into the whole page); null is after the last. */
+  faqPosition: number | null;
   avatarKey: string | null;
   /** The picture's size and whether it wears its ring (Medium with the ring is how every page began). */
   avatarSize: AvatarSize;
@@ -25,12 +28,22 @@ export interface MyCurios {
   coverLayout: CoverLayout;
   /** Full page only: the page colour over the photo (true) or the photo as it is. */
   coverWash: boolean;
+  /** A column of links, or a bento grid. */
+  layout: PageLayout;
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
   /** Social profiles to show as icons under the name, in display order. */
   socials: { kind: SocialKind; value: string }[];
-  links: { id: string; label: string; url: string; size: TileSize | null }[];
+  links: {
+    id: string;
+    label: string;
+    url: string;
+    size: TileSize | null;
+    kind: LinkKind;
+    provider: WidgetProvider | null;
+    embedRef: string | null;
+  }[];
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
   /**
@@ -59,6 +72,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       bio: true,
       language: true,
       ...SHOP_TILE_SELECT,
+      faqPosition: true,
       style: true,
       accentColor: true,
       secondaryColor: true,
@@ -69,10 +83,14 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       coverKey: true,
       coverLayout: true,
       coverWash: true,
+      layout: true,
       background: true,
       backgroundColor: true,
       socials: true,
-      links: { orderBy: { position: 'asc' }, select: { id: true, label: true, url: true, size: true } },
+      links: {
+        orderBy: { position: 'asc' },
+        select: { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true },
+      },
     },
   });
   if (!page) return null;

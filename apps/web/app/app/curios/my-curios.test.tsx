@@ -3,15 +3,15 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MyCuriosEditor, type EditorPage } from './my-curios.js';
+import { MyCuriosEditor, positionsAfterAdd, positionsAfterRemoval, type EditorPage } from './my-curios.js';
 import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
-  id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
-  style: 'SOFT', secondaryColor: null, coverWash: true, accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
+  id: 'p1', faqPosition: null, handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
+  style: 'SOFT', secondaryColor: null, coverWash: true, layout: 'LIST' as const, accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
   socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',
-  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
+  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null }],
 };
 
 const business: EditorPage = {
@@ -24,11 +24,13 @@ const business: EditorPage = {
 };
 
 const api = () => ({
-  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null })),
+  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null })),
+  addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/x' })),
   updateLink: vi.fn(async (_id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
   setShopOpen: vi.fn(async () => undefined),
+  setShopSize: vi.fn(async () => undefined),
   saveAppearance: vi.fn(async () => undefined),
   uploadAvatar: vi.fn(async () => null),
   removeAvatar: vi.fn(async () => undefined),
@@ -60,6 +62,17 @@ afterEach(() => {
 });
 
 describe('MyCuriosEditor', () => {
+  it('sends a pasted widget link through the editor to the API and lists it', async () => {
+    const { calls } = show();
+    await userEvent.click(editTab('Links'));
+    const panel = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.click(panel.getByRole('button', { name: '+ Add a widget' }));
+    await userEvent.type(panel.getByLabelText('Widget link'), 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M');
+    await userEvent.click(panel.getByRole('button', { name: 'Add' }));
+    expect(calls.addWidget).toHaveBeenCalledWith({ url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', label: null });
+    expect(await panel.findByRole('listitem', { name: 'Spotify' })).toBeInTheDocument();
+  });
+
   // The preview updates from local state, before any save returns.
   it('shows a new link in the live preview as soon as it is added', async () => {
     show();
@@ -189,9 +202,9 @@ describe('the tabs', () => {
     expect(screen.getByLabelText('Display name')).not.toBeVisible();
   });
 
-  it('has just the two tabs, Profile and Links', () => {
+  it('has the tabs Profile, Links and Layout', () => {
     show();
-    expect(within(screen.getByRole('tablist', { name: 'Edit' })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Profile', 'Links']);
+    expect(within(screen.getByRole('tablist', { name: 'Edit' })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Profile', 'Links', 'Layout']);
   });
 
   it('moves between parts with the arrow keys, Home and End, as a tab list does', async () => {
@@ -201,11 +214,11 @@ describe('the tabs', () => {
     expect(editTab('Links')).toHaveFocus();
     expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
-    expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
+    expect(editTab('Layout')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Home}');
     expect(editTab('Profile')).toHaveFocus();
     await userEvent.keyboard('{End}');
-    expect(editTab('Links')).toHaveFocus();
+    expect(editTab('Layout')).toHaveFocus();
   });
 
   // A hidden part keeps its state, so a name typed a moment ago still saves after switching away.
@@ -259,6 +272,11 @@ describe('the preview tabs', () => {
   it('draws no shop pill while the shop is open with nothing for sale', () => {
     show({ ...business, shopTab: { open: true, itemCount: 0, preview: [] }, shop: { position: 1, size: null, itemCount: 0, photoKey: null, photos: [] } });
     expect(within(preview()).queryByText('0 items')).toBeNull();
+  });
+
+  it('draws no shop pill without the shop tile, as on the public page', async () => {
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: null });
+    expect(within(preview()).queryByText('2 items')).toBeNull();
   });
 
   it('shows the shop pill on the Links preview while the shop is open', () => {
@@ -433,13 +451,182 @@ describe('without the template look', () => {
 
   // The v3 board brings the kind tile back on link rows and the Shop link row (.ri .ki, .shoprow .ki).
   it('marks each link row with its kind, read off the address, and the Shop link as the first row', async () => {
-    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null }] });
+    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null }] });
     await userEvent.click(editTab('Links'));
-    const kinds = [...document.querySelectorAll('[data-kind]')].filter((el) => el.tagName === 'SPAN' && el.closest('[role="tabpanel"]'));
+    const kinds = [...document.querySelectorAll('#panel-links [data-kind]')].filter((el) => el.tagName === 'SPAN');
     expect(kinds.map((el) => el.getAttribute('data-kind'))).toEqual(['shop', 'link', 'whatsapp']);
     // The shop row sits above the list, in the same box.
     const shop = screen.getByRole('group', { name: 'Shop link' });
     expect(shop.nextElementSibling?.tagName).toBe('UL');
+  });
+});
+
+describe('the Layout tab', () => {
+  const two: EditorPage = {
+    ...business,
+    shopTab: { open: true, itemCount: 2, preview: [] },
+    shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] },
+    faqPosition: null,
+    links: [
+      { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
+      { id: 'b', label: 'Cafe menu', url: 'https://cafe.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
+    ],
+  };
+  const layout = () => within(screen.getByRole('tabpanel', { name: 'Layout' }));
+  const before = (first: string, second: string) =>
+    Boolean(within(preview()).getByText(first).compareDocumentPosition(within(preview()).getByText(second)) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  async function liftDown(name: string) {
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+  }
+
+  it('lists the links, the shop and People often ask, and sends them all, reordered, in one save', async () => {
+    const { calls } = show(two);
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+    await liftDown('Portfolio');
+    expect(calls.reorder).toHaveBeenCalledTimes(1);
+    expect(calls.reorder).toHaveBeenCalledWith(['shop', 'a', 'b', 'faq']);
+  });
+
+  it('moves the preview as soon as a row is dropped', async () => {
+    show(two);
+    expect(before('Portfolio', 'Cafe menu')).toBe(true);
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name: 'Portfolio' });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    for (let i = 0; i < 3; i += 1) fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+    expect(before('Cafe menu', 'Portfolio')).toBe(true);
+  });
+
+  it('puts the preview back and shows the error when the save fails', async () => {
+    const calls = api();
+    calls.reorder = vi.fn(async () => {
+      throw new Error('Your links changed somewhere else.');
+    });
+    show(two, calls);
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name: 'Portfolio' });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    for (let i = 0; i < 3; i += 1) fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+    expect(before('Portfolio', 'Cafe menu')).toBe(true);
+    expect(layout().getByRole('alert')).toHaveTextContent('changed somewhere else');
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+  });
+
+  it('moves the shop up when a link above it is removed, in the preview and in Layout', async () => {
+    const calls = api();
+    show(two, calls);
+    await userEvent.click(editTab('Links'));
+    const row = within(screen.getByRole('tabpanel', { name: 'Links' })).getByRole('listitem', { name: 'Portfolio' });
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove Portfolio' }));
+    await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
+    expect(calls.removeLink).toHaveBeenCalledWith('a');
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Cafe menu', 'People often ask']);
+    const shopPill = within(preview()).getByText('Shop');
+    expect(Boolean(shopPill.compareDocumentPosition(within(preview()).getByText('Cafe menu')) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  });
+
+  it('keeps People often ask last, and the shop where it was, when a link after them is removed', async () => {
+    show({ ...two, shop: { ...two.shop!, position: 0 } }, api());
+    await userEvent.click(editTab('Links'));
+    const row = within(screen.getByRole('tabpanel', { name: 'Links' })).getByRole('listitem', { name: 'Cafe menu' });
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove Cafe menu' }));
+    await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Portfolio', 'People often ask']);
+  });
+
+  it('adds a link at the end of the links, leaving a shop between two links where it is', async () => {
+    show(two, api());
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
+    const panel = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.type(panel.getByLabelText('Name'), 'Newest');
+    await userEvent.type(panel.getByLabelText('Address'), 'new.dev');
+    await userEvent.click(panel.getByRole('button', { name: 'Add' }));
+    await userEvent.click(editTab('Layout'));
+    // The shop sat between the two links, so it stays there; the new link joins the end.
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'Newest', 'People often ask']);
+  });
+
+  it('puts the shop first when it opens', async () => {
+    show({ ...business, links: two.links }, api());
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop link' }));
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))[0]).toBe('Shop');
+  });
+
+  it('works out where the tiles go after an add, the way the API does', () => {
+    expect(positionsAfterAdd(2, 2, null)).toEqual({ shop: 3, faq: null });
+    expect(positionsAfterAdd(2, 1, null)).toEqual({ shop: 1, faq: null });
+    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterAdd(0, 0, 1)).toEqual({ shop: 0, faq: 1 });
+    expect(positionsAfterAdd(2, null, 2)).toEqual({ faq: 3, shop: null });
+    expect(positionsAfterAdd(2, 2, 3)).toEqual({ shop: 3, faq: 4 });
+    expect(positionsAfterAdd(1, 0, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterAdd(3, null, null)).toEqual({ shop: null, faq: null });
+  });
+
+  it('works out the positions the way the API does', () => {
+    expect(positionsAfterRemoval(0, 1, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterRemoval(0, 1, 2)).toEqual({ shop: 0, faq: 1 });
+    expect(positionsAfterRemoval(1, 0, 2)).toEqual({ shop: 0, faq: 2 });
+    expect(positionsAfterRemoval(2, 0, 2)).toEqual({ shop: 0, faq: 2 });
+    expect(positionsAfterRemoval(0, 0, 3)).toEqual({ shop: 0, faq: 2 });
+  });
+
+  it('stores the FAQ as last when it is dragged last, so a link added afterwards lands above it', async () => {
+    const calls = api();
+    show({ ...two, shop: { ...two.shop!, position: 0 }, faqPosition: 1 }, calls);
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name: 'People often ask' });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    for (let i = 0; i < 3; i += 1) fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+    expect(calls.reorder).toHaveBeenCalledWith(['shop', 'a', 'b', 'faq']);
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
+    const links = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.type(links.getByLabelText('Name'), 'Newest');
+    await userEvent.type(links.getByLabelText('Address'), 'new.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Portfolio', 'Cafe menu', 'Newest', 'People often ask']);
+  });
+
+  it('has no People often ask or Shop row on a personal page', async () => {
+    show();
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio']);
+  });
+
+  it('dims People often ask on a business page without answers', async () => {
+    show(two);
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getByRole('listitem', { name: 'People often ask' })).toHaveTextContent('Shows once you answer questions');
   });
 });
 
@@ -461,5 +648,51 @@ describe('the preview follows the page cover layout', () => {
   it('anchors a Full-page cover to the page inside the phone', () => {
     const css = readFileSync(join(import.meta.dirname, '../_ui/editor.module.css'), 'utf8');
     expect(css).toMatch(/\.scroll > \[data-bento-page\]\[data-cover-layout='FULL'\]\s*\{\s*position:\s*relative;/);
+  });
+});
+
+describe('the Layout tab, List or Bento', () => {
+  const layoutPanel = () => within(screen.getByRole('tabpanel', { name: 'Layout' }));
+  const grid = () => preview().querySelector('[data-bento-grid]');
+
+  it('switches the preview to Bento at once and saves the layout', async () => {
+    const { calls } = show();
+    await userEvent.click(editTab('Layout'));
+    expect(grid()).toBeNull();
+    await userEvent.click(layoutPanel().getByRole('radio', { name: 'Bento' }));
+    expect(calls.saveAppearance).toHaveBeenCalledWith({ layout: 'BENTO' });
+    expect(grid()).not.toBeNull();
+  });
+
+  it('puts the layout back when the save is refused', async () => {
+    const calls = api();
+    calls.saveAppearance.mockRejectedValueOnce(new Error('Nope'));
+    show(initial, calls);
+    await userEvent.click(editTab('Layout'));
+    await userEvent.click(layoutPanel().getByRole('radio', { name: 'Bento' }));
+    expect(await screen.findByText('Nope')).toBeInTheDocument();
+    expect(grid()).toBeNull();
+  });
+
+  it('saves a link size through the link API, shows it, and reverts on failure', async () => {
+    const calls = api();
+    show({ ...initial, layout: 'BENTO' }, calls);
+    await userEvent.click(editTab('Layout'));
+    await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Portfolio' })).getByRole('radio', { name: 'Big' }));
+    expect(calls.updateLink).toHaveBeenCalledWith('a', { size: 'BIG' });
+    expect(grid()!.firstElementChild).toHaveAttribute('data-size', 'BIG');
+
+    calls.updateLink.mockRejectedValueOnce(new Error('Nope'));
+    await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Portfolio' })).getByRole('radio', { name: 'Wide' }));
+    expect(await screen.findByText('Nope')).toBeInTheDocument();
+    expect(grid()!.firstElementChild).toHaveAttribute('data-size', 'BIG');
+  });
+
+  it('saves the shop button size to the store settings', async () => {
+    const calls = api();
+    show({ ...business, layout: 'BENTO', shop: { position: 0, size: null, itemCount: 2, photoKey: null, photos: [] }, shopTab: { ...business.shopTab!, open: true } }, calls);
+    await userEvent.click(editTab('Layout'));
+    await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Shop' })).getByRole('radio', { name: 'Wide' }));
+    expect(calls.setShopSize).toHaveBeenCalledWith('WIDE');
   });
 });

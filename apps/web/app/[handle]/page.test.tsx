@@ -33,6 +33,7 @@ const { default: HandlePage, generateMetadata } = await import('./page.js');
 
 const page: PublicPage = {
   id: 'p1',
+  faqPosition: null,
   handle: 'nadia',
   displayName: 'Nadia Bakes',
   bio: 'Kek butter, Shah Alam',
@@ -44,8 +45,8 @@ const page: PublicPage = {
   paidUntil: null,
   leadsCaptured: 0,
   links: [
-    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0, size: null },
-    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1, size: null },
+    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0, size: null, kind: 'LINK', provider: null, embedRef: null },
+    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1, size: null, kind: 'LINK', provider: null, embedRef: null },
   ],
   facts: [
     {
@@ -60,7 +61,7 @@ const page: PublicPage = {
   ],
   allowSearchIndexing: false,
   style: 'SOFT',
-  secondaryColor: null, coverWash: true, accentColor: '#2340c8',
+  secondaryColor: null, coverWash: true, layout: 'LIST' as const, accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: null,
   coverKey: null,

@@ -64,6 +64,14 @@ describe('PATCH /pages/appearance', () => {
     expect(second.json().appearance).toMatchObject({ avatarSize: 'LARGE', avatarBorder: false, coverLayout: 'FULL' });
   });
 
+  it('lays a page out as a list until the owner picks the bento grid', async () => {
+    const cookie = await anOwner();
+    expect((await patch(cookie, { displayName: 'Same' })).json().appearance.layout).toBe('LIST');
+    expect((await patch(cookie, { layout: 'BENTO' })).json().appearance.layout).toBe('BENTO');
+    expect((await patch(cookie, { layout: 'LIST' })).json().appearance.layout).toBe('LIST');
+    expect((await patch(cookie, { layout: 'GRID' })).statusCode).toBe(400);
+  });
+
   it('keeps the page colour over a Full page cover until the owner turns it off', async () => {
     const cookie = await anOwner();
     expect((await patch(cookie, { coverLayout: 'FULL' })).json().appearance.coverWash).toBe(true);

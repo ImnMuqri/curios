@@ -1,9 +1,10 @@
 import { canTakeOrders, PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { DeliveryMode } from '@curios/core/store';
+import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
-import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
+import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageLayout, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { getSettings } from './settings.query.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
@@ -16,6 +17,9 @@ export interface PublicLink {
   icon: string | null;
   position: number;
   size: TileSize | null;
+  kind: LinkKind;
+  provider: WidgetProvider | null;
+  embedRef: string | null;
 }
 
 export interface PublicFact {
@@ -57,11 +61,15 @@ export interface PublicPage {
   coverLayout: CoverLayout;
   /** Full page only: the page colour over the photo (true) or the photo as it is. */
   coverWash: boolean;
+  /** A column of links, or a bento grid. */
+  layout: PageLayout;
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
   /** Social profiles to show as icons under the name, in display order. */
   socials: { kind: SocialKind; value: string }[];
+  /** Where "People often ask" sits among the links (an index into the whole page); null is after the last. */
+  faqPosition: number | null;
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
   /**
@@ -134,6 +142,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       coverKey: true,
       coverLayout: true,
       coverWash: true,
+      layout: true,
       background: true,
       backgroundColor: true,
       socials: true,
@@ -144,9 +153,10 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       minNoticeDays: true,
       closedDays: true,
       ...SHOP_TILE_SELECT,
+      faqPosition: true,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, icon: true, position: true, size: true },
+        select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true },
       },
       facts: {
         where: { verified: true },

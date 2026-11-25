@@ -156,10 +156,17 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
   }
 
   const { enabled, tileSize, paymentQrKey: _qr, ...columns } = next;
-  const row = await prisma.page.update({
-    where: { id: page.id },
-    data: { ...columns, storeEnabled: enabled, shopTileSize: tileSize },
-    select: SELECT,
+  // Opening the shop puts its button first. Everything already on the page moves down one, so a
+  // stored FAQ index (an index into the full list) goes up with it.
+  const opening = enabled && !current.enabled;
+  const row = await prisma.$transaction(async (tx) => {
+    const data: Prisma.PageUpdateInput = { ...columns, storeEnabled: enabled, shopTileSize: tileSize };
+    if (opening) {
+      data.shopTilePosition = 0;
+      const faq = await tx.page.findUniqueOrThrow({ where: { id: page.id }, select: { faqPosition: true } });
+      if (faq.faqPosition !== null) data.faqPosition = faq.faqPosition + 1;
+    }
+    return tx.page.update({ where: { id: page.id }, data, select: SELECT });
   });
   return toSettings(row);
 }

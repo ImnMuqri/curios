@@ -87,6 +87,10 @@ export type AvatarSize = (typeof AVATAR_SIZES)[number];
 export const COVER_LAYOUTS = ['TOP', 'FULL'] as const;
 export type CoverLayout = (typeof COVER_LAYOUTS)[number];
 
+/** How the page is laid out: a column of links, or a grid of sized tiles. */
+export const PAGE_LAYOUTS = ['LIST', 'BENTO'] as const;
+export type PageLayout = (typeof PAGE_LAYOUTS)[number];
+
 export const MAX_LINKS = 30;
 export const LABEL_MAX = 40;
 export const BIO_MAX = 160;
@@ -250,7 +254,78 @@ export function tintOf(hex: string, share: number): string {
 
 export type Tone = 'accent' | 'warm' | 'plain';
 
-const CELLS: Record<TileSize, number> = { SMALL: 1, WIDE: 2, TALL: 2, BIG: 4 };
+const SPAN: Record<TileSize, { w: number; h: number }> = {
+  SMALL: { w: 1, h: 1 },
+  WIDE: { w: 2, h: 1 },
+  TALL: { w: 1, h: 2 },
+  BIG: { w: 2, h: 2 },
+};
+
+/** Where a two-column dense grid puts each size: the first free place it fits, top to bottom, left to right. */
+export function placeTiles(sizes: TileSize[]): { row: number; col: number }[] {
+  const taken: boolean[][] = [];
+  const free = (r: number, c: number) => !taken[r]?.[c];
+  return sizes.map((size) => {
+    const { w, h } = SPAN[size];
+    for (let row = 0; ; row++) {
+      for (let col = 0; col + w <= 2; col++) {
+        let fits = true;
+        for (let dr = 0; dr < h && fits; dr++) for (let dc = 0; dc < w; dc++) if (!free(row + dr, col + dc)) fits = false;
+        if (!fits) continue;
+        for (let dr = 0; dr < h; dr++) {
+          taken[row + dr] ??= [false, false];
+          for (let dc = 0; dc < w; dc++) taken[row + dr]![col + dc] = true;
+        }
+        return { row, col };
+      }
+    }
+  });
+}
+
+/**
+ * A row that ends with one empty cell beside a lone Small tile, once every tile is placed (so nothing
+ * later backfilled it), widens that Small to Wide, wherever the row is. This holds whether the size was
+ * automatic or the owner's choice: no half row wins over a chosen Small. A hole beside the bottom of a
+ * Tall or Big stays. Re-placed after each widen, so it ends in at most one pass per tile.
+ */
+function widenLoneTile(tiles: { size: TileSize }[]): void {
+  for (let pass = 0; pass <= tiles.length; pass++) {
+    const at = placeTiles(tiles.map((t) => t.size));
+    const owner = new Map<string, number>();
+    let last = -1;
+    tiles.forEach((tile, i) => {
+      const { w, h } = SPAN[tile.size];
+      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) owner.set(`${at[i]!.row + r},${at[i]!.col + c}`, i);
+      last = Math.max(last, at[i]!.row + h - 1);
+    });
+    let widened = false;
+    for (let r = 0; r <= last && !widened; r++) {
+      for (let c = 0; c < 2 && !widened; c++) {
+        if (owner.has(`${r},${c}`)) continue;
+        const beside = owner.get(`${r},${1 - c}`);
+        if (beside !== undefined && tiles[beside]!.size === 'SMALL') {
+          tiles[beside]!.size = 'WIDE';
+          widened = true;
+        }
+      }
+    }
+    if (!widened) return;
+  }
+}
+
+/** Whether a cell above the last occupied row stays empty (the last row's own gap is widenLoneTile's). */
+function hasInteriorHole(sizes: TileSize[]): boolean {
+  const at = placeTiles(sizes);
+  const taken = new Set<string>();
+  let last = -1;
+  sizes.forEach((size, i) => {
+    const { w, h } = SPAN[size];
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) taken.add(`${at[i]!.row + r},${at[i]!.col + c}`);
+    last = Math.max(last, at[i]!.row + h - 1);
+  });
+  for (let r = 0; r < last; r++) for (let c = 0; c < 2; c++) if (!taken.has(`${r},${c}`)) return true;
+  return false;
+}
 
 function autoSize(index: number, count: number): TileSize {
   // One link: a tall tile would leave its neighbour's column empty.
@@ -263,27 +338,51 @@ function autoSize(index: number, count: number): TileSize {
   return (index - 3) % 3 === 2 ? 'WIDE' : 'SMALL';
 }
 
+/** Whether a size is enough for a minimum: Small < Wide, Tall < Big, but Wide does not cover a Tall minimum nor Tall a Wide one. */
+function meetsMinimum(size: TileSize, min: TileSize): boolean {
+  return size === 'BIG' || min === 'SMALL' || size === min;
+}
+
 /**
- * The shopfront arrangement: each link's tile size and colour.
+ * The shopfront arrangement: each tile's size and colour.
  *
- * A link with a size keeps it. An automatic one takes its size from its
+ * A tile with a size keeps it. An automatic one takes its size from its
  * position, and the last automatic tile widens when the grid would otherwise
  * end with half a row empty. Tone follows position only: the first tile
  * carries the accent, the second the warm colour.
+ *
+ * The grid is two columns drawn with dense flow, so a tile goes to the first free place it fits.
+ * When sizes are final and the last row has one empty cell, the Small tile in the other cell
+ * becomes Wide (so does one mid-grid with nothing to backfill it), whether it was automatic or the owner's choice: no empty half row wins over a chosen Small. A tile that is not Small (the bottom of a Tall) stays.
+ *
+ * `minSize` (a widget that cannot be drawn small) lifts a size that is below
+ * the tile's minimum to the minimum itself; it never lowers one. The items may
+ * be the entries `pageEntries` returns.
  */
 export function arrangeTiles<T extends { size: TileSize | null }>(
   links: T[],
+  minSize?: (item: T) => TileSize,
 ): { link: T; size: TileSize; tone: Tone }[] {
-  const tiles = links.map((link, index) => ({
-    link,
-    size: link.size ?? autoSize(index, links.length),
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    tone: (index === 0 ? 'accent' : index === 1 ? 'warm' : 'plain') as Tone,
-  }));
+  const tiles = links.map((link, index) => {
+    let size = link.size ?? autoSize(index, links.length);
+    const min = minSize?.(link);
+    if (min && !meetsMinimum(size, min)) size = min;
+    return {
+      link,
+      size,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      tone: (index === 0 ? 'accent' : index === 1 ? 'warm' : 'plain') as Tone,
+    };
+  });
 
-  const last = tiles.at(-1);
-  const cells = tiles.reduce((sum, tile) => sum + CELLS[tile.size], 0);
-  if (last && last.link.size === null && last.size === 'SMALL' && cells % 2 === 1) last.size = 'WIDE';
+  widenLoneTile(tiles);
+  // An automatic Tall that leaves an empty cell inside the grid becomes Wide; a chosen size is never touched.
+  const auto = links.map((link) => link.size === null);
+  for (let i = 0; i < tiles.length && hasInteriorHole(tiles.map((t) => t.size)); i++) {
+    if (auto[i] && tiles[i]!.size === 'TALL') tiles[i]!.size = 'WIDE';
+  }
+
+  widenLoneTile(tiles);
 
   return tiles;
 }
@@ -300,25 +399,87 @@ export interface ShopTilePlacement {
   size: TileSize | null;
 }
 
+/** The "People often ask" block's id in the same ordered lists as SHOP_TILE_ID. */
+export const FAQ_TILE_ID = 'faq';
+
 export type BentoEntry<L> =
   | { kind: 'link'; id: string; size: TileSize | null; link: L }
   | { kind: 'shop'; id: typeof SHOP_TILE_ID; size: TileSize | null };
 
+export type PageEntry<L> = BentoEntry<L> | { kind: 'faq'; id: typeof FAQ_TILE_ID; size: 'WIDE' };
+
+/**
+ * Everything on the page in visitor order: the links, with the shop tile (when the shop is open) and
+ * the FAQ block (when `faq` is not null) inserted at their positions. A null FAQ position means after the last item.
+ *
+ * Every caller on a BUSINESS page passes `faq: { position: page.faqPosition }` whether or not answers
+ * exist, so the editor's list and the public page agree; the renderer draws nothing for a faq entry
+ * with no answers. A personal page passes null.
+ *
+ * Positions are indexes into the finished list, as the editor sends it, so the pieces are inserted
+ * lowest position first. Each is clamped rather than trusted: an owner who parks the shop tile last
+ * and then removes links leaves it pointing past the end -- it must still show, last, not disappear.
+ */
+export function pageEntries<L extends { id: string; size: TileSize | null }>(
+  links: L[],
+  shop: ShopTilePlacement | null,
+  faq: { position: number | null } | null,
+): PageEntry<L>[] {
+  const entries: PageEntry<L>[] = links.map((link) => ({ kind: 'link', id: link.id, size: link.size, link }));
+  const pieces: { position: number; entry: PageEntry<L> }[] = [];
+  if (shop) pieces.push({ position: shop.position, entry: { kind: 'shop', id: SHOP_TILE_ID, size: shop.size } });
+  if (faq) {
+    pieces.push({
+      position: faq.position ?? Number.POSITIVE_INFINITY,
+      entry: { kind: 'faq', id: FAQ_TILE_ID, size: 'WIDE' },
+    });
+  }
+  // Stable sort, then each splice at its index: on a tie the later one (the FAQ) is inserted at the same
+  // index and so lands ahead of the shop.
+  pieces.sort((a, b) => a.position - b.position);
+  for (const { position, entry } of pieces) {
+    const at = Math.min(Math.max(0, Math.trunc(position)), entries.length);
+    entries.splice(at, 0, entry);
+  }
+  return entries;
+}
+
 /**
  * The page's tiles in visitor order: its links, with the shop tile inserted
  * at its position when the shop is open.
- *
- * The position is clamped rather than trusted. It is stored as an index, and
- * an owner who parks the tile last and then removes links leaves it pointing
- * past the end -- the tile must still show, last, not disappear.
  */
 export function withShopTile<L extends { id: string; size: TileSize | null }>(
   links: L[],
   shop: ShopTilePlacement | null,
 ): BentoEntry<L>[] {
-  const entries: BentoEntry<L>[] = links.map((link) => ({ kind: 'link', id: link.id, size: link.size, link }));
-  if (!shop) return entries;
-  const at = Math.min(Math.max(0, Math.trunc(shop.position)), entries.length);
-  entries.splice(at, 0, { kind: 'shop', id: SHOP_TILE_ID, size: shop.size });
-  return entries;
+  return pageEntries(links, shop, null) as BentoEntry<L>[];
+}
+
+/**
+ * Where the shop and People often ask sit after a link or widget is added. The new one joins the END OF
+ * THE LINKS: its full-list index is just after the last existing link (with none, after every tile in play), and a tile at or after
+ * that index moves up one. A tile placed before the last link keeps its place among the links. `shop` is null
+ * while the shop is closed; an unset FAQ position (null, after the last item) stays null. The API and the
+ * editor both use this, so they cannot drift.
+ */
+export function positionsAfterAdd(linkCount: number, shop: number | null, faq: number | null): { shop: number | null; faq: number | null } {
+  const tiles: { key: 'shop' | 'faq'; position: number }[] = [];
+  if (shop !== null) tiles.push({ key: 'shop', position: shop });
+  if (faq !== null) tiles.push({ key: 'faq', position: faq });
+  tiles.sort((x, y) => x.position - y.position);
+  // With no links yet the first one goes after every tile in play (the shop has always been first).
+  // Otherwise walk the full list to the last link; the new one goes right after it.
+  let at = linkCount === 0 ? tiles.length : 0;
+  let seen = 0;
+  let tile = 0;
+  for (let i = 0; seen < linkCount; i += 1) {
+    if (tile < tiles.length && tiles[tile]!.position === i) tile += 1;
+    else {
+      seen += 1;
+      at = i + 1;
+    }
+  }
+  const out = { shop, faq };
+  for (const t of tiles) if (t.position >= at) out[t.key] = t.position + 1;
+  return out;
 }

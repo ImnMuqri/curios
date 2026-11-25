@@ -1,5 +1,6 @@
-import type { PrismaClient } from '@curios/db';
-import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, SHOP_TILE_ID, type TileSize } from '@curios/core/bento';
+import type { Prisma, PrismaClient, WidgetProvider as DbWidgetProvider } from '@curios/db';
+import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, positionsAfterAdd, type TileSize } from '@curios/core/bento';
+import { parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
 
 export class InvalidLinkError extends Error {
@@ -8,6 +9,15 @@ export class InvalidLinkError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InvalidLinkError';
+  }
+}
+
+export class InvalidWidgetError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_WIDGET';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidWidgetError';
   }
 }
 
@@ -39,8 +49,17 @@ export class LinkOrderStaleError extends Error {
   }
 }
 
-const SELECT = { id: true, label: true, url: true, size: true } as const;
-export type LinkRow = { id: string; label: string; url: string; size: TileSize | null };
+const SELECT = { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true } as const;
+export type LinkRow = {
+  id: string;
+  label: string;
+  url: string;
+  size: TileSize | null;
+  kind: 'LINK' | 'WIDGET';
+  provider: DbWidgetProvider | null;
+  embedRef: string | null;
+};
+export type ResolveShort = (url: string) => Promise<string | null>;
 
 async function pageIdFor(prisma: PrismaClient, accountId: string): Promise<string> {
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });
@@ -64,13 +83,46 @@ function checkUrl(raw: string): string {
   return url;
 }
 
+/**
+ * A pasted widget link as the pair to store. A short link takes one hop through `resolve`, and the
+ * answer must itself parse and name the same provider the short host did, or it is refused.
+ */
+async function parseWidget(raw: string, resolve: ResolveShort): Promise<{ provider: DbWidgetProvider; embedRef: string }> {
+  const first = parseWidgetLink(raw);
+  if (first.ok) return { provider: first.provider, embedRef: first.embedRef };
+  if (!first.short) throw new InvalidWidgetError(first.message);
+
+  const target = await resolve(raw.trim());
+  const second = target === null ? null : parseWidgetLink(target);
+  if (second === null || !second.ok || second.provider !== first.provider) {
+    throw new InvalidWidgetError(`We could not open that short link. Paste the full ${WIDGET_NAMES[first.provider]} link instead.`);
+  }
+  return { provider: second.provider, embedRef: second.embedRef };
+}
+
 export async function listLinks(prisma: PrismaClient, accountId: string): Promise<LinkRow[]> {
   const pageId = await pageIdFor(prisma, accountId);
   return prisma.link.findMany({ where: { pageId }, orderBy: { position: 'asc' }, select: SELECT });
 }
 
 /**
- * Appended last. The count-then-create can let two simultaneous adds reach
+ * A new link joins the end of the links: its full-list index is just after the last existing link
+ * (0 when there are none). The shop and FAQ index the full list, so any that sit at or after that
+ * index move up one; a tile placed before the last link keeps its place among the links.
+ * While the shop is closed its stored position is not in play.
+ */
+async function makeRoomAtEndOfLinks(tx: Prisma.TransactionClient, pageId: string, linkCount: number): Promise<void> {
+  const page = await tx.page.findUnique({ where: { id: pageId }, select: { storeEnabled: true, shopTilePosition: true, faqPosition: true } });
+  if (!page) return;
+  const moved = positionsAfterAdd(linkCount, page.storeEnabled ? page.shopTilePosition : null, page.faqPosition);
+  const data: { shopTilePosition?: number; faqPosition?: number } = {};
+  if (page.storeEnabled && moved.shop !== null && moved.shop !== page.shopTilePosition) data.shopTilePosition = moved.shop;
+  if (moved.faq !== null && moved.faq !== page.faqPosition) data.faqPosition = moved.faq;
+  if (Object.keys(data).length > 0) await tx.page.update({ where: { id: pageId }, data });
+}
+
+/**
+ * Joins the end of the links. The count-then-create can let two simultaneous adds reach
  * MAX_LINKS + 1; the limit is a product rule, not a safety one, and one extra
  * link is not worth a lock.
  */
@@ -86,7 +138,34 @@ export async function addLink(
   const count = await prisma.link.count({ where: { pageId } });
   if (count >= MAX_LINKS) throw new LinkLimitError();
 
-  return prisma.link.create({ data: { pageId, label, url, position: count }, select: SELECT });
+  return prisma.$transaction(async (tx) => {
+    await makeRoomAtEndOfLinks(tx, pageId, count);
+    return tx.link.create({ data: { pageId, label, url, position: count }, select: SELECT });
+  });
+}
+
+/** Joins the end of the links, like a link. Saves kind, provider and embedRef together; the database does not pair them. */
+export async function addWidget(
+  prisma: PrismaClient,
+  accountId: string,
+  input: { url: string; label: string | null },
+  resolve: ResolveShort,
+): Promise<LinkRow> {
+  const pageId = await pageIdFor(prisma, accountId);
+  const url = input.url.trim();
+  const { provider, embedRef } = await parseWidget(url, resolve);
+  const label = input.label === null || input.label.trim() === '' ? WIDGET_NAMES[provider] : checkLabel(input.label);
+
+  const count = await prisma.link.count({ where: { pageId } });
+  if (count >= MAX_LINKS) throw new LinkLimitError();
+
+  return prisma.$transaction(async (tx) => {
+    await makeRoomAtEndOfLinks(tx, pageId, count);
+    return tx.link.create({
+      data: { pageId, label, url, position: count, kind: 'WIDGET', provider, embedRef },
+      select: SELECT,
+    });
+  });
 }
 
 export async function updateLink(
@@ -94,13 +173,34 @@ export async function updateLink(
   accountId: string,
   id: string,
   input: { label?: string; url?: string; size?: TileSize | null },
+  resolve: ResolveShort = async () => null,
 ): Promise<LinkRow> {
-  const data: { label?: string; url?: string; size?: TileSize | null } = {};
-  if (input.label !== undefined) data.label = checkLabel(input.label);
-  if (input.url !== undefined) data.url = checkUrl(input.url);
+  const pageId = await pageIdFor(prisma, accountId);
+  const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true, provider: true } });
+  if (!existing) throw new LinkNotFoundError();
+
+  const data: {
+    label?: string;
+    url?: string;
+    size?: TileSize | null;
+    provider?: DbWidgetProvider;
+    embedRef?: string;
+  } = {};
+  if (input.url !== undefined) {
+    if (existing.kind === 'WIDGET') {
+      data.url = input.url.trim();
+      Object.assign(data, await parseWidget(data.url, resolve));
+    } else {
+      data.url = checkUrl(input.url);
+    }
+  }
+  if (input.label !== undefined) {
+    // A widget with its name cleared takes the service's name, as when it was added.
+    const named = existing.kind === 'WIDGET' ? (data.provider ?? existing.provider) : null;
+    data.label = named && input.label.trim() === '' ? WIDGET_NAMES[named] : checkLabel(input.label);
+  }
   if (input.size !== undefined) data.size = input.size;
 
-  const pageId = await pageIdFor(prisma, accountId);
   const updated = await prisma.link.updateMany({ where: { id, pageId }, data });
   if (updated.count !== 1) throw new LinkNotFoundError();
   return prisma.link.findUniqueOrThrow({ where: { id }, select: SELECT });
@@ -114,13 +214,24 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
     await tx.link.delete({ where: { id } });
     // Close the gap, so positions stay 0..n-1 and the next add lands last.
     await tx.link.updateMany({ where: { pageId, position: { gt: link.position } }, data: { position: { decrement: 1 } } });
-    // The shop tile's position is an index into the same list, so a link removed above it
-    // would otherwise slide the tile down one place past its neighbour. While the shop is
-    // closed the stored position is not in play, and reorderLinks rewrites it when it opens.
-    await tx.page.updateMany({
-      where: { id: pageId, storeEnabled: true, shopTilePosition: { gt: link.position } },
-      data: { shopTilePosition: { decrement: 1 } },
+    // link.position counts links only; the shop and FAQ positions index the full list. Find the
+    // removed link's index in the full list (lowest tile first, so the second comparison sees the
+    // first's effect), then pull down every tile that sat after it. While the shop is closed its
+    // stored position is not in play, and reorderLinks rewrites it when it opens.
+    const page = await tx.page.findUnique({
+      where: { id: pageId },
+      select: { storeEnabled: true, shopTilePosition: true, faqPosition: true },
     });
+    if (!page) return;
+    const tiles: { key: 'shopTilePosition' | 'faqPosition'; position: number }[] = [];
+    if (page.storeEnabled) tiles.push({ key: 'shopTilePosition', position: page.shopTilePosition });
+    if (page.faqPosition !== null) tiles.push({ key: 'faqPosition', position: page.faqPosition });
+    tiles.sort((x, y) => x.position - y.position);
+    let removedAt = link.position;
+    for (const tile of tiles) if (tile.position <= removedAt) removedAt += 1;
+    const data: { shopTilePosition?: number; faqPosition?: number } = {};
+    for (const tile of tiles) if (tile.position > removedAt) data[tile.key] = tile.position - 1;
+    if (Object.keys(data).length > 0) await tx.page.update({ where: { id: pageId }, data });
   });
 }
 
@@ -133,15 +244,22 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
  * The shop tile travels in the same list as SHOP_TILE_ID, exactly once while
  * the shop is open and never while it is closed, so the editor drags it like
  * any link. Its index is the page's shopTilePosition.
+ *
+ * The FAQ block travels as FAQ_TILE_ID, exactly once on a business page and never on a personal one;
+ * its index is faqPosition. A business list without it would store the shop as an index into a list
+ * without the FAQ block, shifting the shop, so it is stale like any other wrong set.
  */
 export async function reorderLinks(prisma: PrismaClient, accountId: string, ids: string[]): Promise<void> {
-  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true } });
+  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true, mode: true } });
   if (!page) throw new NoPageError();
   await prisma.$transaction(async (tx) => {
     const shopAt = ids.indexOf(SHOP_TILE_ID);
     const shopCount = ids.filter((id) => id === SHOP_TILE_ID).length;
     if (shopCount !== (page.storeEnabled ? 1 : 0)) throw new LinkOrderStaleError();
-    const linkIds = ids.filter((id) => id !== SHOP_TILE_ID);
+    const faqAt = ids.indexOf(FAQ_TILE_ID);
+    const faqCount = ids.filter((id) => id === FAQ_TILE_ID).length;
+    if (faqCount !== (page.mode === 'BUSINESS' ? 1 : 0)) throw new LinkOrderStaleError();
+    const linkIds = ids.filter((id) => id !== SHOP_TILE_ID && id !== FAQ_TILE_ID);
 
     const current = await tx.link.findMany({ where: { pageId: page.id }, select: { id: true } });
     const known = new Set(current.map((link) => link.id));
@@ -152,6 +270,9 @@ export async function reorderLinks(prisma: PrismaClient, accountId: string, ids:
     for (const [position, id] of linkIds.entries()) {
       await tx.link.update({ where: { id }, data: { position } });
     }
-    if (page.storeEnabled) await tx.page.update({ where: { id: page.id }, data: { shopTilePosition: shopAt } });
+    await tx.page.update({
+      where: { id: page.id },
+      data: { ...(page.storeEnabled ? { shopTilePosition: shopAt } : {}), ...(page.mode === 'BUSINESS' ? { faqPosition: faqAt === ids.length - 1 ? null : faqAt } : {}) },
+    });
   });
 }

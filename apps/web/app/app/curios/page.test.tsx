@@ -34,6 +34,7 @@ const MyCuriosPage = (await import('./page.js')).default;
 
 const page: MyCuriosData = {
   id: 'p1',
+  faqPosition: null,
   handle: 'imnmuqri',
   displayName: 'Iman Muqri',
   avatarSize: 'MEDIUM',
@@ -41,7 +42,7 @@ const page: MyCuriosData = {
   coverLayout: 'TOP',
   bio: null,
   style: 'SOFT',
-  secondaryColor: null, coverWash: true, accentColor: '#2340c8',
+  secondaryColor: null, coverWash: true, layout: 'LIST' as const, accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: 'avatars/p1.jpg',
   coverKey: null,
