@@ -173,27 +173,35 @@ export function Ask({
 
   /*
    * Widgets are only hidden by CSS while chat mode is open, so a player already playing would play on
-   * behind the chat. Stop each frame by pointing it at about:blank, keeping its address on the frame, and
-   * put the address back when the visitor returns to the links (the player starts over, which is the
-   * least a hidden player can do). Frames are found from the page, so the server render is unchanged.
+   * behind the chat. Stop each frame and put its address back when the visitor returns to the links (the
+   * player starts over). Setting `src` on a loaded frame navigates it and adds a joint session-history
+   * entry, which would make the `history.back()` that closes chat mode step back inside the frame
+   * instead, so a loaded frame is moved with `location.replace`, which adds none. `src` is the fallback
+   * for a frame that never loaded (no window yet). The address is kept on the frame while it is stopped.
    */
   useEffect(() => {
     const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
     if (!page) return;
     const frames = () => page.querySelectorAll<HTMLIFrameElement>('iframe[data-widget-frame]');
+    const go = (frame: HTMLIFrameElement, url: string) => {
+      const win = frame.contentWindow;
+      if (win) win.location.replace(url);
+      else frame.src = url;
+    };
     const restore = () => {
       for (const frame of frames()) {
         const held = frame.getAttribute('data-held-src');
         if (held === null) continue;
         frame.removeAttribute('data-held-src');
-        frame.src = held;
+        go(frame, held);
       }
     };
     if (open) {
       for (const frame of frames()) {
-        if (frame.hasAttribute('data-held-src')) continue;
-        frame.setAttribute('data-held-src', frame.getAttribute('src') ?? '');
-        frame.src = 'about:blank';
+        const src = frame.getAttribute('src');
+        if (frame.hasAttribute('data-held-src') || src === null) continue;
+        frame.setAttribute('data-held-src', src);
+        go(frame, 'about:blank');
       }
     } else restore();
     return restore;

@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient, WidgetProvider as DbWidgetProvider } from '@curios/db';
-import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, type TileSize } from '@curios/core/bento';
+import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, positionsAfterAdd, type TileSize } from '@curios/core/bento';
 import { parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
 
@@ -114,33 +114,15 @@ export async function listLinks(prisma: PrismaClient, accountId: string): Promis
 async function makeRoomAtEndOfLinks(tx: Prisma.TransactionClient, pageId: string, linkCount: number): Promise<void> {
   const page = await tx.page.findUnique({ where: { id: pageId }, select: { storeEnabled: true, shopTilePosition: true, faqPosition: true } });
   if (!page) return;
-  const tiles: { key: 'shopTilePosition' | 'faqPosition'; position: number }[] = [];
-  if (page.storeEnabled) tiles.push({ key: 'shopTilePosition', position: page.shopTilePosition });
-  if (page.faqPosition !== null) tiles.push({ key: 'faqPosition', position: page.faqPosition });
-  // The index just after the last link: the link count plus every tile that sits before that point.
-  tiles.sort((x, y) => x.position - y.position);
-  let at = 0;
-  if (linkCount > 0) {
-    // Walk the full list: tiles at indices <= the running index of the last link sit before it.
-    let seen = 0;
-    let lastIndex = -1;
-    let tileIdx = 0;
-    for (let i = 0; seen < linkCount; i += 1) {
-      if (tileIdx < tiles.length && tiles[tileIdx]!.position === i) tileIdx += 1;
-      else {
-        seen += 1;
-        lastIndex = i;
-      }
-    }
-    at = lastIndex + 1;
-  }
+  const moved = positionsAfterAdd(linkCount, page.storeEnabled ? page.shopTilePosition : null, page.faqPosition);
   const data: { shopTilePosition?: number; faqPosition?: number } = {};
-  for (const tile of tiles) if (tile.position >= at) data[tile.key] = tile.position + 1;
+  if (page.storeEnabled && moved.shop !== null && moved.shop !== page.shopTilePosition) data.shopTilePosition = moved.shop;
+  if (moved.faq !== null && moved.faq !== page.faqPosition) data.faqPosition = moved.faq;
   if (Object.keys(data).length > 0) await tx.page.update({ where: { id: pageId }, data });
 }
 
 /**
- * Appended last. The count-then-create can let two simultaneous adds reach
+ * Joins the end of the links. The count-then-create can let two simultaneous adds reach
  * MAX_LINKS + 1; the limit is a product rule, not a safety one, and one extra
  * link is not worth a lock.
  */
@@ -162,7 +144,7 @@ export async function addLink(
   });
 }
 
-/** Appended last, like a link. Saves kind, provider and embedRef together; the database does not pair them. */
+/** Joins the end of the links, like a link. Saves kind, provider and embedRef together; the database does not pair them. */
 export async function addWidget(
   prisma: PrismaClient,
   accountId: string,

@@ -285,7 +285,7 @@ describe('Ask, and the page tabs', () => {
     back.mockRestore();
   });
 
-  it('stops a widget frame on entering chat mode and starts it again on leaving', async () => {
+  it('stops a widget frame on entering chat mode and starts it again on leaving, without a history entry', async () => {
     stubQualifyingFetch();
     const back = vi.spyOn(window.history, 'back').mockImplementation(() => {
       window.dispatchEvent(new PopStateEvent('popstate'));
@@ -297,14 +297,36 @@ describe('Ask, and the page tabs', () => {
       </TabbedPage>,
     );
     const frame = container.querySelector('iframe')!;
+    // A loaded frame: setting src would navigate it and add a session-history entry, so the move
+    // must go through location.replace.
+    const replace = vi.fn();
+    Object.defineProperty(frame, 'contentWindow', { value: { location: { replace } }, configurable: true });
 
     await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
-    await waitFor(() => expect(frame.getAttribute('src')).toBe('about:blank'));
+    await waitFor(() => expect(replace).toHaveBeenLastCalledWith('about:blank'));
+    expect(frame.getAttribute('src')).toBe('https://open.spotify.com/embed/track/abc');
 
     await userEvent.click(screen.getByRole('link', { name: 'Links' }));
-    await waitFor(() => expect(frame.getAttribute('src')).toBe('https://open.spotify.com/embed/track/abc'));
+    await waitFor(() => expect(replace).toHaveBeenLastCalledWith('https://open.spotify.com/embed/track/abc'));
+    expect(replace).toHaveBeenCalledTimes(2);
+    expect(frame.getAttribute('src')).toBe('https://open.spotify.com/embed/track/abc');
     expect(frame.hasAttribute('data-held-src')).toBe(false);
     back.mockRestore();
+  });
+
+  it('falls back to src for a frame that never loaded', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <TabbedPage>
+        <iframe data-widget-frame src="https://open.spotify.com/embed/track/abc" title="Song" />
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+    const frame = container.querySelector('iframe')!;
+    Object.defineProperty(frame, 'contentWindow', { value: null, configurable: true });
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
+    await waitFor(() => expect(frame.getAttribute('src')).toBe('about:blank'));
+    expect(frame.getAttribute('data-held-src')).toBe('https://open.spotify.com/embed/track/abc');
   });
 
   it('opens chat mode on arrival at #ask, where the shop page and the FAQ send a visitor', async () => {

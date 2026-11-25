@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
-import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageLayout, type PageStyle, type TileSize, type StockCover } from '@curios/core/bento';
+import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, positionsAfterAdd, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageLayout, type PageStyle, type TileSize, type StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
@@ -125,32 +125,7 @@ export function positionsAfterRemoval(linkAt: number, shop: number | null, faq: 
   return out;
 }
 
-/**
- * Where the shop and People often ask sit after a link or widget is added, as the API works it out: the
- * new one joins the end of the links, at the full-list index just after the last link (0 with no links), and
- * a tile at or after that index moves up one. A tile placed before the last link keeps its place among the
- * links. `shop` is null while the shop is closed; an unset FAQ position (null) stays null.
- */
-export function positionsAfterAdd(linkCount: number, shop: number | null, faq: number | null): { shop: number | null; faq: number | null } {
-  const tiles: { key: 'shop' | 'faq'; position: number }[] = [];
-  if (shop !== null) tiles.push({ key: 'shop', position: shop });
-  if (faq !== null) tiles.push({ key: 'faq', position: faq });
-  tiles.sort((x, y) => x.position - y.position);
-  // Walk the full list to the last link; the new one goes right after it.
-  let at = 0;
-  let seen = 0;
-  let tile = 0;
-  for (let i = 0; seen < linkCount; i += 1) {
-    if (tile < tiles.length && tiles[tile]!.position === i) tile += 1;
-    else {
-      seen += 1;
-      at = i + 1;
-    }
-  }
-  const out = { shop, faq };
-  for (const t of tiles) if (t.position >= at) out[t.key] = t.position + 1;
-  return out;
-}
+export { positionsAfterAdd };
 
 /**
  * My Curios: the owner's page, arranged. The header, over the left column

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  positionsAfterAdd,
   accentShowsOn,
   coverTintOf,
   FAQ_TILE_ID,
@@ -354,5 +355,16 @@ describe('coverTintOf', () => {
 
   it('has colours for every stock cover', () => {
     for (const name of STOCK_COVERS) expect(STOCK_COVER_TINTS[name].top).toMatch(/^#[0-9a-f]{6}$/);
+  });
+});
+
+describe('positionsAfterAdd', () => {
+  it('joins the end of the links and moves the tiles at or after it', () => {
+    expect(positionsAfterAdd(2, 2, null)).toEqual({ shop: 3, faq: null });
+    expect(positionsAfterAdd(2, 1, null)).toEqual({ shop: 1, faq: null });
+    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 1, faq: null });
+    expect(positionsAfterAdd(2, null, 2)).toEqual({ shop: null, faq: 3 });
+    expect(positionsAfterAdd(2, 2, 3)).toEqual({ shop: 3, faq: 4 });
+    expect(positionsAfterAdd(3, null, null)).toEqual({ shop: null, faq: null });
   });
 });
