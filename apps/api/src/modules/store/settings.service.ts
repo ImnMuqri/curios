@@ -8,6 +8,7 @@ import {
   normalizeBankAccountNumber,
   PICKUP_NOTE_MAX,
   SHOP_DESCRIPTION_MAX,
+  SHOP_NAME_MAX,
   storeGapMessage,
   storeGaps,
   type DeliveryMode,
@@ -20,6 +21,8 @@ export interface StoreSettings {
   enabled: boolean;
   /** The owner says the shop sells halal food; shown on the shop and product pages. */
   shopHalal: boolean;
+  /** The shop's own name; null is "Shop". */
+  shopName: string | null;
   /** "About your shop", shown above the items. */
   shopDescription: string | null;
   pickupEnabled: boolean;
@@ -42,6 +45,7 @@ export type StoreSettingsPatch = Partial<Omit<StoreSettings, 'paymentQrKey'>>;
 const SELECT = {
   storeEnabled: true,
   shopHalal: true,
+  shopName: true,
   shopDescription: true,
   pickupEnabled: true,
   pickupNote: true,
@@ -103,6 +107,7 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
     }
     next.pickupEnabled = patch.pickupEnabled;
   }
+  if (patch.shopName !== undefined) next.shopName = optionalText(patch.shopName, SHOP_NAME_MAX, 'the shop name');
   if (patch.shopDescription !== undefined) next.shopDescription = optionalText(patch.shopDescription, SHOP_DESCRIPTION_MAX, 'the shop description');
   if (patch.pickupNote !== undefined) next.pickupNote = optionalText(patch.pickupNote, PICKUP_NOTE_MAX, 'the pickup note');
   if (patch.bankName !== undefined) next.bankName = optionalText(patch.bankName, BANK_NAME_MAX, 'the bank name');

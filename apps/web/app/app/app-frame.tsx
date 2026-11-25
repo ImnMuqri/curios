@@ -348,9 +348,13 @@ export function AppFrame({
     return (
       <>
         <div className={styles.menuHead}>
-          <span className={styles.menuAvatar} aria-hidden="true">
-            {initial(who)}
-          </span>
+          {avatarUrl ? (
+            <img className={styles.menuAvatar} src={avatarUrl} alt="" width={34} height={34} />
+          ) : (
+            <span className={styles.menuAvatar} aria-hidden="true">
+              {initial(who)}
+            </span>
+          )}
           <span className={styles.menuText}>
             <b>{who}</b>
             {ownerEmail ? <small>{ownerEmail}</small> : null}

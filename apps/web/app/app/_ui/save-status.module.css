@@ -3,11 +3,13 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  /* Help's box and type (app-frame .help: 32px, 14px/500, --soft), so the two words sit on one line. */
+  height: 32px;
   margin-right: -4px;
-  /* Muted, not the board's lighter grey: that is about 3.9:1 on white, this is 5.4:1 (and 7:1 in dark). */
-  color: var(--muted);
-  font-size: 13.5px;
-  font-weight: 400;
+  color: var(--soft);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
   white-space: nowrap;
   transition: color 200ms ease;
 }

@@ -37,7 +37,7 @@ const shop: Checkout = {
   background: 'PAPER',
   backgroundColor: null,
   links: [{ label: 'WA', url: 'https://wa.me/60123456789' }],
-  shopDescription: null,
+  shopName: null, shopDescription: null,
   shopHalal: false,
   pickupEnabled: true,
   pickupPlaces: [{ id: 'home', name: 'Home', address: 'Seksyen 7', mapUrl: null, note: null, anyTime: true, windows: [] }],

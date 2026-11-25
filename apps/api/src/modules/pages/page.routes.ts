@@ -148,6 +148,7 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
           background: z.enum(PAGE_BACKGROUNDS).optional(),
           backgroundColor: z.string().max(32).optional(),
           accentColor: z.string().max(40).optional(),
+          secondaryColor: z.string().max(40).nullable().optional(),
           headingFont: z.enum(HEADING_FONTS).optional(),
           avatarSize: z.enum(AVATAR_SIZES).optional(),
           avatarBorder: z.boolean().optional(),

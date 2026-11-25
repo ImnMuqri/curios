@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MAX_ITEMS, SHOP_DESCRIPTION_MAX, formatRinggit, storeGapMessage, storeGaps } from '@curios/core/store';
+import { MAX_ITEMS, SHOP_DESCRIPTION_MAX, SHOP_NAME_MAX, formatRinggit, storeGapMessage, storeGaps } from '@curios/core/store';
 import type { ItemStats } from '@curios/db-read';
 import type { OwnerVoucher } from '@curios/core/vouchers';
 import { PageTheme } from '../../_bento/BentoPage.js';
@@ -238,6 +238,7 @@ export function StoreEditor({
     setSettings(next);
     return next;
   };
+  const shopName = useSettingText(settings.shopName ?? '', (text) => ({ shopName: orNull(text) }), save);
   const description = useSettingText(settings.shopDescription ?? '', (text) => ({ shopDescription: orNull(text) }), save);
 
   /** What the owner's other items are filed under, for the category field to suggest. */
@@ -427,6 +428,7 @@ export function StoreEditor({
                       canTakeOrders={previewTakesOrders}
                       nextDay={previewNextDay}
                       vouchers={previewVouchers}
+                      shopName={orNull(shopName.text)}
                       description={orNull(description.text)}
                       halal={settings.shopHalal}
                       avatarUrl={look.avatarUrl}
@@ -568,6 +570,16 @@ export function StoreEditor({
 
             <section className={ui.section} aria-labelledby="about-title">
               <SectionHead id="about-title" title="About your shop" note="Shown above your items. Tell people what to know before they order." />
+              <div className={`${ui.float} ${styles.nameField}`}>
+                <label>
+                  <em>Shop name</em>
+                  <input value={shopName.text} maxLength={SHOP_NAME_MAX} placeholder="Shop" autoComplete="off" onChange={(event) => shopName.change(event.target.value)} />
+                </label>
+                <small aria-hidden="true">
+                  {[...shopName.text].length}/{SHOP_NAME_MAX}
+                </small>
+              </div>
+              <SaveState status={shopName.autosave.status} error={shopName.autosave.error} retry={shopName.autosave.retry} />
               <div className={ui.float}>
                 <label>
                   <em>About</em>

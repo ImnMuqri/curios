@@ -23,7 +23,7 @@ URL.revokeObjectURL = vi.fn();
 const { StoreScreen } = await import('./store-screen.js');
 
 const settings: StoreSettings = {
-  enabled: false, shopDescription: null, shopHalal: false, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
+  enabled: false, shopName: null, shopDescription: null, shopHalal: false, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
   deliveryFeeCents: null, minNoticeDays: 0, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
 };

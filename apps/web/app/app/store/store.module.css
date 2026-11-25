@@ -1348,6 +1348,11 @@
   border-radius: 10px;
 }
 
+/* The shop's name, then its description: two fields, not one box. */
+.nameField {
+  margin-bottom: 10px;
+}
+
 /* The Halal switch under the shop description: its own box, set apart from the field above. */
 .halalRow {
   margin-top: 12px;

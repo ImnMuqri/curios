@@ -205,6 +205,10 @@ describe('PATCH /store/settings', () => {
     expect(set.json().settings.shopDescription).toBe('Homemade cakes, baked fresh.');
     const cleared = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopDescription: '   ' });
     expect(cleared.json().settings.shopDescription).toBeNull();
+    const named = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopName: '  Dapur   Lina ' });
+    expect(named.json().settings.shopName).toBe('Dapur Lina');
+    const unnamed = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopName: '' });
+    expect(unnamed.json().settings.shopName).toBeNull();
   });
 
   it('the halal switch saves', async () => {
@@ -242,7 +246,7 @@ describe('PATCH /store/settings', () => {
 
   it('refuses a bad account number, an over-long note or description, and an impossible notice', async () => {
     const owner = await anOwner(app);
-    for (const patch of [{ bankAccountNumber: '12ab' }, { pickupNote: 'x'.repeat(121) }, { shopDescription: 'x'.repeat(161) }, { minNoticeDays: 31 }, { minNoticeDays: -1 }]) {
+    for (const patch of [{ bankAccountNumber: '12ab' }, { pickupNote: 'x'.repeat(121) }, { shopDescription: 'x'.repeat(161) }, { shopName: 'x'.repeat(41) }, { minNoticeDays: 31 }, { minNoticeDays: -1 }]) {
       expect((await call(app, 'PATCH', '/store/settings', owner.cookie, patch)).json().error.code).toBe('INVALID_STORE_SETTING');
     }
   });

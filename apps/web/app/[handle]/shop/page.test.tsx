@@ -36,7 +36,7 @@ const shop: Checkout = {
     { label: 'WA', url: 'https://wa.me/60123456789' },
   ],
   pickupEnabled: true,
-  shopDescription: 'Cakes for every Raya.',
+  shopName: null, shopDescription: 'Cakes for every Raya.',
   shopHalal: false,
   pickupPlaces: [{ id: 'p1', name: 'Shah Alam', address: 'Seksyen 7, Shah Alam', mapUrl: null, note: null, anyTime: true, windows: [] }],
   deliveryMode: 'FLAT',
@@ -156,6 +156,8 @@ describe('/[handle]/shop', () => {
       title: 'Nadia Bakes · Shop',
       description: 'Order from Nadia Bakes on Curios.',
     });
+    vi.mocked(getCheckout).mockResolvedValueOnce({ ...shop, shopName: 'Dapur Nadia' });
+    expect((await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) })).title).toBe('Nadia Bakes · Dapur Nadia');
     vi.mocked(getCheckout).mockResolvedValueOnce(null);
     expect(await generateMetadata({ params: Promise.resolve({ handle: 'nope' }) })).toEqual({});
   });

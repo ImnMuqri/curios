@@ -180,12 +180,13 @@ describe('AppearanceEditor, a custom background', () => {
     await vi.waitFor(() => expect(save).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#d7ddf5' }));
   });
 
-  it('shows the hex box only while Custom is chosen, the same one the button colour has, and refuses bad hex without saving', async () => {
+  it('always shows the hex box, the same one the button colour has, and refuses bad hex without saving', async () => {
     const save = vi.fn(async () => undefined);
     const first = render(
       <AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />,
     );
-    expect(screen.queryByLabelText('Background colour as hex')).toBeNull();
+    // On a band too (owner, 25 Nov): typing a colour there picks Custom.
+    expect(screen.getByLabelText('Background colour as hex')).toBeInTheDocument();
     first.unmount();
 
     render(<AppearanceEditor displayName="Kek Lina" background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
@@ -245,5 +246,21 @@ describe('AppearanceEditor, the owner\u2019s own accent', () => {
     await userEvent.click(within(accents()).getByRole('button', { name: 'Cobalt' }));
     await userEvent.click(screen.getByRole('button', { name: 'Jakarta' }));
     expect(props.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('AppearanceEditor, the second button colour', () => {
+  it('is Auto until one is picked, saves a swatch or typed hex, and goes back to Auto as null', async () => {
+    const save = vi.fn(async () => undefined);
+    const view = render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="CHUNKY" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
+    const edge = () => screen.getByRole('group', { name: 'Button edge colour' });
+    expect(within(edge()).getByRole('button', { name: 'Auto' })).toHaveAttribute('aria-pressed', 'true');
+    await userEvent.click(within(edge()).getByRole('button', { name: 'Violet edge' }));
+    expect(save).toHaveBeenLastCalledWith({ secondaryColor: '#6d3fb3' });
+    await userEvent.type(screen.getByLabelText('Button edge colour as hex'), 'c2185b');
+    expect(save).toHaveBeenLastCalledWith({ secondaryColor: '#c2185b' });
+    view.rerender(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="CHUNKY" accentColor="#2340c8" secondaryColor="#c2185b" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
+    await userEvent.click(within(edge()).getByRole('button', { name: 'Auto' }));
+    expect(save).toHaveBeenLastCalledWith({ secondaryColor: null });
   });
 });

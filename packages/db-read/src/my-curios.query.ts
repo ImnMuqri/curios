@@ -12,6 +12,8 @@ export interface MyCurios {
   language: string;
   style: PageStyle;
   accentColor: string;
+  /** The buttons' edge and shadow; null is the page's text colour. */
+  secondaryColor: string | null;
   headingFont: HeadingFont;
   avatarKey: string | null;
   /** The picture's size and whether it wears its ring (Medium with the ring is how every page began). */
@@ -57,6 +59,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       ...SHOP_TILE_SELECT,
       style: true,
       accentColor: true,
+      secondaryColor: true,
       headingFont: true,
       avatarKey: true,
       avatarSize: true,

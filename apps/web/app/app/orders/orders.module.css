@@ -93,10 +93,21 @@
 
 /* "Older orders": what was placed before the last 7 days (owner, 19 Nov 2026). Read, so muted. */
 .old {
-  margin: 14px 6px 6px;
+  margin: 0;
+  /* In line with the rows' text (inbox .li pads 20px), with room above it. */
+  padding: 18px 20px 8px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 500;
+}
+
+/* A line above the heading when newer orders sit over it; none between the heading and its first row. */
+.rows + .old {
+  border-top: 1px solid var(--line);
+}
+
+.old + .rows > .item:first-child > .rowBtn {
+  border-top: 0;
 }
 
 /* No match, and All clear (Dash.html .xnomatch / .xallclear). */

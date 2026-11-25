@@ -28,6 +28,8 @@ export interface BentoPageProps {
   links: { id: string; label: string; url: string; size: TileSize | null }[];
   style: PageStyle;
   accentColor: string;
+  /** The buttons' edge and shadow; unset or null, the page's text colour. */
+  secondaryColor?: string | null;
   headingFont: HeadingFont;
   /** False in the editor's live preview: links and tabs become boxes that cannot navigate. */
   interactive?: boolean;
@@ -101,6 +103,7 @@ export const FAQ_SHOWN = 3;
  */
 export function themeAttrs(theme: {
   accentColor: string;
+  secondaryColor?: string | null;
   headingFont: HeadingFont;
   background?: PageBackground;
   backgroundColor?: string | null;
@@ -121,6 +124,8 @@ export function themeAttrs(theme: {
       '--sheet-accent': accentShowsOn(theme.accentColor, 'PAPER', null) ? 'var(--accent)' : 'var(--calm-ink)',
       '--font-heading': HEADING_FONT_VAR[theme.headingFont],
       ...(custom ? { '--custom-bg': custom } : {}),
+      // The buttons' second colour; Bento.module.css falls back to the page's text colour without it.
+      ...(theme.secondaryColor && isHexColor(theme.secondaryColor) ? { '--btn-second': theme.secondaryColor } : {}),
     } as CSSProperties,
   };
 }

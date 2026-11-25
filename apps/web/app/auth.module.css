@@ -217,6 +217,18 @@
   color: var(--cl-placeholder);
 }
 
+/* A browser-filled field keeps the pill's look: Chrome otherwise paints a pale blue
+   rectangle over the input, square inside the round pill. Its fill cannot be overridden,
+   so the card colour is painted over it and its arrival is put off indefinitely. */
+.in:autofill,
+.in:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 100px var(--card) inset;
+  box-shadow: 0 0 0 100px var(--card) inset;
+  -webkit-text-fill-color: var(--ink);
+  caret-color: var(--ink);
+  transition: background-color 9999s ease-out 0s;
+}
+
 /* "Forgot?" inside the password pill. */
 .aside {
   margin-left: auto;

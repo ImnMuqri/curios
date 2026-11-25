@@ -60,8 +60,9 @@
   --field-label-gap: 8px;
   --field-size: var(--text-base);
   /* Fields round like the boxes beside them, not as pills (owner, DEVIATIONS 347). */
-  --field-radius: var(--r-box);
-  --field-area-radius: var(--r-box);
+  /* Every field and boxed row in the dashboard shares the Halal row's 10px (owner, 25 Nov); cards keep --r-box. */
+  --field-radius: 10px;
+  --field-area-radius: 10px;
   --field-reveal-radius: 50%;
   --callout-radius: var(--r-box);
   --callout-size: var(--text-base);
@@ -631,6 +632,7 @@
   height: 34px;
   flex: none;
   border-radius: 50%;
+  object-fit: cover;
   background: var(--badge);
   color: var(--calm-surface);
   font-size: 14px;
