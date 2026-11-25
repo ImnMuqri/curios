@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { LABEL_MAX, MAX_LINKS } from '@curios/core/bento';
+import { LinkLimitError } from './link.service.js';
+import { addWidget } from './link.service.js';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
@@ -9,8 +11,12 @@ let app: FastifyInstance;
 let nth = 0;
 const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
+// The short-link resolver is injected; no test touches the network.
+let shortAnswer: string | null = null;
+const resolveStub = async () => shortAnswer;
+
 beforeAll(async () => {
-  app = await buildApp();
+  app = await buildApp({ links: { resolve: resolveStub } });
   await app.ready();
 });
 
@@ -307,5 +313,133 @@ describe('DELETE /links/:id with the shop tile', () => {
     const { owner, ids } = await shopAt(2, 3, false);
     await call(owner.cookie, 'DELETE', `/links/${ids[0]}`);
     expect(await tileAt(owner.pageId)).toBe(2);
+  });
+});
+
+describe('POST /links/widgets', () => {
+  const spotify = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC';
+
+  it('saves a Spotify link as a widget, naming it after the provider when no label is given', async () => {
+    const owner = await anOwner();
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null });
+
+    expect(res.statusCode).toBe(201);
+    expect(res.json().link).toMatchObject({
+      label: 'Spotify',
+      url: spotify,
+      kind: 'WIDGET',
+      provider: 'SPOTIFY',
+      embedRef: 'track/4uLU6hMCjMI75M1A2tKUQC',
+    });
+  });
+
+  it('keeps a given label, and a plain link stays a LINK with no provider', async () => {
+    const owner = await anOwner();
+    const w = await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: ' My song ' });
+    expect(w.json().link.label).toBe('My song');
+    const l = await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' });
+    expect(l.json().link).toMatchObject({ kind: 'LINK', provider: null, embedRef: null });
+  });
+
+  it('refuses a link that cannot be embedded, with its code, and saves nothing', async () => {
+    const owner = await anOwner();
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: 'https://example.com/x', label: null });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_WIDGET');
+    expect(await app.prisma.link.count({ where: { pageId: owner.pageId } })).toBe(0);
+  });
+
+  it('counts widgets toward MAX_LINKS', async () => {
+    const owner = await anOwner();
+    await app.prisma.link.createMany({
+      data: Array.from({ length: MAX_LINKS }, (_unused, position) => ({
+        pageId: owner.pageId,
+        label: `L${position}`,
+        url: 'https://iman.dev',
+        position,
+      })),
+    });
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null });
+    expect(res.json().error.code).toBe('LINK_LIMIT');
+  });
+
+  it('saves a short link whose resolver answer is a Spotify URL', async () => {
+    const owner = await anOwner();
+    shortAnswer = spotify;
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: 'https://spotify.link/abc', label: null });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().link).toMatchObject({ provider: 'SPOTIFY', embedRef: 'track/4uLU6hMCjMI75M1A2tKUQC', url: 'https://spotify.link/abc' });
+  });
+
+  // Review Focus 2: the redirect must land on the provider the short host implied.
+  it('refuses a short link that redirects somewhere else, and saves nothing', async () => {
+    const owner = await anOwner();
+    for (const answer of ['https://evil.example/x', 'https://youtu.be/dQw4w9WgXcQ', null]) {
+      shortAnswer = answer;
+      const res = await call(owner.cookie, 'POST', '/links/widgets', { url: 'https://spotify.link/abc', label: null });
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('INVALID_WIDGET');
+    }
+    expect(await app.prisma.link.count({ where: { pageId: owner.pageId } })).toBe(0);
+  });
+
+  it('refuses the 31st item through the service as LinkLimitError', async () => {
+    const owner = await anOwner();
+    await app.prisma.link.createMany({
+      data: Array.from({ length: MAX_LINKS }, (_unused, position) => ({ pageId: owner.pageId, label: `L${position}`, url: 'https://iman.dev', position })),
+    });
+    const account = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId }, select: { accountId: true } });
+    await expect(addWidget(app.prisma, account.accountId, { url: spotify, label: null }, async () => null)).rejects.toBeInstanceOf(LinkLimitError);
+  });
+});
+
+describe('PATCH /links/:id on a widget', () => {
+  const spotify = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC';
+
+  it('changes label and size, and re-parses a new url into provider and ref', async () => {
+    const owner = await anOwner();
+    const { link } = (await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null })).json();
+
+    const res = await call(owner.cookie, 'PATCH', `/links/${link.id}`, {
+      label: 'Mine',
+      size: 'WIDE',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    });
+
+    expect(res.json().link).toMatchObject({
+      label: 'Mine',
+      size: 'WIDE',
+      kind: 'WIDGET',
+      provider: 'YOUTUBE',
+      embedRef: 'v/dQw4w9WgXcQ',
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+    });
+  });
+
+  it('refuses an unembeddable new url on a widget and changes nothing', async () => {
+    const owner = await anOwner();
+    const { link } = (await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null })).json();
+
+    const res = await call(owner.cookie, 'PATCH', `/links/${link.id}`, { url: 'https://example.com/x' });
+
+    expect(res.json().error.code).toBe('INVALID_WIDGET');
+    const row = await app.prisma.link.findUniqueOrThrow({ where: { id: link.id } });
+    expect(row).toMatchObject({ url: spotify, provider: 'SPOTIFY' });
+  });
+
+  it("never gives a plain link a provider when its url changes", async () => {
+    const owner = await anOwner();
+    const { link } = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json();
+    const res = await call(owner.cookie, 'PATCH', `/links/${link.id}`, { url: spotify });
+    expect(res.json().link).toMatchObject({ kind: 'LINK', provider: null, embedRef: null });
+  });
+
+  it("answers 404 for another owner's widget", async () => {
+    const owner = await anOwner();
+    const stranger = await anOwner();
+    const { link } = (await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null })).json();
+    const res = await call(stranger.cookie, 'PATCH', `/links/${link.id}`, { label: 'Stolen', url: spotify });
+    expect(res.statusCode).toBe(404);
   });
 });

@@ -77,7 +77,7 @@ import {
   shopPayStartRoutes,
   shopPayStatusRoutes,
 } from './modules/orders/pay-online.routes.js';
-import { linkRoutes } from './modules/links/link.routes.js';
+import { linkRoutes, type LinkRouteOptions } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
 import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
@@ -118,6 +118,7 @@ export interface AppOverrides {
   help?: HelpRouteOptions;
   billing?: BillingRouteOptions;
   facts?: FactRouteOptions;
+  links?: LinkRouteOptions;
   pages?: PageRouteOptions;
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
@@ -356,7 +357,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     scope.addHook('onRequest', requireSession);
     await scope.register(pageRoutes, overrides.pages ?? {});
-    await scope.register(linkRoutes);
+    await scope.register(linkRoutes, overrides.links ?? {});
     await scope.register(factRoutes, overrides.facts ?? {});
     await scope.register(sourceRoutes);
     await scope.register(neverSayRoutes);

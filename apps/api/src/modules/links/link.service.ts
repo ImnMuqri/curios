@@ -1,5 +1,6 @@
-import type { PrismaClient } from '@curios/db';
+import type { PrismaClient, WidgetProvider as DbWidgetProvider } from '@curios/db';
 import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, SHOP_TILE_ID, type TileSize } from '@curios/core/bento';
+import { parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
 
 export class InvalidLinkError extends Error {
@@ -8,6 +9,15 @@ export class InvalidLinkError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'InvalidLinkError';
+  }
+}
+
+export class InvalidWidgetError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_WIDGET';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidWidgetError';
   }
 }
 
@@ -39,8 +49,17 @@ export class LinkOrderStaleError extends Error {
   }
 }
 
-const SELECT = { id: true, label: true, url: true, size: true } as const;
-export type LinkRow = { id: string; label: string; url: string; size: TileSize | null };
+const SELECT = { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true } as const;
+export type LinkRow = {
+  id: string;
+  label: string;
+  url: string;
+  size: TileSize | null;
+  kind: 'LINK' | 'WIDGET';
+  provider: DbWidgetProvider | null;
+  embedRef: string | null;
+};
+export type ResolveShort = (url: string) => Promise<string | null>;
 
 async function pageIdFor(prisma: PrismaClient, accountId: string): Promise<string> {
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });
@@ -62,6 +81,23 @@ function checkUrl(raw: string): string {
     throw new InvalidLinkError('That link does not look right. Use a web address, an email (mailto:) or a phone number (tel:).');
   }
   return url;
+}
+
+/**
+ * A pasted widget link as the pair to store. A short link takes one hop through `resolve`, and the
+ * answer must itself parse and name the same provider the short host did, or it is refused.
+ */
+async function parseWidget(raw: string, resolve: ResolveShort): Promise<{ provider: DbWidgetProvider; embedRef: string }> {
+  const first = parseWidgetLink(raw);
+  if (first.ok) return { provider: first.provider, embedRef: first.embedRef };
+  if (!first.short) throw new InvalidWidgetError(first.message);
+
+  const target = await resolve(raw.trim());
+  const second = target === null ? null : parseWidgetLink(target);
+  if (second === null || !second.ok || second.provider !== first.provider) {
+    throw new InvalidWidgetError(`We could not open that short link. Paste the full ${WIDGET_NAMES[first.provider]} link instead.`);
+  }
+  return { provider: second.provider, embedRef: second.embedRef };
 }
 
 export async function listLinks(prisma: PrismaClient, accountId: string): Promise<LinkRow[]> {
@@ -89,18 +125,56 @@ export async function addLink(
   return prisma.link.create({ data: { pageId, label, url, position: count }, select: SELECT });
 }
 
+/** Appended last, like a link. Saves kind, provider and embedRef together; the database does not pair them. */
+export async function addWidget(
+  prisma: PrismaClient,
+  accountId: string,
+  input: { url: string; label: string | null },
+  resolve: ResolveShort,
+): Promise<LinkRow> {
+  const pageId = await pageIdFor(prisma, accountId);
+  const url = input.url.trim();
+  const { provider, embedRef } = await parseWidget(url, resolve);
+  const label = input.label === null || input.label.trim() === '' ? WIDGET_NAMES[provider] : checkLabel(input.label);
+
+  const count = await prisma.link.count({ where: { pageId } });
+  if (count >= MAX_LINKS) throw new LinkLimitError();
+
+  return prisma.link.create({
+    data: { pageId, label, url, position: count, kind: 'WIDGET', provider, embedRef },
+    select: SELECT,
+  });
+}
+
 export async function updateLink(
   prisma: PrismaClient,
   accountId: string,
   id: string,
   input: { label?: string; url?: string; size?: TileSize | null },
+  resolve: ResolveShort = async () => null,
 ): Promise<LinkRow> {
-  const data: { label?: string; url?: string; size?: TileSize | null } = {};
+  const pageId = await pageIdFor(prisma, accountId);
+  const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true } });
+  if (!existing) throw new LinkNotFoundError();
+
+  const data: {
+    label?: string;
+    url?: string;
+    size?: TileSize | null;
+    provider?: DbWidgetProvider;
+    embedRef?: string;
+  } = {};
   if (input.label !== undefined) data.label = checkLabel(input.label);
-  if (input.url !== undefined) data.url = checkUrl(input.url);
+  if (input.url !== undefined) {
+    if (existing.kind === 'WIDGET') {
+      data.url = input.url.trim();
+      Object.assign(data, await parseWidget(data.url, resolve));
+    } else {
+      data.url = checkUrl(input.url);
+    }
+  }
   if (input.size !== undefined) data.size = input.size;
 
-  const pageId = await pageIdFor(prisma, accountId);
   const updated = await prisma.link.updateMany({ where: { id, pageId }, data });
   if (updated.count !== 1) throw new LinkNotFoundError();
   return prisma.link.findUniqueOrThrow({ where: { id }, select: SELECT });

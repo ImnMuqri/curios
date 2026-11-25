@@ -102,6 +102,7 @@ export const DOMAIN_ERROR_CODES = new Set([
   // My Curios: a link an owner typed wrong, one too many, or an order from a
   // tab that is behind. Each says what to do next.
   'INVALID_LINK',
+  'INVALID_WIDGET',
   'LINK_LIMIT',
   'LINK_ORDER_STALE',
   // A style, colour, font, name or bio an owner sent that fails its own rule.
