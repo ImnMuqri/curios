@@ -1101,7 +1101,7 @@
 .bentoGrid > li > .link,
 .bentoGrid > li > .link > span,
 .bentoGrid > li > .shopLink > .shopIn {
-  border-radius: min(var(--btn-radius), 26px);
+  border-radius: min(var(--btn-radius, 16px), 16px);
 }
 
 /* The shop in a tile that is not wide: photos over words, no chevron. */

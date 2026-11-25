@@ -708,6 +708,13 @@ input.youField {
   padding: 0 0 10px 36px;
 }
 
+.layoutSize small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
 .dragHandle {
   display: grid;
   place-items: center;

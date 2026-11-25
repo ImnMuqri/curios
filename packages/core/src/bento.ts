@@ -293,6 +293,20 @@ function widenLoneTile(tiles: { size: TileSize }[]): void {
   if (only.size === 'SMALL') only.size = 'WIDE';
 }
 
+/** Whether a cell above the last occupied row stays empty (the last row's own gap is widenLoneTile's). */
+function hasInteriorHole(sizes: TileSize[]): boolean {
+  const at = placeTiles(sizes);
+  const taken = new Set<string>();
+  let last = -1;
+  sizes.forEach((size, i) => {
+    const { w, h } = SPAN[size];
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) taken.add(`${at[i]!.row + r},${at[i]!.col + c}`);
+    last = Math.max(last, at[i]!.row + h - 1);
+  });
+  for (let r = 0; r < last; r++) for (let c = 0; c < 2; c++) if (!taken.has(`${r},${c}`)) return true;
+  return false;
+}
+
 function autoSize(index: number, count: number): TileSize {
   // One link: a tall tile would leave its neighbour's column empty.
   if (count === 1) return 'WIDE';
@@ -341,6 +355,12 @@ export function arrangeTiles<T extends { size: TileSize | null }>(
       tone: (index === 0 ? 'accent' : index === 1 ? 'warm' : 'plain') as Tone,
     };
   });
+
+  // An automatic Tall that leaves an empty cell inside the grid becomes Wide; a chosen size is never touched.
+  const auto = links.map((link) => link.size === null);
+  for (let i = 0; i < tiles.length && hasInteriorHole(tiles.map((t) => t.size)); i++) {
+    if (auto[i] && tiles[i]!.size === 'TALL') tiles[i]!.size = 'WIDE';
+  }
 
   widenLoneTile(tiles);
 

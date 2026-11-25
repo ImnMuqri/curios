@@ -103,6 +103,14 @@ describe('readableOn', () => {
 });
 
 describe('arrangeTiles', () => {
+  it('makes an automatic first Tall Wide when it would leave a hole (auto, Wide, auto)', () => {
+    expect(arrangeTiles([{ size: null }, { size: 'WIDE' }, { size: null }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('keeps a chosen Tall even when it leaves a hole', () => {
+    expect(arrangeTiles([{ size: 'TALL' }, { size: 'WIDE' }, { size: null }]).map((t) => t.size)[0]).toBe('TALL');
+  });
+
   it('gives one link a wide tile, never a tall one with a hole beside it', () => {
     expect(sizes(1)).toEqual(['WIDE']);
   });

@@ -300,9 +300,9 @@ describe('LayoutEditor, List or Bento', () => {
   it('offers no size below a player\'s minimum', () => {
     showBento();
     const mix = within(sizeGroup('Mix')!).getAllByRole('radio').map((r) => r.textContent);
-    expect(mix).toEqual(['Wide', 'Big']);
+    expect(mix).toEqual(['Auto', 'Wide', 'Big']);
     const link = within(sizeGroup('Portfolio')!).getAllByRole('radio').map((r) => r.textContent);
-    expect(link).toEqual(['Small', 'Wide', 'Tall', 'Big']);
+    expect(link).toEqual(['Auto', 'Small', 'Wide', 'Tall', 'Big']);
   });
 
   it('saves a chosen size by the row\'s id, the shop by its own', async () => {
@@ -323,5 +323,54 @@ describe('LayoutEditor, List or Bento', () => {
       fireEvent.click(within(sizeGroup('Portfolio')!).getByRole('radio', { name: 'Big' }));
     });
     expect(screen.getByText('Not saved')).toBeInTheDocument();
+  });
+
+  it('selects the saved size, Auto when none, and sends null for Auto', async () => {
+    const sized: LinkItem = { ...links[0]!, size: 'BIG' };
+    const onResize = vi.fn(async () => undefined);
+    render(
+      <LayoutEditor entries={pageEntries([sized, links[1]!], null, null)} onReorder={vi.fn()} faqEmpty={false} layout="BENTO" onLayout={vi.fn()} onResize={onResize} />,
+    );
+    expect(within(sizeGroup('Portfolio')!).getByRole('radio', { name: 'Big' })).toBeChecked();
+    expect(within(sizeGroup('WhatsApp')!).getByRole('radio', { name: 'Auto' })).toBeChecked();
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('Portfolio')!).getByRole('radio', { name: 'Auto' }));
+    });
+    expect(onResize).toHaveBeenCalledWith('a', null);
+  });
+
+  it('says when the grid shows a different size from the saved one', () => {
+    const small = (id: string, label: string): LinkItem => ({ ...links[0]!, id, label, size: 'SMALL' });
+    // A lone Small in the last row is shown Wide.
+    render(<LayoutEditor entries={pageEntries([{ ...links[0]!, size: 'WIDE' }, small('z', 'Zed')], null, null)} onReorder={vi.fn()} faqEmpty={false} layout="BENTO" onLayout={vi.fn()} onResize={vi.fn()} />);
+    expect(within(sizeGroup('Zed')!).getByRole('radio', { name: 'Small' })).toBeChecked();
+    expect(screen.getByText('Shown Wide to fill the grid')).toBeInTheDocument();
+  });
+
+  it('ignores a second choice while a save is pending, then works again', async () => {
+    let settle!: () => void;
+    const onResize = vi.fn(() => new Promise<void>((resolve) => { settle = resolve; }));
+    render(<LayoutEditor entries={pageEntries([links[0]!, links[1]!], null, null)} onReorder={vi.fn()} faqEmpty={false} layout="BENTO" onLayout={vi.fn()} onResize={onResize} />);
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('Portfolio')!).getByRole('radio', { name: 'Big' }));
+    });
+    expect(screen.getByRole('region', { name: 'Layout' })).toHaveAttribute('aria-busy', 'true');
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('WhatsApp')!).getByRole('radio', { name: 'Wide' }));
+    });
+    expect(onResize).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      settle();
+    });
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('WhatsApp')!).getByRole('radio', { name: 'Wide' }));
+    });
+    expect(onResize).toHaveBeenCalledTimes(2);
+  });
+
+  it('offers no shop picker when the shop button is not drawn', () => {
+    render(<LayoutEditor entries={pageEntries(links, { position: 0, size: null }, null)} onReorder={vi.fn()} faqEmpty={false} layout="BENTO" onLayout={vi.fn()} onResize={vi.fn()} shopDrawn={false} />);
+    expect(sizeGroup('Shop')).toBeNull();
+    expect(sizeGroup('Portfolio')).not.toBeNull();
   });
 });

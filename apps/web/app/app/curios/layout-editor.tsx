@@ -58,6 +58,7 @@ export function LayoutEditor({
   layout = 'LIST',
   onLayout,
   onResize,
+  shopDrawn = true,
 }: {
   entries: LayoutEntry[];
   /** Every id in the new order, `shop` and `faq` included. Rejects if the save fails. */
@@ -69,7 +70,9 @@ export function LayoutEditor({
   /** Choose List or Bento. The caller shows it at once and puts it back, rejecting, if the save fails. */
   onLayout?: (layout: PageLayout) => Promise<void>;
   /** Give a row (`shop` for the shop button) a tile size. Same contract as `onLayout`. */
-  onResize?: (id: string, size: TileSize) => Promise<void>;
+  onResize?: (id: string, size: TileSize | null) => Promise<void>;
+  /** Whether the shop button is drawn on the page (open, with items). Left out, it is. */
+  shopDrawn?: boolean;
 }) {
   const [order, setOrder] = useState(entries);
   const [seen, setSeen] = useState(entries);
@@ -178,11 +181,17 @@ export function LayoutEditor({
 
   /** A choice that saves at once; the caller has already shown it, and a refusal is shown here. */
   async function choose(save: () => Promise<void>) {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     setError('');
     try {
       await save();
     } catch (failure) {
       setError(message(failure));
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
 
@@ -190,7 +199,7 @@ export function LayoutEditor({
   const resize = layout === 'BENTO' ? onResize : undefined;
   const effective = new Map(
     arrangeTiles(
-      shownOrder.filter((entry) => !(entry.kind === 'faq' && faqEmpty)),
+      shownOrder.filter((entry) => !(entry.kind === 'faq' && faqEmpty) && !(entry.kind === 'shop' && !shopDrawn)),
       minimumOf,
     ).map((tile) => [tile.link.id, tile.size] as const),
   );
@@ -257,7 +266,7 @@ export function LayoutEditor({
   }
 
   return (
-    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="layout-title">
+    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="layout-title" aria-busy={saving || undefined}>
       <SectionHead
         id="layout-title"
         title="Layout"
@@ -273,6 +282,7 @@ export function LayoutEditor({
               { id: 'BENTO', label: 'Bento' },
             ]}
             value={layout}
+            disabled={saving}
             onChange={(next) => void choose(() => onLayout(next))}
           />
           <small>{layout === 'BENTO' ? 'Tiles in two columns. Give each a size below.' : 'One button under another.'}</small>
@@ -317,12 +327,14 @@ export function LayoutEditor({
             <RowBody entry={entry} faqEmpty={faqEmpty} />
             {resize && entry.kind !== 'faq' && effective.has(entry.id) ? (
               <span className={styles.layoutSize}>
-                <Segmented
+                <Segmented<TileSize | 'AUTO'>
                   label={`Size of ${nameOf(entry)}`}
-                  options={sizesFor(minimumOf(entry)).map((size) => ({ id: size, label: SIZE_LABEL[size] }))}
-                  value={effective.get(entry.id)!}
-                  onChange={(size) => void choose(() => resize(entry.id, size))}
+                  options={[{ id: 'AUTO', label: 'Auto' }, ...sizesFor(minimumOf(entry)).map((size) => ({ id: size, label: SIZE_LABEL[size] }))]}
+                  value={entry.size ?? 'AUTO'}
+                  disabled={saving}
+                  onChange={(size) => void choose(() => resize(entry.id, size === 'AUTO' ? null : size))}
                 />
+                {entry.size !== null && effective.get(entry.id) !== entry.size ? <small>Shown {SIZE_LABEL[effective.get(entry.id)!]} to fill the grid</small> : null}
               </span>
             ) : null}
           </li>

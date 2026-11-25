@@ -185,7 +185,7 @@ export function MyCuriosEditor({
   }
 
   /** A tile size, the same way: shown at once, put back only for that one piece if its save is refused. */
-  async function resizeEntry(id: string, size: TileSize) {
+  async function resizeEntry(id: string, size: TileSize | null) {
     const isShop = id === SHOP_TILE_ID;
     const before = isShop ? (page.shop?.size ?? null) : (page.links.find((link) => link.id === id)?.size ?? null);
     const set = (value: TileSize | null) =>
@@ -348,6 +348,7 @@ export function MyCuriosEditor({
               layout={page.layout}
               onLayout={chooseLayout}
               onResize={resizeEntry}
+              shopDrawn={previewPill !== null}
             />
           </div>
         </div>
