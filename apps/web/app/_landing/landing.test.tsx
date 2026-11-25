@@ -249,13 +249,13 @@ describe('the Malay landing', () => {
 
   it('every new Malay heading matches the appendix', () => {
     expect(ms.who.title).toEqual(['Satu soalan, ', 'lima jawapan berbeza', '']);
-    expect(ms.how.title).toBe('Sepuluh minit dari kosong ke link bio');
+    expect(ms.how.title).toBe('Sepuluh minit dari kosong ke siap menjawab');
     expect(ms.how.steps.map((s) => s.title)).toEqual(['Beritahu tentang anda', 'Luluskan yang betul', 'Letak link dalam bio']);
     expect([ms.lands.title, ms.lands.lede]).toEqual(['Apa yang anda dapat', 'Bila orang tanya halaman anda, ini yang anda dapat.']);
     expect([ms.noCut.title, ms.noCut.sub]).toEqual(['Setiap jualan milik anda', 'Kek RM100 yang sama, dijual dua cara. Ini yang sampai ke bank anda.']);
     expect(ms.pricing.title).toEqual(['Percuma untuk anda,', 'RM49 sebulan untuk bisnes']);
     expect(ms.faq.title).toEqual(['Sebelum', 'anda mula']);
-    expect(ms.hero.eyebrow).toBe('Link bio, untuk Malaysia');
+    expect(ms.hero.eyebrow).toBe('Satu link. Semua jawapan.');
     expect(ms.noCut.incl.map((i) => i.kicker)).toEqual(['Laman web anda', 'Bayaran anda', 'Listing Google anda']);
     expect(ms.closing.label).toBe('Tanya je.');
   });

@@ -9,7 +9,7 @@ import styles from '../auth.module.css';
 
 export const metadata: Metadata = {
   title: 'Create your free page · Curios',
-  description: 'Claim your curios.my address and make a link in bio people can ask. Free for anyone.',
+  description: 'Claim your curios.my address and make one link that answers for you. Free for anyone.',
 };
 
 // Read per request: the admin closing sign-ups must show here within the settings' 30 seconds.

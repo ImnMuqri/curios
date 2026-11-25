@@ -73,7 +73,7 @@ built yet. Before launch each is built or its zone changed.
 
 ## SEO
 
-**Title / description** (en): "Curios: a link in bio people can ask", and a
+**Title / description** (en): "Curios: one link that answers for you", and a
 description naming Malay or English and approved facts. Malay versions are under
 the same limits. Tests enforce them.
 

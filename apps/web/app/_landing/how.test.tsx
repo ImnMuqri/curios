@@ -25,7 +25,7 @@ describe('how it works', () => {
       expect(cards()[i]).toHaveTextContent(step.body);
       expect(step.title).not.toMatch(/\.$/);
     });
-    expect(COPY.en.how.title).toBe('Ten minutes from blank to bio link');
+    expect(COPY.en.how.title).toBe('Ten minutes from blank to answering');
   });
 
   it('shows every card on its finished frame, with no timer, under reduced motion', async () => {

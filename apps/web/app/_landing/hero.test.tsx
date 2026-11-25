@@ -23,7 +23,7 @@ describe('the hero', () => {
   });
 
   it('names what Curios is above the h1, in both languages', () => {
-    for (const [locale, label] of [['en', 'Link in bio, for Malaysia'], ['ms', 'Link bio, untuk Malaysia']] as const) {
+    for (const [locale, label] of [['en', 'One link. Every answer.'], ['ms', 'Satu link. Semua jawapan.']] as const) {
       const { container, unmount } = render(<Hero locale={locale} />);
       const h1 = container.querySelector('h1')!;
       expect(h1.previousElementSibling).toHaveTextContent(label);
