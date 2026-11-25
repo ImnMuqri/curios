@@ -87,6 +87,10 @@ export type AvatarSize = (typeof AVATAR_SIZES)[number];
 export const COVER_LAYOUTS = ['TOP', 'FULL'] as const;
 export type CoverLayout = (typeof COVER_LAYOUTS)[number];
 
+/** How the page is laid out: a column of links, or a grid of sized tiles. */
+export const PAGE_LAYOUTS = ['LIST', 'BENTO'] as const;
+export type PageLayout = (typeof PAGE_LAYOUTS)[number];
+
 export const MAX_LINKS = 30;
 export const LABEL_MAX = 40;
 export const BIO_MAX = 160;
@@ -263,23 +267,38 @@ function autoSize(index: number, count: number): TileSize {
   return (index - 3) % 3 === 2 ? 'WIDE' : 'SMALL';
 }
 
+/** Whether a size is enough for a minimum: Small < Wide, Tall < Big, but Wide does not cover a Tall minimum nor Tall a Wide one. */
+function meetsMinimum(size: TileSize, min: TileSize): boolean {
+  return size === 'BIG' || min === 'SMALL' || size === min;
+}
+
 /**
- * The shopfront arrangement: each link's tile size and colour.
+ * The shopfront arrangement: each tile's size and colour.
  *
- * A link with a size keeps it. An automatic one takes its size from its
+ * A tile with a size keeps it. An automatic one takes its size from its
  * position, and the last automatic tile widens when the grid would otherwise
  * end with half a row empty. Tone follows position only: the first tile
  * carries the accent, the second the warm colour.
+ *
+ * `minSize` (a widget that cannot be drawn small) lifts a size that is below
+ * the tile's minimum to the minimum itself; it never lowers one. The items may
+ * be the entries `pageEntries` returns.
  */
 export function arrangeTiles<T extends { size: TileSize | null }>(
   links: T[],
+  minSize?: (item: T) => TileSize,
 ): { link: T; size: TileSize; tone: Tone }[] {
-  const tiles = links.map((link, index) => ({
-    link,
-    size: link.size ?? autoSize(index, links.length),
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    tone: (index === 0 ? 'accent' : index === 1 ? 'warm' : 'plain') as Tone,
-  }));
+  const tiles = links.map((link, index) => {
+    let size = link.size ?? autoSize(index, links.length);
+    const min = minSize?.(link);
+    if (min && !meetsMinimum(size, min)) size = min;
+    return {
+      link,
+      size,
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+      tone: (index === 0 ? 'accent' : index === 1 ? 'warm' : 'plain') as Tone,
+    };
+  });
 
   const last = tiles.at(-1);
   const cells = tiles.reduce((sum, tile) => sum + CELLS[tile.size], 0);

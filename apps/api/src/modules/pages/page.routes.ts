@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { SOCIAL_KINDS, type SocialKind } from '@curios/core/socials';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { AVATAR_SIZES, COVER_LAYOUTS, HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverKey, stockCoverName } from '@curios/core/bento';
+import { AVATAR_SIZES, COVER_LAYOUTS, HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_LAYOUTS, PAGE_STYLES, STOCK_COVERS, stockCoverKey, stockCoverName } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
@@ -154,6 +154,7 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
           avatarBorder: z.boolean().optional(),
           coverLayout: z.enum(COVER_LAYOUTS).optional(),
           coverWash: z.boolean().optional(),
+          layout: z.enum(PAGE_LAYOUTS).optional(),
           displayName: z.string().max(400).optional(),
           bio: z.string().max(2000).nullable().optional(),
           // Strict, so a kind this does not know is refused rather than stored.

@@ -148,6 +148,11 @@ enum AvatarSize {
 }
 
 /// Where the cover sits. TOP is the band at the head of the page every page had; FULL fills the whole page behind the content.
+enum PageLayout {
+  LIST
+  BENTO
+}
+
 enum CoverLayout {
   TOP
   FULL
@@ -331,6 +336,8 @@ model Page {
   coverLayout         CoverLayout         @default(TOP)
   /// Full page only: the page's colour washed over the photo (true, how Full began) or the photo as it is.
   coverWash           Boolean             @default(true)
+  /// LIST is the page as a column of links (every page before this choice); BENTO lays the same pieces out as a grid of sized tiles.
+  layout              PageLayout          @default(LIST)
   background          PageBackground      @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.

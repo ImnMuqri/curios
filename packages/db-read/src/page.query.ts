@@ -4,7 +4,7 @@ import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
-import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
+import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageLayout, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { getSettings } from './settings.query.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
@@ -61,6 +61,8 @@ export interface PublicPage {
   coverLayout: CoverLayout;
   /** Full page only: the page colour over the photo (true) or the photo as it is. */
   coverWash: boolean;
+  /** A column of links, or a bento grid. */
+  layout: PageLayout;
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
@@ -140,6 +142,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       coverKey: true,
       coverLayout: true,
       coverWash: true,
+      layout: true,
       background: true,
       backgroundColor: true,
       socials: true,

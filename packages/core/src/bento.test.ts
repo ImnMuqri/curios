@@ -140,6 +140,32 @@ describe('arrangeTiles', () => {
   it('returns nothing for no links', () => {
     expect(arrangeTiles([])).toEqual([]);
   });
+
+  it('ends five Small tiles with the last one Wide, never half a row', () => {
+    const four = Array.from({ length: 4 }, () => ({ size: 'SMALL' as TileSize | null }));
+    const tiles = arrangeTiles([...four, { size: null }], () => 'SMALL');
+    expect(tiles.map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'SMALL', 'SMALL', 'WIDE']);
+  });
+
+  it('raises a size below its minimum to the minimum, and never lowers one', () => {
+    const items = [{ size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'BIG' as TileSize | null, min: 'WIDE' as TileSize }];
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['WIDE', 'SMALL', 'BIG']);
+  });
+
+  it('lets Wide satisfy only a Wide minimum, Tall only Tall, and Big anything', () => {
+    const one = (size: TileSize, min: TileSize) => arrangeTiles([{ size }], () => min)[0]?.size;
+    expect(one('WIDE', 'WIDE')).toBe('WIDE');
+    expect(one('TALL', 'WIDE')).toBe('WIDE');
+    expect(one('WIDE', 'TALL')).toBe('TALL');
+    expect(one('SMALL', 'TALL')).toBe('TALL');
+    expect(one('BIG', 'TALL')).toBe('BIG');
+    expect(one('WIDE', 'BIG')).toBe('BIG');
+  });
+
+  it('keeps the FAQ Wide whatever else is set', () => {
+    const entries = pageEntries([{ id: 'a', size: 'SMALL' as TileSize | null }], null, { position: 0 });
+    expect(arrangeTiles(entries, () => 'SMALL')[0]).toMatchObject({ size: 'WIDE' });
+  });
 });
 
 describe('stock covers', () => {
