@@ -6,7 +6,7 @@ import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, withShopTile, type ShopTilePlac
 import { useAutosave } from '../_ui/use-autosave.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
-import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
+import { WIDGET_NAMES, parseWidgetLink, type LinkKind, type WidgetProvider } from '@curios/core/widgets';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
@@ -47,6 +47,24 @@ const kindOf = (url: string): keyof typeof KINDS =>
       ? 'instagram'
       : 'link';
 
+/** One small glyph per service, drawn inline: no image requests. */
+const NOTE = 'M9 18V6l10-2v12M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3zM19 16a3 3 0 1 1-3-3 3 3 0 0 1 3 3z';
+const CALENDAR = 'M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM4 10h16M8 3v4M16 3v4';
+const WIDGET_GLYPHS: Record<WidgetProvider, string> = {
+  SPOTIFY: NOTE,
+  APPLE_MUSIC: NOTE,
+  YOUTUBE: 'M9 7l8 5-8 5zM3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z',
+  SOUNDCLOUD: 'M3 15v-3M6 16V9M9 16V7M12 16V6M15 16h3a3 3 0 0 0 0-6 5 5 0 0 0-3-1',
+  GOOGLE_MAPS: 'M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10zM12 8.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+  CALCOM: CALENDAR,
+  CALENDLY: CALENDAR,
+  CANVA: 'M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z',
+};
+
+function WidgetIcon({ provider }: { provider: WidgetProvider }) {
+  return <Icon d={WIDGET_GLYPHS[provider]} />;
+}
+
 const UP = 'M6 15l6-6 6 6';
 const DOWN = 'M6 9l6 6 6-6';
 const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
@@ -77,6 +95,7 @@ export function LinksEditor({
   links,
   onChange,
   addLink,
+  addWidget,
   updateLink,
   removeLink,
   reorder,
@@ -86,6 +105,7 @@ export function LinksEditor({
   links: LinkItem[];
   onChange: (links: LinkItem[]) => void;
   addLink: (input: { label: string; url: string }) => Promise<LinkItem>;
+  addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
   updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
@@ -95,6 +115,10 @@ export function LinksEditor({
   lead?: ReactNode;
 }) {
   const [adding, setAdding] = useState(false);
+  const [addingWidget, setAddingWidget] = useState(false);
+  const [widgetUrl, setWidgetUrl] = useState('');
+  const [widgetLabel, setWidgetLabel] = useState('');
+  const widgetRef = useRef<HTMLInputElement>(null);
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
@@ -109,6 +133,10 @@ export function LinksEditor({
   useEffect(() => {
     if (adding) nameRef.current?.focus();
   }, [adding]);
+
+  useEffect(() => {
+    if (addingWidget) widgetRef.current?.focus();
+  }, [addingWidget]);
 
   // Put back as it was if the server refuses the new order.
   async function move(from: number, to: number) {
@@ -142,6 +170,31 @@ export function LinksEditor({
       setLabel('');
       setUrl('');
       setAdding(false);
+    } catch (failure) {
+      setError(message(failure));
+    }
+  }
+
+  // Recognition here is only a hint for the owner; the server decides. A short
+  // link (spotify.link) is let through so the server can resolve it.
+  const recognised = widgetUrl.trim() === '' ? null : parseWidgetLink(widgetUrl);
+  const widgetService = recognised && (recognised.ok || recognised.short) ? recognised.provider : null;
+  const widgetProblem = recognised && !recognised.ok && !recognised.short ? recognised.message : '';
+  const widgetBlocked = recognised === null || widgetProblem !== '';
+
+  function closeWidget() {
+    setAddingWidget(false);
+    setWidgetUrl('');
+    setWidgetLabel('');
+  }
+
+  async function addWidgetRow() {
+    setError('');
+    if (widgetBlocked) return;
+    try {
+      const link = await addWidget({ url: widgetUrl.trim(), label: widgetLabel.trim() === '' ? null : widgetLabel.trim() });
+      onChange([...linksRef.current, link]);
+      closeWidget();
     } catch (failure) {
       setError(message(failure));
     }
@@ -218,7 +271,7 @@ export function LinksEditor({
         </div>
       ) : null}
 
-      {links.length === 0 && !adding ? (
+      {links.length === 0 && !adding && !addingWidget ? (
         <div className={ui.empty}>
           <div className={ui.emptyArt} aria-hidden="true">
             <span className={ui.ghostRows}>
@@ -236,6 +289,9 @@ export function LinksEditor({
           <p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p>
           <button type="button" className={ui.primaryButton} onClick={() => setAdding(true)}>
             + Add a link
+          </button>
+          <button type="button" className={ui.addRow} onClick={() => setAddingWidget(true)}>
+            + Add a widget
           </button>
         </div>
       ) : null}
@@ -261,14 +317,60 @@ export function LinksEditor({
             </button>
           </span>
         </form>
-      ) : full ? (
+      ) : null}
+
+      {addingWidget ? (
+        <form
+          className={styles.addForm}
+          onSubmit={(event) => {
+            event.preventDefault();
+            void addWidgetRow();
+          }}
+        >
+          <input
+            ref={widgetRef}
+            className={ui.input}
+            aria-label="Widget link"
+            placeholder="Paste a Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly or Canva link"
+            autoComplete="off"
+            value={widgetUrl}
+            onChange={(event) => setWidgetUrl(event.target.value)}
+          />
+          <input className={ui.input} aria-label="Name (optional)" placeholder="Name (optional)" value={widgetLabel} onChange={(event) => setWidgetLabel(event.target.value)} />
+          <span className={styles.addActions}>
+            <button type="submit" className={ui.primaryButton} disabled={widgetBlocked}>
+              Add
+            </button>
+            <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={closeWidget}>
+              <Icon d={CLOSE} />
+            </button>
+          </span>
+          {widgetService ? (
+            <span className={styles.widgetHint} data-testid="widget-service">
+              <WidgetIcon provider={widgetService} />
+              {WIDGET_NAMES[widgetService]}
+            </span>
+          ) : widgetProblem ? (
+            <span className={styles.widgetHint} data-testid="widget-note">
+              {widgetProblem}
+            </span>
+          ) : null}
+        </form>
+      ) : null}
+
+      {adding || addingWidget ? null : full ? (
         <p className={ui.note}>
           {MAX_LINKS} links is the most a page holds. Remove one to add another.
         </p>
       ) : links.length > 0 ? (
-        <button type="button" className={ui.addRow} onClick={() => setAdding(true)}>
-          + Add link
-        </button>
+        <span className={styles.addRows}>
+          <button type="button" className={ui.addRow} onClick={() => setAdding(true)}>
+            + Add link
+          </button>
+          <button type="button" className={ui.addRow} onClick={() => setAddingWidget(true)}>
+            + Add a widget
+          </button>
+        </span>
       ) : null}
     </section>
   );
@@ -329,6 +431,8 @@ function LinkRow({
     setEditing(true);
   }
 
+  const widget = link.kind === 'WIDGET' && link.provider !== null;
+
   if (editing) {
     return (
       <li aria-label={link.label} className={styles.linkRow} data-editing>
@@ -347,7 +451,7 @@ function LinkRow({
             />
             <SaveState status={labelSave.status} error={labelSave.error} retry={labelSave.retry} />
           </span>
-          <span>
+          {widget ? null : <span>
             <input
               id={`url-${link.id}`}
               className={ui.input}
@@ -361,7 +465,7 @@ function LinkRow({
               }}
             />
             <SaveState status={urlSave.status} error={urlSave.error} retry={urlSave.retry} />
-          </span>
+          </span>}
           <button type="button" className={ui.primaryButton} onClick={() => setEditing(false)}>
             Done
           </button>
@@ -372,12 +476,12 @@ function LinkRow({
 
   return (
     <li aria-label={link.label} className={styles.linkRow}>
-      <span className={styles.linkKind} data-kind={kindOf(link.url)} aria-hidden="true">
-        <Icon d={KINDS[kindOf(link.url)]} />
+      <span className={styles.linkKind} data-kind={widget ? 'widget' : kindOf(link.url)} aria-hidden="true">
+        {widget ? <WidgetIcon provider={link.provider!} /> : <Icon d={KINDS[kindOf(link.url)]} />}
       </span>
       <button type="button" ref={editButtonRef} className={styles.linkText} aria-label={`Edit ${link.label}`} onClick={openEditor}>
         <b>{link.label}</b>
-        <span>{shown(link.url)}</span>
+        <span>{widget ? WIDGET_NAMES[link.provider!] : shown(link.url)}</span>
       </button>
       {confirming ? (
         <span className={ui.confirm}>

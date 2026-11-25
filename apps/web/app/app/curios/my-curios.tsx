@@ -45,6 +45,7 @@ export type AppearancePatch = Partial<{
 // rightly distrusts once detached from `api`.
 export interface CuriosApi {
   addLink: (input: { label: string; url: string }) => Promise<LinkItem>;
+  addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
   updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
@@ -85,6 +86,7 @@ type PreviewTab = 'links' | 'ask';
 function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['track']): CuriosApi {
   return {
     addLink: (input) => track(api.addLink(input)),
+    addWidget: (input) => track(api.addWidget(input)),
     updateLink: (id, patch) => track(api.updateLink(id, patch)),
     removeLink: (id) => track(api.removeLink(id)),
     reorder: (ids) => track(api.reorder(ids)),
@@ -245,6 +247,7 @@ export function MyCuriosEditor({
               links={page.links}
               onChange={(links) => update({ links })}
               addLink={api.addLink}
+              addWidget={api.addWidget}
               updateLink={api.updateLink}
               removeLink={api.removeLink}
               reorder={api.reorder}

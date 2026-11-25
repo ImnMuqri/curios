@@ -30,6 +30,7 @@ export function MyCurios({
 
   const api: CuriosApi = {
     addLink: async (input) => (await apiFetch<{ link: LinkItem }>('/links', { method: 'POST', body: JSON.stringify(input) })).link,
+    addWidget: async (input) => (await apiFetch<{ link: LinkItem }>('/links/widgets', { method: 'POST', body: JSON.stringify(input) })).link,
     updateLink: async (id, patch) => (await apiFetch<{ link: LinkItem }>(`/links/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).link,
     removeLink: async (id) => { await apiFetch(`/links/${id}`, { method: 'DELETE' }); },
     reorder: async (ids) => { await apiFetch('/links/order', { method: 'PUT', body: JSON.stringify({ ids }) }); },

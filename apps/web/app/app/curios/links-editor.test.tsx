@@ -15,6 +15,7 @@ function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[
     links,
     onChange: vi.fn(),
     addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null })),
+    addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/abc' })),
     updateLink: vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...links.find((l) => l.id === id)!, ...patch })),
     removeLink: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
@@ -216,7 +217,7 @@ describe('LinksEditor', () => {
   it('drops a pending inline save when the link is removed before it fires', async () => {
     vi.useFakeTimers();
     const updateLink = vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...three.find((l) => l.id === id)!, ...patch }));
-    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -243,7 +244,7 @@ describe('LinksEditor', () => {
     vi.useFakeTimers();
     let rejectUpdate!: (failure: Error) => void;
     const updateLink = vi.fn(() => new Promise<LinkItem>((_resolve, reject) => { rejectUpdate = reject; }));
-    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -273,7 +274,7 @@ describe('LinksEditor', () => {
       ...patch,
       url: 'https://wa.me/60123',
     }));
-    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -321,7 +322,7 @@ describe('LinksEditor', () => {
       return Promise.resolve({ ...three.find((l) => l.id === id)!, ...patch });
     });
     vi.useFakeTimers();
-    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
 
     // The row's aria-label is bound to the `link.label` prop -- unlike the
     // Name field's value, which is local state -- so it shows whether the
@@ -391,6 +392,69 @@ describe('LinksEditor', () => {
       const props = setup(three.slice(0, 2), { shop: null });
       await userEvent.click(screen.getByRole('button', { name: 'Move Portfolio down' }));
       expect(props.reorder).toHaveBeenCalledWith(['b', 'a']);
+    });
+  });
+
+  describe('widgets', () => {
+    const spotify = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC';
+
+    it('opens a widget field and names the service as the link is pasted', async () => {
+      setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), spotify);
+      const hint = screen.getByTestId('widget-service');
+      expect(hint).toHaveTextContent('Spotify');
+      expect(hint.querySelector('svg')).not.toBeNull();
+    });
+
+    it('saves with the url and the label, or null when the name is blank', async () => {
+      const props = setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), spotify);
+      await userEvent.type(screen.getByLabelText('Name (optional)'), 'My song');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(props.addWidget).toHaveBeenCalledWith({ url: spotify, label: 'My song' });
+      expect(props.onChange).toHaveBeenLastCalledWith([...three, expect.objectContaining({ id: 'w' })]);
+
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), spotify);
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(props.addWidget).toHaveBeenLastCalledWith({ url: spotify, label: null });
+    });
+
+    it('shows the server message when it refuses the link', async () => {
+      const addWidget = vi.fn(async () => {
+        throw new Error('That Spotify link is not one we can show.');
+      });
+      setup(three, { addWidget });
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), spotify);
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(screen.getByRole('alert')).toHaveTextContent('That Spotify link is not one we can show.');
+    });
+
+    it('disables Add with the reason when the link is not a widget, but lets a short link through', async () => {
+      setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), 'https://example.com/x');
+      expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
+      expect(screen.getByTestId('widget-note').textContent).not.toBe('');
+
+      await userEvent.clear(screen.getByLabelText('Widget link'));
+      await userEvent.type(screen.getByLabelText('Widget link'), 'https://spotify.link/abc123');
+      expect(screen.getByTestId('widget-service')).toHaveTextContent('Spotify');
+      expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
+    });
+
+    it('draws a saved widget with its service and label, and no address box', async () => {
+      const widget: LinkItem = { id: 'w', label: 'My song', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x' };
+      setup([...three, widget]);
+      const row = screen.getByRole('listitem', { name: 'My song' });
+      expect(row).toHaveTextContent('Spotify');
+      expect(row).toHaveTextContent('My song');
+      await userEvent.click(within(row).getByRole('button', { name: 'Edit My song' }));
+      expect(screen.getByLabelText('Name')).toBeInTheDocument();
+      expect(screen.queryByLabelText('Address')).toBeNull();
     });
   });
 });

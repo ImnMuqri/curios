@@ -25,6 +25,7 @@ const business: EditorPage = {
 
 const api = () => ({
   addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null })),
+  addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/x' })),
   updateLink: vi.fn(async (_id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
