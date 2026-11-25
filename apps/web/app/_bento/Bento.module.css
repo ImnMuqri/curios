@@ -708,9 +708,9 @@
   background: var(--veil-1);
 }
 
-/* First among other pieces it starts where the links would. Alone (a business page with answers but no
-   links or shop) it keeps its 22px, as it always has. */
-.foldawayInner > .faq:first-child:not(:only-child) {
+/* First, with a links run after it, it starts where the links would. With nothing after it but the footer (a
+   business page with answers but no links or shop) it keeps its 22px, as it always has. */
+.foldawayInner > .faq:first-child:has(+ .links) {
   margin-top: 0;
 }
 

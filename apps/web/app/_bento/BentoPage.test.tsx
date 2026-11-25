@@ -697,7 +697,24 @@ describe('the Bento layout', () => {
 describe('BentoPage, the FAQ block at the head of the list', () => {
   it('drops its top margin only when other pieces share the list, so a FAQ-only page keeps its gap', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
-    expect(css).toMatch(/\.foldawayInner > \.faq:first-child:not\(:only-child\) \{\s*margin-top: 0;/);
+    expect(css).toMatch(/\.foldawayInner > \.faq:first-child:has\(\+ \.links\) \{\s*margin-top: 0;/);
     expect(css).not.toMatch(/\.foldawayInner > \.faq:first-child \{/);
+  });
+});
+
+describe('BentoPage, the FAQ block structure the margin rule reads', () => {
+  const faq = { total: 1, entries: [{ slug: 'halal', question: 'Is it halal?', answer: 'Yes.' }] };
+  const block = (c: HTMLElement) => c.querySelector('section[aria-labelledby="often-ask"]')!;
+
+  it('has no links run after a FAQ-only page block, only the footer, so the zero-margin rule cannot match', () => {
+    const { container } = render(<BentoPage {...base} links={[]} faq={faq} />);
+    const next = block(container).nextElementSibling;
+    expect(next?.tagName).toBe('P');
+    expect(next?.matches('ul')).toBe(false);
+  });
+
+  it('has a links run right after the block when the FAQ comes first among links', () => {
+    const { container } = render(<BentoPage {...base} faq={faq} faqPosition={0} />);
+    expect(block(container).nextElementSibling?.tagName).toBe('UL');
   });
 });

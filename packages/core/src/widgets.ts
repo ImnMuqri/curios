@@ -138,7 +138,7 @@ function refOk(provider: WidgetProvider, ref: string): boolean {
       return x.length === 0 && (kind === 'v' || kind === 'list') && ID.test(id ?? '');
     }
     case 'SOUNDCLOUD':
-      return SOUNDCLOUD_CANON.test(ref) && !SOUNDCLOUD_PROFILE_PAGES.includes(ref.split('/')[4]!.toLowerCase());
+      return SOUNDCLOUD_CANON.test(ref) && !(ref.split('/').length === 5 && SOUNDCLOUD_PROFILE_PAGES.includes(ref.split('/')[4]!.toLowerCase()));
     case 'GOOGLE_MAPS':
       return placeOk(ref);
     case 'CALCOM':

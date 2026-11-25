@@ -178,7 +178,8 @@ export function MyCuriosEditor({
         ...current,
         links: [...ordered, ...unplaced],
         shop: current.shop ? { ...current.shop, position: ids.indexOf(SHOP_TILE_ID) } : null,
-        faqPosition: ids.includes(FAQ_TILE_ID) ? ids.indexOf(FAQ_TILE_ID) : current.faqPosition,
+        // Last is stored as null (after the last item), as the API does, so links added later land above it.
+        faqPosition: ids.includes(FAQ_TILE_ID) ? (ids.indexOf(FAQ_TILE_ID) === ids.length - 1 ? null : ids.indexOf(FAQ_TILE_ID)) : current.faqPosition,
       };
     });
     try {

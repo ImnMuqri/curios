@@ -561,6 +561,28 @@ describe('the Layout tab', () => {
     expect(positionsAfterRemoval(0, 0, 3)).toEqual({ shop: 0, faq: 2 });
   });
 
+  it('stores the FAQ as last when it is dragged last, so a link added afterwards lands above it', async () => {
+    const calls = api();
+    show({ ...two, shop: { ...two.shop!, position: 0 }, faqPosition: 1 }, calls);
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name: 'People often ask' });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    for (let i = 0; i < 3; i += 1) fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+    expect(calls.reorder).toHaveBeenCalledWith(['shop', 'a', 'b', 'faq']);
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
+    const links = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.type(links.getByLabelText('Name'), 'Newest');
+    await userEvent.type(links.getByLabelText('Address'), 'new.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Portfolio', 'Cafe menu', 'Newest', 'People often ask']);
+  });
+
   it('has no People often ask or Shop row on a personal page', async () => {
     show();
     await userEvent.click(editTab('Layout'));

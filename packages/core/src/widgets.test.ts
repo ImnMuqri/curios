@@ -197,6 +197,11 @@ describe('SoundCloud', () => {
     refused('https://soundcloud.com/a/b%22c');
     refused('https://soundcloud.com/a/b/c/d');
   });
+  it('still draws a stored playlist and a stored track', () => {
+    expect(widgetSrc('SOUNDCLOUD', 'https://soundcloud.com/a/sets/b')).toContain('https://w.soundcloud.com/');
+    expect(widgetSrc('SOUNDCLOUD', 'https://soundcloud.com/a/b')).toContain('https://w.soundcloud.com/');
+    expect(() => widgetSrc('SOUNDCLOUD', 'https://soundcloud.com/a/likes')).toThrow();
+  });
   it("refuses an artist's own pages, which are not a track", () => {
     for (const page of ['likes', 'reposts', 'albums', 'tracks', 'popular-tracks', 'followers', 'following', 'comments', 'sets', 'Likes']) {
       refused(`https://soundcloud.com/some-artist/${page}`);
