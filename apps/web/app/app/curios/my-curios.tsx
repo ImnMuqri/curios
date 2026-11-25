@@ -250,7 +250,8 @@ export function MyCuriosEditor({
   const shownPreview = previewTab;
 
   // The shop pill as visitors see it, minus the pickup day (that needs the shop's terms the editor does not carry).
-  const previewPill = shopOpen && (page.shopTab?.itemCount ?? 0) > 0
+  // The public page draws it only when the read model hands it a tile (open) with items to order, so the editor asks for both.
+  const previewPill = page.shop !== null && shopOpen && (page.shopTab?.itemCount ?? 0) > 0
     ? {
         position: page.shop?.position,
         size: page.shop?.size ?? null,
