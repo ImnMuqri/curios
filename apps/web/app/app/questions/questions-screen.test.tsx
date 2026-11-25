@@ -215,12 +215,14 @@ describe('QuestionsScreen, the cards', () => {
     expect(within(card('Do you deliver to Klang?')).queryByRole('button', { name: 'Cancel' })).toBeNull();
   });
 
-  it('stacks the answer box on phones: a taller field, then a full-width Save', () => {
+  it('puts Save answer and Cancel under the field, not inside it, and full width on phones', () => {
     const css = readFileSync(join(import.meta.dirname, 'questions.module.css'), 'utf8');
+    // The field is its own box; the actions sit in a row under it (owner, 26 Nov).
+    expect(css).toMatch(/\.in textarea \{[^}]*box-shadow: inset 0 0 0 1px var\(--edge\);/);
+    expect(css).toMatch(/\.inActs \{[^}]*justify-content: flex-end;/);
     const phone = css.slice(css.indexOf('@media (max-width: 760px)'));
-    expect(phone).toMatch(/\.in \{\s*flex-direction: column;/);
-    expect(phone).toMatch(/\.in textarea \{\s*min-height: 88px;/);
-    expect(phone).toMatch(/\.in \.darkPill \{\s*width: 100%;/);
+    expect(phone).toMatch(/\.in textarea \{\s*min-height: 104px;/);
+    expect(phone).toMatch(/\.inActs > :is\(\.darkPill, \.litePill\) \{\s*flex: 1 1 100%;/);
   });
 
   it('saves an answer from the card, says so, refreshes, and shows it answered at once', async () => {

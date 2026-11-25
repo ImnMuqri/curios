@@ -378,7 +378,7 @@ export function QuestionsScreen({
                                 }}
                               >
                                 <textarea
-                                  rows={1}
+                                  rows={3}
                                   ref={(el) => {
                                     if (el && focusNext.current === t.id) {
                                       focusNext.current = null;
@@ -390,6 +390,8 @@ export function QuestionsScreen({
                                   placeholder="Write your answer once. The page uses it every time."
                                   onChange={(event) => setDrafts((current) => ({ ...current, [t.id]: event.target.value }))}
                                 />
+                                {/* The actions under the field, not inside it: an answer is written, not sent like a chat message (owner, 26 Nov). */}
+                                <div className={styles.inActs}>
                                 {over ? <span className={styles.over}>{length - answerMax} over</span> : null}
                                 <button type="submit" className={styles.darkPill} disabled={saving !== null || text.trim() === '' || over}>
                                   Save answer
@@ -409,6 +411,7 @@ export function QuestionsScreen({
                                     Cancel
                                   </button>
                                 ) : null}
+                                </div>
                               </form>
                             )}
                           </li>
