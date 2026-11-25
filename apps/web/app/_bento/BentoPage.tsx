@@ -61,6 +61,8 @@ export interface BentoPageProps {
   coverUrl?: string | null;
   /** The cover as a band at the top (the look every page had), or filling the whole page behind the content. With no photo, both read the same. */
   coverLayout?: CoverLayout;
+  /** Full page only: false shows the photo as it is, with no page colour over it. */
+  coverWash?: boolean;
   /** The picture's size; Medium (88px) when left out. */
   avatarSize?: AvatarSize;
   /** Whether the picture wears the ring of the page's colour round it; on when left out. */
@@ -213,6 +215,7 @@ export function BentoPage(props: BentoPageProps) {
       data-style={props.style}
       data-cover={props.coverUrl ? 'yes' : 'no'}
       data-cover-layout={props.coverUrl && props.coverLayout === 'FULL' ? 'FULL' : undefined}
+      data-cover-wash={props.coverUrl && props.coverLayout === 'FULL' && props.coverWash === false ? 'off' : undefined}
       data-avatar-size={props.avatarSize && props.avatarSize !== 'MEDIUM' ? props.avatarSize : undefined}
       data-avatar-border={props.avatarBorder === false ? 'off' : undefined}
       data-mode={props.mode}

@@ -481,7 +481,7 @@ describe('BentoPage, the picture and the cover layout', () => {
   });
 
   it('keeps the Full-page photo one screen tall and still, and gives the head the phone runway', () => {
-    expect(css()).toMatch(/\.coverFull img\s*\{[^}]*position:\s*sticky;[^}]*height:\s*100lvh;/s);
+    expect(css()).toMatch(/\.coverFull img\s*\{[^}]*position:\s*sticky;[^}]*height:\s*var\(--screen-h, 100lvh\);/s);
     expect(css()).toMatch(/\.coverFull\s*\{[^}]*overflow:\s*clip;/s);
     expect(css()).toMatch(/\[data-cover-layout='FULL'\] \.head\s*\{\s*padding-top:[^;]*var\(--runway, 0px\)/);
     // Ask's own rule for the head comes after, so it wins.
@@ -524,5 +524,22 @@ describe('themeAttrs, the buttons\' second colour', () => {
     expect(themeAttrs({ ...base, secondaryColor: 'pink' }).style).not.toHaveProperty('--btn-second');
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\.page\[data-style='CHUNKY'\] \{[^}]*--btn-second-or-fg:\s*var\(--btn-second, var\(--page-fg\)\);[^}]*--btn-shadow:\s*4px 4px 0 var\(--btn-second-or-fg\);/);
+  });
+});
+
+describe('BentoPage, the Full page cover without the page colour over it', () => {
+  it('marks the page only for a Full cover with the wash off, and draws no wash then', () => {
+    const off = render(<BentoPage {...base} coverUrl="/covers/bunga.webp" coverLayout="FULL" coverWash={false} />);
+    expect(off.container.querySelector('[data-bento-page]')).toHaveAttribute('data-cover-wash', 'off');
+    off.unmount();
+    for (const props of [{ coverLayout: 'FULL' as const }, { coverLayout: 'TOP' as const, coverWash: false }]) {
+      const view = render(<BentoPage {...base} coverUrl="/covers/bunga.webp" {...props} />);
+      expect(view.container.querySelector('[data-bento-page]')).not.toHaveAttribute('data-cover-wash');
+      view.unmount();
+    }
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.page\[data-cover-wash='off'\] \.coverFull::after \{\s*content: none;/);
+    // The phone preview sizes the photo to its own screen, not the browser's.
+    expect(css).toMatch(/\.coverFull img \{[^}]*height: var\(--screen-h, 100lvh\);/);
   });
 });

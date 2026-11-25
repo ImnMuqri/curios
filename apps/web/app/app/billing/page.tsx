@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
@@ -26,6 +27,9 @@ import { PageHead } from '../_ui/page-head.js';
 import { CountUp } from '../_ui/count-up.js';
 import { LivePeek } from '../../_peek/LivePeek.js';
 import { NEAR_SHARE } from '../alerts.js';
+
+/** The tab's name: "Curios - Billing" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Billing' };
 
 const PLANS: { plan: BillingPlan; name: string; note: string; period: string; unit: string }[] = [
   { plan: 'MONTHLY', name: 'Monthly', note: 'One month at a time', period: 'a month', unit: 'month' },

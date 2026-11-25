@@ -60,7 +60,7 @@ const page: PublicPage = {
   ],
   allowSearchIndexing: false,
   style: 'SOFT',
-  secondaryColor: null, accentColor: '#2340c8',
+  secondaryColor: null, coverWash: true, accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: null,
   coverKey: null,

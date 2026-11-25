@@ -7,6 +7,8 @@ import type { Metadata, Viewport } from 'next';
  * their home screen gets a shortcut to that page, not Curios's dashboard.
  */
 export const metadata: Metadata = {
+  // Each screen names itself ("Store"), read as "Curios - Store" in the tab; a screen without one is "Curios".
+  title: { default: 'Curios', template: 'Curios - %s' },
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Curios', statusBarStyle: 'default' },
 };

@@ -1,9 +1,13 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
 import { chatAnsweredIds, getAnswerRate, getMyCurios, getOwnerPage, getQuestionWeek, getTopicChoices, getTopics, getTopicTotals, questionWeekStart, type TopicShow } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Questions } from './questions-screen.js';
+
+/** The tab's name: "Curios - Questions" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Questions' };
 
 /**
  * What customers actually ask, and the one screen that changes what the

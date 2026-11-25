@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEAD_RETENTION_MONTHS, SESSION_COOKIE } from '@curios/core';
@@ -9,6 +10,9 @@ import panel from '../panel.module.css';
 import { resolveOwner } from '../session.js';
 import type { OrderRow } from './order-detail.js';
 import { Orders } from './orders-screen.js';
+
+/** The tab's name: "Curios - Orders" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Orders' };
 
 /**
  * What customers ordered from the shop, newest first, on the calm board: the

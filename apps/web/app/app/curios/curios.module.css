@@ -1196,3 +1196,31 @@ input.youField {
     transition: none;
   }
 }
+
+/* Cover photo, Full page: the page colour over the photo, as a switch row under "Where it sits". */
+.washRow {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--field-radius, 10px);
+}
+
+.washText {
+  flex: 1;
+  min-width: 0;
+}
+
+.washText b {
+  display: block;
+  font-weight: 600;
+}
+
+.washText small {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
+}

@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
@@ -9,6 +10,9 @@ import { Publish } from './publish-button.js';
 import { PageHead } from '../_ui/page-head.js';
 import panel from '../panel.module.css';
 import styles from './review.module.css';
+
+/** The tab's name: "Curios - Review" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Review' };
 
 /**
  * The highest-leverage screen in the product, per FRONTEND.md: the one place

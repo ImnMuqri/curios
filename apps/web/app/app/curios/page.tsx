@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
@@ -7,6 +8,9 @@ import { FAQ_SHOWN } from '../../_bento/BentoPage.js';
 import { resolveOwner } from '../session.js';
 import { STARTERS } from '../_ui/starters.js';
 import { MyCurios } from './my-curios-wrapper.js';
+
+/** The tab's name: "Curios - My Curios" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'My Curios' };
 
 export default async function MyCuriosPage() {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);

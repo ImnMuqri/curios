@@ -64,6 +64,13 @@ describe('PATCH /pages/appearance', () => {
     expect(second.json().appearance).toMatchObject({ avatarSize: 'LARGE', avatarBorder: false, coverLayout: 'FULL' });
   });
 
+  it('keeps the page colour over a Full page cover until the owner turns it off', async () => {
+    const cookie = await anOwner();
+    expect((await patch(cookie, { coverLayout: 'FULL' })).json().appearance.coverWash).toBe(true);
+    expect((await patch(cookie, { coverWash: false })).json().appearance.coverWash).toBe(false);
+    expect((await patch(cookie, { coverWash: 'no' })).statusCode).toBe(400);
+  });
+
   it('gives a page that never chose Medium, the border on and the cover at the top', async () => {
     const cookie = await anOwner();
     expect((await patch(cookie, { style: 'SOFT' })).json().appearance).toMatchObject({ avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP' });

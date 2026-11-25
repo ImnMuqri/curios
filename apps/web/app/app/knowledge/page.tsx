@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
@@ -20,6 +21,9 @@ import { HeadActions } from './head-actions.js';
 import { PageHead } from '../_ui/page-head.js';
 import { STARTERS } from '../_ui/starters.js';
 import styles from './knowledge.module.css';
+
+/** The tab's name: "Curios - Facts & sources" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Facts & sources' };
 
 /**
  * Everything the chat answers from, in one place, and the way to remove any

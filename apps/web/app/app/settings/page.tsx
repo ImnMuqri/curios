@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
@@ -15,6 +16,9 @@ import { PushDevice } from './push-device.js';
 import { sourcePlace } from '../_ui/source-place.js';
 import { PageHead } from '../_ui/page-head.js';
 import styles from './settings.module.css';
+
+/** The tab's name: "Curios - Settings" (the dashboard layout's template). */
+export const metadata: Metadata = { title: 'Settings' };
 
 /**
  * The account and the page, from the design handoff's Dash board: the
