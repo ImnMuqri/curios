@@ -66,10 +66,8 @@
   flex: 1;
   min-width: 0;
   padding: 0 40px 48px;
-  /* The sheet's own corner (app-frame .sheet, 16px): a square white column here filled it in, so a
-     strip of white stood out past the rounded corner (owner, 12 Nov 2026). */
-  border-top-left-radius: 16px;
-  background: var(--card);
+  /* No panel of its own: the page is the sheet's ground, one surface with the top bar and the sidebar,
+     like every other screen (owner, 26 Nov; the card-coloured, rounded column was from the lifted sheet). */
   container-type: inline-size;
 }
 

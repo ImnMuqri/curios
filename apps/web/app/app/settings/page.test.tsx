@@ -53,7 +53,7 @@ const methods = (overrides: Partial<SignInMethods>): SignInMethods => ({
   ...overrides,
 });
 
-async function renderWith(params: { linked?: string; error?: string }, signIn: SignInMethods) {
+async function renderWith(params: { linked?: string; error?: string; tab?: string }, signIn: SignInMethods) {
   getSignInMethods.mockResolvedValueOnce(signIn);
   render(await SettingsPage({ searchParams: Promise.resolve(params) }));
 }
@@ -182,8 +182,10 @@ describe('SettingsPage', () => {
     });
     getNotifications.mockResolvedValue({ leads: false, orders: true, receipts: false, questions: true, planEnding: false });
 
-    await renderWith({}, methods({}));
+    await renderWith({ tab: 'notifications' }, methods({}));
 
+    expect(screen.getByRole('link', { name: 'Notifications' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { name: 'On this device' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Email me when' })).toBeInTheDocument();
     expect(screen.getByText('Account')).toBeInTheDocument();
     expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app and under the bell.')).toBeInTheDocument();
@@ -195,6 +197,22 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Your address, how you sign in, and what we email you about.')).toBeInTheDocument();
   });
 
+  it('splits a business page into General and Notifications, General first', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'BUSINESS',
+      paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
+    });
+    getNotifications.mockResolvedValue({ leads: false, orders: true, receipts: false, questions: true, planEnding: false });
+
+    await renderWith({ tab: 'nonsense' }, methods({}));
+
+    expect(screen.getByRole('navigation', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'General' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Notifications' })).toHaveAttribute('href', '/app/settings?tab=notifications');
+    expect(screen.getByRole('heading', { name: 'Signing in' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Email me when' })).toBeNull();
+  });
+
   it('offers a personal page no email switches, since it takes no leads', async () => {
     getOwnerPage.mockResolvedValue({
       id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'PERSONAL',
@@ -204,6 +222,8 @@ describe('SettingsPage', () => {
     await renderWith({}, methods({}));
 
     expect(screen.queryByRole('heading', { name: 'Email me when' })).toBeNull();
+    // Nothing to notify about, so one screen and no tabs.
+    expect(screen.queryByRole('navigation', { name: 'Settings' })).toBeNull();
     expect(screen.getByText('Your address, and how you sign in.')).toBeInTheDocument();
   });
 

@@ -23,6 +23,11 @@
   container-type: inline-size;
 }
 
+/* General and Notifications, above the sections. */
+.tabs {
+  margin: 8px 0 6px;
+}
+
 /* How the screen was reached: back from linking Google, or not. */
 .banner {
   margin: 0 0 20px;
@@ -64,6 +69,16 @@
   margin: 34px 0 10px;
   font-size: 15px;
   font-weight: 600;
+}
+
+/* On this device: empty when this browser or the server cannot do push (the row hides itself), and
+   then the heading goes too, with Email me when taking the first section's place. */
+.device:has(> .list:empty) {
+  display: none;
+}
+
+.device:has(> .list:empty) + section > .h {
+  margin-top: 12px;
 }
 
 /* The first section sits close under the header. */

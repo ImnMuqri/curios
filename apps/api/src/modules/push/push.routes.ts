@@ -97,7 +97,7 @@ export const pushRoutes: FastifyPluginAsyncZod<PushRouteOptions> = async (app, o
     const accountId = request.account.id;
     const found = await app.prisma.pushSubscription.findFirst({ where: { accountId, endpoint: request.body.endpoint }, select: { id: true } });
     if (!found) throw new PushDeviceUnknownError();
-    await queue.add(PUSH_QUEUE, { accountId, endpoint: request.body.endpoint, ...testPush(`${appUrl}/app/settings`) }, { attempts: 2, removeOnComplete: true, removeOnFail: 100 });
+    await queue.add(PUSH_QUEUE, { accountId, endpoint: request.body.endpoint, ...testPush(`${appUrl}/app/settings?tab=notifications`) }, { attempts: 2, removeOnComplete: true, removeOnFail: 100 });
     return reply.code(202).send();
   });
 };
