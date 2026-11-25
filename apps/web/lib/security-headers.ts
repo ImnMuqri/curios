@@ -48,6 +48,7 @@ export function contentSecurityPolicy({ apiUrl, sentryDsn, dev }: SecurityHeader
     ['base-uri', "'self'"],
     ['form-action', "'self'"],
     // The widget players an owner can embed; the list lives with the parser so the two cannot drift.
+    // Only the players, on purpose: nothing on curios.my frames itself, and frame-ancestors 'none' below stays.
     ['frame-src', ...WIDGET_FRAME_ORIGINS],
     ['frame-ancestors', "'none'"],
   ];
