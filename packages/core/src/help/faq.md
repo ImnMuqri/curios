@@ -77,7 +77,7 @@ Open: /app/curios
 Source: packages/core/src/widgets.ts; apps/web/app/app/curios/links-editor.tsx
 
 ### page-layout-bento · What is the difference between List and Bento?
-List shows your links one under another, all the same size. Bento shows them as a grid of tiles, and you choose how big each one is. In My Curios, open Layout and pick List or Bento. In Bento, each row has a size: Auto, Small, Wide, Tall or Big. Auto lets your page fill the grid for you. Your shop button can be sized too, and you can drag anything into a new place.
+List shows your links one under another, all the same size. Bento shows them as a grid of tiles, and you choose how big each one is. In My Curios, open Layout and pick List or Bento. In Bento, you choose a size for each link, widget and your shop button: Auto, Small, Wide, Tall or Big. Auto lets your page fill the grid for you. A widget only offers the sizes it fits, and People often ask is always wide. You can drag anything into a new place.
 Open: /app/curios
 Source: packages/core/src/bento.ts; apps/web/app/app/curios/layout-editor.tsx
 
