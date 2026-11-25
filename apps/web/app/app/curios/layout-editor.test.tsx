@@ -143,14 +143,103 @@ describe('LayoutEditor', () => {
       fireEvent(handle, event);
     };
     pointer('pointerDown', 25);
-    pointer('pointerMove', 125); // over the third row
+    pointer('pointerMove', 120); // over the third row, short of its middle
     expect(names()).toEqual(['Shop', 'WhatsApp', 'Portfolio', 'GitHub', 'People often ask']);
     expect(onReorder).not.toHaveBeenCalled();
     await act(async () => {
-      pointer('pointerUp', 125);
+      pointer('pointerUp', 120);
     });
     expect(onReorder).toHaveBeenCalledTimes(1);
     expect(onReorder).toHaveBeenCalledWith(['shop', 'b', 'a', 'c', 'faq']);
+  });
+
+  describe('a pointer drag', () => {
+    const rects = () =>
+      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+        const at = this.parentElement ? [...this.parentElement.children].indexOf(this) : 0;
+        return { top: at * 50, bottom: at * 50 + 50, height: 50, left: 0, right: 300, width: 300, x: 0, y: at * 50, toJSON: () => ({}) };
+      });
+    const fire = (type: 'pointerDown' | 'pointerMove' | 'pointerUp' | 'lostPointerCapture', clientY = 0, pointerId = 1) => {
+      const handle = row('Portfolio').querySelector('[data-handle]')!;
+      const event = createEvent[type](handle, {});
+      Object.defineProperty(event, 'clientY', { value: clientY });
+      Object.defineProperty(event, 'pointerId', { value: pointerId });
+      fireEvent(handle, event);
+    };
+
+    it('is cancelled, not stuck, when the pointer capture is lost', () => {
+      const onReorder = show();
+      rects();
+      fire('pointerDown', 25);
+      fire('pointerMove', 120);
+      fire('lostPointerCapture');
+      expect(names()).toEqual(ORIGINAL);
+      expect(onReorder).not.toHaveBeenCalled();
+      // Not frozen: the keyboard lifts again.
+      row('Portfolio').focus();
+      fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+      expect(live()).toHaveTextContent('Picked up Portfolio');
+    });
+
+    it('is put back by Escape', () => {
+      const onReorder = show();
+      rects();
+      fire('pointerDown', 25);
+      fire('pointerMove', 120);
+      fireEvent.keyDown(document, { key: 'Escape' });
+      expect(names()).toEqual(ORIGINAL);
+      fire('pointerUp', 120);
+      expect(onReorder).not.toHaveBeenCalled();
+    });
+
+    it('ignores the moves of another pointer', () => {
+      show();
+      rects();
+      fire('pointerDown', 25);
+      fire('pointerMove', 120, 2);
+      expect(names()).toEqual(ORIGINAL);
+    });
+
+    it('moves by the middle of a row, not its bottom', () => {
+      show();
+      rects();
+      fire('pointerDown', 25);
+      fire('pointerMove', 80); // past the second row's middle (75)
+      expect(names()).toEqual(['Shop', 'WhatsApp', 'Portfolio', 'GitHub', 'People often ask']);
+    });
+  });
+
+  it('cannot lift another row while a save is pending, and can once it settles', async () => {
+    let settle!: () => void;
+    const onReorder = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          settle = resolve;
+        }),
+    );
+    show(undefined, onReorder);
+    row('Portfolio').focus();
+    fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    fireEvent.keyDown(row('Portfolio'), { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    });
+    expect(screen.getByRole('list')).toHaveAttribute('aria-busy', 'true');
+
+    row('GitHub').focus();
+    fireEvent.keyDown(row('GitHub'), { key: ' ' });
+    fireEvent.keyDown(row('GitHub'), { key: 'ArrowUp' });
+    await act(async () => {
+      fireEvent.keyDown(row('GitHub'), { key: ' ' });
+    });
+    expect(onReorder).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      settle();
+    });
+    expect(screen.getByRole('list')).not.toHaveAttribute('aria-busy');
+    fireEvent.keyDown(row('GitHub'), { key: ' ' });
+    expect(live()).toHaveTextContent('Picked up GitHub');
   });
 
   it('follows the entries it is given when they change elsewhere', () => {

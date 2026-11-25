@@ -67,7 +67,7 @@ Open: /app/curios
 Source: packages/core/src/bento.ts (MAX_LINKS); apps/web/app/app/curios/links-editor.tsx; apps/web/app/app/curios/layout-editor.tsx
 
 ### page-shop-tile · How do I remove the shop link from my page?
-The Shop button shows on your page whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. To move it, open Layout and drag it, along with People often ask, to where you want it among your links. It can’t be resized.
+The Shop button shows on your page whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. In Layout you can drag it (and People often ask) to any place among your links. It can’t be resized.
 Open: /app/curios
 Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Callout } from '@curios/ui';
 import type { PageEntry } from '@curios/core/bento';
 import { WIDGET_NAMES } from '@curios/core/widgets';
@@ -26,7 +26,7 @@ function moved<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
-type Drag = { id: string; by: 'key' | 'pointer'; draft: LayoutEntry[] };
+type Drag = { id: string; by: 'key' | 'pointer'; draft: LayoutEntry[]; pointerId?: number };
 
 /**
  * The Layout tab: everything on the page in the order visitors see it -- links, widgets, the shop
@@ -60,6 +60,9 @@ export function LayoutEditor({
   const rows = useRef(new Map<string, HTMLLIElement>());
   // Pointer events can arrive faster than renders: the drag in flight is read from here.
   const dragRef = useRef<Drag | null>(null);
+  // While a save is out nothing can be lifted: a second drop could land before, or be undone by, the first.
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const orderRef = useRef(order);
   orderRef.current = order;
 
@@ -86,9 +89,21 @@ export function LayoutEditor({
     setAnnouncement(`${verb} ${nameOf(entry)} to position ${list.indexOf(entry) + 1} of ${list.length}`);
   };
 
-  function lift(id: string, by: Drag['by']) {
+  // Escape puts a dragged row back, as it does for a lifted one.
+  const pointerDragging = drag?.by === 'pointer';
+  useEffect(() => {
+    if (!pointerDragging) return;
+    const onKey = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') cancel();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [pointerDragging]);
+
+  function lift(id: string, by: Drag['by'], pointerId?: number) {
+    if (savingRef.current) return;
     setError('');
-    setDrag({ id, by, draft: orderRef.current });
+    setDrag({ id, by, draft: orderRef.current, pointerId });
     if (by === 'key') {
       const entry = orderRef.current.find((item) => item.id === id)!;
       setAnnouncement(
@@ -127,12 +142,17 @@ export function LayoutEditor({
     setOrder(current.draft);
     setError('');
     if (current.by === 'key') say('Dropped', current.draft, current.id);
+    savingRef.current = true;
+    setSaving(true);
     try {
       await onReorder(ids);
     } catch (failure) {
       setOrder(before);
       setError(message(failure));
       setAnnouncement('That did not save. The order is back as it was.');
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   }
 
@@ -143,7 +163,7 @@ export function LayoutEditor({
     if (event.key === ' ' || event.key === 'Enter') {
       event.preventDefault();
       if (lifted) void drop();
-      else if (!current) lift(id, 'key');
+      else if (!current && !savingRef.current) lift(id, 'key');
       return;
     }
     if (!lifted) return;
@@ -168,23 +188,33 @@ export function LayoutEditor({
     const id = handle?.closest('li')?.dataset.id;
     if (!id) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    lift(id, 'pointer');
+    lift(id, 'pointer', event.pointerId);
   }
 
   function onPointerMove(event: PointerEvent<HTMLUListElement>) {
-    if (dragRef.current?.by !== 'pointer') return;
+    if (dragRef.current?.by !== 'pointer' || dragRef.current.pointerId !== event.pointerId) return;
     const children = [...(list.current?.children ?? [])];
     if (children.length === 0) return;
-    let to = children.findIndex((child) => event.clientY < child.getBoundingClientRect().bottom);
+    // The first row whose middle is below the pointer: rows of different heights do not flicker.
+    let to = children.findIndex((child) => {
+      const box = child.getBoundingClientRect();
+      return event.clientY < box.top + box.height / 2;
+    });
     if (to === -1) to = children.length - 1;
     moveTo(to);
   }
 
   function onPointerEnd(event: PointerEvent<HTMLUListElement>) {
-    if (dragRef.current?.by !== 'pointer') return;
-    event.currentTarget.releasePointerCapture?.(event.pointerId);
+    if (dragRef.current?.by !== 'pointer' || dragRef.current.pointerId !== event.pointerId) return;
     if (event.type === 'pointercancel') cancel();
     else void drop();
+    // After the drop: releasing fires lostpointercapture, which must find nothing left to cancel.
+    event.currentTarget.releasePointerCapture?.(event.pointerId);
+  }
+
+  // Capture taken away without an up or cancel (the list hidden mid-drag, the browser claiming the pointer).
+  function onLostPointerCapture(event: PointerEvent<HTMLUListElement>) {
+    if (dragRef.current?.by === 'pointer' && dragRef.current.pointerId === event.pointerId) cancel();
   }
 
   return (
@@ -202,6 +232,8 @@ export function LayoutEditor({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
         onPointerCancel={onPointerEnd}
+        onLostPointerCapture={onLostPointerCapture}
+        aria-busy={saving || undefined}
       >
         {shownOrder.map((entry) => (
           <li
