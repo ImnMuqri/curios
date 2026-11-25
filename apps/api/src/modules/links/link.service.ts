@@ -154,7 +154,7 @@ export async function updateLink(
   resolve: ResolveShort = async () => null,
 ): Promise<LinkRow> {
   const pageId = await pageIdFor(prisma, accountId);
-  const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true } });
+  const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true, provider: true } });
   if (!existing) throw new LinkNotFoundError();
 
   const data: {
@@ -164,7 +164,6 @@ export async function updateLink(
     provider?: DbWidgetProvider;
     embedRef?: string;
   } = {};
-  if (input.label !== undefined) data.label = checkLabel(input.label);
   if (input.url !== undefined) {
     if (existing.kind === 'WIDGET') {
       data.url = input.url.trim();
@@ -172,6 +171,11 @@ export async function updateLink(
     } else {
       data.url = checkUrl(input.url);
     }
+  }
+  if (input.label !== undefined) {
+    // A widget with its name cleared takes the service's name, as when it was added.
+    const named = existing.kind === 'WIDGET' ? (data.provider ?? existing.provider) : null;
+    data.label = named && input.label.trim() === '' ? WIDGET_NAMES[named] : checkLabel(input.label);
   }
   if (input.size !== undefined) data.size = input.size;
 

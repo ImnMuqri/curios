@@ -491,6 +491,17 @@ describe('POST /links/widgets', () => {
 describe('PATCH /links/:id on a widget', () => {
   const spotify = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC';
 
+  it('takes the service name when the label is cleared, and a plain link still refuses a blank one', async () => {
+    const owner = await anOwner();
+    const { link } = (await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: 'Mine' })).json();
+    const res = await call(owner.cookie, 'PATCH', `/links/${link.id}`, { label: '' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().link.label).toBe('Spotify');
+
+    const plain = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link;
+    expect((await call(owner.cookie, 'PATCH', `/links/${plain.id}`, { label: '  ' })).statusCode).toBe(400);
+  });
+
   it('changes label and size, and re-parses a new url into provider and ref', async () => {
     const owner = await anOwner();
     const { link } = (await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null })).json();
