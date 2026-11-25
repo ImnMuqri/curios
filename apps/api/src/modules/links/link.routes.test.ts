@@ -316,6 +316,17 @@ describe('PUT /links/order with the FAQ block', () => {
     expect((await call(q.owner.cookie, 'PUT', '/links/order', { ids: ['faq', q.a, 'faq', q.b] })).json().error.code).toBe('LINK_ORDER_STALE');
   });
 
+  it('keeps the FAQ last when links are added after a drag that left it last', async () => {
+    const { owner, a, b } = await setup('BUSINESS');
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, a, 'faq'] })).statusCode).toBe(200);
+    expect(await faqAt(owner.pageId)).toBeNull();
+    await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    const page = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } });
+    const links = await app.prisma.link.findMany({ where: { pageId: owner.pageId }, orderBy: { position: 'asc' }, select: { id: true, label: true, size: true } });
+    const order = pageEntries(links, { position: page.shopTilePosition, size: null }, { position: page.faqPosition }).map((e) => (e.kind === 'link' ? e.link.label : e.id)).filter((x) => x !== 'shop');
+    expect(order).toEqual(['B', 'A', 'C', 'faq']);
+  });
+
   it('keeps shop and faq positions as sent', async () => {
     const { owner, a, b } = await setup('BUSINESS');
     await app.prisma.page.update({ where: { id: owner.pageId }, data: { storeEnabled: true, pickupEnabled: true, paymentQrKey: 'qr/x.png' } });

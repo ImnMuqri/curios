@@ -246,7 +246,7 @@ export async function reorderLinks(prisma: PrismaClient, accountId: string, ids:
     }
     await tx.page.update({
       where: { id: page.id },
-      data: { ...(page.storeEnabled ? { shopTilePosition: shopAt } : {}), ...(page.mode === 'BUSINESS' ? { faqPosition: faqAt } : {}) },
+      data: { ...(page.storeEnabled ? { shopTilePosition: shopAt } : {}), ...(page.mode === 'BUSINESS' ? { faqPosition: faqAt === ids.length - 1 ? null : faqAt } : {}) },
     });
   });
 }
