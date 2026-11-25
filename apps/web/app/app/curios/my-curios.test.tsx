@@ -579,7 +579,8 @@ describe('the Layout tab', () => {
   it('works out where the tiles go after an add, the way the API does', () => {
     expect(positionsAfterAdd(2, 2, null)).toEqual({ shop: 3, faq: null });
     expect(positionsAfterAdd(2, 1, null)).toEqual({ shop: 1, faq: null });
-    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 1, faq: null });
+    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterAdd(0, 0, 1)).toEqual({ shop: 0, faq: 1 });
     expect(positionsAfterAdd(2, null, 2)).toEqual({ faq: 3, shop: null });
     expect(positionsAfterAdd(2, 2, 3)).toEqual({ shop: 3, faq: 4 });
     expect(positionsAfterAdd(1, 0, null)).toEqual({ shop: 0, faq: null });

@@ -362,7 +362,10 @@ describe('positionsAfterAdd', () => {
   it('joins the end of the links and moves the tiles at or after it', () => {
     expect(positionsAfterAdd(2, 2, null)).toEqual({ shop: 3, faq: null });
     expect(positionsAfterAdd(2, 1, null)).toEqual({ shop: 1, faq: null });
-    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 1, faq: null });
+    // No links yet: the first goes after every tile in play, and nothing moves.
+    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterAdd(0, 0, 1)).toEqual({ shop: 0, faq: 1 });
+    expect(positionsAfterAdd(0, null, 0)).toEqual({ shop: null, faq: 0 });
     expect(positionsAfterAdd(2, null, 2)).toEqual({ shop: null, faq: 3 });
     expect(positionsAfterAdd(2, 2, 3)).toEqual({ shop: 3, faq: 4 });
     expect(positionsAfterAdd(3, null, null)).toEqual({ shop: null, faq: null });

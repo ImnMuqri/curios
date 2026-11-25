@@ -457,7 +457,7 @@ export function withShopTile<L extends { id: string; size: TileSize | null }>(
 
 /**
  * Where the shop and People often ask sit after a link or widget is added. The new one joins the END OF
- * THE LINKS: its full-list index is just after the last existing link (0 with none), and a tile at or after
+ * THE LINKS: its full-list index is just after the last existing link (with none, after every tile in play), and a tile at or after
  * that index moves up one. A tile placed before the last link keeps its place among the links. `shop` is null
  * while the shop is closed; an unset FAQ position (null, after the last item) stays null. The API and the
  * editor both use this, so they cannot drift.
@@ -467,8 +467,9 @@ export function positionsAfterAdd(linkCount: number, shop: number | null, faq: n
   if (shop !== null) tiles.push({ key: 'shop', position: shop });
   if (faq !== null) tiles.push({ key: 'faq', position: faq });
   tiles.sort((x, y) => x.position - y.position);
-  // Walk the full list to the last link; the new one goes right after it.
-  let at = 0;
+  // With no links yet the first one goes after every tile in play (the shop has always been first).
+  // Otherwise walk the full list to the last link; the new one goes right after it.
+  let at = linkCount === 0 ? tiles.length : 0;
   let seen = 0;
   let tile = 0;
   for (let i = 0; seen < linkCount; i += 1) {

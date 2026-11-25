@@ -443,10 +443,16 @@ describe('POST /links joins the end of the links', () => {
     expect(await order(owner)).toEqual(['A', 'shop', 'B', 'C', 'faq']);
   });
 
-  it('[shop] + C with no links yet is [C, shop]', async () => {
+  it('[shop] + C with no links yet is [shop, C]', async () => {
     const owner = await arrange([], 0, null);
     await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
-    expect(await order(owner)).toEqual(['C', 'shop', 'faq']);
+    expect(await order(owner)).toEqual(['shop', 'C', 'faq']);
+  });
+
+  it('[shop, faq@1] + C with no links yet is [shop, faq, C]', async () => {
+    const owner = await arrange([], 0, 1);
+    await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect(await order(owner)).toEqual(['shop', 'faq', 'C']);
   });
 
   it('moves a FAQ that sits after the links, and one before the last link stays', async () => {
