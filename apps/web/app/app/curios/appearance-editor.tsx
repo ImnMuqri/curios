@@ -141,15 +141,12 @@ export function AppearanceEditor({
 
   return (
     <>
-      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="colours-title">
-        <SectionHead id="colours-title" title="Colours" note="The page behind everything, and your first link and the send button." />
-        <div className={styles.colourCols}>
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="page-colour-title">
+        <SectionHead id="page-colour-title" title="Page colour" note="The colour behind everything on your page. Pick one, or type your own." />
+        <div>
           <div>
-            <p className={styles.groupLabel} id="background-label">
-              Page
-            </p>
             {/* Each background as a dot of its own colour, worked out by the page's theme as visitors get it. */}
-            <div className={styles.dots} role="group" aria-labelledby="background-label">
+            <div className={styles.dots} role="group" aria-label="Page colour">
               {PAGE_BACKGROUNDS.map((value) => {
                 const drawn = value === 'CUSTOM' && !look.backgroundColor ? 'PAPER' : value;
                 return (
@@ -183,9 +180,19 @@ export function AppearanceEditor({
               />
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="button-colour-title">
+        <SectionHead
+          id="button-colour-title"
+          title="Button colour"
+          note="Primary fills your first link and the send button. Secondary draws the edge and shadow; Auto keeps your page's text colour."
+        />
+        <div>
           <div>
             <p className={styles.groupLabel} aria-hidden="true">
-              Buttons · primary
+              Primary
             </p>
             {/* The accent colours the first link and the send button, so the board calls this row "Buttons". */}
             <div className={styles.swatches} role="group" aria-label="Button colour">
@@ -215,8 +222,7 @@ export function AppearanceEditor({
               />
             </div>
             <p className={`${styles.groupLabel} ${styles.groupLabelNext}`} aria-hidden="true">
-              Buttons · secondary
-              <small>The edge and shadow</small>
+              Secondary
             </p>
             {/* Auto is the page's text colour, the look every page had before there was a choice. */}
             <div className={styles.swatches} role="group" aria-label="Button edge colour">

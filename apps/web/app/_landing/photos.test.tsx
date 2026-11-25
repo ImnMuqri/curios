@@ -36,7 +36,8 @@ describe('photos', () => {
       expect(img.getAttribute('alt'), img.outerHTML).toMatch(/\S/);
       expect(img.getAttribute('width'), img.outerHTML).toMatch(/^\d+$/);
       expect(img.getAttribute('height'), img.outerHTML).toMatch(/^\d+$/);
-      expect(img.getAttribute('srcset'), img.outerHTML).toBeTruthy();
+      // Photos come in sizes; a vector (the MakaKami badge) is sharp at any size and needs none.
+      if (!img.getAttribute('src')?.endsWith('.svg')) expect(img.getAttribute('srcset'), img.outerHTML).toBeTruthy();
     }
   });
 });

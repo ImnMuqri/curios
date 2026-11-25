@@ -48,6 +48,10 @@ export function Footer({
           </a>
         </div>
         <p className={styles.note}>{note ?? copy.footer.note}</p>
+        {/* Curios's listing on MakaKami, the Malaysian product directory: their badge, as they give it. */}
+        <a className={styles.badge} href="https://makakami.com.my/app/curios" target="_blank" rel="noopener">
+          <img src="https://makakami.com.my/badge/curios.svg" alt="Listed on MakaKami" width={150} height={40} loading="lazy" />
+        </a>
         <div className={styles.legal}>
           <div className={styles.legalLinks}>
             {LEGAL_DOCS.map((doc) => (
