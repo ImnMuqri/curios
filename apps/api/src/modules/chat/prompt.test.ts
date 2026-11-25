@@ -290,6 +290,12 @@ describe('the shop', () => {
     expect(prompt).toMatch(/When someone asks what Nadia Bakes sells, offers, has for sale or what they can buy, answer from SHOP first: name\nthe items by their exact names/);
   });
 
+  it('says how cancelling works, so a cancel question is answered rather than passed to the owner', () => {
+    const prompt = buildSystemPrompt({ ...base, shop });
+    expect(prompt).toContain('a customer cannot cancel or change an order themselves');
+    expect(prompt).toContain('Only Nadia Bakes can cancel it.');
+  });
+
   it('tells the model where ordering happens', () => {
     expect(buildSystemPrompt({ ...base, shop })).toMatch(/order it from the shop on this page/);
   });
