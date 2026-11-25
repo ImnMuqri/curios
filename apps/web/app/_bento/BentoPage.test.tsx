@@ -598,3 +598,98 @@ describe('the page in the owner\'s order', () => {
     expect(container.querySelector('[data-lead]')).toHaveTextContent('Portfolio');
   });
 });
+
+describe('the Bento layout', () => {
+  const shopPill = { label: 'Shop', caption: '3 items', photos: [], position: 1, size: null };
+  const faqEntries = { entries: [{ slug: 'q', question: 'Open Sunday?', answer: 'Yes.' }], total: 1 };
+  const player: BentoPageProps['links'][number] = {
+    id: 'w',
+    label: 'Mix',
+    url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
+    size: null,
+    kind: 'WIDGET',
+    provider: 'SPOTIFY',
+    embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M',
+  };
+  const css = () => readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+
+  it('draws the list as one grid, each piece with its data-size', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" />);
+    const grid = container.querySelector('[data-bento-grid]')!;
+    expect([...grid.children].map((li) => li.getAttribute('data-size'))).toEqual(['TALL', 'SMALL', 'SMALL']);
+  });
+
+  it('keeps a chosen size, and lifts a player to its minimum', () => {
+    const { container } = render(
+      <BentoPage {...base} layout="BENTO" links={[{ ...base.links[0]!, size: 'BIG' }, { ...player, size: 'SMALL' }, base.links[1]!]} />,
+    );
+    const sizes = [...container.querySelectorAll('[data-bento-grid] > li')].map((li) => li.getAttribute('data-size'));
+    // A playlist cannot be Small: it is Wide, and the lone Small after the Big widens too.
+    expect(sizes.slice(0, 2)).toEqual(['BIG', 'WIDE']);
+  });
+
+  it('puts the shop and People often ask in the grid, the FAQ in a Wide tile', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" shop={shopPill} faq={faqEntries} faqPosition={null} />);
+    const items = [...container.querySelectorAll('[data-bento-grid] > li')];
+    expect(items).toHaveLength(5);
+    const faqTile = container.querySelector('[data-bento-grid] > li[data-faq]')!;
+    expect(faqTile).toHaveAttribute('data-size', 'WIDE');
+    expect(faqTile).toHaveTextContent('Open Sunday?');
+    expect(container.querySelector('a[href="/imnmuqri/shop"]')!.closest('li')).toHaveAttribute('data-size');
+  });
+
+  it("uses the shop's chosen size", () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" shop={{ ...shopPill, size: 'BIG' }} />);
+    expect(container.querySelector('a[href="/imnmuqri/shop"]')!.closest('li')).toHaveAttribute('data-size', 'BIG');
+  });
+
+  it('draws nothing for an empty FAQ, and no empty tile', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" faq={null} faqPosition={null} />);
+    expect(container.querySelector('[data-faq]')).toBeNull();
+    expect(container.querySelectorAll('[data-bento-grid] > li')).toHaveLength(3);
+  });
+
+  it('shows a link tile with its icon and a label clamped to two lines', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" links={base.links.map((link) => ({ ...link, size: 'SMALL' as const }))} />);
+    const tile = container.querySelector('[data-bento-grid] > li[data-size="SMALL"] a')!;
+    expect(tile.querySelector('svg')).not.toBeNull();
+    expect(tile).toHaveTextContent('Portfolio');
+    expect(css()).toMatch(/\.tileLabel\s*\{[^}]*-webkit-line-clamp:\s*2;/s);
+  });
+
+  it('is a dense two-column grid on every width, spans from the size', () => {
+    const sheet = css();
+    expect(sheet).toMatch(/\.bentoGrid\s*\{[^}]*grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\);[^}]*grid-auto-flow:\s*dense;/s);
+    expect(sheet).toMatch(/\.bentoGrid > li\[data-size='WIDE'\]\s*\{[^}]*grid-column:\s*span 2;/s);
+    expect(sheet).toMatch(/\.bentoGrid > li\[data-size='TALL'\]\s*\{[^}]*grid-row:\s*span 2;/s);
+    expect(sheet).toMatch(/\.bentoGrid > li\[data-size='BIG'\]\s*\{[^}]*grid-column:\s*span 2;[^}]*grid-row:\s*span 2;/s);
+    // Nothing turns the grid into one column.
+    const grid = sheet.slice(sheet.indexOf('.bentoGrid {'));
+    expect(grid).not.toMatch(/grid-template-columns:\s*1fr\s*;/);
+  });
+
+  it('fills a tile with the player, never under its own height', () => {
+    const { container } = render(<BentoPage {...base} layout="BENTO" links={[player, ...base.links]} />);
+    const frame = container.querySelector('iframe') as HTMLElement;
+    expect(frame.style.minHeight).toMatch(/px$/);
+    expect(frame.style.height).toBe('');
+    expect(container.querySelector('[data-widget]')).toHaveAttribute('data-size', 'WIDE');
+  });
+
+  it('lets the first link that is not a player wear the accent, in both layouts', () => {
+    const links = [player, base.links[0]!, base.links[1]!];
+    for (const layout of ['LIST', 'BENTO'] as const) {
+      const { container, unmount } = render(<BentoPage {...base} layout={layout} links={links} />);
+      const lead = container.querySelectorAll('[data-lead]');
+      expect(lead).toHaveLength(1);
+      expect(lead[0]).toHaveTextContent('Portfolio');
+      unmount();
+    }
+  });
+
+  it('leaves the List as it was: no grid, no sizes', () => {
+    const { container } = render(<BentoPage {...base} shop={shopPill} faq={faqEntries} faqPosition={null} />);
+    expect(container.querySelector('[data-bento-grid]')).toBeNull();
+    expect(container.querySelector('[data-size]')).toBeNull();
+  });
+});

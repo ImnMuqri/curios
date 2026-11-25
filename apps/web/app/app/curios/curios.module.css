@@ -683,6 +683,31 @@ input.youField {
   opacity: 0.55;
 }
 
+.layoutChoice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin-bottom: 14px;
+}
+
+.layoutChoice b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.layoutChoice small {
+  flex-basis: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* A row's size picker, on its own line under the row's words. */
+.layoutSize {
+  flex-basis: 100%;
+  padding: 0 0 10px 36px;
+}
+
 .dragHandle {
   display: grid;
   place-items: center;

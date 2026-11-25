@@ -10,6 +10,8 @@ export interface WidgetProps {
   url: string;
   /** False in the editor's preview: a cover over the frame, nothing to press. */
   interactive?: boolean;
+  /** In a Bento tile: the player fills the tile, never shorter than its own height. */
+  fill?: boolean;
 }
 
 /** Players that take a booking need forms; the rest never do. */
@@ -17,7 +19,7 @@ const TAKES_FORMS: WidgetProvider[] = ['CALCOM', 'CALENDLY'];
 const ASPECT: Partial<Record<WidgetProvider, string>> = { YOUTUBE: '16 / 9', CANVA: '4 / 3' };
 
 /** Server-safe: no hooks. One bad stored row (widgetSrc throws) draws the fallback only. */
-export function Widget({ provider, embedRef, label, url, interactive = true }: WidgetProps) {
+export function Widget({ provider, embedRef, label, url, interactive = true, fill = false }: WidgetProps) {
   const service = WIDGET_NAMES[provider];
   let src: string | null = null;
   let height = 0;
@@ -29,10 +31,10 @@ export function Widget({ provider, embedRef, label, url, interactive = true }: W
   }
   const showLabel = label.trim() !== '' && label !== service;
   // On the frame itself, so the box's padding is added to it: the player gets exactly widgetHeight.
-  const frameStyle: CSSProperties = height > 0 ? { height } : { aspectRatio: ASPECT[provider] ?? '16 / 9' };
+  const frameStyle: CSSProperties = height > 0 ? (fill ? { minHeight: height } : { height }) : { aspectRatio: ASPECT[provider] ?? '16 / 9' };
   const sandbox = ['allow-scripts', 'allow-same-origin', 'allow-popups', 'allow-popups-to-escape-sandbox', ...(TAKES_FORMS.includes(provider) ? ['allow-forms'] : [])].join(' ');
   return (
-    <div className={styles.widget}>
+    <div className={fill ? `${styles.widget} ${styles.widgetFill}` : styles.widget} data-fill={fill || undefined}>
       {showLabel ? (
         <p className={styles.widgetLabel} data-widget-label>
           {label}

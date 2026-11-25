@@ -35,6 +35,7 @@ export function MyCurios({
     removeLink: async (id) => { await apiFetch(`/links/${id}`, { method: 'DELETE' }); },
     reorder: async (ids) => { await apiFetch('/links/order', { method: 'PUT', body: JSON.stringify({ ids }) }); },
     setShopOpen: async (enabled) => { await apiFetch('/store/settings', { method: 'PATCH', body: JSON.stringify({ enabled }) }); },
+    setShopSize: async (tileSize) => { await apiFetch('/store/settings', { method: 'PATCH', body: JSON.stringify({ tileSize }) }); },
     saveAppearance: (patch) => apiFetch('/pages/appearance', { method: 'PATCH', body: JSON.stringify(patch) }),
     uploadAvatar: async (file) => {
       const image = await resizeImage(file);

@@ -2,8 +2,9 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Callout } from '@curios/ui';
-import type { PageEntry } from '@curios/core/bento';
-import { WIDGET_NAMES } from '@curios/core/widgets';
+import { arrangeTiles, type PageEntry, type PageLayout, type TileSize } from '@curios/core/bento';
+import { WIDGET_NAMES, minWidgetSize } from '@curios/core/widgets';
+import { Segmented } from '../_ui/segmented.js';
 import { SectionHead } from '../_ui/section-head.js';
 import { Icon, KINDS, WidgetIcon, kindOf, shown } from './link-icons.js';
 import ui from '../_ui/editor.module.css';
@@ -26,6 +27,16 @@ function moved<T>(list: T[], from: number, to: number): T[] {
   return next;
 }
 
+const SIZE_LABEL: Record<TileSize, string> = { SMALL: 'Small', WIDE: 'Wide', TALL: 'Tall', BIG: 'Big' };
+
+/** The smallest tile a row reads well in: a player says so, the FAQ is Wide, anything else is free. */
+const minimumOf = (entry: LayoutEntry): TileSize =>
+  entry.kind === 'faq' ? 'WIDE' : entry.kind === 'link' && entry.link.kind === 'WIDGET' && entry.link.provider && entry.link.embedRef ? minWidgetSize(entry.link.provider, entry.link.embedRef) : 'SMALL';
+
+/** The sizes a row offers: Wide is not enough where Tall is the minimum, and the other way round; Big is enough for all. */
+const sizesFor = (min: TileSize): TileSize[] =>
+  (['SMALL', 'WIDE', 'TALL', 'BIG'] as const).filter((size) => size === 'BIG' || min === 'SMALL' || size === min);
+
 type Drag = { id: string; by: 'key' | 'pointer'; draft: LayoutEntry[]; pointerId?: number };
 
 /**
@@ -44,12 +55,21 @@ export function LayoutEditor({
   entries,
   onReorder,
   faqEmpty,
+  layout = 'LIST',
+  onLayout,
+  onResize,
 }: {
   entries: LayoutEntry[];
   /** Every id in the new order, `shop` and `faq` included. Rejects if the save fails. */
   onReorder: (ids: string[]) => Promise<void>;
   /** A business page with no answers yet: People often ask is placed but draws nothing. */
   faqEmpty: boolean;
+  /** How the page is laid out. Left out, List, with no choice offered. */
+  layout?: PageLayout;
+  /** Choose List or Bento. The caller shows it at once and puts it back, rejecting, if the save fails. */
+  onLayout?: (layout: PageLayout) => Promise<void>;
+  /** Give a row (`shop` for the shop button) a tile size. Same contract as `onLayout`. */
+  onResize?: (id: string, size: TileSize) => Promise<void>;
 }) {
   const [order, setOrder] = useState(entries);
   const [seen, setSeen] = useState(entries);
@@ -156,6 +176,25 @@ export function LayoutEditor({
     }
   }
 
+  /** A choice that saves at once; the caller has already shown it, and a refusal is shown here. */
+  async function choose(save: () => Promise<void>) {
+    setError('');
+    try {
+      await save();
+    } catch (failure) {
+      setError(message(failure));
+    }
+  }
+
+  // The size each row draws at: what the owner chose, or what the grid makes of an automatic one.
+  const resize = layout === 'BENTO' ? onResize : undefined;
+  const effective = new Map(
+    arrangeTiles(
+      shownOrder.filter((entry) => !(entry.kind === 'faq' && faqEmpty)),
+      minimumOf,
+    ).map((tile) => [tile.link.id, tile.size] as const),
+  );
+
   function onKeyDown(event: KeyboardEvent<HTMLLIElement>, id: string) {
     if (event.target !== event.currentTarget) return;
     const current = dragRef.current;
@@ -224,6 +263,21 @@ export function LayoutEditor({
         title="Layout"
         note="Top to bottom, as they appear. Drag a row by its handle, or focus it and press Space, then the arrow keys."
       />
+      {onLayout ? (
+        <div className={styles.layoutChoice}>
+          <b id="layout-choice-label">How it is laid out</b>
+          <Segmented
+            labelledBy="layout-choice-label"
+            options={[
+              { id: 'LIST', label: 'List' },
+              { id: 'BENTO', label: 'Bento' },
+            ]}
+            value={layout}
+            onChange={(next) => void choose(() => onLayout(next))}
+          />
+          <small>{layout === 'BENTO' ? 'Tiles in two columns. Give each a size below.' : 'One button under another.'}</small>
+        </div>
+      ) : null}
       <ul
         ref={list}
         className={`${styles.linkList} ${styles.layoutList}`}
@@ -261,6 +315,16 @@ export function LayoutEditor({
               </svg>
             </span>
             <RowBody entry={entry} faqEmpty={faqEmpty} />
+            {resize && entry.kind !== 'faq' && effective.has(entry.id) ? (
+              <span className={styles.layoutSize}>
+                <Segmented
+                  label={`Size of ${nameOf(entry)}`}
+                  options={sizesFor(minimumOf(entry)).map((size) => ({ id: size, label: SIZE_LABEL[size] }))}
+                  value={effective.get(entry.id)!}
+                  onChange={(size) => void choose(() => resize(entry.id, size))}
+                />
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>

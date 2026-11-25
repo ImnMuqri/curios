@@ -250,3 +250,78 @@ describe('LayoutEditor', () => {
     expect(within(screen.getByRole('list')).queryByText('GitHub')).toBeNull();
   });
 });
+
+describe('LayoutEditor, List or Bento', () => {
+  const playlist: LinkItem = { id: 'p', label: 'Mix', url: 'https://open.spotify.com/playlist/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/x' };
+  const sizeGroup = (name: string) => screen.queryByRole('radiogroup', { name: `Size of ${name}` });
+
+  function showBento(over: Partial<{ layout: 'LIST' | 'BENTO'; onLayout: (l: 'LIST' | 'BENTO') => Promise<void>; onResize: (id: string, size: string) => Promise<void> }> = {}) {
+    const onLayout = over.onLayout ?? vi.fn(async () => undefined);
+    const onResize = over.onResize ?? vi.fn(async () => undefined);
+    render(
+      <LayoutEditor
+        entries={pageEntries([links[0]!, playlist, links[1]!], { position: 1, size: null }, { position: 4 })}
+        onReorder={vi.fn(async () => undefined)}
+        faqEmpty={false}
+        layout={over.layout ?? 'BENTO'}
+        onLayout={onLayout}
+        onResize={onResize as never}
+      />,
+    );
+    return { onLayout: onLayout as ReturnType<typeof vi.fn>, onResize: onResize as ReturnType<typeof vi.fn> };
+  }
+
+  it('offers List and Bento at the top, the current one chosen', () => {
+    showBento({ layout: 'LIST' });
+    const group = screen.getByRole('radiogroup', { name: 'How it is laid out' });
+    expect(within(group).getByRole('radio', { name: 'List' })).toBeChecked();
+    expect(within(group).getByRole('radio', { name: 'Bento' })).not.toBeChecked();
+  });
+
+  it('saves the layout when Bento is chosen', async () => {
+    const { onLayout } = showBento({ layout: 'LIST' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('radio', { name: 'Bento' }));
+    });
+    expect(onLayout).toHaveBeenCalledWith('BENTO');
+  });
+
+  it('shows no size picker in List', () => {
+    showBento({ layout: 'LIST' });
+    expect(screen.queryAllByRole('radiogroup', { name: /^Size of/ })).toHaveLength(0);
+  });
+
+  it('shows a size picker per row in Bento, none for People often ask', () => {
+    showBento();
+    for (const name of ['Portfolio', 'Mix', 'Shop', 'WhatsApp']) expect(sizeGroup(name)).not.toBeNull();
+    expect(sizeGroup('People often ask')).toBeNull();
+  });
+
+  it('offers no size below a player\'s minimum', () => {
+    showBento();
+    const mix = within(sizeGroup('Mix')!).getAllByRole('radio').map((r) => r.textContent);
+    expect(mix).toEqual(['Wide', 'Big']);
+    const link = within(sizeGroup('Portfolio')!).getAllByRole('radio').map((r) => r.textContent);
+    expect(link).toEqual(['Small', 'Wide', 'Tall', 'Big']);
+  });
+
+  it('saves a chosen size by the row\'s id, the shop by its own', async () => {
+    const { onResize } = showBento();
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('Portfolio')!).getByRole('radio', { name: 'Big' }));
+    });
+    expect(onResize).toHaveBeenCalledWith('a', 'BIG');
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('Shop')!).getByRole('radio', { name: 'Wide' }));
+    });
+    expect(onResize).toHaveBeenCalledWith('shop', 'WIDE');
+  });
+
+  it('shows the error when a size does not save', async () => {
+    showBento({ onResize: vi.fn(async () => Promise.reject(new Error('Not saved'))) });
+    await act(async () => {
+      fireEvent.click(within(sizeGroup('Portfolio')!).getByRole('radio', { name: 'Big' }));
+    });
+    expect(screen.getByText('Not saved')).toBeInTheDocument();
+  });
+});

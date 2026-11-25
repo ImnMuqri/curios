@@ -30,6 +30,7 @@ const api = () => ({
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
   setShopOpen: vi.fn(async () => undefined),
+  setShopSize: vi.fn(async () => undefined),
   saveAppearance: vi.fn(async () => undefined),
   uploadAvatar: vi.fn(async () => null),
   removeAvatar: vi.fn(async () => undefined),
@@ -554,5 +555,51 @@ describe('the preview follows the page cover layout', () => {
   it('anchors a Full-page cover to the page inside the phone', () => {
     const css = readFileSync(join(import.meta.dirname, '../_ui/editor.module.css'), 'utf8');
     expect(css).toMatch(/\.scroll > \[data-bento-page\]\[data-cover-layout='FULL'\]\s*\{\s*position:\s*relative;/);
+  });
+});
+
+describe('the Layout tab, List or Bento', () => {
+  const layoutPanel = () => within(screen.getByRole('tabpanel', { name: 'Layout' }));
+  const grid = () => preview().querySelector('[data-bento-grid]');
+
+  it('switches the preview to Bento at once and saves the layout', async () => {
+    const { calls } = show();
+    await userEvent.click(editTab('Layout'));
+    expect(grid()).toBeNull();
+    await userEvent.click(layoutPanel().getByRole('radio', { name: 'Bento' }));
+    expect(calls.saveAppearance).toHaveBeenCalledWith({ layout: 'BENTO' });
+    expect(grid()).not.toBeNull();
+  });
+
+  it('puts the layout back when the save is refused', async () => {
+    const calls = api();
+    calls.saveAppearance.mockRejectedValueOnce(new Error('Nope'));
+    show(initial, calls);
+    await userEvent.click(editTab('Layout'));
+    await userEvent.click(layoutPanel().getByRole('radio', { name: 'Bento' }));
+    expect(await screen.findByText('Nope')).toBeInTheDocument();
+    expect(grid()).toBeNull();
+  });
+
+  it('saves a link size through the link API, shows it, and reverts on failure', async () => {
+    const calls = api();
+    show({ ...initial, layout: 'BENTO' }, calls);
+    await userEvent.click(editTab('Layout'));
+    await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Portfolio' })).getByRole('radio', { name: 'Big' }));
+    expect(calls.updateLink).toHaveBeenCalledWith('a', { size: 'BIG' });
+    expect(grid()!.firstElementChild).toHaveAttribute('data-size', 'BIG');
+
+    calls.updateLink.mockRejectedValueOnce(new Error('Nope'));
+    await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Portfolio' })).getByRole('radio', { name: 'Wide' }));
+    expect(await screen.findByText('Nope')).toBeInTheDocument();
+    expect(grid()!.firstElementChild).toHaveAttribute('data-size', 'BIG');
+  });
+
+  it('saves the shop button size to the store settings', async () => {
+    const calls = api();
+    show({ ...business, layout: 'BENTO', shop: { position: 0, size: null, itemCount: 2, photoKey: null, photos: [] }, shopTab: { ...business.shopTab!, open: true } }, calls);
+    await userEvent.click(editTab('Layout'));
+    await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Shop' })).getByRole('radio', { name: 'Wide' }));
+    expect(calls.setShopSize).toHaveBeenCalledWith('WIDE');
   });
 });

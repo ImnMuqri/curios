@@ -112,6 +112,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
     page.shop && ordering
       ? {
           position: page.shop.position,
+          size: page.shop.size,
           label: page.shop.name ?? copy.shop,
           caption: shopPillCaption(ordering, page.shop.itemCount, copy, new Date()),
           photos: page.shop.photos.map((photo) => ({ name: photo.name, url: avatarUrl(photo.photoKey) })),
@@ -135,6 +136,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         avatarBorder={page.avatarBorder}
         links={page.links}
         shop={shop}
+        layout={page.layout}
         style={page.style}
         accentColor={page.accentColor}
         secondaryColor={page.secondaryColor}

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
-import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageStyle, type StockCover } from '@curios/core/bento';
+import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageLayout, type PageStyle, type TileSize, type StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
@@ -35,6 +35,7 @@ export type AppearancePatch = Partial<{
   avatarBorder: boolean;
   coverLayout: CoverLayout;
   coverWash: boolean;
+  layout: PageLayout;
   displayName: string;
   bio: string | null;
   socials: Socials;
@@ -47,11 +48,13 @@ export type AppearancePatch = Partial<{
 export interface CuriosApi {
   addLink: (input: { label: string; url: string }) => Promise<LinkItem>;
   addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
-  updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
+  updateLink: (id: string, patch: Partial<{ label: string; url: string; size: TileSize | null }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
   /** Opens or closes the shop, which is what gives the page its Shop link. */
   setShopOpen: (open: boolean) => Promise<void>;
+  /** The shop button's tile size in a Bento layout. */
+  setShopSize: (size: TileSize | null) => Promise<void>;
   saveAppearance: (patch: AppearancePatch) => Promise<unknown>;
   /** Resolves to the new picture's URL. */
   uploadAvatar: (file: File) => Promise<string | null>;
@@ -93,6 +96,7 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
     removeLink: (id) => track(api.removeLink(id)),
     reorder: (ids) => track(api.reorder(ids)),
     setShopOpen: (open) => track(api.setShopOpen(open)),
+    setShopSize: (size) => track(api.setShopSize(size)),
     saveAppearance: (patch) => track(api.saveAppearance(patch)),
     uploadAvatar: (file) => track(api.uploadAvatar(file)),
     removeAvatar: () => track(api.removeAvatar()),
@@ -168,6 +172,38 @@ export function MyCuriosEditor({
     }
   }
 
+  /** The layout shows in the preview at once; a refused save puts the old one back and hands the error on. */
+  async function chooseLayout(layout: PageLayout) {
+    const before = page.layout;
+    update({ layout });
+    try {
+      await api.saveAppearance({ layout });
+    } catch (failure) {
+      update({ layout: before });
+      throw failure;
+    }
+  }
+
+  /** A tile size, the same way: shown at once, put back only for that one piece if its save is refused. */
+  async function resizeEntry(id: string, size: TileSize) {
+    const isShop = id === SHOP_TILE_ID;
+    const before = isShop ? (page.shop?.size ?? null) : (page.links.find((link) => link.id === id)?.size ?? null);
+    const set = (value: TileSize | null) =>
+      setPage((current) =>
+        isShop
+          ? { ...current, shop: current.shop ? { ...current.shop, size: value } : null }
+          : { ...current, links: current.links.map((link) => (link.id === id ? { ...link, size: value } : link)) },
+      );
+    set(size);
+    try {
+      if (isShop) await api.setShopSize(size);
+      else await api.updateLink(id, { size });
+    } catch (failure) {
+      set(before);
+      throw failure;
+    }
+  }
+
   const shopOpen = page.shopTab?.open ?? false;
   const previewTabs: PreviewTab[] = ['links', 'ask'];
   const shownPreview = previewTab;
@@ -176,6 +212,7 @@ export function MyCuriosEditor({
   const previewPill = shopOpen && (page.shopTab?.itemCount ?? 0) > 0
     ? {
         position: page.shop?.position,
+        size: page.shop?.size ?? null,
         label: 'Shop',
         caption: shopCopy(page.language).itemCount(page.shopTab?.itemCount ?? 0),
         photos: page.shopItems.slice(0, 3).map((item) => ({ name: item.name, url: item.photoUrl })),
@@ -304,7 +341,14 @@ export function MyCuriosEditor({
           </div>
 
           <div role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" hidden={tab !== 'layout'} className={`${ui.panel} ${styles.wide}`}>
-            <LayoutEditor entries={layoutEntries} onReorder={reorderPage} faqEmpty={(page.faq?.entries.length ?? 0) === 0} />
+            <LayoutEditor
+              entries={layoutEntries}
+              onReorder={reorderPage}
+              faqEmpty={(page.faq?.entries.length ?? 0) === 0}
+              layout={page.layout}
+              onLayout={chooseLayout}
+              onResize={resizeEntry}
+            />
           </div>
         </div>
       </div>
