@@ -932,3 +932,46 @@
     margin-top: 16px;
   }
 }
+
+/* A widget row: the service's own player in a box with the page's button radius and frame colours. */
+.widget {
+  display: grid;
+  gap: 8px;
+}
+
+.widgetLabel {
+  margin: 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.widgetBox {
+  position: relative;
+  padding: 5px;
+  border-radius: var(--btn-radius);
+  background: var(--pill-ring);
+  overflow: hidden;
+}
+
+.widgetFrame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: calc(var(--btn-radius) - 4px);
+  background: var(--pill);
+  color-scheme: normal;
+}
+
+.widgetCover {
+  position: absolute;
+  inset: 0;
+  cursor: default;
+}
+
+.widgetOpen {
+  justify-self: center;
+  font-size: 13px;
+  color: inherit;
+  opacity: 0.75;
+}

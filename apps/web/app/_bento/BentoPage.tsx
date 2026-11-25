@@ -11,10 +11,12 @@ import {
   type PageStyle,
   type TileSize,
 } from '@curios/core/bento';
+import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
 import { socialUrl, type SocialKind } from '@curios/core/socials';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
 import { Cover } from './Cover.js';
+import { Widget } from './Widget.js';
 import { pageCopy } from './page-copy.js';
 import { DocumentColor } from './document-color.js';
 import styles from './Bento.module.css';
@@ -25,7 +27,16 @@ export interface BentoPageProps {
   bio: string | null;
   avatarUrl: string | null;
   /** In the order visitors see them. `size` is kept on the rows but no longer drawn: every link is a pill. */
-  links: { id: string; label: string; url: string; size: TileSize | null }[];
+  links: {
+    id: string;
+    label: string;
+    url: string;
+    size: TileSize | null;
+    /** A widget row draws its service's player; left out, a plain link. */
+    kind?: LinkKind;
+    provider?: WidgetProvider | null;
+    embedRef?: string | null;
+  }[];
   style: PageStyle;
   accentColor: string;
   /** The buttons' edge and shadow; unset or null, the page's text colour. */
@@ -281,7 +292,15 @@ export function BentoPage(props: BentoPageProps) {
                   )}
                 </li>
               ) : null}
-              {props.links.map((link) => (
+              {props.links.map((link) =>
+                link.kind === 'WIDGET' && link.provider && link.embedRef ? (
+                  // A page drawn mid-conversation (the landing's demos) shows no players.
+                  props.mode === 'chat' ? null : (
+                    <li key={link.id} data-widget>
+                      <Widget provider={link.provider} embedRef={link.embedRef} label={link.label} url={link.url} interactive={interactive} />
+                    </li>
+                  )
+                ) : (
                 <li key={link.id}>
                   {interactive ? (
                     <a className={styles.link} href={link.url} rel="noopener">
@@ -293,7 +312,8 @@ export function BentoPage(props: BentoPageProps) {
                     </span>
                   )}
                 </li>
-              ))}
+                ),
+              )}
             </ul>
           ) : null}
 
