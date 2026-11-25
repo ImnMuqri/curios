@@ -44,6 +44,8 @@ export function ShopPageView(props: {
   canTakeOrders: boolean;
   /** The next day an order could be for (an ISO date), or null (paused, or no way to get the order). */
   nextDay: string | null;
+  /** The shop's own name over the items; unset or null, the page's word for "Shop". */
+  shopName?: string | null;
   description: string | null;
   halal: boolean;
   /** The owner's picture beside their note; null for none, and the note keeps the initial. */
@@ -177,7 +179,7 @@ export function ShopPageView(props: {
 
       <div className={`${sheet.sheet} ${styles.sheet}`}>
       <div className={styles.sign}>
-        <h1 className={styles.name}>{copy.shop}</h1>
+        <h1 className={styles.name}>{props.shopName ?? copy.shop}</h1>
         {subtitle ? <p className={styles.sub}>{subtitle}</p> : null}
         <ul className={styles.facts}>
           <li className={styles.state} data-paused={props.canTakeOrders ? undefined : ''}>

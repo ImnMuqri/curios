@@ -99,6 +99,11 @@ describe('ShopPageView', () => {
     expect(await screen.findByText('Link copied')).toBeInTheDocument();
   });
 
+  it('heads the shop with its own name when the owner gave one', () => {
+    render(<ShopPageView {...base} shopName="Dapur Lina" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Dapur Lina' })).toBeInTheDocument();
+  });
+
   it('draws the heading and its one line, then the shop’s state and next pickup day, calmly', () => {
     render(<ShopPageView {...base} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Shop' })).toBeInTheDocument();

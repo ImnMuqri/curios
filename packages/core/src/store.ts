@@ -31,6 +31,8 @@ export const PICKUP_NOTE_MAX = 120;
 export const DELIVERY_NOTE_MAX = 120;
 /** "About your shop": a line or two above the shelf. */
 export const SHOP_DESCRIPTION_MAX = 160;
+/** The shop's own name, over its items and on the page's shop pill. Unset, it is "Shop". */
+export const SHOP_NAME_MAX = 40;
 export const BANK_NAME_MAX = 60;
 export const BANK_ACCOUNT_NAME_MAX = 80;
 export const DELIVERY_FEE_MAX_CENTS = 50_000;

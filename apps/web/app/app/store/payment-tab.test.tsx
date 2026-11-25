@@ -5,7 +5,7 @@ import { PaymentTab } from './payment-tab.js';
 import type { ChipApi, ChipState, SettingsPatch, StoreSettings } from './store-types.js';
 
 const settings: StoreSettings = {
-  enabled: false, shopDescription: null, shopHalal: false, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE',
+  enabled: false, shopName: null, shopDescription: null, shopHalal: false, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE',
   deliveryFeeCents: null, minNoticeDays: 1, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
 };

@@ -40,7 +40,7 @@ const shop = {
   background: 'PAPER',
   backgroundColor: null,
   links: [],
-  shopDescription: null,
+  shopName: null, shopDescription: null,
   shopHalal: true,
   pickupEnabled: true,
   pickupPlaces: [],

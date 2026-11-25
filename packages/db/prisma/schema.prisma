@@ -316,6 +316,8 @@ model Page {
   /// The shop. Off until the owner opens it, and it can only be opened with a
   /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
   storeEnabled        Boolean             @default(false)
+  /// The shop's own name: its heading and the page's shop pill. Null shows "Shop" (or "Kedai").
+  shopName            String?
   /// "About your shop": shown above the items, before the notice.
   shopDescription     String?
   /// The owner's statement that the shop sells halal food, shown on the

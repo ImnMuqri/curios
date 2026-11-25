@@ -7,6 +7,8 @@ import { prismaRead } from './client.js';
 export interface ShopTile {
   position: number;
   size: TileSize | null;
+  /** The shop's own name, or null for the page's word for "Shop". */
+  name?: string | null;
   itemCount: number;
   /** The first available item's photo, for the tile's picture. */
   photoKey: string | null;
@@ -71,6 +73,7 @@ export const SHOP_TILE_SELECT = {
   storeEnabled: true,
   shopTilePosition: true,
   shopTileSize: true,
+  shopName: true,
   // Name and price as well, for the editor's preview of the shop.
   items: {
     where: { available: true },
@@ -92,12 +95,14 @@ export function shopTileOf(row: {
   storeEnabled: boolean;
   shopTilePosition: number;
   shopTileSize: TileSize | null;
+  shopName?: string | null;
   items: { photoKey: string | null; name: string }[];
 }): ShopTile | null {
   if (row.mode !== 'BUSINESS' || !row.storeEnabled) return null;
   return {
     position: row.shopTilePosition,
     size: row.shopTileSize,
+    name: row.shopName ?? null,
     itemCount: row.items.length,
     photoKey: row.items.find((item) => item.photoKey !== null)?.photoKey ?? null,
     photos: row.items.slice(0, SHOP_PILL_PHOTOS).map((item) => ({ name: item.name, photoKey: item.photoKey })),
@@ -122,6 +127,8 @@ export interface PublicShop {
   backgroundColor: string | null;
   /** For the WhatsApp the basket is sent to. */
   links: { label: string; url: string }[];
+  /** The shop's own name; null shows "Shop". */
+  shopName: string | null;
   /** "About your shop", above the items. */
   shopDescription: string | null;
   /** The owner says the shop sells halal food. */
@@ -175,6 +182,7 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
       background: true,
       backgroundColor: true,
       links: { orderBy: { position: 'asc' }, select: { label: true, url: true } },
+      shopName: true,
       shopDescription: true,
       shopHalal: true,
       pickupEnabled: true,
@@ -260,6 +268,7 @@ export interface OwnerStore {
   mode: 'PERSONAL' | 'BUSINESS';
   settings: {
     enabled: boolean;
+    shopName: string | null;
     shopDescription: string | null;
     shopHalal: boolean;
     pickupEnabled: boolean;
@@ -292,6 +301,7 @@ export async function getOwnerStore(accountId: string, now: Date = new Date()): 
     select: {
       mode: true,
       storeEnabled: true,
+      shopName: true,
       shopDescription: true,
       shopHalal: true,
       pickupEnabled: true,

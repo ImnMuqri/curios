@@ -167,6 +167,7 @@ describe('the tile on the public page', () => {
     expect((await getPublicPage('sq-open'))?.shop).toEqual({
       position: 0,
       size: null,
+      name: null,
       itemCount: 2,
       photoKey: 'items/p/c.webp',
       photos: [{ name: 'A', photoKey: null }, { name: 'C', photoKey: 'items/p/c.webp' }],

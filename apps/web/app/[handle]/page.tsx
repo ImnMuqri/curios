@@ -111,7 +111,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
   const shop =
     page.shop && ordering
       ? {
-          label: copy.shop,
+          label: page.shop.name ?? copy.shop,
           caption: shopPillCaption(ordering, page.shop.itemCount, copy, new Date()),
           photos: page.shop.photos.map((photo) => ({ name: photo.name, url: avatarUrl(photo.photoKey) })),
         }
