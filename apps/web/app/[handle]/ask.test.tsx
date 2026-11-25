@@ -285,6 +285,28 @@ describe('Ask, and the page tabs', () => {
     back.mockRestore();
   });
 
+  it('stops a widget frame on entering chat mode and starts it again on leaving', async () => {
+    stubQualifyingFetch();
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    const { container } = render(
+      <TabbedPage>
+        <iframe data-widget-frame src="https://open.spotify.com/embed/track/abc" title="Song" />
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+    const frame = container.querySelector('iframe')!;
+
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
+    await waitFor(() => expect(frame.getAttribute('src')).toBe('about:blank'));
+
+    await userEvent.click(screen.getByRole('link', { name: 'Links' }));
+    await waitFor(() => expect(frame.getAttribute('src')).toBe('https://open.spotify.com/embed/track/abc'));
+    expect(frame.hasAttribute('data-held-src')).toBe(false);
+    back.mockRestore();
+  });
+
   it('opens chat mode on arrival at #ask, where the shop page and the FAQ send a visitor', async () => {
     stubQualifyingFetch();
     window.history.replaceState(null, '', '/nadia#ask');

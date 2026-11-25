@@ -171,6 +171,34 @@ export function Ask({
     }
   }, [open]);
 
+  /*
+   * Widgets are only hidden by CSS while chat mode is open, so a player already playing would play on
+   * behind the chat. Stop each frame by pointing it at about:blank, keeping its address on the frame, and
+   * put the address back when the visitor returns to the links (the player starts over, which is the
+   * least a hidden player can do). Frames are found from the page, so the server render is unchanged.
+   */
+  useEffect(() => {
+    const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
+    if (!page) return;
+    const frames = () => page.querySelectorAll<HTMLIFrameElement>('iframe[data-widget-frame]');
+    const restore = () => {
+      for (const frame of frames()) {
+        const held = frame.getAttribute('data-held-src');
+        if (held === null) continue;
+        frame.removeAttribute('data-held-src');
+        frame.src = held;
+      }
+    };
+    if (open) {
+      for (const frame of frames()) {
+        if (frame.hasAttribute('data-held-src')) continue;
+        frame.setAttribute('data-held-src', frame.getAttribute('src') ?? '');
+        frame.src = 'about:blank';
+      }
+    } else restore();
+    return restore;
+  }, [open]);
+
   /**
    * Focus follows the visitor back to what they tapped, the Ask tab -- without
    * this, Tab from a just-closed chat mode lands wherever it happened to be.

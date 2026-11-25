@@ -44,6 +44,7 @@ export function Widget({ provider, embedRef, label, url, interactive = true, fil
         <div className={styles.widgetBox} data-widget-box>
           <iframe
             className={styles.widgetFrame}
+            data-widget-frame
             src={src}
             style={frameStyle}
             title={`${label}, ${service}`}
