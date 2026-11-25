@@ -77,6 +77,16 @@ describe('PATCH /pages/appearance', () => {
     expect((await patch(cookie, { style: 'SOFT' })).json().appearance).toMatchObject({ avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP' });
   });
 
+  it('keeps the second button colour as lowercase hex, clears it with null, and refuses one that is not hex', async () => {
+    const cookie = await anOwner();
+    expect((await patch(cookie, { style: 'CHUNKY' })).json().appearance.secondaryColor).toBeNull();
+    expect((await patch(cookie, { secondaryColor: '#C2185B' })).json().appearance.secondaryColor).toBe('#c2185b');
+    for (const secondaryColor of ['pink', '#fff', '#0c7a62;background:url(x)']) {
+      expect((await patch(cookie, { secondaryColor })).json().error.code).toBe('INVALID_APPEARANCE');
+    }
+    expect((await patch(cookie, { secondaryColor: null })).json().appearance.secondaryColor).toBeNull();
+  });
+
   it('refuses a colour that is not six-digit hex', async () => {
     const cookie = await anOwner();
     for (const accentColor of ['red', '#fff', '#0c7a62;background:url(x)']) {

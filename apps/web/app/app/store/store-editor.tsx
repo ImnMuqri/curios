@@ -570,7 +570,7 @@ export function StoreEditor({
 
             <section className={ui.section} aria-labelledby="about-title">
               <SectionHead id="about-title" title="About your shop" note="Shown above your items. Tell people what to know before they order." />
-              <div className={ui.float}>
+              <div className={`${ui.float} ${styles.nameField}`}>
                 <label>
                   <em>Shop name</em>
                   <input value={shopName.text} maxLength={SHOP_NAME_MAX} placeholder="Shop" autoComplete="off" onChange={(event) => shopName.change(event.target.value)} />

@@ -136,6 +136,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         shop={shop}
         style={page.style}
         accentColor={page.accentColor}
+        secondaryColor={page.secondaryColor}
         headingFont={page.headingFont}
         background={page.background}
         backgroundColor={page.backgroundColor}

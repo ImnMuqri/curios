@@ -28,6 +28,7 @@ export type AppearancePatch = Partial<{
   backgroundColor: string;
   style: PageStyle;
   accentColor: string;
+  secondaryColor: string | null;
   headingFont: HeadingFont;
   avatarSize: AvatarSize;
   avatarBorder: boolean;
@@ -229,6 +230,7 @@ export function MyCuriosEditor({
               backgroundColor={page.backgroundColor}
               style={page.style}
               accentColor={page.accentColor}
+              secondaryColor={page.secondaryColor}
               headingFont={page.headingFont}
               onChange={update}
               save={api.saveAppearance}

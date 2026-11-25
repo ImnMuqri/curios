@@ -213,7 +213,7 @@ describe('BentoPage button styles', () => {
   it("never paints High contrast pills or rings in the page's text colour alone", () => {
     const contrast = block('CONTRAST');
     expect(contrast).toMatch(/--pill:\s*color-mix\([^;]*var\(--accent\)/);
-    expect(contrast).toMatch(/--lead-ring:\s*color-mix\([^;]*var\(--accent\)/);
+    expect(contrast).toMatch(/--lead-ring:\s*var\(--btn-second, color-mix\([^;]*var\(--accent\)/);
     expect(contrast).not.toMatch(/--pill:\s*var\(--page-fg\)/);
   });
 
@@ -226,7 +226,7 @@ describe('BentoPage button styles', () => {
   it('draws Outline see-through, with only an edge, past the first link', () => {
     const outline = block('OUTLINE');
     expect(outline).toMatch(/--pill:\s*transparent/);
-    expect(outline).toMatch(/--btn-edge-color:\s*color-mix\([^;]*var\(--accent\)/);
+    expect(outline).toMatch(/--btn-edge-color:\s*var\(--btn-second, color-mix\([^;]*var\(--accent\)/);
   });
 });
 
@@ -513,5 +513,16 @@ describe('BentoPage, the picture in Ask', () => {
   it('has no picture, no avatar in Ask either', () => {
     const { container } = render(<BentoPage {...base} mode="chat" avatarUrl={null} />);
     expect(container.querySelector('header img')).toBeNull();
+  });
+});
+
+describe('themeAttrs, the buttons\' second colour', () => {
+  it('sets --btn-second only for a whole hex colour; the CSS falls back to the page text without it', () => {
+    const base = { accentColor: '#2340c8', headingFont: 'JAKARTA' as const };
+    expect((themeAttrs({ ...base, secondaryColor: '#c2185b' }).style as Record<string, string>)['--btn-second']).toBe('#c2185b');
+    expect(themeAttrs({ ...base, secondaryColor: null }).style).not.toHaveProperty('--btn-second');
+    expect(themeAttrs({ ...base, secondaryColor: 'pink' }).style).not.toHaveProperty('--btn-second');
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.page\[data-style='CHUNKY'\] \{[^}]*--btn-second-or-fg:\s*var\(--btn-second, var\(--page-fg\)\);[^}]*--btn-shadow:\s*4px 4px 0 var\(--btn-second-or-fg\);/);
   });
 });

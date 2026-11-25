@@ -102,17 +102,18 @@
  */
 .page[data-style='CONTRAST'] {
   --pill: color-mix(in oklab, var(--accent) calc(var(--quiet) + 20%), var(--quiet-base));
-  --pill-ring: color-mix(in oklab, var(--accent) 55%, var(--page-fg));
-  --lead-ring: color-mix(in oklab, var(--accent) 55%, var(--page-fg));
+  --pill-ring: var(--btn-second, color-mix(in oklab, var(--accent) 55%, var(--page-fg)));
+  --lead-ring: var(--btn-second, color-mix(in oklab, var(--accent) 55%, var(--page-fg)));
   --ask-border: var(--page-fg);
 }
 
-/* Chunky: a squarer button with a dark outline and a hard shadow, like a key you press. */
+/* Chunky: a squarer button with an outline and a hard shadow, like a key you press: the owner's second colour, or the page's text colour. */
 .page[data-style='CHUNKY'] {
+  --btn-second-or-fg: var(--btn-second, var(--page-fg));
   --btn-radius: 12px;
   --btn-edge: 2px;
-  --btn-edge-color: var(--page-fg);
-  --btn-shadow: 4px 4px 0 var(--page-fg);
+  --btn-edge-color: var(--btn-second-or-fg);
+  --btn-shadow: 4px 4px 0 var(--btn-second-or-fg);
   --pill-ring: transparent;
   --lead-ring: transparent;
 }
@@ -121,11 +122,17 @@
 .page[data-style='OUTLINE'] {
   --btn-radius: 12px;
   --btn-edge: 2px;
-  --btn-edge-color: color-mix(in oklab, var(--accent) 70%, var(--page-fg));
+  --btn-edge-color: var(--btn-second, color-mix(in oklab, var(--accent) 70%, var(--page-fg)));
   --lead-edge-color: var(--accent);
   --pill: transparent;
   --pill-ring: transparent;
   --lead-ring: transparent;
+}
+
+/* Soft: its quiet rings take the owner's second colour when there is one. */
+.page[data-style='SOFT'] {
+  --pill-ring: var(--btn-second, var(--veil-1));
+  --lead-ring: var(--btn-second, var(--veil-2));
 }
 
 /* Chunky and Outline have no ring; Chunky keeps room for its shadow. */
@@ -641,12 +648,12 @@
 
   /* Chunky lifts off its shadow on hover and presses into it on tap. */
   .page[data-style='CHUNKY'] :is(a.link, a.shopLink):hover {
-    --btn-shadow: 5px 5px 0 var(--page-fg);
+    --btn-shadow: 5px 5px 0 var(--btn-second-or-fg);
     transform: translate(-1px, -1px);
   }
 
   .page[data-style='CHUNKY'] :is(a.link, a.shopLink):active {
-    --btn-shadow: 1px 1px 0 var(--page-fg);
+    --btn-shadow: 1px 1px 0 var(--btn-second-or-fg);
     transform: translate(3px, 3px);
   }
 }

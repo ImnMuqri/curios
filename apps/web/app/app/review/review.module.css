@@ -272,6 +272,10 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  /* A fixed reading width, centred: stretched across a wide screen the card read oddly (owner, 25 Nov). */
+  justify-self: center;
+  width: 100%;
+  max-width: 640px;
   min-width: 0;
   padding: 28px;
   border-radius: 16px;

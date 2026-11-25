@@ -46,6 +46,10 @@ const BACKGROUND_NAMES: Record<PageBackground, string> = {
   CUSTOM: 'Custom',
 };
 
+/** The second colour's choices: the accent row's colours, with white for a dark page. */
+const SECONDARY_PRESETS = [...ACCENT_PRESETS, '#ffffff'] as const;
+const SECONDARY_NAMES: Record<string, string> = { '#ffffff': 'White' };
+
 const STYLES: { value: PageStyle; name: string; note: string }[] = [
   { value: 'SOFT', name: 'Soft', note: 'Light pills, gentle edges' },
   { value: 'CONTRAST', name: 'High contrast', note: 'Solid pills, bold edges' },
@@ -78,6 +82,7 @@ export function AppearanceEditor({
   backgroundColor,
   style,
   accentColor,
+  secondaryColor = null,
   headingFont,
   onChange,
   save,
@@ -88,6 +93,8 @@ export function AppearanceEditor({
   backgroundColor: string | null;
   style: PageStyle;
   accentColor: string;
+  /** The buttons' edge and shadow; null is the page's text colour. */
+  secondaryColor?: string | null;
   headingFont: HeadingFont;
   onChange: (change: AppearancePatch) => void;
   save: (patch: AppearancePatch) => Promise<unknown>;
@@ -166,20 +173,19 @@ export function AppearanceEditor({
                 );
               })}
             </div>
-            {background === 'CUSTOM' ? (
-              <div className={styles.customBg}>
-                <CustomColour
-                  value={isHexColor(customBg) ? customBg : tintOf(accentColor, 0.18)}
-                  label="Background colour as hex"
-                  onColour={chooseBackgroundColor}
-                  onInvalid={wrongColour}
-                />
-              </div>
-            ) : null}
+            {/* Always there, like the button colour's: typing a colour picks Custom. */}
+            <div className={styles.customBg}>
+              <CustomColour
+                value={isHexColor(customBg) ? customBg : tintOf(accentColor, 0.18)}
+                label="Background colour as hex"
+                onColour={chooseBackgroundColor}
+                onInvalid={wrongColour}
+              />
+            </div>
           </div>
           <div>
             <p className={styles.groupLabel} aria-hidden="true">
-              Buttons
+              Buttons · primary
             </p>
             {/* The accent colours the first link and the send button, so the board calls this row "Buttons". */}
             <div className={styles.swatches} role="group" aria-label="Button colour">
@@ -208,6 +214,45 @@ export function AppearanceEditor({
                 onInvalid={wrongColour}
               />
             </div>
+            <p className={`${styles.groupLabel} ${styles.groupLabelNext}`} aria-hidden="true">
+              Buttons · secondary
+              <small>The edge and shadow</small>
+            </p>
+            {/* Auto is the page's text colour, the look every page had before there was a choice. */}
+            <div className={styles.swatches} role="group" aria-label="Button edge colour">
+              <button
+                type="button"
+                className={styles.swatchAuto}
+                aria-pressed={secondaryColor === null}
+                title="The page's text colour"
+                onClick={() => (secondaryColor === null ? undefined : choose({ secondaryColor: null }))}
+              >
+                Auto
+              </button>
+              {[...SECONDARY_PRESETS, ...(secondaryColor === null || (SECONDARY_PRESETS as readonly string[]).includes(secondaryColor) ? [] : [secondaryColor])].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={styles.swatch}
+                  style={{ '--swatch': preset } as CSSProperties}
+                  data-on={readableOn(preset)}
+                  aria-label={`${ACCENT_NAMES[preset] ?? SECONDARY_NAMES[preset] ?? 'Your colour'} edge`}
+                  title={preset}
+                  aria-pressed={secondaryColor === preset}
+                  onClick={() => (secondaryColor !== preset ? choose({ secondaryColor: preset }) : undefined)}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                </button>
+              ))}
+              <CustomColour
+                value={secondaryColor ?? ''}
+                label="Button edge colour as hex"
+                onColour={(hex) => (hex !== secondaryColor ? choose({ secondaryColor: hex }) : undefined)}
+                onInvalid={wrongColour}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -229,7 +274,7 @@ export function AppearanceEditor({
                   onClick={() => (style === option.value ? undefined : choose({ style: option.value }))}
                 >
                   <Tick />
-                  <span className={styles.styleMini} data-style={option.value} style={{ '--accent': accentColor } as CSSProperties} aria-hidden="true">
+                  <span className={styles.styleMini} data-style={option.value} style={{ '--accent': accentColor, ...(secondaryColor ? { '--btn-second': secondaryColor } : {}) } as CSSProperties} aria-hidden="true">
                     <i />
                     <i />
                   </span>

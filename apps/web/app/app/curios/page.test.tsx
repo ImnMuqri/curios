@@ -41,7 +41,7 @@ const page: MyCuriosData = {
   coverLayout: 'TOP',
   bio: null,
   style: 'SOFT',
-  accentColor: '#2340c8',
+  secondaryColor: null, accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: 'avatars/p1.jpg',
   coverKey: null,

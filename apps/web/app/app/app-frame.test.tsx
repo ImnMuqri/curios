@@ -1082,12 +1082,12 @@ describe('Saved in the top bar', () => {
     expect(within(top()).queryByRole('status')).toBeNull();
   });
 
-  it('is a 56px bar, with the status in the muted ink at 13.5px and an 18px icon', () => {
+  it('is a 56px bar, with the status on the line of Help: 32px high, 14px/500 in its ink, an 18px icon', () => {
     const css = readFileSync(path.join(import.meta.dirname, 'app-frame.module.css'), 'utf8');
     expect(css).toMatch(/\n\.top \{[^}]*height:\s*56px;/);
     expect(css).not.toContain('64px');
     const status = readFileSync(path.join(import.meta.dirname, '_ui/save-status.module.css'), 'utf8');
-    expect(status).toMatch(/\.status \{[^}]*color:\s*var\(--muted\);[^}]*font-size:\s*13\.5px/);
+    expect(status).toMatch(/\.status \{[^}]*height:\s*32px;[^}]*color:\s*var\(--soft\);[^}]*font-size:\s*14px;[^}]*font-weight:\s*500;/);
     expect(status).toMatch(/\.status svg \{[^}]*width:\s*18px;[^}]*height:\s*18px/);
     // Under 400px the words are visually hidden (kept for a screen reader) so the bar does not overflow.
     expect(status).toMatch(/@media \(max-width: 399px\) \{\s*\.words \{[^}]*position:\s*absolute;[^}]*clip-path:\s*inset\(50%\)/);

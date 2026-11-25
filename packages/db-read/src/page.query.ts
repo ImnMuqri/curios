@@ -43,6 +43,8 @@ export interface PublicPage {
   allowSearchIndexing: boolean;
   style: PageStyle;
   accentColor: string;
+  /** The buttons' edge and shadow; null is the page's text colour. */
+  secondaryColor: string | null;
   headingFont: HeadingFont;
   /** The picture's object key, or null. apps/web turns it into a URL. */
   avatarKey: string | null;
@@ -122,6 +124,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       allowSearchIndexing: true,
       style: true,
       accentColor: true,
+      secondaryColor: true,
       headingFont: true,
       avatarKey: true,
       avatarSize: true,
