@@ -19,6 +19,8 @@ export const WIDGET_PROVIDERS = [
   'CANVA',
 ] as const;
 export type WidgetProvider = (typeof WIDGET_PROVIDERS)[number];
+/** A link row is a plain link or a widget. */
+export type LinkKind = 'LINK' | 'WIDGET';
 
 export const WIDGET_NAMES: Record<WidgetProvider, string> = {
   SPOTIFY: 'Spotify',

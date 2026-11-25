@@ -140,6 +140,7 @@ describe('getPublicPage', () => {
 
   it('returns a widget row with its kind, provider and embed ref, and a plain link as LINK', async () => {
     const row = await write.page.findFirstOrThrow({ where: { handle: 'nadia' } });
+    // Position 1: nadia's seeded WhatsApp link is at 0.
     await write.link.create({
       data: { pageId: row.id, label: 'My playlist', url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', position: 1, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M' },
     });

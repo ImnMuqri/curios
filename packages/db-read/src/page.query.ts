@@ -1,6 +1,6 @@
 import { canTakeOrders, PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { DeliveryMode } from '@curios/core/store';
-import type { WidgetProvider } from '@curios/core/widgets';
+import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
@@ -17,7 +17,7 @@ export interface PublicLink {
   icon: string | null;
   position: number;
   size: TileSize | null;
-  kind: 'LINK' | 'WIDGET';
+  kind: LinkKind;
   provider: WidgetProvider | null;
   embedRef: string | null;
 }

@@ -6,7 +6,7 @@ import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, withShopTile, type ShopTilePlac
 import { useAutosave } from '../_ui/use-autosave.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
-import type { WidgetProvider } from '@curios/core/widgets';
+import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
@@ -15,7 +15,7 @@ export type LinkItem = {
   label: string;
   url: string;
   size: TileSize | null;
-  kind: 'LINK' | 'WIDGET';
+  kind: LinkKind;
   provider: WidgetProvider | null;
   embedRef: string | null;
 };

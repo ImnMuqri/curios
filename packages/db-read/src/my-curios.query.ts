@@ -1,5 +1,5 @@
 import { tidySocials, type SocialKind } from '@curios/core/socials';
-import type { WidgetProvider } from '@curios/core/widgets';
+import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
 import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
@@ -36,7 +36,7 @@ export interface MyCurios {
     label: string;
     url: string;
     size: TileSize | null;
-    kind: 'LINK' | 'WIDGET';
+    kind: LinkKind;
     provider: WidgetProvider | null;
     embedRef: string | null;
   }[];

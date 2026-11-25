@@ -253,9 +253,17 @@ describe('buildSystemPrompt, the profile', () => {
   });
 
   it('lists a widget as its label and pasted url, never a frame address', () => {
+    // The whole row, as the page query returns it: the prompt must ignore kind, provider and embedRef.
+    const widget = {
+      label: 'My playlist',
+      url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
+      kind: 'WIDGET',
+      provider: 'SPOTIFY',
+      embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M',
+    };
     const prompt = buildSystemPrompt({
       ...base,
-      profile: { bio: null, links: [{ label: 'My playlist', url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M' }] },
+      profile: { bio: null, links: [widget] },
     });
     expect(prompt).toContain('My playlist -- https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M');
     expect(prompt).not.toContain('/embed/');

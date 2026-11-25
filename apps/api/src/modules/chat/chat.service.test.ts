@@ -1757,6 +1757,22 @@ describe('the owner\'s answers and profile in the prompt', () => {
     expect(captured.call().systemPrompt).toContain('About: Kek butter, Shah Alam');
     expect(captured.call().systemPrompt).toContain('WhatsApp: Order di WhatsApp -- https://wa.me/60123');
   });
+
+  it('sends a widget row as its label and the pasted link, never its frame address', async () => {
+    const pageId = await pageIdFor('nadia');
+    const pasted = 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M';
+    await prisma.link.create({
+      data: { pageId, label: 'My playlist', url: pasted, position: 0, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M' },
+    });
+    const captured = gatewayCapturingCall();
+
+    await collect(answer({ prisma, gateway: captured.gateway, settings, embedder: null }, { handle: 'nadia', question: 'What do you listen to?' }));
+
+    const prompt = captured.call().systemPrompt;
+    expect(prompt).toContain(`My playlist -- ${pasted}`);
+    expect(prompt).not.toContain('/embed/');
+    expect(prompt).not.toContain('output=embed');
+  });
 });
 
 describe('"where is my order", by its code', () => {
