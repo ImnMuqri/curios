@@ -410,6 +410,69 @@ describe('DELETE /links/:id with the shop tile', () => {
   });
 });
 
+describe('POST /links joins the end of the links', () => {
+  async function arrange(labels: string[], shopAt: number | null, faqAt: number | null) {
+    const owner = await anOwner();
+    for (const label of labels) await call(owner.cookie, 'POST', '/links', { label, url: 'a.com' });
+    await app.prisma.page.update({
+      where: { id: owner.pageId },
+      data: {
+        faqPosition: faqAt,
+        ...(shopAt === null ? {} : { storeEnabled: true, pickupEnabled: true, paymentQrKey: 'qr/x.png', shopTilePosition: shopAt }),
+      },
+    });
+    return owner;
+  }
+  async function order(owner: { pageId: string }) {
+    const page = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } });
+    const links = await app.prisma.link.findMany({ where: { pageId: owner.pageId }, orderBy: { position: 'asc' }, select: { id: true, label: true, size: true } });
+    return pageEntries(links, page.storeEnabled ? { position: page.shopTilePosition, size: null } : null, { position: page.faqPosition }).map((e) =>
+      e.kind === 'link' ? e.link.label : e.id,
+    );
+  }
+
+  it('[A, B, shop, faq] + C is [A, B, C, shop, faq]', async () => {
+    const owner = await arrange(['A', 'B'], 2, null);
+    await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect(await order(owner)).toEqual(['A', 'B', 'C', 'shop', 'faq']);
+  });
+
+  it('[A, shop, B] + C keeps the shop between A and B', async () => {
+    const owner = await arrange(['A', 'B'], 1, null);
+    await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect(await order(owner)).toEqual(['A', 'shop', 'B', 'C', 'faq']);
+  });
+
+  it('[shop] + C with no links yet is [C, shop]', async () => {
+    const owner = await arrange([], 0, null);
+    await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect(await order(owner)).toEqual(['C', 'shop', 'faq']);
+  });
+
+  it('moves a FAQ that sits after the links, and one before the last link stays', async () => {
+    const after = await arrange(['A', 'B'], null, 2);
+    await call(after.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect(await order(after)).toEqual(['A', 'B', 'C', 'faq']);
+    const before = await arrange(['A', 'B'], null, 1);
+    await call(before.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect(await order(before)).toEqual(['A', 'faq', 'B', 'C']);
+  });
+
+  it('leaves a closed shop alone and a null FAQ last', async () => {
+    const owner = await arrange(['A', 'B'], null, null);
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { shopTilePosition: 2 } });
+    await call(owner.cookie, 'POST', '/links', { label: 'C', url: 'c.com' });
+    expect((await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } })).shopTilePosition).toBe(2);
+    expect(await order(owner)).toEqual(['A', 'B', 'C', 'faq']);
+  });
+
+  it('a widget joins the end of the links too', async () => {
+    const owner = await arrange(['A', 'B'], 2, 3);
+    await call(owner.cookie, 'POST', '/links/widgets', { url: 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC', label: 'W' });
+    expect(await order(owner)).toEqual(['A', 'B', 'W', 'shop', 'faq']);
+  });
+});
+
 describe('POST /links/widgets', () => {
   const spotify = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC';
 

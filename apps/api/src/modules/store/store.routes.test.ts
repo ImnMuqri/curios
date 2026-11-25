@@ -144,6 +144,19 @@ describe('PATCH /store/settings', () => {
     expect(res.json().settings.enabled).toBe(true);
   });
 
+  it('puts the shop button first when it opens, and moves a stored FAQ index down with the rest', async () => {
+    const owner = await anOwner(app);
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { shopTilePosition: 3, faqPosition: 2 } });
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, pickupEnabled: true, ...bank });
+    expect(res.statusCode).toBe(200);
+    const page = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } });
+    expect([page.shopTilePosition, page.faqPosition]).toEqual([0, 3]);
+    // Saving other settings on an open shop leaves its place alone.
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { shopTilePosition: 2 } });
+    await call(app, 'PATCH', '/store/settings', owner.cookie, { minNoticeDays: 3 });
+    expect((await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } })).shopTilePosition).toBe(2);
+  });
+
   it('opens a shop whose only way to pay is a CHIP connection', async () => {
     const owner = await anOwner(app);
     await aChipAccount(owner.pageId);
