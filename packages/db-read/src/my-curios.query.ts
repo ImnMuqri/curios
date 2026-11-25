@@ -1,4 +1,5 @@
 import { tidySocials, type SocialKind } from '@curios/core/socials';
+import type { WidgetProvider } from '@curios/core/widgets';
 import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
@@ -30,7 +31,15 @@ export interface MyCurios {
   backgroundColor: string | null;
   /** Social profiles to show as icons under the name, in display order. */
   socials: { kind: SocialKind; value: string }[];
-  links: { id: string; label: string; url: string; size: TileSize | null }[];
+  links: {
+    id: string;
+    label: string;
+    url: string;
+    size: TileSize | null;
+    kind: 'LINK' | 'WIDGET';
+    provider: WidgetProvider | null;
+    embedRef: string | null;
+  }[];
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
   /**
@@ -72,7 +81,10 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       background: true,
       backgroundColor: true,
       socials: true,
-      links: { orderBy: { position: 'asc' }, select: { id: true, label: true, url: true, size: true } },
+      links: {
+        orderBy: { position: 'asc' },
+        select: { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true },
+      },
     },
   });
   if (!page) return null;

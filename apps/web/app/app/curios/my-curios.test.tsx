@@ -11,7 +11,7 @@ const initial: EditorPage = {
   style: 'SOFT', secondaryColor: null, coverWash: true, accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
   socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',
-  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
+  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null }],
 };
 
 const business: EditorPage = {
@@ -24,7 +24,7 @@ const business: EditorPage = {
 };
 
 const api = () => ({
-  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null })),
+  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null })),
   updateLink: vi.fn(async (_id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
@@ -433,7 +433,7 @@ describe('without the template look', () => {
 
   // The v3 board brings the kind tile back on link rows and the Shop link row (.ri .ki, .shoprow .ki).
   it('marks each link row with its kind, read off the address, and the Shop link as the first row', async () => {
-    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null }] });
+    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null }] });
     await userEvent.click(editTab('Links'));
     const kinds = [...document.querySelectorAll('[data-kind]')].filter((el) => el.tagName === 'SPAN' && el.closest('[role="tabpanel"]'));
     expect(kinds.map((el) => el.getAttribute('data-kind'))).toEqual(['shop', 'link', 'whatsapp']);

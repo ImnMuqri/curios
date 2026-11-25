@@ -1,5 +1,6 @@
 import { canTakeOrders, PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { DeliveryMode } from '@curios/core/store';
+import type { WidgetProvider } from '@curios/core/widgets';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
@@ -16,6 +17,9 @@ export interface PublicLink {
   icon: string | null;
   position: number;
   size: TileSize | null;
+  kind: 'LINK' | 'WIDGET';
+  provider: WidgetProvider | null;
+  embedRef: string | null;
 }
 
 export interface PublicFact {
@@ -146,7 +150,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       ...SHOP_TILE_SELECT,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, icon: true, position: true, size: true },
+        select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true },
       },
       facts: {
         where: { verified: true },

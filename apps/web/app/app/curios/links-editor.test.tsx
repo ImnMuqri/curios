@@ -5,16 +5,16 @@ import userEvent from '@testing-library/user-event';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 
 const three: LinkItem[] = [
-  { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null },
-  { id: 'b', label: 'WhatsApp', url: 'https://wa.me/60123', size: null },
-  { id: 'c', label: 'GitHub', url: 'https://github.com/iman', size: null },
+  { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
+  { id: 'b', label: 'WhatsApp', url: 'https://wa.me/60123', size: null, kind: 'LINK', provider: null, embedRef: null },
+  { id: 'c', label: 'GitHub', url: 'https://github.com/iman', size: null, kind: 'LINK', provider: null, embedRef: null },
 ];
 
 function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[0]> = {}) {
   const props = {
     links,
     onChange: vi.fn(),
-    addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null })),
+    addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null })),
     updateLink: vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...links.find((l) => l.id === id)!, ...patch })),
     removeLink: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
@@ -119,7 +119,7 @@ describe('LinksEditor', () => {
   });
 
   it('stops offering to add at the limit', () => {
-    setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null })));
+    setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null, kind: 'LINK', provider: null, embedRef: null })));
     expect(screen.queryByRole('button', { name: '+ Add link' })).toBeNull();
     expect(screen.getByText(/30 links is the most/i)).toBeInTheDocument();
   });
@@ -339,7 +339,7 @@ describe('LinksEditor', () => {
 
     expect(row).toHaveAttribute('aria-label', 'Work');
 
-    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null }); });
+    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null, kind: 'LINK', provider: null, embedRef: null }); });
 
     expect(row).toHaveAttribute('aria-label', 'Work');
     vi.useRealTimers();

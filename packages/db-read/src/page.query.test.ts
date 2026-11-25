@@ -138,6 +138,16 @@ describe('getPublicPage', () => {
     expect(page?.links[0]).toMatchObject({ size: null });
   });
 
+  it('returns a widget row with its kind, provider and embed ref, and a plain link as LINK', async () => {
+    const row = await write.page.findFirstOrThrow({ where: { handle: 'nadia' } });
+    await write.link.create({
+      data: { pageId: row.id, label: 'My playlist', url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', position: 1, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M' },
+    });
+    const page = await getPublicPage('nadia');
+    expect(page?.links[0]).toMatchObject({ kind: 'LINK', provider: null, embedRef: null });
+    expect(page?.links[1]).toMatchObject({ kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M' });
+  });
+
   it('cannot write through the read-only connection', async () => {
     const { prismaRead } = await import('./client.js');
     await expect(

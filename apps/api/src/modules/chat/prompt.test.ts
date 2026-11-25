@@ -252,6 +252,16 @@ describe('buildSystemPrompt, the profile', () => {
     expect(buildSystemPrompt({ ...base, profile: { bio: null, links: [] } })).toBe(buildSystemPrompt(base));
   });
 
+  it('lists a widget as its label and pasted url, never a frame address', () => {
+    const prompt = buildSystemPrompt({
+      ...base,
+      profile: { bio: null, links: [{ label: 'My playlist', url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M' }] },
+    });
+    expect(prompt).toContain('My playlist -- https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M');
+    expect(prompt).not.toContain('/embed/');
+    expect(prompt).not.toContain('output=embed');
+  });
+
   it('sends the bio and each link, named by its kind, so contact questions answer from them', () => {
     const prompt = buildSystemPrompt({
       ...base,

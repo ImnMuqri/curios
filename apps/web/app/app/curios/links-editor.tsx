@@ -6,10 +6,19 @@ import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, withShopTile, type ShopTilePlac
 import { useAutosave } from '../_ui/use-autosave.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
+import type { WidgetProvider } from '@curios/core/widgets';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
-export type LinkItem = { id: string; label: string; url: string; size: TileSize | null };
+export type LinkItem = {
+  id: string;
+  label: string;
+  url: string;
+  size: TileSize | null;
+  kind: 'LINK' | 'WIDGET';
+  provider: WidgetProvider | null;
+  embedRef: string | null;
+};
 
 /** An address as the row shows it: without the scheme nobody reads. */
 const shown = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/^mailto:/i, '').replace(/\/$/, '');
