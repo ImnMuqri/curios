@@ -543,3 +543,10 @@ describe('BentoPage, the Full page cover without the page colour over it', () =>
     expect(css).toMatch(/\.coverFull img \{[^}]*height: var\(--screen-h, 100lvh\);/);
   });
 });
+
+describe('BentoPage, asking on a phone page with a cover', () => {
+  it('keeps the runway above the asking header, so the opening scroll does not hide the picture and name', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.page\[data-mode='chat'\] \.head \{\s*margin-top: 0;\s*padding-top: calc\(18px \+ env\(safe-area-inset-top, 0px\) \+ var\(--runway, 0px\)\);/);
+  });
+});

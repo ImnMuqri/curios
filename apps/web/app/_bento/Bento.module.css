@@ -816,9 +816,11 @@
   box-shadow: none;
 }
 
+/* With the runway too: a phone's page with a cover opens scrolled by it (page.tsx's OPEN_SCROLLED), and
+   without the room the picture and the name went up under the status bar. */
 .page[data-mode='chat'] .head {
   margin-top: 0;
-  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding-top: calc(18px + env(safe-area-inset-top, 0px) + var(--runway, 0px));
 }
 
 .page[data-mode='chat'] .name {
