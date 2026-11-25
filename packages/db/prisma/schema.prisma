@@ -103,6 +103,25 @@ enum TileSize {
   BIG
 }
 
+/// What a Link row is: an ordinary link, or a widget the page embeds.
+enum LinkKind {
+  LINK
+  WIDGET
+}
+
+/// Which service a widget embeds. Same values, same order, as WIDGET_PROVIDERS
+/// in @curios/core/widgets.
+enum WidgetProvider {
+  SPOTIFY
+  APPLE_MUSIC
+  YOUTUBE
+  SOUNDCLOUD
+  GOOGLE_MAPS
+  CALCOM
+  CALENDLY
+  CANVA
+}
+
 enum PageStyle {
   SOFT
   CONTRAST
@@ -405,6 +424,13 @@ model Link {
   /// Null is "automatic": arrangeTiles in @curios/core/bento decides from the
   /// tile's position.
   size     TileSize?
+  /// LINK for every row that existed before widgets.
+  kind     LinkKind  @default(LINK)
+  /// The service a WIDGET row embeds; null on a LINK.
+  provider WidgetProvider?
+  /// What the player address is built from (a track id, a map query, a booking
+  /// path), parsed from the pasted link by @curios/core/widgets; null on a LINK.
+  embedRef String?
 
   @@index([pageId, position])
 }
