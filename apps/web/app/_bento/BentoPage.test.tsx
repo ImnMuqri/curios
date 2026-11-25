@@ -693,3 +693,11 @@ describe('the Bento layout', () => {
     expect(container.querySelector('[data-size]')).toBeNull();
   });
 });
+
+describe('BentoPage, the FAQ block at the head of the list', () => {
+  it('drops its top margin only when other pieces share the list, so a FAQ-only page keeps its gap', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.foldawayInner > \.faq:first-child:not\(:only-child\) \{\s*margin-top: 0;/);
+    expect(css).not.toMatch(/\.foldawayInner > \.faq:first-child \{/);
+  });
+});
