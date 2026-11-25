@@ -282,15 +282,35 @@ export function placeTiles(sizes: TileSize[]): { row: number; col: number }[] {
   });
 }
 
-/** With one empty cell in the last row, the Small tile beside it widens to fill it. */
+/**
+ * A row that ends with one empty cell beside a lone Small tile, once every tile is placed (so nothing
+ * later backfilled it), widens that Small to Wide, wherever the row is. This holds whether the size was
+ * automatic or the owner's choice: no half row wins over a chosen Small. A hole beside the bottom of a
+ * Tall or Big stays. Re-placed after each widen, so it ends in at most one pass per tile.
+ */
 function widenLoneTile(tiles: { size: TileSize }[]): void {
-  const at = placeTiles(tiles.map((t) => t.size));
-  const lastRow = Math.max(-1, ...at.map((p, i) => p.row + SPAN[tiles[i]!.size].h - 1));
-  const inRow = at.flatMap((p, i) => (p.row <= lastRow && p.row + SPAN[tiles[i]!.size].h - 1 >= lastRow ? [i] : []));
-  const cells = inRow.reduce((n, i) => n + SPAN[tiles[i]!.size].w, 0);
-  if (cells !== 1) return;
-  const only = tiles[inRow[0]!]!;
-  if (only.size === 'SMALL') only.size = 'WIDE';
+  for (let pass = 0; pass <= tiles.length; pass++) {
+    const at = placeTiles(tiles.map((t) => t.size));
+    const owner = new Map<string, number>();
+    let last = -1;
+    tiles.forEach((tile, i) => {
+      const { w, h } = SPAN[tile.size];
+      for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) owner.set(`${at[i]!.row + r},${at[i]!.col + c}`, i);
+      last = Math.max(last, at[i]!.row + h - 1);
+    });
+    let widened = false;
+    for (let r = 0; r <= last && !widened; r++) {
+      for (let c = 0; c < 2 && !widened; c++) {
+        if (owner.has(`${r},${c}`)) continue;
+        const beside = owner.get(`${r},${1 - c}`);
+        if (beside !== undefined && tiles[beside]!.size === 'SMALL') {
+          tiles[beside]!.size = 'WIDE';
+          widened = true;
+        }
+      }
+    }
+    if (!widened) return;
+  }
 }
 
 /** Whether a cell above the last occupied row stays empty (the last row's own gap is widenLoneTile's). */
@@ -333,8 +353,7 @@ function meetsMinimum(size: TileSize, min: TileSize): boolean {
  *
  * The grid is two columns drawn with dense flow, so a tile goes to the first free place it fits.
  * When sizes are final and the last row has one empty cell, the Small tile in the other cell
- * becomes Wide, whether it was automatic or the owner's choice: no empty half row at the foot
- * of the page wins over a chosen Small. A tile that is not Small (the bottom of a Tall) stays.
+ * becomes Wide (so does one mid-grid with nothing to backfill it), whether it was automatic or the owner's choice: no empty half row wins over a chosen Small. A tile that is not Small (the bottom of a Tall) stays.
  *
  * `minSize` (a widget that cannot be drawn small) lifts a size that is below
  * the tile's minimum to the minimum itself; it never lowers one. The items may
@@ -356,6 +375,7 @@ export function arrangeTiles<T extends { size: TileSize | null }>(
     };
   });
 
+  widenLoneTile(tiles);
   // An automatic Tall that leaves an empty cell inside the grid becomes Wide; a chosen size is never touched.
   const auto = links.map((link) => link.size === null);
   for (let i = 0; i < tiles.length && hasInteriorHole(tiles.map((t) => t.size)); i++) {

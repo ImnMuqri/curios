@@ -373,4 +373,13 @@ describe('LayoutEditor, List or Bento', () => {
     expect(sizeGroup('Shop')).toBeNull();
     expect(sizeGroup('Portfolio')).not.toBeNull();
   });
+
+  it('notes a Wide shown for a row that is Auto or saved Small, when the grid widens it', () => {
+    const wide: LinkItem = { ...links[0]!, size: 'WIDE' };
+    const auto: LinkItem = { ...links[1]!, id: 'z', label: 'Zed' };
+    render(<LayoutEditor entries={pageEntries([wide, { ...wide, id: 'y', label: 'Why' }, auto, { ...wide, id: 'x', label: 'Ex' }], null, null)} onReorder={vi.fn()} faqEmpty={false} layout="BENTO" onLayout={vi.fn()} onResize={vi.fn()} />);
+    // Auto (a lone Small by position) is drawn Wide: the saved value stays Auto.
+    expect(within(sizeGroup('Zed')!).getByRole('radio', { name: 'Auto' })).toBeChecked();
+    expect(screen.getAllByText('Shown Wide to fill the grid').length).toBeGreaterThan(0);
+  });
 });

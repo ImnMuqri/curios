@@ -334,7 +334,7 @@ export function LayoutEditor({
                   disabled={saving}
                   onChange={(size) => void choose(() => resize(entry.id, size === 'AUTO' ? null : size))}
                 />
-                {entry.size !== null && effective.get(entry.id) !== entry.size ? <small>Shown {SIZE_LABEL[effective.get(entry.id)!]} to fill the grid</small> : null}
+                {(entry.size !== null ? effective.get(entry.id) !== entry.size : effective.get(entry.id) === 'WIDE' && minimumOf(entry) === 'SMALL') ? <small>Shown {SIZE_LABEL[effective.get(entry.id)!]} to fill the grid</small> : null}
               </span>
             ) : null}
           </li>

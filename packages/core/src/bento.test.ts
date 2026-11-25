@@ -107,6 +107,22 @@ describe('arrangeTiles', () => {
     expect(arrangeTiles([{ size: null }, { size: 'WIDE' }, { size: null }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE']);
   });
 
+  it('widens a lone Small that is interior, with nothing to backfill it', () => {
+    expect(arrangeTiles([{ size: null }, { size: 'WIDE' }, { size: null }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE', 'WIDE']);
+    expect(arrangeTiles([{ size: 'SMALL' }, { size: 'WIDE' }, { size: 'WIDE' }, { size: 'SMALL' }, { size: 'WIDE' }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['SMALL', 'WIDE', 'WIDE', 'SMALL', 'WIDE', 'WIDE']);
+    // Dense flow backfills the first Small's hole with the second: both stay Small. With nothing after, a lone one widens.
+    expect(arrangeTiles([{ size: 'SMALL' }, { size: 'WIDE' }, { size: 'WIDE' }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('fills the half row above a Wide FAQ (auto, WIDE, auto, FAQ)', () => {
+    const items = [{ size: null }, { size: 'WIDE' as TileSize | null }, { size: null }, { size: 'WIDE' as TileSize | null }];
+    expect(arrangeTiles(items).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('leaves a full row of two Smalls alone', () => {
+    expect(arrangeTiles([{ size: 'SMALL' }, { size: 'SMALL' }, { size: 'WIDE' }]).map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'WIDE']);
+  });
+
   it('keeps a chosen Tall even when it leaves a hole', () => {
     expect(arrangeTiles([{ size: 'TALL' }, { size: 'WIDE' }, { size: null }]).map((t) => t.size)[0]).toBe('TALL');
   });
@@ -186,7 +202,7 @@ describe('arrangeTiles', () => {
 
   it('raises a size below its minimum to the minimum, and never lowers one', () => {
     const items = [{ size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'BIG' as TileSize | null, min: 'WIDE' as TileSize }];
-    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['WIDE', 'SMALL', 'BIG']);
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'BIG']);
   });
 
   it('lets Wide satisfy only a Wide minimum, Tall only Tall, and Big anything', () => {
