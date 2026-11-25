@@ -148,14 +148,15 @@ enum AvatarSize {
 }
 
 /// Where the cover sits. TOP is the band at the head of the page every page had; FULL fills the whole page behind the content.
-enum PageLayout {
-  LIST
-  BENTO
-}
-
 enum CoverLayout {
   TOP
   FULL
+}
+
+/// How the page is laid out: LIST is a column of links, BENTO a grid of sized tiles.
+enum PageLayout {
+  LIST
+  BENTO
 }
 
 enum HeadingFont {

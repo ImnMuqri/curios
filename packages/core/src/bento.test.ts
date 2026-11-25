@@ -4,6 +4,7 @@ import {
   coverTintOf,
   FAQ_TILE_ID,
   pageEntries,
+  placeTiles,
   STOCK_COVER_TINTS,
   arrangeTiles,
   charCount,
@@ -126,10 +127,9 @@ describe('arrangeTiles', () => {
     expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL']);
   });
 
-  it('does not widen a chosen size even with odd cells', () => {
-    // 7 cells total (odd), last tile is chosen SMALL. Parity fix should not apply.
+  it('widens a chosen Small left alone in the last row (no half row wins over a chosen size)', () => {
     const tiles = arrangeTiles([{ size: 'BIG' }, { size: null }, { size: null }, { size: 'SMALL' }]);
-    expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL', 'SMALL']);
+    expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL', 'WIDE']);
   });
 
   it('colours the first tile with the accent and the second warm, whatever their size', () => {
@@ -141,10 +141,39 @@ describe('arrangeTiles', () => {
     expect(arrangeTiles([])).toEqual([]);
   });
 
-  it('ends five Small tiles with the last one Wide, never half a row', () => {
-    const four = Array.from({ length: 4 }, () => ({ size: 'SMALL' as TileSize | null }));
-    const tiles = arrangeTiles([...four, { size: null }], () => 'SMALL');
-    expect(tiles.map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'SMALL', 'SMALL', 'WIDE']);
+  it('ends five owner-chosen Small tiles with the last one Wide', () => {
+    const five = Array.from({ length: 5 }, () => ({ size: 'SMALL' as TileSize | null }));
+    expect(arrangeTiles(five).map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'SMALL', 'SMALL', 'WIDE']);
+  });
+
+  it('keeps an automatic last tile Wide when its minimum is Wide', () => {
+    const items = [{ size: 'SMALL' as TileSize | null }, { size: 'SMALL' as TileSize | null }, { size: null }];
+    expect(arrangeTiles(items, () => 'WIDE').map((t) => t.size)).toEqual(['WIDE', 'WIDE', 'WIDE']);
+  });
+
+  it('widens an automatic Small at the end after a raise in the middle', () => {
+    const S = 'SMALL' as TileSize;
+    const items = [{ size: S as TileSize | null, min: S }, { size: S as TileSize | null, min: S }, { size: S as TileSize | null, min: 'WIDE' as TileSize }, { size: null, min: S }];
+    // Small, Small, (Small raised to Wide), then an automatic Small alone on row 3 -> Wide.
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['SMALL', 'SMALL', 'WIDE', 'WIDE']);
+  });
+
+  it('lets dense flow backfill a hole, so a raise that leaves the grid full changes nothing else', () => {
+    const items = [{ size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }];
+    expect(arrangeTiles(items, (i) => i.min).map((t) => t.size)).toEqual(['SMALL', 'WIDE', 'SMALL']);
+  });
+
+  it('leaves no trailing half row for Tall, Small, then a Wide-minimum widget', () => {
+    const items = [{ size: 'TALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'SMALL' as TileSize }, { size: 'SMALL' as TileSize | null, min: 'WIDE' as TileSize }];
+    const sizes = arrangeTiles(items, (i) => i.min).map((t) => t.size);
+    expect(sizes).toEqual(['TALL', 'SMALL', 'WIDE']);
+    // Wide cannot fit beside the Tall, so it drops to row 3 and fills it: no hole at the foot.
+    expect(placeTiles(sizes)).toEqual([{ row: 0, col: 0 }, { row: 0, col: 1 }, { row: 2, col: 0 }]);
+  });
+
+  it('leaves a lone cell beside the bottom of a Tall as it is', () => {
+    const tiles = arrangeTiles([{ size: 'TALL' }, { size: 'SMALL' }]);
+    expect(tiles.map((t) => t.size)).toEqual(['TALL', 'SMALL']);
   });
 
   it('raises a size below its minimum to the minimum, and never lowers one', () => {

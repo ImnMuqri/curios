@@ -254,7 +254,44 @@ export function tintOf(hex: string, share: number): string {
 
 export type Tone = 'accent' | 'warm' | 'plain';
 
-const CELLS: Record<TileSize, number> = { SMALL: 1, WIDE: 2, TALL: 2, BIG: 4 };
+const SPAN: Record<TileSize, { w: number; h: number }> = {
+  SMALL: { w: 1, h: 1 },
+  WIDE: { w: 2, h: 1 },
+  TALL: { w: 1, h: 2 },
+  BIG: { w: 2, h: 2 },
+};
+
+/** Where a two-column dense grid puts each size: the first free place it fits, top to bottom, left to right. */
+export function placeTiles(sizes: TileSize[]): { row: number; col: number }[] {
+  const taken: boolean[][] = [];
+  const free = (r: number, c: number) => !taken[r]?.[c];
+  return sizes.map((size) => {
+    const { w, h } = SPAN[size];
+    for (let row = 0; ; row++) {
+      for (let col = 0; col + w <= 2; col++) {
+        let fits = true;
+        for (let dr = 0; dr < h && fits; dr++) for (let dc = 0; dc < w; dc++) if (!free(row + dr, col + dc)) fits = false;
+        if (!fits) continue;
+        for (let dr = 0; dr < h; dr++) {
+          taken[row + dr] ??= [false, false];
+          for (let dc = 0; dc < w; dc++) taken[row + dr]![col + dc] = true;
+        }
+        return { row, col };
+      }
+    }
+  });
+}
+
+/** With one empty cell in the last row, the Small tile beside it widens to fill it. */
+function widenLoneTile(tiles: { size: TileSize }[]): void {
+  const at = placeTiles(tiles.map((t) => t.size));
+  const lastRow = Math.max(-1, ...at.map((p, i) => p.row + SPAN[tiles[i]!.size].h - 1));
+  const inRow = at.flatMap((p, i) => (p.row <= lastRow && p.row + SPAN[tiles[i]!.size].h - 1 >= lastRow ? [i] : []));
+  const cells = inRow.reduce((n, i) => n + SPAN[tiles[i]!.size].w, 0);
+  if (cells !== 1) return;
+  const only = tiles[inRow[0]!]!;
+  if (only.size === 'SMALL') only.size = 'WIDE';
+}
 
 function autoSize(index: number, count: number): TileSize {
   // One link: a tall tile would leave its neighbour's column empty.
@@ -280,6 +317,11 @@ function meetsMinimum(size: TileSize, min: TileSize): boolean {
  * end with half a row empty. Tone follows position only: the first tile
  * carries the accent, the second the warm colour.
  *
+ * The grid is two columns drawn with dense flow, so a tile goes to the first free place it fits.
+ * When sizes are final and the last row has one empty cell, the Small tile in the other cell
+ * becomes Wide, whether it was automatic or the owner's choice: no empty half row at the foot
+ * of the page wins over a chosen Small. A tile that is not Small (the bottom of a Tall) stays.
+ *
  * `minSize` (a widget that cannot be drawn small) lifts a size that is below
  * the tile's minimum to the minimum itself; it never lowers one. The items may
  * be the entries `pageEntries` returns.
@@ -300,9 +342,7 @@ export function arrangeTiles<T extends { size: TileSize | null }>(
     };
   });
 
-  const last = tiles.at(-1);
-  const cells = tiles.reduce((sum, tile) => sum + CELLS[tile.size], 0);
-  if (last && last.link.size === null && last.size === 'SMALL' && cells % 2 === 1) last.size = 'WIDE';
+  widenLoneTile(tiles);
 
   return tiles;
 }
