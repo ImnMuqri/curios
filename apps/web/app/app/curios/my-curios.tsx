@@ -126,6 +126,33 @@ export function positionsAfterRemoval(linkAt: number, shop: number | null, faq: 
 }
 
 /**
+ * Where the shop and People often ask sit after a link or widget is added, as the API works it out: the
+ * new one joins the end of the links, at the full-list index just after the last link (0 with no links), and
+ * a tile at or after that index moves up one. A tile placed before the last link keeps its place among the
+ * links. `shop` is null while the shop is closed; an unset FAQ position (null) stays null.
+ */
+export function positionsAfterAdd(linkCount: number, shop: number | null, faq: number | null): { shop: number | null; faq: number | null } {
+  const tiles: { key: 'shop' | 'faq'; position: number }[] = [];
+  if (shop !== null) tiles.push({ key: 'shop', position: shop });
+  if (faq !== null) tiles.push({ key: 'faq', position: faq });
+  tiles.sort((x, y) => x.position - y.position);
+  // Walk the full list to the last link; the new one goes right after it.
+  let at = 0;
+  let seen = 0;
+  let tile = 0;
+  for (let i = 0; seen < linkCount; i += 1) {
+    if (tile < tiles.length && tiles[tile]!.position === i) tile += 1;
+    else {
+      seen += 1;
+      at = i + 1;
+    }
+  }
+  const out = { shop, faq };
+  for (const t of tiles) if (t.position >= at) out[t.key] = t.position + 1;
+  return out;
+}
+
+/**
  * My Curios: the owner's page, arranged. The header, over the left column
  * only, carries the kicker, title and sentence, the address with View page, and the
  * Profile / Links underline tabs; "Saved" lives in the frame's top bar. Whether
@@ -189,6 +216,21 @@ export function MyCuriosEditor({
       throw failure;
     }
   }
+
+  /** A new link or widget joins the end of the links; the server moves the tiles that sat after it, and so does this. */
+  function afterAdd(added: LinkItem) {
+    setPage((current) => {
+      const moved = positionsAfterAdd(current.links.length, current.shop?.position ?? null, current.faqPosition);
+      return {
+        ...current,
+        shop: current.shop && moved.shop !== null ? { ...current.shop, position: moved.shop } : current.shop,
+        faqPosition: moved.faq,
+      };
+    });
+    return added;
+  }
+  const addLinkAndRepositionTiles = async (input: { label: string; url: string }) => afterAdd(await api.addLink(input));
+  const addWidgetAndRepositionTiles = async (input: { url: string; label: string | null }) => afterAdd(await api.addWidget(input));
 
   /**
    * The server pulls the shop and People often ask up a place when a link above them is removed (their
@@ -358,8 +400,8 @@ export function MyCuriosEditor({
             <LinksEditor
               links={page.links}
               onChange={(links) => update({ links })}
-              addLink={api.addLink}
-              addWidget={api.addWidget}
+              addLink={addLinkAndRepositionTiles}
+              addWidget={addWidgetAndRepositionTiles}
               updateLink={api.updateLink}
               removeLink={removeLinkAndRepositionTiles}
               // The Shop link is the first row of the list (v3), with its switch.
@@ -373,8 +415,10 @@ export function MyCuriosEditor({
                       setPage((current) => ({
                         ...current,
                         shopTab: current.shopTab ? { ...current.shopTab, open } : null,
-                        // The tile sits after the links when the shop opens, which is where the API puts it.
-                        shop: open ? { position: current.links.length, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
+                        // The button goes first when the shop opens, as the API puts it; whatever else is
+                        // placed in the list moves down one, so a stored FAQ position goes with it.
+                        faqPosition: open && !current.shop && current.faqPosition !== null ? current.faqPosition + 1 : current.faqPosition,
+                        shop: open ? { position: 0, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
                       }))
                     }
                   />

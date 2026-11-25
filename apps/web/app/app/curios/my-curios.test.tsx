@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MyCuriosEditor, positionsAfterRemoval, type EditorPage } from './my-curios.js';
+import { MyCuriosEditor, positionsAfterAdd, positionsAfterRemoval, type EditorPage } from './my-curios.js';
 import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
@@ -551,6 +551,39 @@ describe('the Layout tab', () => {
     await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
     await userEvent.click(editTab('Layout'));
     expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Portfolio', 'People often ask']);
+  });
+
+  it('adds a link at the end of the links, leaving a shop between two links where it is', async () => {
+    show(two, api());
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
+    const panel = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.type(panel.getByLabelText('Name'), 'Newest');
+    await userEvent.type(panel.getByLabelText('Address'), 'new.dev');
+    await userEvent.click(panel.getByRole('button', { name: 'Add' }));
+    await userEvent.click(editTab('Layout'));
+    // The shop sat between the two links, so it stays there; the new link joins the end.
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'Newest', 'People often ask']);
+  });
+
+  it('puts the shop first when it opens', async () => {
+    show({ ...business, links: two.links }, api());
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop link' }));
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))[0]).toBe('Shop');
+  });
+
+  it('works out where the tiles go after an add, the way the API does', () => {
+    expect(positionsAfterAdd(2, 2, null)).toEqual({ shop: 3, faq: null });
+    expect(positionsAfterAdd(2, 1, null)).toEqual({ shop: 1, faq: null });
+    expect(positionsAfterAdd(0, 0, null)).toEqual({ shop: 1, faq: null });
+    expect(positionsAfterAdd(2, null, 2)).toEqual({ faq: 3, shop: null });
+    expect(positionsAfterAdd(2, 2, 3)).toEqual({ shop: 3, faq: 4 });
+    expect(positionsAfterAdd(1, 0, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterAdd(3, null, null)).toEqual({ shop: null, faq: null });
   });
 
   it('works out the positions the way the API does', () => {
