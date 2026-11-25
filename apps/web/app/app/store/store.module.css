@@ -708,6 +708,10 @@
 .pricedBy {
   position: relative;
   display: inline-grid;
+  /* Its two segments' width, not the column's: stretched, the track ran on empty past them. */
+  justify-self: start;
+  align-self: flex-start;
+  width: max-content;
   grid-template-columns: repeat(2, 124px);
   padding: 3px;
   border-radius: 10px;
