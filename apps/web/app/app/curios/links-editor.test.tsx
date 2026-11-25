@@ -18,8 +18,6 @@ function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[
     addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/abc' })),
     updateLink: vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...links.find((l) => l.id === id)!, ...patch })),
     removeLink: vi.fn(async () => undefined),
-    reorder: vi.fn(async () => undefined),
-    shop: null,
     ...overrides,
   };
   render(<LinksEditor {...props} />);
@@ -72,26 +70,9 @@ describe('LinksEditor', () => {
     expect(row).not.toHaveTextContent('https://');
   });
 
-  it('moves a link down with the keyboard-reachable button', async () => {
-    const props = setup();
-    await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
-    expect(props.reorder).toHaveBeenCalledWith(['b', 'a', 'c']);
-    expect(props.onChange).toHaveBeenLastCalledWith([three[1], three[0], three[2]]);
-  });
-
-  it('cannot move the first link up or the last link down', () => {
+  it('has no move buttons, because order lives in Layout', () => {
     setup();
-    expect(screen.getByRole('button', { name: 'Move Portfolio up' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Move GitHub down' })).toBeDisabled();
-  });
-
-  // Review Focus 1, on the client: a refused reorder must not leave the screen lying.
-  it('snaps back and says so when a reorder is refused', async () => {
-    const props = setup(three, { reorder: vi.fn(async () => { throw new Error('Your links changed somewhere else.'); }) });
-    await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
-
-    expect(props.onChange).toHaveBeenLastCalledWith(three);
-    expect(screen.getByRole('alert')).toHaveTextContent(/changed somewhere else/i);
+    expect(screen.queryByRole('button', { name: /^Move / })).toBeNull();
   });
 
   it('asks before removing, because a removal cannot be undone', async () => {
@@ -217,7 +198,7 @@ describe('LinksEditor', () => {
   it('drops a pending inline save when the link is removed before it fires', async () => {
     vi.useFakeTimers();
     const updateLink = vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...three.find((l) => l.id === id)!, ...patch }));
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -244,7 +225,7 @@ describe('LinksEditor', () => {
     vi.useFakeTimers();
     let rejectUpdate!: (failure: Error) => void;
     const updateLink = vi.fn(() => new Promise<LinkItem>((_resolve, reject) => { rejectUpdate = reject; }));
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -274,7 +255,7 @@ describe('LinksEditor', () => {
       ...patch,
       url: 'https://wa.me/60123',
     }));
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -322,7 +303,7 @@ describe('LinksEditor', () => {
       return Promise.resolve({ ...three.find((l) => l.id === id)!, ...patch });
     });
     vi.useFakeTimers();
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} />);
 
     // The row's aria-label is bound to the `link.label` prop -- unlike the
     // Name field's value, which is local state -- so it shows whether the
@@ -369,30 +350,6 @@ describe('LinksEditor', () => {
 
     fireEvent.click(within(row).getByRole('button', { name: 'Keep' }));
     expect(within(row).getByRole('button', { name: 'Remove GitHub' })).toHaveFocus();
-  });
-
-  // The shop is a tab now, not a row, but the API still keeps its place
-  // among the links and wants it in every new order while the shop is open.
-  describe('with the shop open', () => {
-    const shop = { position: 1, size: null };
-
-    it('lists only the links', () => {
-      setup(three.slice(0, 2), { shop });
-      expect(screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'WhatsApp']);
-    });
-
-    it('sends the shop along, unseen, at its place in the new order', async () => {
-      const props = setup(three, { shop });
-      await userEvent.click(screen.getByRole('button', { name: 'Move GitHub up' }));
-      expect(props.reorder).toHaveBeenCalledWith(['a', 'shop', 'c', 'b']);
-      expect(props.onChange).toHaveBeenLastCalledWith([three[0], three[2], three[1]]);
-    });
-
-    it('sends link ids only when the shop is closed', async () => {
-      const props = setup(three.slice(0, 2), { shop: null });
-      await userEvent.click(screen.getByRole('button', { name: 'Move Portfolio down' }));
-      expect(props.reorder).toHaveBeenCalledWith(['b', 'a']);
-    });
   });
 
   describe('widgets', () => {

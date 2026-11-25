@@ -62,12 +62,12 @@ Open: /app/curios
 Source: devDocs/slice-13-build-spec.md; My Curios copy
 
 ### page-links · How do I add, reorder or resize links?
-In My Curios, on Links. Add a link (a website, WhatsApp, Instagram, an email or a phone number) and use the up and down arrows to reorder. You can have up to 30 links. Your page’s chat can point people to them too.
+In My Curios, on Links, add a link (a website, WhatsApp, Instagram, an email or a phone number) or a widget. To put them in order, open Layout and drag each row by its handle, or focus a row, press Space, move it with the arrow keys and press Space again. You can have up to 30 links. Your page’s chat can point people to them too.
 Open: /app/curios
-Source: packages/core/src/bento.ts (MAX_LINKS); apps/web/app/app/curios/links-editor.tsx
+Source: packages/core/src/bento.ts (MAX_LINKS); apps/web/app/app/curios/links-editor.tsx; apps/web/app/app/curios/layout-editor.tsx
 
 ### page-shop-tile · How do I remove the shop link from my page?
-The Shop link sits first in your links whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. It can’t be moved or resized.
+The Shop button shows on your page whenever your shop is open. To remove it, turn off the Shop link switch in My Curios (on Links) or the shop switch in Store; both close the shop. To move it, open Layout and drag it, along with People often ask, to where you want it among your links. It can’t be resized.
 Open: /app/curios
 Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
 

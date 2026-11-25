@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Callout } from '@curios/ui';
-import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, withShopTile, type ShopTilePlacement, type TileSize } from '@curios/core/bento';
+import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, type TileSize } from '@curios/core/bento';
 import { useAutosave } from '../_ui/use-autosave.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
 import { WIDGET_NAMES, parseWidgetLink, type LinkKind, type WidgetProvider } from '@curios/core/widgets';
+import { Icon, KINDS, WidgetIcon, kindOf, shown } from './link-icons.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
@@ -20,53 +21,6 @@ export type LinkItem = {
   embedRef: string | null;
 };
 
-/** An address as the row shows it: without the scheme nobody reads. */
-const shown = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/^mailto:/i, '').replace(/\/$/, '');
-
-function Icon({ d }: { d: string }) {
-  return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
-      <path d={d} />
-    </svg>
-  );
-}
-
-/**
- * The tile at a row's start (v3 board): WhatsApp and Instagram in their own colours, any other
- * address a plain link, read off the address so the owner never has to say what a link is.
- */
-const KINDS = {
-  whatsapp: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
-  instagram: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17.5 6.5h.01',
-  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
-} as const;
-const kindOf = (url: string): keyof typeof KINDS =>
-  /^(https?:\/\/)?([\w-]+\.)*(wa\.me|whatsapp\.com)(\/|$)/i.test(url)
-    ? 'whatsapp'
-    : /^(https?:\/\/)?([\w-]+\.)*instagram\.com(\/|$)/i.test(url)
-      ? 'instagram'
-      : 'link';
-
-/** One small glyph per service, drawn inline: no image requests. */
-const NOTE = 'M9 18V6l10-2v12M9 18a3 3 0 1 1-3-3 3 3 0 0 1 3 3zM19 16a3 3 0 1 1-3-3 3 3 0 0 1 3 3z';
-const CALENDAR = 'M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM4 10h16M8 3v4M16 3v4';
-const WIDGET_GLYPHS: Record<WidgetProvider, string> = {
-  SPOTIFY: NOTE,
-  APPLE_MUSIC: NOTE,
-  YOUTUBE: 'M9 7l8 5-8 5zM3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0z',
-  SOUNDCLOUD: 'M3 15v-3M6 16V9M9 16V7M12 16V6M15 16h3a3 3 0 0 0 0-6 5 5 0 0 0-3-1',
-  GOOGLE_MAPS: 'M12 21s-6-5.5-6-10a6 6 0 0 1 12 0c0 4.5-6 10-6 10zM12 8.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
-  CALCOM: CALENDAR,
-  CALENDLY: CALENDAR,
-  CANVA: 'M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z',
-};
-
-function WidgetIcon({ provider }: { provider: WidgetProvider }) {
-  return <Icon d={WIDGET_GLYPHS[provider]} />;
-}
-
-const UP = 'M6 15l6-6 6 6';
-const DOWN = 'M6 9l6 6 6-6';
 const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 const CLOSE = 'M6 6l12 12M18 6L6 18';
 
@@ -82,14 +36,10 @@ function pick<T extends object, K extends keyof T>(source: T, keys: K[]): Pick<T
 }
 
 /**
- * The owner's links, top to bottom as visitors see them. The up and down
- * buttons reorder; a row's name opens it to edit in place. Every change is
- * sent at once -- there is no Save button in My Curios.
- *
- * The shop tile still has a stored place among the links (the API wants it
- * in every new order while the shop is open), but on the page it is a pill,
- * so it travels along unseen here. What the owner sees of it is `lead`: the
- * Shop link's switch, drawn as the list's first row (v3 board).
+ * The owner's links. A row's name opens it to edit in place; every change is sent at once -- there
+ * is no Save button in My Curios. Their order, with the shop button and People often ask, is the
+ * Layout tab's. What the owner sees of the shop here is `lead`: the Shop link's switch, drawn as the
+ * list's first row (v3 board).
  */
 export function LinksEditor({
   links,
@@ -98,8 +48,6 @@ export function LinksEditor({
   addWidget,
   updateLink,
   removeLink,
-  reorder,
-  shop = null,
   lead = null,
 }: {
   links: LinkItem[];
@@ -108,9 +56,6 @@ export function LinksEditor({
   addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
   updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
-  reorder: (ids: string[]) => Promise<void>;
-  /** Where the shop tile is stored among the links, or null when the shop is closed. */
-  shop?: ShopTilePlacement | null;
   /** A row joined to the top of the list, never moved or removed with it (the Shop link). */
   lead?: ReactNode;
 }) {
@@ -138,22 +83,6 @@ export function LinksEditor({
   useEffect(() => {
     if (addingWidget) widgetRef.current?.focus();
   }, [addingWidget]);
-
-  // Put back as it was if the server refuses the new order.
-  async function move(from: number, to: number) {
-    const before = links;
-    const next = [...links];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved!);
-    onChange(next);
-    setError('');
-    try {
-      await reorder(withShopTile(next, shop).map((entry) => entry.id));
-    } catch (failure) {
-      onChange(before);
-      setError(message(failure));
-    }
-  }
 
   async function add() {
     setError('');
@@ -251,20 +180,17 @@ export function LinksEditor({
 
   return (
     <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="links-title">
-      <SectionHead id="links-title" title="Links" note="Top to bottom, as they appear. Your page can point people to them too." />
+      <SectionHead id="links-title" title="Links" note="Add and edit your links. Set their order in Layout. Your page can point people to them too." />
 
       {lead || links.length > 0 ? (
         <div className={styles.linkStack}>
           {lead}
           {links.length > 0 ? (
             <ul className={styles.linkList}>
-              {links.map((link, index) => (
+              {links.map((link) => (
                 <LinkRow
                   key={link.id}
                   link={link}
-                  first={index === 0}
-                  last={index === links.length - 1}
-                  onMove={(delta) => void move(index, index + delta)}
                   onLiveChange={(change) => applyLocal(link.id, change)}
                   onPersist={(change) => persist(link.id, change)}
                   onRemove={() => void remove(link.id)}
@@ -383,17 +309,11 @@ export function LinksEditor({
 
 function LinkRow({
   link,
-  first,
-  last,
-  onMove,
   onLiveChange,
   onPersist,
   onRemove,
 }: {
   link: LinkItem;
-  first: boolean;
-  last: boolean;
-  onMove: (delta: 1 | -1) => void;
   /** Applied to `links` (and so the live preview) immediately, synchronously. */
   onLiveChange: (change: Partial<{ label: string; url: string }>) => void;
   /** The debounced write, as a promise the field's SaveState can see fail. */
@@ -500,12 +420,6 @@ function LinkRow({
         </span>
       ) : (
         <span className={styles.tools}>
-          <button type="button" className={ui.iconButton} aria-label={`Move ${link.label} up`} title="Move up" disabled={first} onClick={() => onMove(-1)}>
-            <Icon d={UP} />
-          </button>
-          <button type="button" className={ui.iconButton} aria-label={`Move ${link.label} down`} title="Move down" disabled={last} onClick={() => onMove(1)}>
-            <Icon d={DOWN} />
-          </button>
           <button type="button" ref={removeButtonRef} className={ui.iconButton} aria-label={`Remove ${link.label}`} title="Remove" onClick={() => setConfirming(true)}>
             <Icon d={BIN} />
           </button>

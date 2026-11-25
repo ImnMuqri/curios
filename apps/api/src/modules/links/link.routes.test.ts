@@ -167,7 +167,7 @@ describe('PUT /links/order', () => {
       ids.push((await call(owner.cookie, 'POST', '/links', { label, url: 'a.com' })).json().link.id);
     }
 
-    const res = await call(owner.cookie, 'PUT', '/links/order', { ids: [ids[2], ids[0], ids[1]] });
+    const res = await call(owner.cookie, 'PUT', '/links/order', { ids: [ids[2], ids[0], ids[1], 'faq'] });
 
     expect(res.statusCode).toBe(200);
     expect(await labels(owner.cookie)).toEqual(['C', 'A', 'B']);
@@ -256,7 +256,7 @@ describe('PUT /links/order with the shop tile', () => {
     const b = (await call(owner.cookie, 'POST', '/links', { label: 'B', url: 'b.com' })).json().link.id as string;
     await openShop(owner.pageId);
 
-    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, 'shop', a] })).statusCode).toBe(200);
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, 'shop', a, 'faq'] })).statusCode).toBe(200);
     expect(await labels(owner.cookie)).toEqual(['B', 'A']);
     expect((await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } })).shopTilePosition).toBe(1);
   });
@@ -276,9 +276,9 @@ describe('PUT /links/order with the shop tile', () => {
     const a = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link.id as string;
     const b = (await call(owner.cookie, 'POST', '/links', { label: 'B', url: 'b.com' })).json().link.id as string;
     await openShop(owner.pageId);
-    await call(owner.cookie, 'PUT', '/links/order', { ids: [a, b, 'shop'] });
+    await call(owner.cookie, 'PUT', '/links/order', { ids: [a, b, 'shop', 'faq'] });
     await call(owner.cookie, 'DELETE', `/links/${b}`);
-    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['shop', a] })).statusCode).toBe(200);
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['shop', a, 'faq'] })).statusCode).toBe(200);
   });
 });
 
@@ -299,11 +299,11 @@ describe('PUT /links/order with the FAQ block', () => {
     expect(await faqAt(owner.pageId)).toBe(1);
   });
 
-  // Compatibility until the editor sends 'faq' (Task 9).
-  it('still accepts a business list without faq, leaving its position alone', async () => {
+  it('refuses a business list without faq, and changes nothing', async () => {
     const { owner, a, b } = await setup('BUSINESS');
     await call(owner.cookie, 'PUT', '/links/order', { ids: ['faq', a, b] });
-    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, a] })).statusCode).toBe(200);
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, a] })).json().error.code).toBe('LINK_ORDER_STALE');
+    expect(await labels(owner.cookie)).toEqual(['A', 'B']);
     expect(await faqAt(owner.pageId)).toBe(0);
   });
 

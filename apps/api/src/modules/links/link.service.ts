@@ -219,11 +219,9 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
  * the shop is open and never while it is closed, so the editor drags it like
  * any link. Its index is the page's shopTilePosition.
  *
- * The FAQ block travels as FAQ_TILE_ID, once on a business page and never on a personal one; its
- * index is faqPosition. TEMPORARY compatibility: a business list WITHOUT FAQ_TILE_ID is accepted and
- * leaves faqPosition unchanged. Remove this when the Layout tab ships (Task 9: business lists must
- * then contain 'faq'): a list without 'faq' stores the shop as an index into a list without the FAQ
- * block, which shifts the shop when faqPosition is non-null.
+ * The FAQ block travels as FAQ_TILE_ID, exactly once on a business page and never on a personal one;
+ * its index is faqPosition. A business list without it would store the shop as an index into a list
+ * without the FAQ block, shifting the shop, so it is stale like any other wrong set.
  */
 export async function reorderLinks(prisma: PrismaClient, accountId: string, ids: string[]): Promise<void> {
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true, mode: true } });
@@ -234,7 +232,7 @@ export async function reorderLinks(prisma: PrismaClient, accountId: string, ids:
     if (shopCount !== (page.storeEnabled ? 1 : 0)) throw new LinkOrderStaleError();
     const faqAt = ids.indexOf(FAQ_TILE_ID);
     const faqCount = ids.filter((id) => id === FAQ_TILE_ID).length;
-    if (faqCount > (page.mode === 'BUSINESS' ? 1 : 0)) throw new LinkOrderStaleError();
+    if (faqCount !== (page.mode === 'BUSINESS' ? 1 : 0)) throw new LinkOrderStaleError();
     const linkIds = ids.filter((id) => id !== SHOP_TILE_ID && id !== FAQ_TILE_ID);
 
     const current = await tx.link.findMany({ where: { pageId: page.id }, select: { id: true } });
@@ -248,7 +246,7 @@ export async function reorderLinks(prisma: PrismaClient, accountId: string, ids:
     }
     await tx.page.update({
       where: { id: page.id },
-      data: { ...(page.storeEnabled ? { shopTilePosition: shopAt } : {}), ...(faqCount === 1 ? { faqPosition: faqAt } : {}) },
+      data: { ...(page.storeEnabled ? { shopTilePosition: shopAt } : {}), ...(page.mode === 'BUSINESS' ? { faqPosition: faqAt } : {}) },
     });
   });
 }

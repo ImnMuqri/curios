@@ -201,9 +201,9 @@ describe('the tabs', () => {
     expect(screen.getByLabelText('Display name')).not.toBeVisible();
   });
 
-  it('has just the two tabs, Profile and Links', () => {
+  it('has the tabs Profile, Links and Layout', () => {
     show();
-    expect(within(screen.getByRole('tablist', { name: 'Edit' })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Profile', 'Links']);
+    expect(within(screen.getByRole('tablist', { name: 'Edit' })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Profile', 'Links', 'Layout']);
   });
 
   it('moves between parts with the arrow keys, Home and End, as a tab list does', async () => {
@@ -213,11 +213,11 @@ describe('the tabs', () => {
     expect(editTab('Links')).toHaveFocus();
     expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
-    expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
+    expect(editTab('Layout')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Home}');
     expect(editTab('Profile')).toHaveFocus();
     await userEvent.keyboard('{End}');
-    expect(editTab('Links')).toHaveFocus();
+    expect(editTab('Layout')).toHaveFocus();
   });
 
   // A hidden part keeps its state, so a name typed a moment ago still saves after switching away.
@@ -447,11 +447,92 @@ describe('without the template look', () => {
   it('marks each link row with its kind, read off the address, and the Shop link as the first row', async () => {
     show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null }] });
     await userEvent.click(editTab('Links'));
-    const kinds = [...document.querySelectorAll('[data-kind]')].filter((el) => el.tagName === 'SPAN' && el.closest('[role="tabpanel"]'));
+    const kinds = [...document.querySelectorAll('#panel-links [data-kind]')].filter((el) => el.tagName === 'SPAN');
     expect(kinds.map((el) => el.getAttribute('data-kind'))).toEqual(['shop', 'link', 'whatsapp']);
     // The shop row sits above the list, in the same box.
     const shop = screen.getByRole('group', { name: 'Shop link' });
     expect(shop.nextElementSibling?.tagName).toBe('UL');
+  });
+});
+
+describe('the Layout tab', () => {
+  const two: EditorPage = {
+    ...business,
+    shopTab: { open: true, itemCount: 2, preview: [] },
+    shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] },
+    faqPosition: null,
+    links: [
+      { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
+      { id: 'b', label: 'Cafe menu', url: 'https://cafe.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
+    ],
+  };
+  const layout = () => within(screen.getByRole('tabpanel', { name: 'Layout' }));
+  const before = (first: string, second: string) =>
+    Boolean(within(preview()).getByText(first).compareDocumentPosition(within(preview()).getByText(second)) & Node.DOCUMENT_POSITION_FOLLOWING);
+
+  async function liftDown(name: string) {
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+  }
+
+  it('lists the links, the shop and People often ask, and sends them all, reordered, in one save', async () => {
+    const { calls } = show(two);
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+    await liftDown('Portfolio');
+    expect(calls.reorder).toHaveBeenCalledTimes(1);
+    expect(calls.reorder).toHaveBeenCalledWith(['shop', 'a', 'b', 'faq']);
+  });
+
+  it('moves the preview as soon as a row is dropped', async () => {
+    show(two);
+    expect(before('Portfolio', 'Cafe menu')).toBe(true);
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name: 'Portfolio' });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    for (let i = 0; i < 3; i += 1) fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+    expect(before('Cafe menu', 'Portfolio')).toBe(true);
+  });
+
+  it('puts the preview back and shows the error when the save fails', async () => {
+    const calls = api();
+    calls.reorder = vi.fn(async () => {
+      throw new Error('Your links changed somewhere else.');
+    });
+    show(two, calls);
+    await userEvent.click(editTab('Layout'));
+    const row = layout().getByRole('listitem', { name: 'Portfolio' });
+    row.focus();
+    fireEvent.keyDown(row, { key: ' ' });
+    for (let i = 0; i < 3; i += 1) fireEvent.keyDown(row, { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row, { key: ' ' });
+    });
+    expect(before('Portfolio', 'Cafe menu')).toBe(true);
+    expect(layout().getByRole('alert')).toHaveTextContent('changed somewhere else');
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+  });
+
+  it('has no People often ask or Shop row on a personal page', async () => {
+    show();
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio']);
+  });
+
+  it('dims People often ask on a business page without answers', async () => {
+    show(two);
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getByRole('listitem', { name: 'People often ask' })).toHaveTextContent('Shows once you answer questions');
   });
 });
 

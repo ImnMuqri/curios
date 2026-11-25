@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
-import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
+import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageStyle, type StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
@@ -16,6 +16,7 @@ import { PillTabs } from '../_ui/pill-tabs.js';
 import panel from '../panel.module.css';
 import { AppearanceEditor } from './appearance-editor.js';
 import { CoverEditor } from './cover-editor.js';
+import { LayoutEditor } from './layout-editor.js';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 import { ProfileEditor } from './profile-editor.js';
 import { ShopSwitch } from './shop-switch.js';
@@ -78,6 +79,7 @@ export type EditorPage = MyCurios & {
 const TABS = [
   { id: 'profile', label: 'Profile' },
   { id: 'links', label: 'Links' },
+  { id: 'layout', label: 'Layout' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 type PreviewTab = 'links' | 'ask';
@@ -136,6 +138,35 @@ export function MyCuriosEditor({
   const [tab, setTab] = useState<Tab>('profile');
   const [previewTab, setPreviewTab] = useState<PreviewTab>('links');
   const [copied, setCopied] = useState(false);
+
+  // Everything on the page in visitor order, for the Layout tab. A business page (the one with a shop
+  // switch) always carries People often ask, answers or not, as the public page does.
+  const layoutEntries = useMemo(
+    () => pageEntries(page.links, page.shop, page.shopTab ? { position: page.faqPosition } : null),
+    [page.links, page.shop, page.shopTab, page.faqPosition],
+  );
+
+  /** The new order shows in the preview at once; a refused save puts the old one back and hands the error on. */
+  async function reorderPage(ids: string[]) {
+    const { links, shop, faqPosition } = page;
+    setPage((current) => {
+      const byId = new Map(current.links.map((link) => [link.id, link]));
+      const ordered = ids.flatMap((id) => byId.get(id) ?? []);
+      const unplaced = current.links.filter((link) => !ids.includes(link.id));
+      return {
+        ...current,
+        links: [...ordered, ...unplaced],
+        shop: current.shop ? { ...current.shop, position: ids.indexOf(SHOP_TILE_ID) } : null,
+        faqPosition: ids.includes(FAQ_TILE_ID) ? ids.indexOf(FAQ_TILE_ID) : current.faqPosition,
+      };
+    });
+    try {
+      await api.reorder(ids);
+    } catch (failure) {
+      setPage((current) => ({ ...current, links, shop, faqPosition }));
+      throw failure;
+    }
+  }
 
   const shopOpen = page.shopTab?.open ?? false;
   const previewTabs: PreviewTab[] = ['links', 'ask'];
@@ -251,8 +282,6 @@ export function MyCuriosEditor({
               addWidget={api.addWidget}
               updateLink={api.updateLink}
               removeLink={api.removeLink}
-              reorder={api.reorder}
-              shop={page.shop}
               // The Shop link is the first row of the list (v3), with its switch.
               lead={
                 page.shopTab ? (
@@ -272,6 +301,10 @@ export function MyCuriosEditor({
                 ) : null
               }
             />
+          </div>
+
+          <div role="tabpanel" id="panel-layout" aria-labelledby="tab-layout" hidden={tab !== 'layout'} className={`${ui.panel} ${styles.wide}`}>
+            <LayoutEditor entries={layoutEntries} onReorder={reorderPage} faqEmpty={(page.faq?.entries.length ?? 0) === 0} />
           </div>
         </div>
       </div>
