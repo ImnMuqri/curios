@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, createEvent, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import { pageEntries } from '@curios/core/bento';
-import { LayoutEditor } from './layout-editor.js';
+import { LayoutEditor, edgeScroll } from './layout-editor.js';
 import type { LinkItem } from './links-editor.js';
 
 const link = (id: string, label: string, url = `https://${id}.example.com`): LinkItem => ({ id, label, url, size: null, kind: 'LINK', provider: null, embedRef: null });
@@ -190,6 +190,86 @@ describe('LayoutEditor', () => {
       expect(names()).toEqual(ORIGINAL);
       fire('pointerUp', 120);
       expect(onReorder).not.toHaveBeenCalled();
+    });
+
+    describe('near the edge of the screen', () => {
+      /** A requestAnimationFrame that runs only when told to, so a frame is a step. */
+      function frames() {
+        const queue = new Map<number, FrameRequestCallback>();
+        let next = 1;
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+          queue.set(next, cb);
+          return next++;
+        });
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => void queue.delete(id));
+        return {
+          pending: () => queue.size,
+          step: () => {
+            const [id, cb] = [...queue][0]!;
+            queue.delete(id);
+            act(() => cb(0));
+          },
+        };
+      }
+
+      it('works out a speed from how close the pointer is', () => {
+        expect(edgeScroll(400, 800)).toBe(0);
+        expect(edgeScroll(48, 800)).toBe(0);
+        expect(edgeScroll(24, 800)).toBe(-6);
+        expect(edgeScroll(-10, 800)).toBe(-12);
+        expect(edgeScroll(776, 800)).toBe(6);
+        expect(edgeScroll(900, 800)).toBe(12);
+      });
+
+      it('scrolls the window while the pointer is held near the bottom, and keeps hit-testing', () => {
+        show();
+        rects();
+        const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+        const raf = frames();
+        Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+        fire('pointerDown', 25);
+        fire('pointerMove', 820);
+        raf.step();
+        expect(scrollBy).toHaveBeenCalledWith(0, 12);
+        // The rows followed the pointer, which is below every row's middle.
+        expect(names()[names().length - 1]).toBe('Portfolio');
+      });
+
+      it('scrolls up near the top, and not at all in the middle', () => {
+        show();
+        rects();
+        const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+        const raf = frames();
+        Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+        fire('pointerDown', 25);
+        raf.step();
+        expect(scrollBy).toHaveBeenLastCalledWith(0, -5.75);
+        fire('pointerMove', 400);
+        scrollBy.mockClear();
+        raf.step();
+        expect(scrollBy).not.toHaveBeenCalled();
+      });
+
+      it('stops on drop, on cancel and on unmount', () => {
+        const scrollBy = vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+        const raf = frames();
+        Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
+        show();
+        rects();
+        fire('pointerDown', 25);
+        expect(raf.pending()).toBe(1);
+        fire('pointerUp', 25);
+        expect(raf.pending()).toBe(0);
+        fire('pointerDown', 25);
+        expect(raf.pending()).toBe(1);
+        fire('lostPointerCapture');
+        expect(raf.pending()).toBe(0);
+        fire('pointerDown', 25);
+        expect(raf.pending()).toBe(1);
+        cleanup();
+        expect(raf.pending()).toBe(0);
+        expect(scrollBy).not.toHaveBeenCalled();
+      });
     });
 
     it('ignores the moves of another pointer', () => {

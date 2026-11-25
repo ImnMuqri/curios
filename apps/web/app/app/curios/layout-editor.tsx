@@ -37,6 +37,16 @@ const minimumOf = (entry: LayoutEntry): TileSize =>
 const sizesFor = (min: TileSize): TileSize[] =>
   (['SMALL', 'WIDE', 'TALL', 'BIG'] as const).filter((size) => size === 'BIG' || min === 'SMALL' || size === min);
 
+const EDGE = 48;
+const MAX_SCROLL = 12;
+
+/** How far to scroll the window this frame for a pointer at `y`: negative up, positive down, 0 away from the edges. */
+export function edgeScroll(y: number, viewportHeight: number): number {
+  if (y < EDGE) return -MAX_SCROLL * Math.min(1, (EDGE - y) / EDGE);
+  if (y > viewportHeight - EDGE) return MAX_SCROLL * Math.min(1, (y - (viewportHeight - EDGE)) / EDGE);
+  return 0;
+}
+
 type Drag = { id: string; by: 'key' | 'pointer'; draft: LayoutEntry[]; pointerId?: number };
 
 /**
@@ -83,6 +93,8 @@ export function LayoutEditor({
   const rows = useRef(new Map<string, HTMLLIElement>());
   // Pointer events can arrive faster than renders: the drag in flight is read from here.
   const dragRef = useRef<Drag | null>(null);
+  // Where the pointer last was, for the auto-scroll to keep testing the rows against it.
+  const pointerY = useRef(0);
   // While a save is out nothing can be lifted: a second drop could land before, or be undone by, the first.
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false);
@@ -121,6 +133,25 @@ export function LayoutEditor({
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
+  }, [pointerDragging]);
+
+  // Near the top or bottom of the screen a pointer drag scrolls the page, faster the closer the pointer
+  // is to the edge. The pointer need not move for the rows to follow: each frame re-tests the last
+  // position against the rows, which have moved under it. Ends with the drag (drop, cancel, lost capture)
+  // and on unmount.
+  useEffect(() => {
+    if (!pointerDragging) return;
+    let frame = 0;
+    const tick = () => {
+      const by = edgeScroll(pointerY.current, window.innerHeight);
+      if (by !== 0) {
+        window.scrollBy(0, by);
+        hitTest(pointerY.current);
+      }
+      frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
   }, [pointerDragging]);
 
   function lift(id: string, by: Drag['by'], pointerId?: number) {
@@ -236,20 +267,26 @@ export function LayoutEditor({
     const id = handle?.closest('li')?.dataset.id;
     if (!id) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
+    pointerY.current = event.clientY;
     lift(id, 'pointer', event.pointerId);
   }
 
-  function onPointerMove(event: PointerEvent<HTMLUListElement>) {
-    if (dragRef.current?.by !== 'pointer' || dragRef.current.pointerId !== event.pointerId) return;
+  function hitTest(clientY: number) {
     const children = [...(list.current?.children ?? [])];
     if (children.length === 0) return;
     // The first row whose middle is below the pointer: rows of different heights do not flicker.
     let to = children.findIndex((child) => {
       const box = child.getBoundingClientRect();
-      return event.clientY < box.top + box.height / 2;
+      return clientY < box.top + box.height / 2;
     });
     if (to === -1) to = children.length - 1;
     moveTo(to);
+  }
+
+  function onPointerMove(event: PointerEvent<HTMLUListElement>) {
+    if (dragRef.current?.by !== 'pointer' || dragRef.current.pointerId !== event.pointerId) return;
+    pointerY.current = event.clientY;
+    hitTest(event.clientY);
   }
 
   function onPointerEnd(event: PointerEvent<HTMLUListElement>) {
