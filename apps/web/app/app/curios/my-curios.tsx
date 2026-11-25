@@ -144,6 +144,7 @@ export function MyCuriosEditor({
   // The shop pill as visitors see it, minus the pickup day (that needs the shop's terms the editor does not carry).
   const previewPill = shopOpen && (page.shopTab?.itemCount ?? 0) > 0
     ? {
+        position: page.shop?.position,
         label: 'Shop',
         caption: shopCopy(page.language).itemCount(page.shopTab?.itemCount ?? 0),
         photos: page.shopItems.slice(0, 3).map((item) => ({ name: item.name, url: item.photoUrl })),
@@ -300,6 +301,7 @@ export function MyCuriosEditor({
           {...page}
           shop={previewPill}
           faq={page.faq}
+          faqPosition={page.shopTab ? page.faqPosition : undefined}
           mode={shownPreview === 'ask' ? 'chat' : undefined}
           interactive={false}
           nameAs="p"

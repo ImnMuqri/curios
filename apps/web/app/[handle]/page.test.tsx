@@ -33,6 +33,7 @@ const { default: HandlePage, generateMetadata } = await import('./page.js');
 
 const page: PublicPage = {
   id: 'p1',
+  faqPosition: null,
   handle: 'nadia',
   displayName: 'Nadia Bakes',
   bio: 'Kek butter, Shah Alam',

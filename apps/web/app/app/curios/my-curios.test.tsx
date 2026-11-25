@@ -7,7 +7,7 @@ import { MyCuriosEditor, type EditorPage } from './my-curios.js';
 import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
-  id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
+  id: 'p1', faqPosition: null, handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
   style: 'SOFT', secondaryColor: null, coverWash: true, accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
   socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',

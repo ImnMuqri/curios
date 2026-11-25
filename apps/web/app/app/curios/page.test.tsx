@@ -34,6 +34,7 @@ const MyCuriosPage = (await import('./page.js')).default;
 
 const page: MyCuriosData = {
   id: 'p1',
+  faqPosition: null,
   handle: 'imnmuqri',
   displayName: 'Iman Muqri',
   avatarSize: 'MEDIUM',

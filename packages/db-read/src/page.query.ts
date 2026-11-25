@@ -66,6 +66,8 @@ export interface PublicPage {
   backgroundColor: string | null;
   /** Social profiles to show as icons under the name, in display order. */
   socials: { kind: SocialKind; value: string }[];
+  /** Where "People often ask" sits among the links (an index into the whole page); null is after the last. */
+  faqPosition: number | null;
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
   /**
@@ -148,6 +150,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       minNoticeDays: true,
       closedDays: true,
       ...SHOP_TILE_SELECT,
+      faqPosition: true,
       links: {
         orderBy: { position: 'asc' },
         select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true },

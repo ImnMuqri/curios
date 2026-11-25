@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import {
   isHexColor,
+  pageEntries,
   accentShowsOn,
   readableOn,
   type AvatarSize,
@@ -55,7 +56,13 @@ export interface BentoPageProps {
    * initial stands in for a missing one), `label`, and the `caption` under it
    * ("3 items · next pickup Sat 17 Oct"). There is no Shop tab.
    */
-  shop?: { label: string; caption: string; photos: { url: string | null; name: string }[] } | null;
+  shop?: {
+    label: string;
+    caption: string;
+    photos: { url: string | null; name: string }[];
+    /** Its place among the links (an index into the whole page); 0, first, when left out. */
+    position?: number;
+  } | null;
   /**
    * Which tab the page is drawn on. Left out, it is Links; the public page's
    * Ask flips to chat at runtime by setting the same attribute (ChatMode).
@@ -82,6 +89,13 @@ export interface BentoPageProps {
   language?: string;
   /** The most asked answered questions, opened in place, and how many there are in all. */
   faq?: { entries: { slug: string; question: string; answer: string }[]; total: number } | null;
+  /**
+   * Where "People often ask" sits among the links; null is after the last. Left out
+   * (undefined), the page has no such block (a personal page). A business page passes
+   * its stored position whether or not there are answers, so saved indexes agree with
+   * the editor; with no answers nothing is drawn.
+   */
+  faqPosition?: number | null;
   /**
    * The page on its own, at a URL: a 460px column over a darker field of its
    * own colour on a wide screen. Left out wherever the page sits inside
@@ -219,6 +233,27 @@ export function BentoPage(props: BentoPageProps) {
   ];
   const faqHref = `${home}/faq`;
 
+  // The page's pieces in the owner's order, then cut into runs of list items with the FAQ block standing between them.
+  const faq = props.faq && props.faq.entries.length > 0 ? props.faq : null;
+  const entries = pageEntries(
+    props.links,
+    props.shop ? { position: props.shop.position ?? 0, size: null } : null,
+    props.faq || props.faqPosition !== undefined ? { position: props.faqPosition ?? null } : null,
+  );
+  type Run = { kind: 'list'; entries: typeof entries } | { kind: 'faq' };
+  const runs: Run[] = [];
+  for (const entry of entries) {
+    if (entry.kind === 'faq') {
+      // No answers: nothing drawn, and the links around it stay one list.
+      if (faq) runs.push({ kind: 'faq' });
+      continue;
+    }
+    const last = runs[runs.length - 1];
+    if (last?.kind === 'list') last.entries.push(entry);
+    else runs.push({ kind: 'list', entries: [entry] });
+  }
+  const leadId = props.links[0]?.id;
+
   const page = (
     <div
       className={styles.page}
@@ -277,68 +312,74 @@ export function BentoPage(props: BentoPageProps) {
 
       <div className={styles.foldaway} data-foldaway>
         <div className={styles.foldawayInner}>
-          {props.links.length > 0 || props.shop ? (
-            <ul className={styles.links} role="list" data-shop={props.shop ? 'yes' : undefined}>
-              {props.shop ? (
-                <li>
-                  {interactive ? (
-                    <a className={styles.shopLink} href={`${home}/shop`}>
-                      <ShopPill shop={props.shop} />
-                    </a>
+          {runs.map((run, index) =>
+            run.kind === 'faq' ? (
+              <section key="faq" className={styles.faq} aria-labelledby="often-ask">
+                <h2 id="often-ask" className={styles.faqTitle}>
+                  {copy.oftenAsk}
+                  <a href={faqHref}>{copy.seeAll(faq?.total ?? 0)}</a>
+                </h2>
+                {(faq?.entries ?? []).slice(0, FAQ_SHOWN).map((entry, i) => (
+                  // <details>, so the accordion works before (and without) JavaScript.
+                  <details key={entry.slug} className={styles.faqItem} open={i === 0}>
+                    <summary>
+                      {entry.question}
+                      <span className={styles.faqSign} aria-hidden="true" />
+                    </summary>
+                    <p>{entry.answer}</p>
+                  </details>
+                ))}
+              </section>
+            ) : (
+              <ul key={index} className={styles.links} role="list">
+                {run.entries.map((entry) => {
+                  if (entry.kind === 'shop' && props.shop) {
+                    return (
+                      <li key="shop">
+                        {interactive ? (
+                          <a className={styles.shopLink} href={`${home}/shop`}>
+                            <ShopPill shop={props.shop} />
+                          </a>
+                        ) : (
+                          <span className={styles.shopLink}>
+                            <ShopPill shop={props.shop} />
+                          </span>
+                        )}
+                      </li>
+                    );
+                  }
+                  if (entry.kind !== 'link') return null;
+                  const link = entry.link;
+                  // The first link wears the accent, wherever the shop and the FAQ sit around it.
+                  const lead = link.id === leadId ? true : undefined;
+                  return link.kind === 'WIDGET' && link.provider && link.embedRef ? (
+                    // A page drawn mid-conversation (the landing's demos) shows no players.
+                    props.mode === 'chat' ? null : (
+                      <li key={link.id} data-widget data-lead={lead}>
+                        <Widget provider={link.provider} embedRef={link.embedRef} label={link.label} url={link.url} interactive={interactive} />
+                      </li>
+                    )
                   ) : (
-                    <span className={styles.shopLink}>
-                      <ShopPill shop={props.shop} />
-                    </span>
-                  )}
-                </li>
-              ) : null}
-              {props.links.map((link) =>
-                link.kind === 'WIDGET' && link.provider && link.embedRef ? (
-                  // A page drawn mid-conversation (the landing's demos) shows no players.
-                  props.mode === 'chat' ? null : (
-                    <li key={link.id} data-widget>
-                      <Widget provider={link.provider} embedRef={link.embedRef} label={link.label} url={link.url} interactive={interactive} />
+                    <li key={link.id} data-lead={lead}>
+                      {interactive ? (
+                        <a className={styles.link} href={link.url} rel="noopener">
+                          <span>{link.label}</span>
+                        </a>
+                      ) : (
+                        <span className={styles.link}>
+                          <span>{link.label}</span>
+                        </span>
+                      )}
                     </li>
-                  )
-                ) : (
-                <li key={link.id}>
-                  {interactive ? (
-                    <a className={styles.link} href={link.url} rel="noopener">
-                      <span>{link.label}</span>
-                    </a>
-                  ) : (
-                    <span className={styles.link}>
-                      <span>{link.label}</span>
-                    </span>
-                  )}
-                </li>
-                ),
-              )}
-            </ul>
-          ) : null}
-
-          {props.faq && props.faq.entries.length > 0 ? (
-            <section className={styles.faq} aria-labelledby="often-ask">
-              <h2 id="often-ask" className={styles.faqTitle}>
-                {copy.oftenAsk}
-                <a href={faqHref}>{copy.seeAll(props.faq.total)}</a>
-              </h2>
-              {props.faq.entries.slice(0, FAQ_SHOWN).map((entry, index) => (
-                // <details>, so the accordion works before (and without) JavaScript.
-                <details key={entry.slug} className={styles.faqItem} open={index === 0}>
-                  <summary>
-                    {entry.question}
-                    <span className={styles.faqSign} aria-hidden="true" />
-                  </summary>
-                  <p>{entry.answer}</p>
-                </details>
-              ))}
-            </section>
-          ) : null}
+                  );
+                })}
+              </ul>
+            ),
+          )}
 
           {interactive ? (
             <p className={styles.foot}>
-              {props.faq && props.faq.entries.length > 0 ? (
+              {faq ? (
                 <>
                   <a href={faqHref}>{copy.questions}</a> ·{' '}
                 </>

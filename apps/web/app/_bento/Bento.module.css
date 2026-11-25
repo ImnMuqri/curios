@@ -669,14 +669,12 @@
 }
 
 /* The first link is the one the owner most wants pressed: it wears the accent. */
-.links > li:first-child .link,
-.links[data-shop] > li:nth-child(2) .link {
+.links > li[data-lead] .link {
   background: var(--lead-ring);
   color: var(--on-accent);
 }
 
-.links > li:first-child .link > span,
-.links[data-shop] > li:nth-child(2) .link > span {
+.links > li[data-lead] .link > span {
   border-color: var(--lead-edge-color, var(--btn-edge-color));
   background: var(--accent);
 }
@@ -702,12 +700,20 @@
   }
 }
 
-/* "People often ask": the top few answers, opened in place. */
+/* "People often ask": the top few answers, opened in place. It can sit anywhere among the links, splitting the list in two. */
 .faq {
   margin-top: 22px;
   padding: 14px;
   border-radius: 24px;
   background: var(--veil-1);
+}
+
+.foldawayInner > .faq:first-child {
+  margin-top: 0;
+}
+
+.faq + .links {
+  margin-top: 22px;
 }
 
 .faqTitle {
@@ -926,6 +932,10 @@
     margin-top: 14px;
     padding: 10px;
     border-radius: 18px;
+  }
+
+  .faq + .links {
+    margin-top: 14px;
   }
 
   .foot {

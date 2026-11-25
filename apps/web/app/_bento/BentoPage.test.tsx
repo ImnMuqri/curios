@@ -48,7 +48,7 @@ describe('BentoPage', () => {
     // Pill by default; Chunky and Outline square it off through the same knob.
     expect(css).toMatch(/^\.page\s*\{[^}]*--btn-radius:\s*999px;/m);
     expect(css).toMatch(/\.link > span\s*\{[^}]*border-radius:\s*var\(--btn-radius\);/s);
-    expect(css).toMatch(/\.links > li:first-child \.link > span,[^{]*\{[^}]*background:\s*var\(--accent\);/s);
+    expect(css).toMatch(/\.links > li\[data-lead\] \.link > span\s*\{[^}]*background:\s*var\(--accent\);/s);
   });
 
   it('carries the style, accent and readable text colour to the stylesheet', () => {
@@ -557,5 +557,44 @@ describe('BentoPage, a Top cover', () => {
     expect(css).toMatch(/\.cover:not\(\.coverFull\) \{[^}]*position: absolute;[^}]*height: calc\(\(56px \+ var\(--head-avatar, 88px\) \+ 10px\) \/ 0\.73/);
     expect(css).toMatch(/\.cover:not\(\.coverFull\) \+ \.head \{\s*padding-top: calc\(56px \+ env\(safe-area-inset-top, 0px\) \+ var\(--runway, 0px\)\);/);
     expect(css).not.toMatch(/margin-top: -29cqi/);
+  });
+});
+
+describe('the page in the owner\'s order', () => {
+  const shop = { label: 'Shop', caption: '3 items', photos: [], position: 0 };
+  const faq = { total: 1, entries: [{ slug: 'halal', question: 'Is it halal?', answer: 'Yes.' }] };
+  // Every drawn piece in document order: the shop pill, each link by label, the FAQ block.
+  const order = (container: HTMLElement) =>
+    Array.from(container.querySelectorAll('[data-bento-page] li a[href], [data-bento-page] section[aria-labelledby="often-ask"]'))
+      .filter((el) => !el.closest('footer, p'))
+      .map((el) => (el.tagName === 'SECTION' ? 'FAQ' : el.getAttribute('href') === '/imnmuqri/shop' ? 'SHOP' : (el.textContent ?? '')));
+
+  it('keeps today\'s look by default: the shop, the links, then People often ask', () => {
+    const { container } = render(<BentoPage {...base} shop={shop} faq={faq} faqPosition={null} />);
+    expect(order(container)).toEqual(['SHOP', 'Portfolio', 'Chat', 'Code', 'FAQ']);
+    // Left out entirely, the same.
+    const again = render(<BentoPage {...base} shop={{ ...shop, position: undefined }} faq={faq} />);
+    expect(order(again.container)).toEqual(['SHOP', 'Portfolio', 'Chat', 'Code', 'FAQ']);
+  });
+
+  it('draws the shop pill where its position puts it', () => {
+    const { container } = render(<BentoPage {...base} shop={{ ...shop, position: 2 }} faq={faq} faqPosition={null} />);
+    expect(order(container)).toEqual(['Portfolio', 'Chat', 'SHOP', 'Code', 'FAQ']);
+  });
+
+  it('draws People often ask before the links at position 0, and between them at 2', () => {
+    const first = render(<BentoPage {...base} faq={faq} faqPosition={0} />);
+    expect(order(first.container)).toEqual(['FAQ', 'Portfolio', 'Chat', 'Code']);
+    first.unmount();
+    const mid = render(<BentoPage {...base} faq={faq} faqPosition={2} />);
+    expect(order(mid.container)).toEqual(['Portfolio', 'Chat', 'FAQ', 'Code']);
+  });
+
+  it('draws nothing for a faq position when there are no answers, and leaves the first link in the accent', () => {
+    const { container } = render(<BentoPage {...base} shop={{ ...shop, position: 1 }} faq={null} faqPosition={0} />);
+    // The saved indexes count the FAQ's slot, answers or not: the shop at 1 sits after slot 0, as in the editor.
+    expect(order(container)).toEqual(['SHOP', 'Portfolio', 'Chat', 'Code']);
+    expect(container.querySelectorAll('[data-lead]')).toHaveLength(1);
+    expect(container.querySelector('[data-lead]')).toHaveTextContent('Portfolio');
   });
 });

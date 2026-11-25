@@ -16,6 +16,8 @@ export interface MyCurios {
   /** The buttons' edge and shadow; null is the page's text colour. */
   secondaryColor: string | null;
   headingFont: HeadingFont;
+  /** Where "People often ask" sits among the links (an index into the whole page); null is after the last. */
+  faqPosition: number | null;
   avatarKey: string | null;
   /** The picture's size and whether it wears its ring (Medium with the ring is how every page began). */
   avatarSize: AvatarSize;
@@ -68,6 +70,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       bio: true,
       language: true,
       ...SHOP_TILE_SELECT,
+      faqPosition: true,
       style: true,
       accentColor: true,
       secondaryColor: true,
