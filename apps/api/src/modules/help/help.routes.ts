@@ -57,7 +57,7 @@ export const helpSupportRoutes: FastifyPluginAsyncZod = async (app) => {
     { schema: { body: z.object({ id: id.optional(), note: z.string().max(2000).optional(), screen }) } },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
-      const sent = await sendToSupport(app.prisma, { accountId: request.account.id, ...request.body });
+      const sent = await sendToSupport(app.prisma, { ...request.body, accountId: request.account.id });
       return reply.status(201).send(sent);
     },
   );
@@ -74,7 +74,7 @@ export const helpRoutes: FastifyPluginAsyncZod = async (app) => {
     { schema: { body: z.object({ entryId: z.string().min(1).max(64), screen }) } },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
-      const row = await viewTopic({ prisma: app.prisma, settings: await app.settings.get() }, { accountId: request.account.id, ...request.body });
+      const row = await viewTopic({ prisma: app.prisma, settings: await app.settings.get() }, { ...request.body, accountId: request.account.id });
       return reply.status(201).send(row);
     },
   );

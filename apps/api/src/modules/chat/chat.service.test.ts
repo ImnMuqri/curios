@@ -10,7 +10,7 @@ import {
   EMBEDDING_MODEL,
   type Embedder,
 } from '@curios/embeddings';
-import { answer, CAP_REACHED_REPLY, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
+import { answer, CAP_REACHED_REPLY, MAX_HISTORY_MESSAGES, MAX_MESSAGES_PER_CONVERSATION, PageNotFoundError } from './chat.service.js';
 import { REPLY_FALLBACK } from './reply-guard.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -580,6 +580,25 @@ describe('threading a conversation', () => {
 
     const counter = await prisma.usageCounter.findFirstOrThrow({});
     expect(counter.count).toBe(1);
+  });
+
+  it('starts a new, metered conversation once one is full, so a single conversation is not unlimited model calls', async () => {
+    const deps = depsSaying();
+    const conversationId = conversationIdOf(await ask(deps, 'one'));
+    // Filled to the cap directly: the rows a long conversation would have left.
+    await prisma.message.createMany({
+      data: Array.from({ length: MAX_MESSAGES_PER_CONVERSATION - 2 }, (_, i) => ({
+        conversationId,
+        role: i % 2 === 0 ? ('USER' as const) : ('ASSISTANT' as const),
+        content: `turn ${i}`,
+      })),
+    });
+
+    const next = conversationIdOf(await ask(deps, 'one more', conversationId));
+
+    expect(next).not.toBe(conversationId);
+    expect(await prisma.message.count({ where: { conversationId } })).toBe(MAX_MESSAGES_PER_CONVERSATION);
+    expect((await prisma.usageCounter.findFirstOrThrow({})).count).toBe(2);
   });
 
   it('sends the earlier turns to the model, so a follow-up has context', async () => {

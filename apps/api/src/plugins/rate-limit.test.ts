@@ -27,6 +27,8 @@ const TUNED = [
   'RATE_LIMIT_CHAT_PER_IP',
   'RATE_LIMIT_INGEST_PER_IP',
   'RATE_LIMIT_INGEST_PER_PAGE',
+  'RATE_LIMIT_ADMIN_SIGNIN_PER_EMAIL',
+  'ADMIN_ORIGIN',
 ] as const;
 const originalEnv: Record<string, string | undefined> = Object.fromEntries(
   TUNED.map((key) => [key, process.env[key]]),
@@ -41,6 +43,8 @@ beforeAll(async () => {
   process.env.RATE_LIMIT_CHAT_PER_IP = '5';
   process.env.RATE_LIMIT_INGEST_PER_IP = '3';
   process.env.RATE_LIMIT_INGEST_PER_PAGE = '2';
+  process.env.RATE_LIMIT_ADMIN_SIGNIN_PER_EMAIL = '2';
+  process.env.ADMIN_ORIGIN = 'http://localhost:3002';
 
   const { buildApp } = await import('../app.js');
   app = await buildApp();
@@ -165,6 +169,24 @@ describe('ingest rate limit', () => {
     expect(first.statusCode).toBe(400);
     expect(second.statusCode).toBe(400);
     expect(third.statusCode).toBe(429);
+  });
+});
+
+describe('admin sign-in rate limit', () => {
+  it('rejects guesses at one admin address even when each comes from a different IP', async () => {
+    const email = `rl-admin-${randomUUID()}@example.com`;
+    const signin = (ip: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/admin/signin',
+        remoteAddress: ip,
+        headers: { 'content-type': 'application/json' },
+        payload: { email, password: 'not-the-password' },
+      });
+
+    // Three addresses, so the per-IP budget is nowhere near its limit; only the per-email one of 2 can refuse.
+    const codes = [(await signin('198.51.100.71')).statusCode, (await signin('198.51.100.72')).statusCode, (await signin('198.51.100.73')).statusCode];
+    expect(codes).toEqual([401, 401, 429]);
   });
 });
 
