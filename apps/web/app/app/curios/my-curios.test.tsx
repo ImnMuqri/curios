@@ -61,6 +61,17 @@ afterEach(() => {
 });
 
 describe('MyCuriosEditor', () => {
+  it('sends a pasted widget link through the editor to the API and lists it', async () => {
+    const { calls } = show();
+    await userEvent.click(editTab('Links'));
+    const panel = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.click(panel.getByRole('button', { name: '+ Add a widget' }));
+    await userEvent.type(panel.getByLabelText('Widget link'), 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M');
+    await userEvent.click(panel.getByRole('button', { name: 'Add' }));
+    expect(calls.addWidget).toHaveBeenCalledWith({ url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', label: null });
+    expect(await panel.findByRole('listitem', { name: 'Spotify' })).toBeInTheDocument();
+  });
+
   // The preview updates from local state, before any save returns.
   it('shows a new link in the live preview as soon as it is added', async () => {
     show();

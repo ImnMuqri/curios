@@ -446,6 +446,37 @@ describe('LinksEditor', () => {
       expect(screen.getByRole('button', { name: 'Add' })).toBeEnabled();
     });
 
+    it('announces the recognised service and the reason Add is off, to the link field', async () => {
+      setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      const field = screen.getByLabelText('Widget link');
+      const hint = document.getElementById(field.getAttribute('aria-describedby')!)!;
+      expect(hint).toHaveAttribute('aria-live', 'polite');
+      expect(hint).toBeEmptyDOMElement();
+      await userEvent.type(field, spotify);
+      expect(hint).toHaveTextContent('Spotify');
+      await userEvent.clear(field);
+      await userEvent.type(field, 'https://example.com/x');
+      expect(hint.textContent).not.toBe('');
+      expect(hint).toBe(document.getElementById(field.getAttribute('aria-describedby')!));
+    });
+
+    it('sends once when Add is pressed twice while the request is in flight', async () => {
+      let release!: () => void;
+      const addWidget = vi.fn(
+        () => new Promise<LinkItem>((resolve) => { release = () => resolve({ id: 'w', label: 'Spotify', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x' }); }),
+      );
+      setup(three, { addWidget });
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), spotify);
+      const add = screen.getByRole('button', { name: 'Add' });
+      await userEvent.click(add);
+      expect(add).toBeDisabled();
+      await userEvent.click(add);
+      expect(addWidget).toHaveBeenCalledTimes(1);
+      await act(async () => release());
+    });
+
     it('draws a saved widget with its service and label, and no address box', async () => {
       const widget: LinkItem = { id: 'w', label: 'My song', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x' };
       setup([...three, widget]);

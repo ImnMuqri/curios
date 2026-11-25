@@ -691,6 +691,16 @@ input.youField {
   gap: 4px;
 }
 
+.widgetForm {
+  grid-template-columns: 2fr 1fr auto;
+}
+
+.widgetService {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .addRows {
   display: flex;
   flex-wrap: wrap;
@@ -1196,7 +1206,8 @@ input.youField {
   }
 
   .addForm,
-  .editForm {
+  .editForm,
+  .widgetForm {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -118,6 +118,7 @@ export function LinksEditor({
   const [addingWidget, setAddingWidget] = useState(false);
   const [widgetUrl, setWidgetUrl] = useState('');
   const [widgetLabel, setWidgetLabel] = useState('');
+  const [widgetBusy, setWidgetBusy] = useState(false);
   const widgetRef = useRef<HTMLInputElement>(null);
   const [label, setLabel] = useState('');
   const [url, setUrl] = useState('');
@@ -190,13 +191,16 @@ export function LinksEditor({
 
   async function addWidgetRow() {
     setError('');
-    if (widgetBlocked) return;
+    if (widgetBlocked || widgetBusy) return;
+    setWidgetBusy(true);
     try {
       const link = await addWidget({ url: widgetUrl.trim(), label: widgetLabel.trim() === '' ? null : widgetLabel.trim() });
       onChange([...linksRef.current, link]);
       closeWidget();
     } catch (failure) {
       setError(message(failure));
+    } finally {
+      setWidgetBusy(false);
     }
   }
 
@@ -321,7 +325,7 @@ export function LinksEditor({
 
       {addingWidget ? (
         <form
-          className={styles.addForm}
+          className={`${styles.addForm} ${styles.widgetForm}`}
           onSubmit={(event) => {
             event.preventDefault();
             void addWidgetRow();
@@ -331,6 +335,7 @@ export function LinksEditor({
             ref={widgetRef}
             className={ui.input}
             aria-label="Widget link"
+            aria-describedby="widget-hint"
             placeholder="Paste a Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly or Canva link"
             autoComplete="off"
             value={widgetUrl}
@@ -338,23 +343,23 @@ export function LinksEditor({
           />
           <input className={ui.input} aria-label="Name (optional)" placeholder="Name (optional)" value={widgetLabel} onChange={(event) => setWidgetLabel(event.target.value)} />
           <span className={styles.addActions}>
-            <button type="submit" className={ui.primaryButton} disabled={widgetBlocked}>
+            <button type="submit" className={ui.primaryButton} disabled={widgetBlocked || widgetBusy}>
               Add
             </button>
             <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={closeWidget}>
               <Icon d={CLOSE} />
             </button>
           </span>
-          {widgetService ? (
-            <span className={styles.widgetHint} data-testid="widget-service">
-              <WidgetIcon provider={widgetService} />
-              {WIDGET_NAMES[widgetService]}
-            </span>
-          ) : widgetProblem ? (
-            <span className={styles.widgetHint} data-testid="widget-note">
-              {widgetProblem}
-            </span>
-          ) : null}
+          <span id="widget-hint" className={styles.widgetHint} aria-live="polite">
+            {widgetService ? (
+              <span data-testid="widget-service" className={styles.widgetService}>
+                <WidgetIcon provider={widgetService} />
+                {WIDGET_NAMES[widgetService]}
+              </span>
+            ) : widgetProblem ? (
+              <span data-testid="widget-note">{widgetProblem}</span>
+            ) : null}
+          </span>
         </form>
       ) : null}
 
