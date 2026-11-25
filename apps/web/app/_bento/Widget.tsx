@@ -28,7 +28,8 @@ export function Widget({ provider, embedRef, label, url, interactive = true }: W
     src = null;
   }
   const showLabel = label.trim() !== '' && label !== service;
-  const boxStyle: CSSProperties = height > 0 ? { height } : { aspectRatio: ASPECT[provider] ?? '16 / 9' };
+  // On the frame itself, so the box's padding is added to it: the player gets exactly widgetHeight.
+  const frameStyle: CSSProperties = height > 0 ? { height } : { aspectRatio: ASPECT[provider] ?? '16 / 9' };
   const sandbox = ['allow-scripts', 'allow-same-origin', 'allow-popups', 'allow-popups-to-escape-sandbox', ...(TAKES_FORMS.includes(provider) ? ['allow-forms'] : [])].join(' ');
   return (
     <div className={styles.widget}>
@@ -38,10 +39,11 @@ export function Widget({ provider, embedRef, label, url, interactive = true }: W
         </p>
       ) : null}
       {src ? (
-        <div className={styles.widgetBox} data-widget-box style={boxStyle}>
+        <div className={styles.widgetBox} data-widget-box>
           <iframe
             className={styles.widgetFrame}
             src={src}
+            style={frameStyle}
             title={`${label}, ${service}`}
             loading="lazy"
             sandbox={sandbox}

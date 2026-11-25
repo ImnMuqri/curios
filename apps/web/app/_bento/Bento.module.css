@@ -948,7 +948,8 @@
 .widgetBox {
   position: relative;
   padding: 5px;
-  border-radius: var(--btn-radius);
+  /* Never a pill: a player is a rectangle, so Soft's 999px gives way to the card corner. */
+  border-radius: min(var(--btn-radius, 16px), 16px);
   background: var(--pill-ring);
   overflow: hidden;
 }
@@ -956,9 +957,8 @@
 .widgetFrame {
   display: block;
   width: 100%;
-  height: 100%;
   border: 0;
-  border-radius: calc(var(--btn-radius) - 4px);
+  border-radius: calc(min(var(--btn-radius, 16px), 16px) - 5px);
   background: var(--pill);
   color-scheme: normal;
 }
