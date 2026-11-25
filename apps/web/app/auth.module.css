@@ -187,7 +187,8 @@
   align-items: center;
   gap: 10px;
   height: 56px;
-  padding: 0 8px 0 22px;
+  /* The input carries 12px of its own padding (below), so the words still start 22px in. */
+  padding: 0 8px 0 10px;
   border-radius: 999px;
   background: var(--card);
   box-shadow: inset 0 0 0 1px var(--edge);
@@ -209,8 +210,11 @@
   /* Clear of the pill's 2px ring above and below: an autofilled field paints its own box (below),
      and at full height that box hid the ring's top and bottom edges. */
   height: calc(100% - 8px);
-  padding: 0;
+  /* A pill of its own: an autofilled field paints its box (below), and a square box poked into the
+     pill's round ends, hiding the ring there. Rounded, the painted area sits inside the ring. */
+  padding: 0 12px;
   border: 0;
+  border-radius: 999px;
   background: transparent;
   outline: none;
 }
