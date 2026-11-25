@@ -282,6 +282,49 @@ describe('PUT /links/order with the shop tile', () => {
   });
 });
 
+describe('PUT /links/order with the FAQ block', () => {
+  const setup = async (mode: 'BUSINESS' | 'PERSONAL') => {
+    const owner = await anOwner();
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { mode } });
+    const a = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link.id as string;
+    const b = (await call(owner.cookie, 'POST', '/links', { label: 'B', url: 'b.com' })).json().link.id as string;
+    return { owner, a, b };
+  };
+  const faqAt = async (pageId: string) => (await app.prisma.page.findUniqueOrThrow({ where: { id: pageId } })).faqPosition;
+
+  it('stores the FAQ index on a business page', async () => {
+    const { owner, a, b } = await setup('BUSINESS');
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, 'faq', a] })).statusCode).toBe(200);
+    expect(await labels(owner.cookie)).toEqual(['B', 'A']);
+    expect(await faqAt(owner.pageId)).toBe(1);
+  });
+
+  // Compatibility until the editor sends 'faq' (Task 9).
+  it('still accepts a business list without faq, leaving its position alone', async () => {
+    const { owner, a, b } = await setup('BUSINESS');
+    await call(owner.cookie, 'PUT', '/links/order', { ids: ['faq', a, b] });
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, a] })).statusCode).toBe(200);
+    expect(await faqAt(owner.pageId)).toBe(0);
+  });
+
+  it('refuses faq on a personal page, and twice on a business one', async () => {
+    const p = await setup('PERSONAL');
+    expect((await call(p.owner.cookie, 'PUT', '/links/order', { ids: [p.a, 'faq', p.b] })).json().error.code).toBe('LINK_ORDER_STALE');
+    expect((await call(p.owner.cookie, 'PUT', '/links/order', { ids: [p.a, p.b] })).statusCode).toBe(200);
+    expect(await faqAt(p.owner.pageId)).toBeNull();
+    const q = await setup('BUSINESS');
+    expect((await call(q.owner.cookie, 'PUT', '/links/order', { ids: ['faq', q.a, 'faq', q.b] })).json().error.code).toBe('LINK_ORDER_STALE');
+  });
+
+  it('keeps shop and faq positions as sent', async () => {
+    const { owner, a, b } = await setup('BUSINESS');
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { storeEnabled: true, pickupEnabled: true, paymentQrKey: 'qr/x.png' } });
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['faq', a, 'shop', b] })).statusCode).toBe(200);
+    const page = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } });
+    expect([page.faqPosition, page.shopTilePosition]).toEqual([0, 2]);
+  });
+});
+
 describe('DELETE /links/:id with the shop tile', () => {
   async function shopAt(position: number, linkCount: number, open = true) {
     const owner = await anOwner();

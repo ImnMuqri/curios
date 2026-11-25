@@ -365,6 +365,9 @@ model Page {
   shopTilePosition    Int                 @default(0)
   /// Null is automatic, as Link.size is.
   shopTileSize        TileSize?
+  /// The "People often ask" block's index among the page's pieces (clamped on read, like shopTilePosition).
+  /// Null is after the last item, which is where the block always was.
+  faqPosition         Int?
   /// Orders ever placed, and never decremented: the order number's source and
   /// the trial allowance's count. A counter rather than count(Order) so an
   /// owner cannot delete trial orders to get more, as with leadsCaptured.

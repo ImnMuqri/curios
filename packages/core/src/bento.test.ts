@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   accentShowsOn,
   coverTintOf,
+  FAQ_TILE_ID,
+  pageEntries,
   STOCK_COVER_TINTS,
   arrangeTiles,
   charCount,
@@ -201,6 +203,41 @@ describe('withShopTile', () => {
 
   it('works with no links at all', () => {
     expect(withShopTile([], { position: 4, size: null }).map((entry) => entry.id)).toEqual([SHOP_TILE_ID]);
+  });
+});
+
+describe('pageEntries', () => {
+  const links = [
+    { id: 'a', size: null },
+    { id: 'b', size: null },
+    { id: 'c', size: null },
+  ];
+  const ids = (shop: { position: number } | null, faq: { position: number | null } | null) =>
+    pageEntries(links, shop && { ...shop, size: null }, faq).map((e) => e.id);
+
+  it('puts a shop tile at position 9 among 3 links last', () => {
+    expect(ids({ position: 9 }, null)).toEqual(['a', 'b', 'c', SHOP_TILE_ID]);
+  });
+
+  it('puts the FAQ last when its position is null, first at 0, and nowhere when null is passed', () => {
+    expect(ids(null, { position: null })).toEqual(['a', 'b', 'c', FAQ_TILE_ID]);
+    expect(ids(null, { position: 0 })).toEqual([FAQ_TILE_ID, 'a', 'b', 'c']);
+    expect(ids(null, null)).toEqual(['a', 'b', 'c']);
+    expect(ids(null, { position: 99 })).toEqual(['a', 'b', 'c', FAQ_TILE_ID]);
+    expect(ids(null, { position: -2 })).toEqual([FAQ_TILE_ID, 'a', 'b', 'c']);
+  });
+
+  it('keeps shop and FAQ in the order they were sent', () => {
+    // sent as [a, faq, b, shop, c]
+    expect(ids({ position: 3 }, { position: 1 })).toEqual(['a', FAQ_TILE_ID, 'b', SHOP_TILE_ID, 'c']);
+    // sent as [shop, a, b, faq, c]
+    expect(ids({ position: 0 }, { position: 3 })).toEqual([SHOP_TILE_ID, 'a', 'b', FAQ_TILE_ID, 'c']);
+    // sent as [a, b, c, faq, shop]
+    expect(ids({ position: 4 }, { position: 3 })).toEqual(['a', 'b', 'c', FAQ_TILE_ID, SHOP_TILE_ID]);
+  });
+
+  it('gives the FAQ a wide size', () => {
+    expect(pageEntries(links, null, { position: null }).at(-1)).toMatchObject({ kind: 'faq', size: 'WIDE' });
   });
 });
 

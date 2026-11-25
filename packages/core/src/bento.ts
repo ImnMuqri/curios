@@ -300,25 +300,54 @@ export interface ShopTilePlacement {
   size: TileSize | null;
 }
 
+/** The "People often ask" block's id in the same ordered lists as SHOP_TILE_ID. */
+export const FAQ_TILE_ID = 'faq';
+
 export type BentoEntry<L> =
   | { kind: 'link'; id: string; size: TileSize | null; link: L }
   | { kind: 'shop'; id: typeof SHOP_TILE_ID; size: TileSize | null };
 
+export type PageEntry<L> = BentoEntry<L> | { kind: 'faq'; id: typeof FAQ_TILE_ID; size: 'WIDE' };
+
+/**
+ * Everything on the page in visitor order: the links, with the shop tile (when the shop is open) and
+ * the FAQ block (when `faq` is not null -- the caller passes null when there is nothing to show)
+ * inserted at their positions. A null FAQ position means after the last item.
+ *
+ * Positions are indexes into the finished list, as the editor sends it, so the pieces are inserted
+ * lowest position first. Each is clamped rather than trusted: an owner who parks the shop tile last
+ * and then removes links leaves it pointing past the end -- it must still show, last, not disappear.
+ */
+export function pageEntries<L extends { id: string; size: TileSize | null }>(
+  links: L[],
+  shop: ShopTilePlacement | null,
+  faq: { position: number | null } | null,
+): PageEntry<L>[] {
+  const entries: PageEntry<L>[] = links.map((link) => ({ kind: 'link', id: link.id, size: link.size, link }));
+  const pieces: { position: number; entry: PageEntry<L> }[] = [];
+  if (shop) pieces.push({ position: shop.position, entry: { kind: 'shop', id: SHOP_TILE_ID, size: shop.size } });
+  if (faq) {
+    pieces.push({
+      position: faq.position ?? Number.POSITIVE_INFINITY,
+      entry: { kind: 'faq', id: FAQ_TILE_ID, size: 'WIDE' },
+    });
+  }
+  // Stable sort: on a tie the shop (pushed first) stays ahead.
+  pieces.sort((a, b) => a.position - b.position);
+  for (const { position, entry } of pieces) {
+    const at = Math.min(Math.max(0, Math.trunc(position)), entries.length);
+    entries.splice(at, 0, entry);
+  }
+  return entries;
+}
+
 /**
  * The page's tiles in visitor order: its links, with the shop tile inserted
  * at its position when the shop is open.
- *
- * The position is clamped rather than trusted. It is stored as an index, and
- * an owner who parks the tile last and then removes links leaves it pointing
- * past the end -- the tile must still show, last, not disappear.
  */
 export function withShopTile<L extends { id: string; size: TileSize | null }>(
   links: L[],
   shop: ShopTilePlacement | null,
 ): BentoEntry<L>[] {
-  const entries: BentoEntry<L>[] = links.map((link) => ({ kind: 'link', id: link.id, size: link.size, link }));
-  if (!shop) return entries;
-  const at = Math.min(Math.max(0, Math.trunc(shop.position)), entries.length);
-  entries.splice(at, 0, { kind: 'shop', id: SHOP_TILE_ID, size: shop.size });
-  return entries;
+  return pageEntries(links, shop, null) as BentoEntry<L>[];
 }

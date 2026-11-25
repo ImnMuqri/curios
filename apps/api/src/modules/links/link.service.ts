@@ -1,5 +1,5 @@
 import type { PrismaClient, WidgetProvider as DbWidgetProvider } from '@curios/db';
-import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, SHOP_TILE_ID, type TileSize } from '@curios/core/bento';
+import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, type TileSize } from '@curios/core/bento';
 import { parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
 
@@ -195,6 +195,11 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
       where: { id: pageId, storeEnabled: true, shopTilePosition: { gt: link.position } },
       data: { shopTilePosition: { decrement: 1 } },
     });
+    // The same for the FAQ block, whose position (when it has one) indexes the same list.
+    await tx.page.updateMany({
+      where: { id: pageId, faqPosition: { gt: link.position } },
+      data: { faqPosition: { decrement: 1 } },
+    });
   });
 }
 
@@ -207,15 +212,22 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
  * The shop tile travels in the same list as SHOP_TILE_ID, exactly once while
  * the shop is open and never while it is closed, so the editor drags it like
  * any link. Its index is the page's shopTilePosition.
+ *
+ * The FAQ block travels as FAQ_TILE_ID, once on a business page and never on a personal one; its
+ * index is faqPosition. Compatibility until the editor sends it (Task 9): a business list WITHOUT
+ * FAQ_TILE_ID is accepted and leaves faqPosition unchanged.
  */
 export async function reorderLinks(prisma: PrismaClient, accountId: string, ids: string[]): Promise<void> {
-  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true } });
+  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true, mode: true } });
   if (!page) throw new NoPageError();
   await prisma.$transaction(async (tx) => {
     const shopAt = ids.indexOf(SHOP_TILE_ID);
     const shopCount = ids.filter((id) => id === SHOP_TILE_ID).length;
     if (shopCount !== (page.storeEnabled ? 1 : 0)) throw new LinkOrderStaleError();
-    const linkIds = ids.filter((id) => id !== SHOP_TILE_ID);
+    const faqAt = ids.indexOf(FAQ_TILE_ID);
+    const faqCount = ids.filter((id) => id === FAQ_TILE_ID).length;
+    if (faqCount > (page.mode === 'BUSINESS' ? 1 : 0)) throw new LinkOrderStaleError();
+    const linkIds = ids.filter((id) => id !== SHOP_TILE_ID && id !== FAQ_TILE_ID);
 
     const current = await tx.link.findMany({ where: { pageId: page.id }, select: { id: true } });
     const known = new Set(current.map((link) => link.id));
@@ -226,6 +238,9 @@ export async function reorderLinks(prisma: PrismaClient, accountId: string, ids:
     for (const [position, id] of linkIds.entries()) {
       await tx.link.update({ where: { id }, data: { position } });
     }
-    if (page.storeEnabled) await tx.page.update({ where: { id: page.id }, data: { shopTilePosition: shopAt } });
+    await tx.page.update({
+      where: { id: page.id },
+      data: { ...(page.storeEnabled ? { shopTilePosition: shopAt } : {}), ...(faqCount === 1 ? { faqPosition: faqAt } : {}) },
+    });
   });
 }
