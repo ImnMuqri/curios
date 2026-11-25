@@ -285,6 +285,11 @@ describe('the shop', () => {
     expect(buildSystemPrompt({ ...base, shop })).toMatch(/appears in a fact below, in SHOP/);
   });
 
+  it('answers "what do you sell" from SHOP first, by exact item names, so the reply gets its product cards', () => {
+    const prompt = buildSystemPrompt({ ...base, shop });
+    expect(prompt).toMatch(/When someone asks what Nadia Bakes sells, offers, has for sale or what they can buy, answer from SHOP first: name\nthe items by their exact names/);
+  });
+
   it('tells the model where ordering happens', () => {
     expect(buildSystemPrompt({ ...base, shop })).toMatch(/order it from the shop on this page/);
   });

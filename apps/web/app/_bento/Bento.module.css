@@ -249,15 +249,24 @@
   text-align: center;
 }
 
-.cover:not(.coverFull) + .head {
-  margin-top: -29cqi;
-  padding-top: 0;
+/*
+ * Top: the photo is a band behind the head, not above it, so the picture, the name and everything under
+ * them sit exactly where they do on a page with no photo (owner, 25 Nov: Top had pushed it all ~130px
+ * down). The band is sized so the name still starts 73% of the way down it, on the same fading part of
+ * the photo as before: the name's offset (56px, the picture, the 10px gap) over 0.73.
+ */
+.cover:not(.coverFull) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc((56px + var(--head-avatar, 88px) + 10px) / 0.73 + env(safe-area-inset-top, 0px) + var(--runway, 0px));
 }
 
-/* Over a cover the picture rises into the photo by its own height and the gap, so the name sits
-   exactly where it does without one rather than being pushed down. */
-.cover:not(.coverFull) + .head > .avatar {
-  margin-top: calc(-1 * (var(--avatar-size) + var(--head-gap)));
+/* The runway (a phone's page with a cover opens scrolled past it) is added above the head, so the
+   opening scroll leaves it where it is without a photo. */
+.cover:not(.coverFull) + .head {
+  padding-top: calc(56px + env(safe-area-inset-top, 0px) + var(--runway, 0px));
 }
 
 .avatar {
@@ -280,6 +289,15 @@
 
 .page[data-avatar-size='LARGE'] .head {
   --avatar-size: 120px;
+}
+
+/* The same sizes on the page, for the Top band (a sibling of the head) to size itself by. */
+.page[data-avatar-size='SMALL'] {
+  --head-avatar: 64px;
+}
+
+.page[data-avatar-size='LARGE'] {
+  --head-avatar: 120px;
 }
 
 .page[data-avatar-border='off'] .avatar {
@@ -816,9 +834,11 @@
   box-shadow: none;
 }
 
+/* With the runway too: a phone's page with a cover opens scrolled by it (page.tsx's OPEN_SCROLLED), and
+   without the room the picture and the name went up under the status bar. */
 .page[data-mode='chat'] .head {
   margin-top: 0;
-  padding-top: calc(18px + env(safe-area-inset-top, 0px));
+  padding-top: calc(18px + env(safe-area-inset-top, 0px) + var(--runway, 0px));
 }
 
 .page[data-mode='chat'] .name {

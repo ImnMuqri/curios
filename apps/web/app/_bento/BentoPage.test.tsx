@@ -543,3 +543,19 @@ describe('BentoPage, the Full page cover without the page colour over it', () =>
     expect(css).toMatch(/\.coverFull img \{[^}]*height: var\(--screen-h, 100lvh\);/);
   });
 });
+
+describe('BentoPage, asking on a phone page with a cover', () => {
+  it('keeps the runway above the asking header, so the opening scroll does not hide the picture and name', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.page\[data-mode='chat'\] \.head \{\s*margin-top: 0;\s*padding-top: calc\(18px \+ env\(safe-area-inset-top, 0px\) \+ var\(--runway, 0px\)\);/);
+  });
+});
+
+describe('BentoPage, a Top cover', () => {
+  it('lies behind the head, so the picture and name sit where they do with no photo', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.cover:not\(\.coverFull\) \{[^}]*position: absolute;[^}]*height: calc\(\(56px \+ var\(--head-avatar, 88px\) \+ 10px\) \/ 0\.73/);
+    expect(css).toMatch(/\.cover:not\(\.coverFull\) \+ \.head \{\s*padding-top: calc\(56px \+ env\(safe-area-inset-top, 0px\) \+ var\(--runway, 0px\)\);/);
+    expect(css).not.toMatch(/margin-top: -29cqi/);
+  });
+});
