@@ -546,7 +546,11 @@
   contain-intrinsic-size: auto 52px;
 }
 
+/* Each row is its own layer (its animation and its paint containment), so a later row painted over
+   the open menu. That row is lifted above its neighbours while its menu is open. */
 .frow[data-menu] {
+  position: relative;
+  z-index: 2;
   content-visibility: visible;
 }
 

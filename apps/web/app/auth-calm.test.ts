@@ -97,8 +97,8 @@ describe('the calm scopes read in Inter and set the shared pieces to the corner 
 
     it(`sets the Button and Field hooks to pills and boxes on ${selector}`, () => {
       const body = rule(read(file), selector);
-      // The dashboard's single-line fields take the box corner, like its cards (DEVIATIONS 347).
-      const want = selector === '.frame' ? { ...hooks, '--field-radius': 'var(--r-box)' } : hooks;
+      // The dashboard's fields take the Halal row's 10px corner, single-line and multi-line alike (owner, 25 Nov).
+      const want = selector === '.frame' ? { ...hooks, '--field-radius': '10px', '--field-area-radius': '10px' } : hooks;
       for (const [name, value] of Object.entries(want)) expect(body[name], name).toBe(value);
     });
   }
