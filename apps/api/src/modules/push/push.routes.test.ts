@@ -90,7 +90,7 @@ describe('the push routes', () => {
     expect((await call(app, 'POST', '/push/test', owner.cookie, { endpoint: device.endpoint })).statusCode).toBe(202);
     expect(queue.add).toHaveBeenCalledWith(
       PUSH_QUEUE,
-      expect.objectContaining({ accountId: owner.id, endpoint: device.endpoint, title: 'Notifications are on', url: 'https://curios.my/app/settings' }),
+      expect.objectContaining({ accountId: owner.id, endpoint: device.endpoint, title: 'Notifications are on', url: 'https://curios.my/app/settings?tab=notifications' }),
       expect.anything(),
     );
     expect((await call(app, 'POST', '/push/test', owner.cookie, { endpoint: address() })).statusCode).toBe(404);
