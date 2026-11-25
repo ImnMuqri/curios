@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MyCuriosEditor, type EditorPage } from './my-curios.js';
+import { MyCuriosEditor, positionsAfterRemoval, type EditorPage } from './my-curios.js';
 import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
@@ -522,6 +522,38 @@ describe('the Layout tab', () => {
     expect(before('Portfolio', 'Cafe menu')).toBe(true);
     expect(layout().getByRole('alert')).toHaveTextContent('changed somewhere else');
     expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'Shop', 'Cafe menu', 'People often ask']);
+  });
+
+  it('moves the shop up when a link above it is removed, in the preview and in Layout', async () => {
+    const calls = api();
+    show(two, calls);
+    await userEvent.click(editTab('Links'));
+    const row = within(screen.getByRole('tabpanel', { name: 'Links' })).getByRole('listitem', { name: 'Portfolio' });
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove Portfolio' }));
+    await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
+    expect(calls.removeLink).toHaveBeenCalledWith('a');
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Cafe menu', 'People often ask']);
+    const shopPill = within(preview()).getByText('Shop');
+    expect(Boolean(shopPill.compareDocumentPosition(within(preview()).getByText('Cafe menu')) & Node.DOCUMENT_POSITION_FOLLOWING)).toBe(true);
+  });
+
+  it('keeps People often ask last, and the shop where it was, when a link after them is removed', async () => {
+    show({ ...two, shop: { ...two.shop!, position: 0 } }, api());
+    await userEvent.click(editTab('Links'));
+    const row = within(screen.getByRole('tabpanel', { name: 'Links' })).getByRole('listitem', { name: 'Cafe menu' });
+    await userEvent.click(within(row).getByRole('button', { name: 'Remove Cafe menu' }));
+    await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
+    await userEvent.click(editTab('Layout'));
+    expect(layout().getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Shop', 'Portfolio', 'People often ask']);
+  });
+
+  it('works out the positions the way the API does', () => {
+    expect(positionsAfterRemoval(0, 1, null)).toEqual({ shop: 0, faq: null });
+    expect(positionsAfterRemoval(0, 1, 2)).toEqual({ shop: 0, faq: 1 });
+    expect(positionsAfterRemoval(1, 0, 2)).toEqual({ shop: 0, faq: 2 });
+    expect(positionsAfterRemoval(2, 0, 2)).toEqual({ shop: 0, faq: 2 });
+    expect(positionsAfterRemoval(0, 0, 3)).toEqual({ shop: 0, faq: 2 });
   });
 
   it('has no People often ask or Shop row on a personal page', async () => {

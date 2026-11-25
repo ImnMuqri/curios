@@ -109,6 +109,23 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
 }
 
 /**
+ * Where the shop and People often ask sit after the link at `linkAt` (its index among the links) is removed,
+ * as the API works it out: the link's place in the whole list is found lowest tile first, then every tile
+ * after it moves up one. An unset FAQ position (null, after the last item) stays null.
+ */
+export function positionsAfterRemoval(linkAt: number, shop: number | null, faq: number | null): { shop: number | null; faq: number | null } {
+  const tiles: { key: 'shop' | 'faq'; position: number }[] = [];
+  if (shop !== null) tiles.push({ key: 'shop', position: shop });
+  if (faq !== null) tiles.push({ key: 'faq', position: faq });
+  tiles.sort((x, y) => x.position - y.position);
+  let removedAt = linkAt;
+  for (const tile of tiles) if (tile.position <= removedAt) removedAt += 1;
+  const out = { shop, faq };
+  for (const tile of tiles) if (tile.position > removedAt) out[tile.key] = tile.position - 1;
+  return out;
+}
+
+/**
  * My Curios: the owner's page, arranged. The header, over the left column
  * only, carries the kicker, title and sentence, the address with View page, and the
  * Profile / Links underline tabs; "Saved" lives in the frame's top bar. Whether
@@ -168,6 +185,30 @@ export function MyCuriosEditor({
       await api.reorder(ids);
     } catch (failure) {
       setPage((current) => ({ ...current, links, shop, faqPosition }));
+      throw failure;
+    }
+  }
+
+  /**
+   * The server pulls the shop and People often ask up a place when a link above them is removed (their
+   * positions index the whole list). Do the same here, so the preview and Layout match the public page; if
+   * the removal is refused the old positions come back, and the Links list restores the link itself.
+   */
+  async function removeLinkAndRepositionTiles(id: string) {
+    const { links, shop, faqPosition } = page;
+    const at = links.findIndex((link) => link.id === id);
+    if (at >= 0 && (shop || faqPosition !== null)) {
+      const moved = positionsAfterRemoval(at, shop?.position ?? null, faqPosition);
+      setPage((current) => ({
+        ...current,
+        shop: current.shop && moved.shop !== null ? { ...current.shop, position: moved.shop } : current.shop,
+        faqPosition: moved.faq,
+      }));
+    }
+    try {
+      await api.removeLink(id);
+    } catch (failure) {
+      setPage((current) => ({ ...current, shop: current.shop ? { ...current.shop, position: shop?.position ?? current.shop.position } : null, faqPosition }));
       throw failure;
     }
   }
@@ -318,7 +359,7 @@ export function MyCuriosEditor({
               addLink={api.addLink}
               addWidget={api.addWidget}
               updateLink={api.updateLink}
-              removeLink={api.removeLink}
+              removeLink={removeLinkAndRepositionTiles}
               // The Shop link is the first row of the list (v3), with its switch.
               lead={
                 page.shopTab ? (
