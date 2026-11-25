@@ -17,6 +17,8 @@ export async function resolveShortLink(
     await deps.guard(host);
     const res = await deps.fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS) });
     const location = res.headers.get('location');
+    // Only the Location matters; do not hold the connection open for a body nobody reads.
+    await res.body?.cancel().catch(() => undefined);
     if (!location) return null;
     return new URL(location, url).toString();
   } catch {

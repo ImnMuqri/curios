@@ -16,6 +16,16 @@ describe('resolveShortLink', () => {
     expect(fetchStub.mock.calls[0]).toEqual(['https://spotify.link/xyz', expect.objectContaining({ redirect: 'manual' })]);
   });
 
+  it('cancels the redirect body after reading the Location, and survives a body that will not cancel', async () => {
+    const cancel = vi.fn(async () => undefined);
+    const stub = vi.fn(async () => ({ headers: new Headers({ location: 'https://open.spotify.com/track/abc' }), body: { cancel } }));
+    expect(await resolveShortLink('https://spotify.link/xyz', { fetch: stub as unknown as typeof fetch, guard: ok })).toBe('https://open.spotify.com/track/abc');
+    expect(cancel).toHaveBeenCalledTimes(1);
+
+    const stubborn = vi.fn(async () => ({ headers: new Headers({ location: '/x' }), body: { cancel: async () => { throw new Error('locked'); } } }));
+    expect(await resolveShortLink('https://spotify.link/xyz', { fetch: stubborn as unknown as typeof fetch, guard: ok })).toBe('https://spotify.link/x');
+  });
+
   it('returns null and never fetches when the guard refuses the host', async () => {
     const guard = async () => {
       throw new Error('private address');
