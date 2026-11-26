@@ -1,0 +1,240 @@
+/* Choice groups inside an item's options: two groups, then a price for every combination. */
+.root {
+  display: grid;
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.group {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 12px;
+  min-width: 0;
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+}
+
+.group legend {
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.name,
+.label {
+  height: 42px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.name {
+  font-weight: 600;
+}
+
+.name:focus,
+.label:focus {
+  outline: none;
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
+}
+
+.choices {
+  display: grid;
+  gap: 8px;
+}
+
+.choice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.label {
+  flex: 1 1 140px;
+}
+
+.pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.square,
+.none {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.square img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.square[aria-checked='true'],
+.none[aria-checked='true'] {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 2px var(--sky);
+}
+
+.square:focus-visible,
+.none:focus-visible {
+  outline: 2px solid var(--sky);
+  outline-offset: 2px;
+}
+
+.none:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.dropGroup {
+  justify-self: start;
+  padding: 6px 4px;
+  border: 0;
+  background: transparent;
+  color: var(--merah-deep);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.dropGroup:focus-visible {
+  outline: 2px solid var(--sky);
+  border-radius: 6px;
+}
+
+.heading {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.same {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+}
+
+.scroll {
+  container-type: inline-size;
+  overflow-x: auto;
+}
+
+.grid {
+  display: grid;
+  gap: 8px;
+  min-width: min-content;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(110px, 150px) repeat(var(--cols), minmax(150px, 1fr));
+  align-items: center;
+  gap: 8px;
+}
+
+.head {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.rowName {
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cell[data-off] .money {
+  opacity: 0.55;
+}
+
+.tag {
+  display: none;
+}
+
+.money {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.money:focus-within {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 3px rgb(5 147 198 / 12%);
+}
+
+.money span {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.money input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  outline: none;
+}
+
+/* A phone: each group-one choice stacks its group-two prices under it, each named. */
+@container (max-width: 560px) {
+  .row {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+  }
+
+  .head {
+    display: none;
+  }
+
+  .tag {
+    display: block;
+    flex: 0 0 84px;
+    font-size: 12.5px;
+    color: var(--muted);
+    overflow-wrap: anywhere;
+  }
+}
