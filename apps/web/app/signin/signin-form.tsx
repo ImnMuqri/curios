@@ -95,9 +95,9 @@ export function SignInForm({
             rewriting it here to be more helpful would rebuild the account
             enumeration oracle it was written to remove. */}
         {error ? (
-          <p className={styles.error} id={errorId} role="alert">
+          <div id={errorId}><Callout tone="error">
             {error}
-          </p>
+          </Callout></div>
         ) : null}
 
         <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>

@@ -133,7 +133,7 @@
   font-weight: 600;
 }
 
-.xct p {
+.xct > p {
   margin: 4px 0 0;
   font-size: 14px;
   line-height: 1.5;
@@ -157,6 +157,8 @@
 
 .ask > p {
   margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
   font-weight: 500;
   color: var(--ink);
 }
@@ -381,7 +383,7 @@
   border-top: 1px solid var(--line);
 }
 
-.reset p {
+.reset > p {
   margin: 0;
   font-size: 13px;
   line-height: 1.5;
@@ -400,9 +402,24 @@
   margin-top: 12px;
 }
 
+/* A failed try, a row of its own under the buttons. */
+.errorRow {
+  flex-basis: 100%;
+}
+
+/* Auto-renew's failed try: a gap under the buttons, and none below it at the card's foot. */
+.renewError {
+  margin-top: 12px;
+}
+
+.renewError > * {
+  margin-bottom: 0;
+}
+
 .buttons > p {
   flex-basis: 100%;
   margin: 0;
+  line-height: 1.5;
   font-size: 14px;
   font-weight: 500;
   color: var(--ink);
@@ -457,16 +474,6 @@
 .go:focus-visible {
   outline: 2px solid var(--sky);
   outline-offset: 2px;
-}
-
-.error {
-  flex-basis: 100%;
-  margin: 12px 0 0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-  font-size: 12.5px;
 }
 
 /* ---- This month ---- */

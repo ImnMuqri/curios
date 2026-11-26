@@ -52,6 +52,12 @@
   white-space: nowrap;
 }
 
+/* Its own block formatting context: the photo's 16px top margin collapsed through the sheet, so the
+   photo sat flush against the sheet's top edge (owner, 26 Nov). */
+.sheet {
+  display: flow-root;
+}
+
 .hero {
   position: relative;
   display: grid;
@@ -584,4 +590,72 @@
     opacity: 1;
     transform: none;
   }
+}
+
+/* Choices inside options (26 Nov): group one as photo tiles, like a colour picker. */
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  gap: 8px;
+}
+
+.tiles button {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 6px 8px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--sheet-ring, var(--veil-2));
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tiles button b {
+  font-size: 13.5px;
+  overflow-wrap: anywhere;
+}
+
+.tiles button[aria-checked='true'] {
+  box-shadow: inset 0 0 0 2px var(--page-fg);
+}
+
+.tileImg {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--veil-2);
+}
+
+.tileImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tileImg i {
+  font-size: 22px;
+  font-style: normal;
+  font-weight: 700;
+  opacity: 0.5;
+}
+
+.tiles button[aria-disabled='true'],
+.opts button[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.opts button[aria-disabled='true'] b {
+  text-decoration: line-through;
+}
+
+.tiles button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }

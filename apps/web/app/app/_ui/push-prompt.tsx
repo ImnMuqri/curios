@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { browserPushClient, isInstalled, type PushClient } from '../../../lib/push-client.js';
 import { PeekTile } from './new-version.js';
 import styles from './push-prompt.module.css';
+import { Callout } from '@curios/ui';
 
 /** localStorage: when the owner last said "Not now" (ms since epoch). */
 export const PUSH_DISMISSED_AT_KEY = 'curios:push-prompt-dismissed-at';
@@ -115,7 +116,7 @@ export function PushPrompt({
           <div className={styles.words}>
             <p className={styles.title}>Get a buzz for new orders on this phone?</p>
             <p className={styles.sub}>New orders, receipts and leads, the moment they come in.</p>
-            {error ? <p className={styles.error}>{error}</p> : null}
+            {error ? <Callout tone="error">{error}</Callout> : null}
           </div>
           <button type="button" className={styles.turnOn} disabled={busy} onClick={() => void turnOn(state.publicKey)}>
             {error ? 'Try again' : 'Turn on'}

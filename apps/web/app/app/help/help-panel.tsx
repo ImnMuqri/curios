@@ -7,6 +7,7 @@ import { ApiError, apiFetch } from '../../../lib/api.js';
 import { LivePeek } from '../../_peek/LivePeek.js';
 import { SUPPORT_MAILTO } from './help-context.js';
 import styles from './help.module.css';
+import { Callout } from '@curios/ui';
 
 /**
  * The dashboard's Help (design/help/help-chat-design.md, board "App · Help"). Answers come only
@@ -477,16 +478,16 @@ export function HelpPanel({
               </button>
             </div>
             {error ? (
-              <p className={styles.error} role="alert">
-                {error}
-              </p>
+              <div className={styles.composerError}>
+                <Callout tone="error">{error}</Callout>
+              </div>
             ) : null}
           </form>
         )}
         {topics && error ? (
-          <p className={`${styles.error} ${styles.topicsError}`} role="alert">
-            {error}
-          </p>
+          <div className={styles.topicsError}>
+            <Callout tone="error">{error}</Callout>
+          </div>
         ) : null}
       </aside>
     </>
@@ -557,9 +558,9 @@ function SupportCard({ email, sent, needsNote, send }: { email: string | null; s
         </a>
       </div>
       {error ? (
-        <p className={styles.error} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
     </div>
   );

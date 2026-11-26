@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { pricingProblem } from '@curios/core/store';
-import { CATEGORY_SENTENCE, checkFields, FROM_PARSE_SENTENCE, ownerPriceLine, type PricingDraft, SKU_SENTENCE, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
+import { CATEGORY_SENTENCE, checkFields, FROM_PARSE_SENTENCE, ownerPriceLine, type PricingDraft, SKU_SENTENCE, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf, dropGroupTwo, setSame, cellKey, cellOf, choicesToOptions, startChoices, ownerPricingLine } from './pricing.js';
 
 describe('draftOf', () => {
   it('reads a priced item as one price, and an item with options as its options', () => {
@@ -116,5 +116,91 @@ describe('Ask items', () => {
     expect(ownerPriceLine({ priceCents: 18000, askForPrice: true, options: [] })).toBe('From RM180, ask for a price');
     expect(ownerPriceLine({ priceCents: null, askForPrice: true, options: [] })).toBe('Price on request');
     expect(ownerPriceLine({ priceCents: 2500, options: [] })).toBe('RM25');
+  });
+});
+
+describe('choices', () => {
+  const choices = {
+    groupOne: { name: 'Flavour', choices: [{ id: 'a', label: 'Vanilla', photoId: 'p1', photoKey: 'k1' }, { id: 'b', label: 'Chocolate', photoId: null, photoKey: null }] },
+    groupTwo: { name: 'Size', choices: [{ id: 'x', label: '500g', photoId: null, photoKey: null }, { id: 'y', label: '1kg', photoId: null, photoKey: null }] },
+    combos: [
+      { id: 'c1', label: 'Vanilla · 500g', oneId: 'a', twoId: 'x', priceCents: 4500, available: true },
+      { id: 'c2', label: 'Vanilla · 1kg', oneId: 'a', twoId: 'y', priceCents: 8000, available: false },
+      { id: 'c3', label: 'Chocolate · 500g', oneId: 'b', twoId: 'x', priceCents: 5000, available: true },
+      { id: 'c4', label: 'Chocolate · 1kg', oneId: 'b', twoId: 'y', priceCents: 9000, available: true },
+    ],
+  };
+  const item = { priceCents: null, options: choices.combos.map((c) => ({ label: c.label, priceCents: c.priceCents })), choices };
+
+  it('opens a choices item as choices, and saves back the same pricing', () => {
+    const draft = draftOf(item);
+    expect(draft.choices).toBeTruthy();
+    expect(pricingOf(draft)).toEqual({
+      pricing: {
+        kind: 'choices',
+        groupOne: { name: 'Flavour', choices: [{ label: 'Vanilla', photoId: 'p1' }, { label: 'Chocolate' }] },
+        groupTwo: { name: 'Size', choices: [{ label: '500g' }, { label: '1kg' }] },
+        combos: [
+          { one: 0, two: 0, priceCents: 4500, available: true },
+          { one: 0, two: 1, priceCents: 8000, available: false },
+          { one: 1, two: 0, priceCents: 5000, available: true },
+          { one: 1, two: 1, priceCents: 9000, available: true },
+        ],
+      },
+    });
+  });
+
+  it('drops a photo pick that is not one of the item photos, and never sends two for one group', () => {
+    const draft = draftOf(item);
+    const dropped = pricingOf(draft, ['other']);
+    expect('pricing' in dropped && dropped.pricing.kind === 'choices' && dropped.pricing.groupOne.choices[0]).toEqual({ label: 'Vanilla' });
+    const one = dropGroupTwo(draft.choices!);
+    const priced = pricingOf({ ...draft, choices: one });
+    expect('pricing' in priced && priced.pricing.kind === 'choices' && priced.pricing.combos.map((c) => 'two' in c)).toEqual([false, false]);
+  });
+
+  it('says what is wrong with a price or with every combination off', () => {
+    const draft = draftOf(item);
+    const c = draft.choices!;
+    const zero = { ...c, cells: Object.fromEntries(Object.entries(c.cells).map(([k, v]) => [k, { ...v, price: '0' }])) };
+    expect(pricingOf({ ...draft, choices: zero })).toEqual({ error: '"Vanilla · 500g": Give it a price above RM0, up to RM10,000.' });
+    const off = { ...c, cells: Object.fromEntries(Object.entries(c.cells).map(([k, v]) => [k, { ...v, available: false }])) };
+    expect(pricingOf({ ...draft, choices: off })).toEqual({ error: 'Keep at least one combination on sale.' });
+  });
+
+  it('same price shares prices only: on or off stays per combination, and unticking restores each row', () => {
+    const original = draftOf(item).choices!;
+    const c = setSame(original, true);
+    const k = (o: number, t: number) => [c.one[o]!.key, c.two![t]!.key] as const;
+    // Ticking changed nothing about on/off: Vanilla 1kg is still off, and every row shows the first row's price.
+    expect(cellOf(c, ...k(0, 1)).available).toBe(false);
+    expect(cellOf(c, ...k(1, 1))).toEqual({ price: '80', available: true });
+    const shared = { ...c, cells: { ...c.cells, [cellKey('*', c.two![1]!.key)]: { price: '70', available: true } } };
+    expect(cellOf(shared, ...k(1, 1)).price).toBe('70');
+    // A shared price changed while ticked is kept on untick, for every row of its column; the other column gets its own prices back.
+    const back = setSame(shared, false);
+    expect(cellOf(back, ...k(0, 1))).toEqual({ price: '70', available: false });
+    expect(cellOf(back, ...k(1, 1))).toEqual({ price: '70', available: true });
+    expect(cellOf(back, ...k(1, 0)).price).toBe('50');
+    expect(cellOf(back, ...k(0, 0)).price).toBe('45');
+    // A tick and an untick with no edit is a round trip.
+    const trip = setSame(setSame(original, true), false);
+    for (const o of original.one) for (const t of original.two!) expect(cellOf(trip, o.key, t.key)).toEqual(cellOf(original, o.key, t.key));
+  });
+
+  it('flattens to a plain list of the combinations on sale, and starts from a plain list', () => {
+    expect(choicesToOptions(draftOf(item).choices!).map((o) => [o.label, o.price])).toEqual([['Vanilla · 500g', '45'], ['Chocolate · 500g', '50'], ['Chocolate · 1kg', '90']]);
+    const started = startChoices([{ key: 1, label: '1kg', price: '95' }]);
+    expect(started.two).toHaveLength(1);
+    expect(cellOf(started, started.one[0]!.key, started.two![0]!.key).price).toBe('95');
+  });
+
+  it('says From RM and ignores switched-off combinations', () => {
+    expect(ownerPriceLine(item)).toBe('From RM45');
+    const dear = { ...item, choices: { ...choices, combos: choices.combos.map((c) => (c.priceCents < 5000 ? { ...c, available: false } : c)) } };
+    expect(ownerPriceLine(dear)).toBe('From RM50');
+    const p = pricingOf(draftOf(item));
+    expect('pricing' in p && ownerPricingLine(p.pricing)).toBe('From RM45');
+    expect('pricing' in p && pricedFields(p.pricing).options.map((o) => o.label)).toEqual(['Vanilla · 500g', 'Chocolate · 500g', 'Chocolate · 1kg']);
   });
 });

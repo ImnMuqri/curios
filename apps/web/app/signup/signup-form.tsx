@@ -8,6 +8,7 @@ import { apiFetch } from '../../lib/api.js';
 import { readWantedHandle } from '../../lib/wanted-handle.js';
 import styles from '../auth.module.css';
 import { SIGNUP_TITLE } from './signup-title.js';
+import { Callout } from '@curios/ui';
 
 export function SignUpForm({
   onSubmit,
@@ -130,9 +131,9 @@ export function SignUpForm({
         />
 
         {error ? (
-          <p className={styles.error} id={errorId} role="alert">
+          <div id={errorId}><Callout tone="error">
             {error}
-          </p>
+          </Callout></div>
         ) : null}
 
         <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>

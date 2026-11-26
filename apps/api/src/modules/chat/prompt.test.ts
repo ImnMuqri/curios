@@ -303,6 +303,14 @@ describe('the shop', () => {
     expect(buildSystemPrompt({ ...base, shop })).toMatch(/appears in a fact below, in SHOP/);
   });
 
+  it('names the choice groups and separates combinations with a semicolon', () => {
+    const prompt = buildSystemPrompt({
+      ...base,
+      shop: [{ name: 'Kek Variasi', description: null, priceCents: null, choiceGroupOne: 'Flavour', choiceGroupTwo: 'Size', options: [{ label: 'Vanilla · 1kg', priceCents: 8000 }, { label: 'Chocolate · 500g', priceCents: 6000 }] }],
+    });
+    expect(prompt).toContain('<item name="Kek Variasi">Flavour / Size: Vanilla · 1kg RM80; Chocolate · 500g RM60</item>');
+  });
+
   it('answers "what do you sell" from SHOP first, by exact item names, so the reply gets its product cards', () => {
     const prompt = buildSystemPrompt({ ...base, shop });
     expect(prompt).toMatch(/When someone asks what Nadia Bakes sells, offers, has for sale or what they can buy, answer from SHOP first: name\nthe items by their exact names/);

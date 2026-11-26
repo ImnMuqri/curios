@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useRef, useState, type FormEvent, type RefObject } from 'react';
-import { Thinking } from '@curios/ui';
+import { Thinking, Callout } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
 import { SideSheet } from '../_ui/side-sheet.js';
 import { PageReply } from '../_ui/page-reply.js';
@@ -220,9 +220,9 @@ export function AskPanel({
         </>
       ) : null}
       {error ? (
-        <p className={styles.error} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
     </SideSheet>
   );

@@ -53,7 +53,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             handle={shop.handle}
             displayName={shop.displayName}
             language={shop.language}
-            item={{ ...item, photoUrl: avatarUrl(item.photoKey), photoUrls: photoKeys.flatMap((key) => avatarUrl(key) ?? []) }}
+            item={{ ...item, photoUrl: avatarUrl(item.photoKey), photoUrls: photoKeys.flatMap((key) => avatarUrl(key) ?? []), photoKeys }}
             items={shop.items}
             halal={shop.shopHalal}
             noticeDays={shop.minNoticeDays}

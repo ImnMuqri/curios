@@ -14,10 +14,11 @@ import { TopBar } from '../../top-bar.js';
 import sheet from '../../sheet.module.css';
 import { EnquirySheet } from './enquiry-sheet.js';
 import { ProductGallery } from './product-gallery.js';
+import { ChoicesPicker, firstAvailable, type PickedChoices } from './choices-picker.js';
 import styles from './product.module.css';
 
 /** The digital facts are absent on the Store preview's physical items. */
-export type ProductItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null; /** The 1080 square photos in order; absent, the gallery shows photoUrl. */ photoUrls?: string[] };
+export type ProductItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null; /** The 1080 square photos in order; absent, the gallery shows photoUrl. */ photoUrls?: string[]; /** The keys photoUrls were made from, so a choice's photo finds its place in the gallery. */ photoKeys?: string[] };
 
 const ICON = {
   back: 'M15 6l-6 6 6 6',
@@ -79,6 +80,13 @@ export function ProductView(props: {
   const shopHref = `/${props.handle}/shop`;
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [optionId, setOptionId] = useState<string | null>(item.options[0]?.id ?? null);
+  const choices = item.choices ?? null;
+  const [pickedState, setPicked] = useState<PickedChoices>(() => (choices ? firstAvailable(choices) : { oneId: null, twoId: null }));
+  // A pick that no longer names a combination on sale (the store preview after a save: every save gives the
+  // combinations new ids, or the owner switched that one off) falls back to the first one on sale.
+  const picked: PickedChoices =
+    choices && !choices.combos.some((c) => c.oneId === pickedState.oneId && c.twoId === pickedState.twoId && c.available) ? firstAvailable(choices) : pickedState;
+  const [show, setShow] = useState<{ index: number } | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
   const times = item.sessions ?? [];
   const [sessionId, setSessionId] = useState<string | null>(times.find((t) => t.seatsLeft > 0)?.id ?? null);
@@ -108,8 +116,9 @@ export function ProductView(props: {
 
   // An Ask item (8 Nov) never goes in the basket: its price is where an enquiry starts, and its bar asks.
   const ask = item.askForPrice === true;
+  const combo = choices ? (choices.combos.find((c) => c.oneId === picked.oneId && c.twoId === picked.twoId && c.available) ?? null) : null;
   const option = item.options.find((candidate) => candidate.id === optionId) ?? null;
-  const unitCents = ask ? null : item.options.length > 0 ? (option?.priceCents ?? null) : item.priceCents;
+  const unitCents = ask ? null : choices ? (combo?.priceCents ?? null) : item.options.length > 0 ? (option?.priceCents ?? null) : item.priceCents;
   const total = unitCents === null ? null : formatRinggit(unitCents * quantity);
   const digital = item.kind === 'DIGITAL';
   const session = digital && item.delivery === 'SESSION';
@@ -150,7 +159,7 @@ export function ProductView(props: {
 
   function add() {
     if (unitCents === null || soldOut || (session && sessionId === null)) return;
-    const line: BasketLine = { itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity: Math.min(quantity, maxQuantity), ...(session ? { sessionId } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
+    const line: BasketLine = { itemId: item.id, optionId: choices ? (combo?.id ?? null) : item.options.length > 0 ? optionId : null, quantity: Math.min(quantity, maxQuantity), ...(session ? { sessionId } : {}), ...(note.trim() ? { note: note.trim() } : {}) };
     const next = addToBasket(readBasket(key), line);
     writeBasket(key, next);
     setAnnounce(
@@ -182,9 +191,9 @@ export function ProductView(props: {
         </p>
       ) : null}
 
-      <div className={sheet.sheet}>
+      <div className={`${sheet.sheet} ${styles.sheet}`}>
 
-      <ProductGallery name={item.name} urls={item.photoUrls?.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : []} copy={copy} />
+      <ProductGallery name={item.name} urls={item.photoUrls?.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : []} copy={copy} show={show} />
 
       <div className={styles.pd}>
         {digital || item.tag ? <span className={styles.ptag}>{digital ? copy.digital : item.tag}</span> : null}
@@ -202,7 +211,16 @@ export function ProductView(props: {
         {soldOut ? <p className={styles.soldOut}>{copy.soldOut}</p> : null}
         {item.description ? <p className={styles.desc}>{item.description}</p> : null}
 
-        {item.options.length > 0 ? (
+        {choices ? (
+          <ChoicesPicker
+            choices={choices}
+            picked={picked}
+            onPick={setPicked}
+            photoUrlOf={(key) => { const i = item.photoKeys?.indexOf(key) ?? -1; return i >= 0 ? (item.photoUrls?.[i] ?? null) : null; }}
+            onPhoto={(key) => { const i = item.photoKeys?.indexOf(key) ?? -1; if (i >= 0) setShow({ index: i }); }}
+            copy={copy}
+          />
+        ) : item.options.length > 0 ? (
           <>
             <span className={styles.lbl} id="product-size">
               {copy.sizeLabel}

@@ -397,3 +397,64 @@ describe('getOwnerStore', () => {
     await expect(prismaRead.shopPaymentAccount.findMany({ select: { pageId: true, brandName: true } })).resolves.toBeDefined();
   });
 });
+
+describe('items with choice groups', () => {
+  let accountId = '';
+  /** Flavour (Vanilla with a photo, Chocolate) x Size (500g, 1kg); Chocolate 1kg is switched off. */
+  beforeAll(async () => {
+    accountId = await seed('sq-choices', {
+      items: { create: [{ name: 'Kek', slug: 'kek', position: 0, available: true, choiceGroupOne: 'Flavour', choiceGroupTwo: 'Size' }, { name: 'Tart', slug: 'tart', position: 1, available: true, priceCents: 2000 }] },
+    });
+    const item = await write.item.findFirstOrThrow({ where: { page: { accountId }, slug: 'kek' }, select: { id: true } });
+    const photo = await write.itemPhoto.create({ data: { itemId: item.id, position: 0, originalKey: 'private/o', squareKey: 'items/p/van.webp', width: 800, height: 800, frameX: 0, frameY: 0, frameSize: 1 }, select: { id: true } });
+    const choice = (group: number, position: number, label: string, photoId?: string) => write.itemChoice.create({ data: { itemId: item.id, group, position, label, photoId: photoId ?? null }, select: { id: true } });
+    // Created out of order, so position is what orders them.
+    const [c1, v1, k1, k0] = [await choice(2, 1, '1kg'), await choice(1, 0, 'Vanilla', photo.id), await choice(1, 1, 'Chocolate'), await choice(2, 0, '500g')];
+    const combo = (position: number, label: string, priceCents: number, one: { id: string }, two: { id: string }, available = true) =>
+      write.itemOption.create({ data: { itemId: item.id, label, priceCents, position, choiceOneId: one.id, choiceTwoId: two.id, available } });
+    await combo(3, 'Chocolate · 1kg', 9000, k1, c1, false);
+    await combo(0, 'Vanilla · 500g', 5000, v1, k0);
+    await combo(1, 'Vanilla · 1kg', 8000, v1, c1);
+    await combo(2, 'Chocolate · 500g', 6000, k1, k0);
+  });
+
+  it('the shop sells only the combinations that are on, and says which are off in choices', async () => {
+    const shop = await getPublicShop('sq-choices');
+    const kek = shop!.items[0]!;
+    expect(kek.options.map((o) => [o.label, o.priceCents])).toEqual([['Vanilla · 500g', 5000], ['Vanilla · 1kg', 8000], ['Chocolate · 500g', 6000]]);
+    expect(Object.keys(kek.options[0]!).sort()).toEqual(['id', 'label', 'priceCents']);
+    expect(kek.choices?.groupOne.name).toBe('Flavour');
+    expect(kek.choices?.groupOne.choices.map((c) => [c.label, c.photoKey])).toEqual([['Vanilla', 'items/p/van.webp'], ['Chocolate', null]]);
+    expect(kek.choices?.groupTwo?.name).toBe('Size');
+    expect(kek.choices?.groupTwo?.choices.map((c) => c.label)).toEqual(['500g', '1kg']);
+    expect(kek.choices?.combos.map((c) => [c.label, c.available])).toEqual([['Vanilla · 500g', true], ['Vanilla · 1kg', true], ['Chocolate · 500g', true], ['Chocolate · 1kg', false]]);
+    const one = kek.choices!.groupOne.choices;
+    expect(kek.choices?.combos[3]).toMatchObject({ oneId: one[1]!.id, twoId: kek.choices!.groupTwo!.choices[1]!.id });
+    expect(kek.choices?.combos[0]?.id).toBe(kek.options[0]!.id);
+    // The group names and rows are not loose fields of the item.
+    expect(kek).not.toHaveProperty('choiceGroupOne');
+  });
+
+  it('a plain item has no choices key at all', async () => {
+    const shop = await getPublicShop('sq-choices');
+    expect(shop!.items[1]).not.toHaveProperty('choices');
+    expect(shop!.items[1]).not.toHaveProperty('choiceGroupOne');
+    const open = await getPublicShop('sq-open');
+    expect(open!.items[1]).not.toHaveProperty('choices');
+    expect(Object.keys(open!.items[1]!.options[0]!).sort()).toEqual(['id', 'label', 'priceCents']);
+  });
+
+  it("the owner's store reads every combination, off ones included, with the choices", async () => {
+    const store = await getOwnerStore(accountId);
+    const kek = store!.items[0]!;
+    expect(kek.options.map((o) => o.label)).toEqual(['Vanilla · 500g', 'Vanilla · 1kg', 'Chocolate · 500g', 'Chocolate · 1kg']);
+    expect(kek.choices?.combos.map((c) => c.available)).toEqual([true, true, true, false]);
+    expect(kek.choices?.groupOne.choices[0]).toMatchObject({ label: 'Vanilla', photoKey: 'items/p/van.webp' });
+    expect(store!.items[1]).not.toHaveProperty('choices');
+  });
+
+  it('the shop tile and the page read only what is on sale', async () => {
+    const page = await getPublicPage('sq-choices');
+    expect(page?.shopOrdering?.items[0]?.options.map((o) => o.label)).toEqual(['Vanilla · 500g', 'Vanilla · 1kg', 'Chocolate · 500g']);
+  });
+});

@@ -289,7 +289,7 @@ const EN: LandingBase = {
     title: 'Curios: one link that answers for you',
     description:
       'Share one link and let it answer what people keep asking: your work, your rates, your shop. Curios replies from facts you approve, in Malay or English. Free for anyone.',
-    ogAlt: 'Aisyah’s Curios page, asked if she is taking commissions, answering that two November slots are left.',
+    ogAlt: 'Curios. Don’t read the bio. Ask. The link in bio people can ask, in Malay or English, with Peek the mascot.',
     ogLocale: 'en_MY',
   },
   skip: 'Skip to content',
@@ -498,7 +498,7 @@ const MS: LandingBase = {
     title: 'Curios: satu link yang menjawab untuk anda',
     description:
       'Kongsi satu link, biar ia jawab soalan orang: kerja, harga, kedai anda. Curios jawab ikut fakta yang anda luluskan, dalam BM atau English. Percuma untuk semua.',
-    ogAlt: 'Halaman Curios Aisyah, ditanya sama ada dia ambil tempahan, menjawab tinggal dua slot November.',
+    ogAlt: 'Curios. Tak payah baca bio. Tanya. Link bio yang orang boleh tanya, dalam BM atau English, bersama Peek si maskot.',
     ogLocale: 'ms_MY',
   },
   skip: 'Langkau ke kandungan',

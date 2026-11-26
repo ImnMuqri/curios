@@ -10,6 +10,7 @@ import { BadLink } from '../_system/BadLink.js';
 import { strength } from '../../lib/password-strength.js';
 import { apiFetch, ApiError } from '../../lib/api.js';
 import styles from '../auth.module.css';
+import { Callout } from '@curios/ui';
 
 /** Under the meter, as the board words each strength. */
 const STRENGTH_TEXT = ['8 characters or more.', 'Too short. 8 characters or more.', 'Okay. A number makes it stronger.', 'Good.', 'Strong.'];
@@ -121,9 +122,9 @@ export function ResetForm({
           {STRENGTH_TEXT[level]}
         </p>
         {error ? (
-          <p className={styles.error} id={errorId} role="alert">
+          <div id={errorId}><Callout tone="error">
             {error}
-          </p>
+          </Callout></div>
         ) : null}
         <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>
           {busy ? 'Changing…' : 'Change my password'}

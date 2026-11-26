@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { FAILED } from './toast.js';
 import styles from './inbox.module.css';
+import { Callout } from '@curios/ui';
 
 /**
  * A second look before something that cannot be taken back (Dash.html `.xcf2` / `.xcfb`): the
@@ -145,9 +146,9 @@ export function InlineConfirm({
         <div className={styles.confirmPanel} role="group" aria-label={trigger} aria-busy={busy || undefined} onKeyDown={onKeyDown}>
           <p>{question}</p>
           {failed ? (
-            <p className={styles.confirmError} role="alert">
-              {FAILED}
-            </p>
+            <div className={styles.confirmError}>
+              <Callout tone="error">{FAILED}</Callout>
+            </div>
           ) : null}
           <div className={styles.confirmButtons}>
             <button type="button" className={styles.confirmYes} aria-disabled={busy || undefined} onClick={() => void confirm()}>

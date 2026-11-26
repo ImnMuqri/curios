@@ -1,6 +1,6 @@
 import { digitalFacts, type DigitalFacts } from '@curios/core/digital';
 import type { Frame } from '@curios/core/item-photos';
-import type { Pricing } from '@curios/core/store';
+import type { ItemChoices, Pricing } from '@curios/core/store';
 import type { OwnerVoucher, VoucherInput } from '@curios/core/vouchers';
 import type { MyCurios, OwnerStore } from '@curios/db-read';
 
@@ -67,6 +67,8 @@ export type ItemRow = {
   /** An Ask item: customers send an enquiry rather than adding it to the basket. Physical items only. */
   askForPrice: boolean;
   options: { id: string; label: string; priceCents: number }[];
+  /** Choice groups and their combinations: null on a plain item (read it as `choices ?? null`). */
+  choices?: ItemChoices | null;
   kind: 'PHYSICAL' | 'DIGITAL';
   delivery: Delivery | null;
   accessUrl: string | null;

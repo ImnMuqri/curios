@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import styles from './billing.module.css';
+import { Callout } from '@curios/ui';
 
 /**
  * The API's 409 already says exactly what happened and what to do instead, and
@@ -50,9 +51,9 @@ export function ResetTrialForm({
         {busy ? 'Resetting…' : 'Reset my free trial'}
       </button>
       {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
+        <div className={styles.errorRow}>
+          <Callout tone="error">{error}</Callout>
+        </div>
       ) : null}
     </div>
   );

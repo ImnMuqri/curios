@@ -110,7 +110,8 @@ const SHELF_SELECT = {
   photoKey: true,
   priceCents: true,
   askForPrice: true,
-  options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+  // A combination switched off is not on the shelf, so a basket cannot be rebuilt with it.
+  options: { where: { available: true }, orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
   kind: true,
   delivery: true,
   accessUrl: true,
@@ -528,7 +529,7 @@ async function priceLines(tx: Prisma.TransactionClient, pageId: string, lines: P
       available: true,
       priceCents: true,
       askForPrice: true,
-      options: { select: { id: true, label: true, priceCents: true } },
+      options: { select: { id: true, label: true, priceCents: true, available: true } },
       kind: true,
       delivery: true,
       accessUrl: true,
@@ -552,7 +553,8 @@ async function priceLines(tx: Prisma.TransactionClient, pageId: string, lines: P
     let unitCents: number;
     if (item.options.length > 0) {
       const option = item.options.find((o) => o.id === line.optionId);
-      if (!option) throw new ItemUnavailableError(item.name);
+      // A combination switched off is refused like one that is gone.
+      if (!option || !option.available) throw new ItemUnavailableError(item.name);
       optionLabel = option.label;
       unitCents = option.priceCents;
     } else {

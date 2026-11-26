@@ -578,16 +578,10 @@
   margin: 0;
 }
 
-.error {
-  margin: 8px 0 0;
-  font-size: 12.5px;
-  color: var(--merah-deep);
-}
-
 /* Under Topics, where there is no composer to hold it. */
 .topicsError {
   flex: none;
-  padding: 0 18px 16px;
+  padding: 0 18px;
 }
 
 /* ---- Topics ---- */
@@ -713,6 +707,15 @@
   margin: 0;
   padding: 12px;
   border-top: 1px solid var(--line);
+}
+
+/* The composer's failure notice: room above it, none below, as the composer's padding is the foot. */
+.composerError {
+  margin-top: 12px;
+}
+
+.composerError > p {
+  margin: 0;
 }
 
 .composerRow {

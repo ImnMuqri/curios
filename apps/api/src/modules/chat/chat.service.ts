@@ -300,7 +300,10 @@ export const ANSWER_PAGE_SELECT = {
       priceCents: true,
       // An Ask item: SHOP says so, and its card asks rather than adds.
       askForPrice: true,
-      options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+      // Only what is on sale: a combination the owner switched off is never offered, in the prompt or on a card.
+      options: { where: { available: true }, orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+      choiceGroupOne: true,
+      choiceGroupTwo: true,
       // So a card never offers a class without its time, or an item that is sold out.
       kind: true,
       delivery: true,

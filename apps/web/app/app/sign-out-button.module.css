@@ -24,8 +24,10 @@
   opacity: 0.6;
 }
 
+/* The failure notice: a full line of its own wherever the button sits (a menu, a settings row's action). */
 .signOutError {
-  margin: 8px 0 0;
-  font-size: var(--text-base);
-  color: var(--ink);
+  flex-basis: 100%;
+  min-width: 230px;
+  margin-top: 8px;
+  text-align: left;
 }

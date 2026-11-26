@@ -575,12 +575,12 @@ describe('the preview', () => {
     expect(within(preview()).getByText('1 item · RM45')).toBeInTheDocument();
   });
 
-  it('the Item screen is the real item page: Size boxes for options', () => {
+  it('the Item screen is the real item page: Options boxes for options', () => {
     const list: EditorItem[] = [
       { ...base, id: 'a', name: 'Kek coklat', priceCents: null, available: true, options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }] },
     ];
     showItem(ready, list);
-    expect(within(preview()).getByRole('radiogroup', { name: 'Size' })).toBeInTheDocument();
+    expect(within(preview()).getByRole('radiogroup', { name: 'Options' })).toBeInTheDocument();
     expect(within(preview()).getByRole('radio', { name: /1kg/ })).toBeInTheDocument();
     expect(within(preview()).getByRole('radio', { name: /2kg/ })).toBeInTheDocument();
   });

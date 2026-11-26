@@ -1,5 +1,6 @@
 import { SystemActions, SystemCard, SystemShell, systemStyles as styles } from './SystemShell.js';
 import { BrokenLinkArt } from './art.js';
+import { Callout } from '@curios/ui';
 
 /**
  * "That link doesn't work", from the Site board: a reset link that is cut
@@ -21,9 +22,9 @@ export function BadLink({ kind = 'reset', detail }: { kind?: 'reset' | 'verify';
         }
       >
         {detail ? (
-          <p className={styles.alert} role="alert">
+          <Callout tone="error">
             {detail}
-          </p>
+          </Callout>
         ) : null}
         <SystemActions>
           {kind === 'reset' ? (

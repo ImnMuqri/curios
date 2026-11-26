@@ -302,6 +302,20 @@ describe('POST /store/:handle/orders', () => {
     expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
   });
 
+  it('refuses an option that is switched off, like a missing one, and takes it again once it is on', async () => {
+    const shop = await aShop();
+    await app.prisma.itemOption.update({ where: { id: shop.cake2kg }, data: { available: false } });
+
+    const line = { itemId: shop.cakeId, optionId: shop.cake2kg, quantity: 1 };
+    const res = await place(shop.handle, aBasket(shop, { lines: [line], seenTotalCents: 17_000 }));
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ITEM_UNAVAILABLE');
+    expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
+
+    await app.prisma.itemOption.update({ where: { id: shop.cake2kg }, data: { available: true } });
+    expect((await place(shop.handle, aBasket(shop, { lines: [line], seenTotalCents: 17_000 }))).statusCode).toBe(201);
+  });
+
   it('refuses a closed day, a day inside the notice, and delivery while delivery is off', async () => {
     const day = firstDay(3);
     const weekday = new Date(`${day}T00:00:00Z`).getUTCDay();

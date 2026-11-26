@@ -4,13 +4,15 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Callout } from '@curios/ui';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS } from '@curios/core/store';
+import { InlineConfirm } from '../_ui/inline-confirm.js';
 import { PageHead } from '../_ui/page-head.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
 import panel from '../panel.module.css';
-import { blankOption, checkFields, draftOf, ownerPriceLine, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
+import { blankOption, checkFields, choicesToOptions, draftOf, ownerPricingLine, previewChoicesOf, pricedFields, startChoices, type CheckedItem, type PricingDraft } from './pricing.js';
+import { ItemChoicesEditor } from './item-choices-editor.js';
 import { DigitalPanels, GET_NOTE, KIND_NOTE, KindSwitch } from './digital-fields.js';
 import { ItemPhotos } from './item-photos.js';
 import { checkDigital, digitalDraftOf, type DigitalDraft } from './digital-draft.js';
@@ -43,6 +45,7 @@ export function fromRow(row: ItemRow, photoUrl: (key: string) => string): Editor
     priceCents: row.priceCents,
     askForPrice: row.askForPrice,
     options: row.options,
+    ...(row.choices ? { choices: row.choices } : {}),
     kind: row.kind,
     delivery: row.delivery,
     accessUrl: row.accessUrl,
@@ -60,6 +63,12 @@ export function fromRow(row: ItemRow, photoUrl: (key: string) => string): Editor
 
 /** What an autosave carries: the checked fields, and the digital ones whenever they are, or were, in play. */
 type Draft = CheckedItem & { digital?: DigitalFields };
+
+/** What the preview draws of an item with choice groups: the combinations on sale as its options, and the groups with the item's photos. */
+function previewChoicePart(pricing: Extract<CheckedItem['pricing'], { kind: 'choices' }>, saved: EditorItem | null): Pick<EditorItem, 'options' | 'choices'> {
+  const choices = previewChoicesOf(pricing, saved?.photos ?? []);
+  return { choices, options: choices.combos.filter((combo) => combo.available).map(({ id, label, priceCents }) => ({ id, label, priceCents })) };
+}
 
 /** The digital state of the item as the preview draws it: what is typed, with the files, codes and times the API holds. */
 function previewDigital(draft: DigitalDraft, saved: EditorItem | null): Pick<EditorItem, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'> {
@@ -151,6 +160,9 @@ export function ItemEditor({
   const [draft, setDraft] = useState<PricingDraft>(() => draftOf(item));
   const [digital, setDigital] = useState<DigitalDraft>(() => digitalDraftOf(item));
   const listId = useId();
+  // The groups just turned into a plain list, with the list they became (compared by identity: any edit to the list makes a new one).
+  const [shelved, setShelved] = useState<{ choices: NonNullable<PricingDraft['choices']>; options: PricingDraft['options'] } | null>(null);
+  const addGroup = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -160,8 +172,16 @@ export function ItemEditor({
   const savedRef = useRef(saved);
   savedRef.current = saved;
 
+  const canRestore = !!shelved && !draft.choices && shelved.options === draft.options;
+  // "Yes, make it a list" removes the button that had focus: put it on the way back.
+  useEffect(() => {
+    if (shelved && !draft.choices) addGroup.current?.focus();
+    // Only when the groups are shelved, not on every edit of the list after.
+  }, [shelved]);
+
   const asking = digital.kind !== 'DIGITAL' && draft.ask === true;
-  const checked = checkFields(name, description, pricingFor(draft, digital), { category, tag, sku });
+  const photoIds = (saved?.photos ?? []).map((photo) => photo.id);
+  const checked = checkFields(name, description, pricingFor(draft, digital), { category, tag, sku, photoIds });
   const checkedDigital = checkDigital(digital);
   const problem = 'error' in checked ? checked.error : 'error' in checkedDigital ? checkedDigital.error : null;
 
@@ -224,7 +244,9 @@ export function ItemEditor({
       priceCents: pricedFields(checked.pricing).priceCents,
       askForPrice: pricedFields(checked.pricing).askForPrice,
       // Unsaved options have no ids yet; the preview only needs them to tell the options apart.
-      options: pricedFields(checked.pricing).options.map((option, i) => ({ id: `draft-${i}`, ...option })),
+      ...(checked.pricing.kind === 'choices'
+        ? previewChoicePart(checked.pricing, saved)
+        : { options: pricedFields(checked.pricing).options.map((option, i) => ({ id: `draft-${i}`, ...option })) }),
     });
     // `checked` is derived from the first three; listing it would re-run on every render.
   }, [name, description, category, tag, sku, draft, digital, saved]);
@@ -245,7 +267,7 @@ export function ItemEditor({
     if (next.draft) setDraft(next.draft);
     if (next.digital) setDigital(next.digital);
     setError('');
-    const fields = checkFields(nextName, nextDescription, pricingFor(nextDraft, nextDigital), { category: nextCategory, tag: nextTag, sku: nextSku });
+    const fields = checkFields(nextName, nextDescription, pricingFor(nextDraft, nextDigital), { category: nextCategory, tag: nextTag, sku: nextSku, photoIds: (savedRef.current?.photos ?? []).map((photo) => photo.id) });
     const kinds = checkDigital(nextDigital);
     // A digital item that is not yet complete (no link, no length) is not sent: it would be saved as the wrong thing.
     if ('error' in fields || 'error' in kinds) return;
@@ -343,7 +365,7 @@ export function ItemEditor({
       <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
         <path d={problem ? 'M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z' : 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'} />
       </svg>
-      {problem ?? `Customers see ${'error' in checked ? '' : ownerPriceLine(pricedFields(checked.pricing))}`}
+      {problem ?? `Customers see ${'error' in checked ? '' : ownerPricingLine(checked.pricing)}`}
     </p>
   );
 
@@ -504,6 +526,28 @@ export function ItemEditor({
                 <span>RM</span>
                 <input value={draft.price} inputMode="decimal" aria-label="Price in ringgit" placeholder="0.00" onChange={(event) => edit({ draft: { ...draft, price: event.target.value } })} />
               </label>
+            ) : draft.choices ? (
+              <>
+                <ItemChoicesEditor
+                  draft={draft.choices}
+                  photos={saved?.photos ?? []}
+                  photoUrl={api.photoUrl}
+                  onChange={(choices) => edit({ draft: { ...draft, choices } })}
+                />
+                <InlineConfirm
+                  trigger="Use a plain list of options instead"
+                  question="Turn this into a plain list? Your groups, photos and switched-off combinations are removed."
+                  yes="Yes, make it a list"
+                  no="Keep my groups"
+                  tone="quiet"
+                  onYes={() => {
+                    const options = choicesToOptions(draft.choices!);
+                    // Kept for this session: "+ Add a choice group" straight after puts the groups back as they were.
+                    setShelved({ choices: draft.choices!, options });
+                    edit({ draft: { ...draft, options, choices: null } });
+                  }}
+                />
+              </>
             ) : (
               <>
                 <div className={styles.options}>
@@ -547,6 +591,10 @@ export function ItemEditor({
                 ) : (
                   <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
                 )}
+                <button ref={addGroup} type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: canRestore ? shelved!.choices : startChoices(draft.options) } })}>
+                  + Add a choice group
+                </button>
+                {canRestore ? <p className={ui.note}>Brings back the groups you just turned into a list.</p> : null}
               </>
             )}
 

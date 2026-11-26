@@ -315,3 +315,142 @@ describe('item bookkeeping', () => {
     expect((await call(app, 'PUT', '/store/items/order', owner.cookie, { ids: [a, 'nope'] })).json().error.code).toBe('ITEM_ORDER_STALE');
   });
 });
+
+describe('choices pricing', () => {
+  const choices = (over: Record<string, unknown> = {}) => ({
+    kind: 'choices',
+    groupOne: { name: 'Flavour', choices: [{ label: 'Vanilla' }, { label: 'Chocolate' }] },
+    groupTwo: { name: 'Size', choices: [{ label: '500g' }, { label: '1kg' }] },
+    combos: [
+      { one: 0, two: 0, priceCents: 5000, available: true },
+      { one: 0, two: 1, priceCents: 8000, available: true },
+      { one: 1, two: 0, priceCents: 6000, available: true },
+      { one: 1, two: 1, priceCents: 9000, available: false },
+    ],
+    ...over,
+  });
+  const body = (pricing: object) => ({ name: 'Kek', pricing });
+
+  type Row = {
+    id: string;
+    priceCents: number | null;
+    options: { id: string; label: string; priceCents: number }[];
+    choices: null | {
+      groupOne: { name: string; choices: { id: string; label: string; photoId: string | null; photoKey: string | null }[] };
+      groupTwo: { name: string; choices: { id: string; label: string }[] } | null;
+      combos: { id: string; label: string; oneId: string; twoId: string | null; priceCents: number; available: boolean }[];
+    };
+  };
+
+  it('creates the combinations as options, with groups, choices and the on/off switch', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'POST', '/store/items', owner.cookie, body(choices()));
+    expect(res.statusCode).toBe(201);
+    const item = res.json<{ item: Row }>().item;
+    expect(item.priceCents).toBeNull();
+    expect(item.options.map((o) => [o.label, o.priceCents])).toEqual([['Vanilla · 500g', 5000], ['Vanilla · 1kg', 8000], ['Chocolate · 500g', 6000], ['Chocolate · 1kg', 9000]]);
+    const groups = item.choices!;
+    expect(groups.groupOne.name).toBe('Flavour');
+    expect(groups.groupOne.choices.map((c) => c.label)).toEqual(['Vanilla', 'Chocolate']);
+    expect(groups.groupTwo?.name).toBe('Size');
+    expect(groups.groupTwo?.choices.map((c) => c.label)).toEqual(['500g', '1kg']);
+    expect(groups.combos.map((c) => c.available)).toEqual([true, true, true, false]);
+    const last = groups.combos[3]!;
+    expect(last.oneId).toBe(groups.groupOne.choices[1]!.id);
+    expect(last.twoId).toBe(groups.groupTwo!.choices[1]!.id);
+    expect(last.id).toBe(item.options[3]!.id);
+    // The owner's list reads the same.
+    const listed = (await call(app, 'GET', '/store', owner.cookie)).json<{ items: Row[] }>().items[0]!;
+    expect(listed.choices).toEqual(item.choices);
+  });
+
+  it('one group only: labels are the choices, and there is no second group', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'POST', '/store/items', owner.cookie, body({ kind: 'choices', groupOne: { name: 'Size', choices: [{ label: '1kg' }, { label: '2kg' }] }, combos: [{ one: 0, priceCents: 9500, available: true }, { one: 1, priceCents: 17000, available: true }] }));
+    const item = res.json<{ item: Row }>().item;
+    expect(item.options.map((o) => o.label)).toEqual(['1kg', '2kg']);
+    expect(item.choices?.groupTwo).toBeNull();
+    expect(item.choices?.combos.map((c) => c.twoId)).toEqual([null, null]);
+  });
+
+  it("attaches a photo of the item to a group-one choice, and refuses another item's", async () => {
+    const owner = await anOwner(app);
+    const other = await anOwner(app);
+    const item = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json<{ item: Row }>().item;
+    const photo = (itemId: string) =>
+      app.prisma.itemPhoto.create({ data: { itemId, position: 0, originalKey: `item-photos/${randomUUID()}.png`, squareKey: `items/${randomUUID()}.webp`, width: 800, height: 800, frameX: 0, frameY: 0, frameSize: 1 }, select: { id: true } });
+    const mine = await photo(item.id);
+    const otherItem = (await call(app, 'POST', '/store/items', other.cookie, cookies)).json<{ item: Row }>().item;
+    const theirs = await photo(otherItem.id);
+
+    const withPhoto = (photoId: string) => choices({ groupOne: { name: 'Flavour', choices: [{ label: 'Vanilla', photoId }, { label: 'Chocolate' }] } });
+    expect((await call(app, 'PATCH', `/store/items/${item.id}`, owner.cookie, { pricing: withPhoto(theirs.id) })).json().error.code).toBe('INVALID_ITEM');
+    // A new item has no photos yet.
+    expect((await call(app, 'POST', '/store/items', owner.cookie, body(withPhoto(mine.id)))).json().error.code).toBe('INVALID_ITEM');
+
+    const ok = await call(app, 'PATCH', `/store/items/${item.id}`, owner.cookie, { pricing: withPhoto(mine.id) });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json<{ item: Row }>().item.choices?.groupOne.choices[0]).toMatchObject({ label: 'Vanilla', photoId: mine.id, photoKey: expect.stringMatching(/^items\/.*\.webp$/) });
+  });
+
+  it('refuses a broken grid with INVALID_ITEM and saves nothing', async () => {
+    const owner = await anOwner(app);
+    const grid = choices().combos;
+    for (const pricing of [
+      choices({ combos: grid.slice(1) }),
+      choices({ combos: [grid[0], grid[0], grid[2], grid[3]] }),
+      choices({ combos: grid.map((c) => ({ ...c, available: false })) }),
+      choices({ combos: grid.map((c) => ({ ...c, priceCents: 0 })) }),
+      choices({ combos: grid.map((c) => ({ ...c, priceCents: 1_000_001 })) }),
+      choices({ groupOne: { name: 'Flavour', choices: Array.from({ length: 11 }, (_, i) => ({ label: `c${i}` })) } }),
+      choices({ groupOne: { name: 'x'.repeat(41), choices: [{ label: 'a' }, { label: 'b' }] } }),
+      choices({ groupOne: { name: 'Flavour', choices: [{ label: 'A · B' }, { label: 'b' }] } }),
+    ]) {
+      expect((await call(app, 'POST', '/store/items', owner.cookie, body(pricing))).json().error.code).toBe('INVALID_ITEM');
+    }
+    expect(await names(owner.cookie)).toEqual([]);
+  });
+
+  it('a save replaces the options and choices whole, and a refused save keeps the old ones', async () => {
+    const owner = await anOwner(app);
+    const item = (await call(app, 'POST', '/store/items', owner.cookie, body(choices()))).json<{ item: Row }>().item;
+    const failed = await call(app, 'PATCH', `/store/items/${item.id}`, owner.cookie, { pricing: choices({ combos: [] }) });
+    expect(failed.json().error.code).toBe('INVALID_ITEM');
+    expect(await app.prisma.itemChoice.count({ where: { itemId: item.id } })).toBe(4);
+
+    const next = await call(app, 'PATCH', `/store/items/${item.id}`, owner.cookie, { pricing: { kind: 'choices', groupOne: { name: 'Size', choices: [{ label: 'S' }] }, combos: [{ one: 0, priceCents: 700, available: true }] } });
+    expect(next.json<{ item: Row }>().item.options.map((o) => o.label)).toEqual(['S']);
+    expect(await app.prisma.itemChoice.count({ where: { itemId: item.id } })).toBe(1);
+    expect(await app.prisma.itemOption.count({ where: { itemId: item.id } })).toBe(1);
+  });
+
+  it('switching to one price, plain options or ask clears the groups, choices and combinations', async () => {
+    const owner = await anOwner(app);
+    for (const pricing of [{ kind: 'single', priceCents: 1200 }, { kind: 'options', options: [{ label: '1kg', priceCents: 9500 }] }, { kind: 'ask', fromCents: null }]) {
+      const item = (await call(app, 'POST', '/store/items', owner.cookie, body(choices()))).json<{ item: Row }>().item;
+      const res = await call(app, 'PATCH', `/store/items/${item.id}`, owner.cookie, { pricing });
+      expect(res.statusCode).toBe(200);
+      expect(res.json<{ item: Row }>().item.choices).toBeNull();
+      expect(await app.prisma.itemChoice.count({ where: { itemId: item.id } })).toBe(0);
+      const row = await app.prisma.item.findUniqueOrThrow({ where: { id: item.id }, select: { choiceGroupOne: true, choiceGroupTwo: true } });
+      expect(row).toEqual({ choiceGroupOne: null, choiceGroupTwo: null });
+    }
+  });
+
+  it('a plain options item reads exactly as before, with no choices', async () => {
+    const owner = await anOwner(app);
+    const item = (await call(app, 'POST', '/store/items', owner.cookie, cake)).json<{ item: Row }>().item;
+    expect(item.choices).toBeNull();
+    expect(item.options.map((o) => o.label)).toEqual(['1kg', '2kg']);
+  });
+
+  it('deleting a photo leaves its choice, without the photo', async () => {
+    const owner = await anOwner(app);
+    const item = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json<{ item: Row }>().item;
+    const photo = await app.prisma.itemPhoto.create({ data: { itemId: item.id, position: 0, originalKey: `item-photos/${randomUUID()}.png`, squareKey: `items/${randomUUID()}.webp`, width: 800, height: 800, frameX: 0, frameY: 0, frameSize: 1 }, select: { id: true } });
+    await call(app, 'PATCH', `/store/items/${item.id}`, owner.cookie, { pricing: choices({ groupOne: { name: 'Flavour', choices: [{ label: 'Vanilla', photoId: photo.id }, { label: 'Chocolate' }] } }) });
+    await app.prisma.itemPhoto.delete({ where: { id: photo.id } });
+    const listed = (await call(app, 'GET', '/store', owner.cookie)).json<{ items: Row[] }>().items[0]!;
+    expect(listed.choices?.groupOne.choices[0]).toMatchObject({ label: 'Vanilla', photoId: null, photoKey: null });
+  });
+});

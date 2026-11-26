@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { apiFetch } from '../../lib/api.js';
 import styles from './sign-out-button.module.css';
+import { Callout } from '@curios/ui';
 
 /**
  * Ends this session and leaves the dashboard.
@@ -49,9 +50,9 @@ export function SignOutButton({
         {busy ? 'Signing out…' : 'Sign out'}
       </button>
       {failed ? (
-        <p role="alert" className={styles.signOutError}>
-          Couldn&apos;t sign you out. Try again.
-        </p>
+        <div className={styles.signOutError}>
+          <Callout tone="error">Couldn&apos;t sign you out. Try again.</Callout>
+        </div>
       ) : null}
     </>
   );

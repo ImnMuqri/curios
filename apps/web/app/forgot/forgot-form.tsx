@@ -9,6 +9,7 @@ import { SentArt } from '../_system/art.js';
 import { useCountdown } from '../_system/use-countdown.js';
 import { apiFetch } from '../../lib/api.js';
 import styles from '../auth.module.css';
+import { Callout } from '@curios/ui';
 
 const looksLikeEmail = (email: string) => /.+@.+\..+/.test(email);
 
@@ -65,9 +66,9 @@ export function ForgotForm({ onSubmit }: { onSubmit: (input: { email: string }) 
             </a>
           </SystemActions>
           {error ? (
-            <p className={systemCss.alert} role="alert">
+            <Callout tone="error">
               {error}
-            </p>
+            </Callout>
           ) : null}
           <p className={systemCss.again}>
             Nothing yet? Check spam, or{' '}
@@ -97,9 +98,9 @@ export function ForgotForm({ onSubmit }: { onSubmit: (input: { email: string }) 
           peek={<AuthPeek />}
         />
         {error ? (
-          <p className={styles.error} id={errorId} role="alert">
+          <div id={errorId}><Callout tone="error">
             {error}
-          </p>
+          </Callout></div>
         ) : null}
         <button type="submit" className={styles.go} disabled={busy} aria-busy={busy || undefined}>
           {busy ? 'Sending…' : 'Send reset link'}

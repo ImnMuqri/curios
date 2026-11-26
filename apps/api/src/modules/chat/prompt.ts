@@ -1,6 +1,6 @@
 import { type FactCategory, withoutPhoneNumbers } from '@curios/core';
 import { linkKind } from '@curios/core/bento';
-import { formatRinggit, priceLine } from '@curios/core/store';
+import { catalogLine, formatRinggit } from '@curios/core/store';
 import { UNSURE_MARKER } from './unsure.js';
 
 export interface PromptFact {
@@ -27,7 +27,11 @@ export interface ShopPromptItem {
   description: string | null;
   /** On an Ask item, its starting price, or null for none. */
   priceCents: number | null;
+  /** What can be bought: with choice groups, only the combinations on sale. */
   options: { label: string; priceCents: number }[];
+  /** The names of the item's choice groups, when its options are combinations of choices. */
+  choiceGroupOne?: string | null;
+  choiceGroupTwo?: string | null;
   /** An Ask item: made to order, priced by the owner on WhatsApp after an enquiry, never ordered from the shop. */
   askForPrice?: boolean;
 }
@@ -178,7 +182,7 @@ ${shop
     const itemName = line(item.name).replace(/"/g, '&quot;');
     const prices = item.askForPrice
       ? `${item.priceCents === null ? 'price on request' : `from ${formatRinggit(item.priceCents)}`}, made to order: ask for a price`
-      : line(priceLine(item));
+      : line(catalogLine({ ...item, choiceGroups: [item.choiceGroupOne, item.choiceGroupTwo].filter((name): name is string => !!name) }));
     const about = item.description ? ` -- ${line(item.description)}` : '';
     return `<item name="${itemName}"${item.askForPrice ? ' ask="yes"' : ''}>${prices}${about}</item>`;
   })

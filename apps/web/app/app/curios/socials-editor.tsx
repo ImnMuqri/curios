@@ -8,6 +8,7 @@ import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
+import { Callout } from '@curios/ui';
 
 type Profiles = MyCurios['socials'];
 
@@ -144,9 +145,9 @@ function SocialField({
         />
       </label>
       {refused ? (
-        <p className={ui.saveError} role="alert">
+        <Callout tone="error">
           {field.refused}
-        </p>
+        </Callout>
       ) : (
         <SaveState status={autosave.status} error={autosave.error} retry={autosave.retry} />
       )}

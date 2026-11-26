@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@curios/ui';
+import { Button, Callout } from '@curios/ui';
 import { ApiError } from '../../../lib/api.js';
 import styles from './editor.module.css';
 
@@ -18,13 +18,13 @@ export function SaveState({ status, error, retry }: { status: 'idle' | 'saving' 
   const message = error instanceof ApiError ? error.message : 'That did not save.';
   const canRetry = !(error instanceof ApiError && error.status >= 400 && error.status < 500);
   return (
-    <p className={styles.saveError} role="alert">
+    <Callout tone="error">
       {message}{' '}
       {canRetry ? (
         <Button type="button" variant="secondary" onClick={retry}>
           Retry
         </Button>
       ) : null}
-    </p>
+    </Callout>
   );
 }

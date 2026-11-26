@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { apiFetch } from '../../../lib/api.js';
 import { SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
+import { Callout } from '@curios/ui';
 
 type Kind = 'orders' | 'receipts' | 'leads' | 'questions' | 'planEnding';
 export type NotifySwitches = Record<Kind, boolean>;
@@ -96,9 +97,9 @@ function NotifyRow({ row, on: initial, onChange }: { row: (typeof ROWS)[number];
       }
       below={
         error ? (
-          <p className={`${styles.error} ${styles.rowError}`} role="alert">
+          <Callout tone="error">
             {error}
-          </p>
+          </Callout>
         ) : null
       }
     />

@@ -12,6 +12,7 @@ import { KIND_LABELS } from '../knowledge/facts-tab.js';
 import { checkSource, FILE_ACCEPT, fileSize, ingestSource, type IngestionResult, type Source, type SourceWay } from './source-input.js';
 import { SignOutButton } from '../sign-out-button.js';
 import styles from './onboarding.module.css';
+import { Callout } from '@curios/ui';
 
 export type Mode = 'PERSONAL' | 'BUSINESS';
 export type HandleStatus = 'available' | 'invalid' | 'reserved' | 'taken';
@@ -379,9 +380,9 @@ export function OnboardingFlow({
                 <input id="ob-name" className={styles.in} value={name} onChange={(event) => setName(event.target.value)} maxLength={40} placeholder="Your name or your business" autoComplete="name" />
               </div>
               {claimError ? (
-                <p className={styles.error} role="alert">
+                <Callout tone="error">
                   {claimError}
-                </p>
+                </Callout>
               ) : null}
               <button type="submit" className={styles.go} disabled={!(canContinue && name.trim())}>
                 Continue
@@ -523,9 +524,9 @@ export function OnboardingFlow({
                 </div>
               )}
               {error ? (
-                <p className={styles.error} role="alert">
+                <Callout tone="error">
                   {error}
-                </p>
+                </Callout>
               ) : null}
               <button type="submit" className={styles.go} disabled={!canRead || busy}>
                 {busy ? 'Starting…' : 'Read it'}

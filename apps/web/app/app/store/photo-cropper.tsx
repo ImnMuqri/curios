@@ -6,6 +6,7 @@ import styles from './store.module.css';
 import { cssZoom } from '../../../lib/css-zoom.js';
 import { LayerPortal, useOverlayOpen } from '../_ui/overlay-context.js';
 import type { Frame } from './store-types.js';
+import { Callout } from '@curios/ui';
 
 /** What the stage measures in a browser without layout (tests): the scale still has a size to work from. */
 const FALLBACK_STAGE = 280;
@@ -237,9 +238,9 @@ export function PhotoCropper({
         </div>
 
         {error ? (
-          <p className={styles.cropError} role="alert">
+          <Callout tone="error">
             {error}
-          </p>
+          </Callout>
         ) : null}
 
         <div className={styles.cropFoot}>

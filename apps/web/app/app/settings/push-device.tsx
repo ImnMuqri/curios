@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { browserPushClient, type PushClient } from '../../../lib/push-client.js';
 import { SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
+import { Callout } from '@curios/ui';
 
 type State =
   | { kind: 'loading' }
@@ -128,9 +129,9 @@ export function PushDeviceForm({ client }: { client: PushClient }) {
             </p>
           ) : null}
           {error ? (
-            <p className={`${styles.error} ${styles.rowError}`} role="alert">
+            <Callout tone="error">
               {error}
-            </p>
+            </Callout>
           ) : null}
         </>
       }

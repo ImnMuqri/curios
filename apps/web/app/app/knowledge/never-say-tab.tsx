@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { KnowledgeNeverSay } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './knowledge.module.css';
+import { Callout } from '@curios/ui';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
@@ -89,9 +90,9 @@ export function NeverSayList({
         </button>
       </form>
       {error ? (
-        <p className={styles.error} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
       <p className={styles.nsCount}>
         <span>{`${entries.length} of ${max}`}</span>
@@ -113,9 +114,9 @@ export function NeverSayList({
                 </button>
               </span>
               {rowErrors[entry.id] ? (
-                <p className={styles.error} role="alert">
-                  {rowErrors[entry.id]}
-                </p>
+                <div className={styles.nsRowError}>
+                  <Callout tone="error">{rowErrors[entry.id]}</Callout>
+                </div>
               ) : null}
             </li>
           ))}

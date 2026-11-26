@@ -127,13 +127,6 @@
   }
 }
 
-.error {
-  margin: 2px 0 0;
-  color: var(--merah-deep);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
 .turnOn:disabled {
   opacity: 0.6;
   cursor: default;

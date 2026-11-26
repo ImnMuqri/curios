@@ -25,4 +25,9 @@ describe('Callout', () => {
     const { container: action } = render(<Callout tone="action">b</Callout>);
     expect(error.firstElementChild?.className).not.toBe(action.firstElementChild?.className);
   });
+
+  it('takes a role over the one the tone gives', () => {
+    render(<Callout tone="error" role="none">Could not read it.</Callout>);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
 });

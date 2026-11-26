@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api.js';
 import { sourcePlace } from '../_ui/source-place.js';
+import { Callout } from '@curios/ui';
 
 /**
  * The one primary action this task adds: a deliberate owner action that sets
@@ -91,9 +92,9 @@ export function PublishButton({
         <b>Your page is not public yet</b>
         <small>Publish it when you are ready. After that, facts you accept show up on it straight away.</small>
         {error ? (
-          <small className={styles.error} role="alert">
+          <Callout tone="error">
             {error}
-          </small>
+          </Callout>
         ) : null}
       </div>
       <button type="button" className={styles.publish} disabled={busy} onClick={() => void handlePublish()}>

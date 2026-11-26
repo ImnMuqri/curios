@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { apiFetch } from '../../../lib/api.js';
 import { Done, SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
+import { Callout } from '@curios/ui';
 
 /**
  * Whether the page may appear in search results.
@@ -71,9 +72,9 @@ export function SearchIndexingForm({
       }
       below={
         error ? (
-          <p className={`${styles.error} ${styles.rowError}`} role="alert">
+          <Callout tone="error">
             {error}
-          </p>
+          </Callout>
         ) : null
       }
     />

@@ -6,6 +6,7 @@ import { DoneArt, ExpiredArt, VerifyingArt } from '../_system/art.js';
 import { BadLink } from '../_system/BadLink.js';
 import { useCountdown } from '../_system/use-countdown.js';
 import { apiFetch, ApiError } from '../../lib/api.js';
+import { Callout } from '@curios/ui';
 
 type Who = { email: string; name: string | null };
 
@@ -91,9 +92,9 @@ export function ExpiredLink({ token, email, resend }: { token: string; email: st
         lede={`Confirmation links last 24 hours. We can send a fresh one to ${email}.`}
       >
         {error ? (
-          <p className={styles.alert} role="alert">
+          <Callout tone="error">
             {error}
-          </p>
+          </Callout>
         ) : null}
         <SystemActions>
           <button type="button" className={styles.go} disabled={wait > 0} onClick={() => void send()}>

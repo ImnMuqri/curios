@@ -47,6 +47,10 @@ export interface ShopCopy {
   shopOf: (name: string) => string;
   basketLabel: string;
   sizeLabel: string;
+  /** A choice group's heading with the picked value, "Flavour: Chocolate". */
+  choicePicked: (group: string, value: string) => string;
+  /** Said after a choice that cannot be had with the other pick. */
+  choiceOff: string;
   /** "Needs 2 days. Earliest pickup Sat 17 Oct." Either half drops when the shop has nothing true to say for it. */
   productNotice: (days: number, dayText: string | null, pickup: boolean) => string | null;
   halalLine: string;
@@ -492,7 +496,9 @@ const EN: ShopCopy = {
   addedNamed: (name, n) => `${name} added. ${n} in basket.`,
   shopOf: (name) => `${name}’s shop`,
   basketLabel: 'Basket',
-  sizeLabel: 'Size',
+  sizeLabel: 'Options',
+  choicePicked: (group, value) => `${group}: ${value}`,
+  choiceOff: 'Not available',
   productNotice: (days, day, pickup) => {
     const need = days > 0 ? `Needs ${days} ${days === 1 ? 'day' : 'days'}.` : null;
     const earliest = day ? `Earliest ${pickup ? 'pickup' : 'delivery'} ${day}.` : null;
@@ -864,7 +870,9 @@ const MS: ShopCopy = {
   addedNamed: (name, n) => `${name} ditambah. ${n} dalam bakul.`,
   shopOf: (name) => `Kedai ${name}`,
   basketLabel: 'Bakul',
-  sizeLabel: 'Saiz',
+  sizeLabel: 'Pilihan',
+  choicePicked: (group, value) => `${group}: ${value}`,
+  choiceOff: 'Tidak tersedia',
   productNotice: (days, day, pickup) => {
     const need = days > 0 ? `Perlu ${days} hari.` : null;
     const earliest = day ? `Awal ${pickup ? 'ambil' : 'hantar'} ${day}.` : null;

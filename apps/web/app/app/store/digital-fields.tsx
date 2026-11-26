@@ -232,9 +232,9 @@ function LinkPanel({ draft, onDraft }: DraftProps) {
         <input value={draft.link} inputMode="url" placeholder="https://" autoComplete="off" onChange={(event) => onDraft({ link: event.target.value })} />
       </label>
       {draft.link.trim() !== '' && 'error' in check ? (
-        <p className={styles.dgHint} role="alert">
+        <Callout tone="error">
           {check.error}
-        </p>
+        </Callout>
       ) : null}
       <div className={ui.float} style={{ marginTop: 10 }}>
         <label>
@@ -383,9 +383,9 @@ function SessionPanel({ item, api, patchItem, draft, onDraft }: PanelProps & Dra
         </label>
       )}
       {(draft.minutes.trim() !== '' || draft.meet.trim() !== '' || draft.venue.trim() !== '') && 'error' in check ? (
-        <p className={styles.dgHint} role="alert">
+        <Callout tone="error">
           {check.error}
-        </p>
+        </Callout>
       ) : null}
       <p className={styles.dgNote}>Buyers pick a time. Each booking takes a seat, and a full time can&rsquo;t be picked. They get a reminder email the day before.</p>
     </div>
@@ -461,9 +461,9 @@ function SessionRow({ session, itemId, api, patchItem }: RowProps & { session: E
         </button>
       </div>
       {error ? (
-        <p className={styles.dgHint} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
     </div>
   );
@@ -512,9 +512,9 @@ function NewTime({ itemId, api, patchItem, seats: lastSeats, onDone }: RowProps 
         </span>
       </div>
       {error ? (
-        <p className={styles.dgHint} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
     </div>
   );

@@ -788,7 +788,7 @@ async function basketLines(prisma: PrismaClient, orderId: string): Promise<Baske
       optionLabel: true,
       quantity: true,
       booking: { select: { sessionId: true } },
-      item: { select: { options: { select: { id: true, label: true } } } },
+      item: { select: { options: { where: { available: true }, select: { id: true, label: true } } } },
     },
   });
   return lines.flatMap((line) => {

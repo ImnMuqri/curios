@@ -23,7 +23,7 @@ describe('ForgotForm', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send reset link' }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent('Enter your email address.');
-    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-describedby', screen.getByRole('alert').id);
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-describedby', screen.getByRole('alert').parentElement!.id);
   });
 
   it('sends, then says the same thing whether or not the address has an account', async () => {

@@ -5,6 +5,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import { usePayDialog } from './pay-context.js';
 import styles from './billing.module.css';
+import { Callout } from '@curios/ui';
 
 /** The card line as plain data: this file must not import the @curios/core barrel, so the page formats it. */
 export interface RenewCard {
@@ -178,9 +179,9 @@ export function AutoRenewCard({
           </div>
         )}
         {error ? (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
+          <div className={styles.renewError}>
+            <Callout tone="error">{error}</Callout>
+          </div>
         ) : null}
       </>
     );

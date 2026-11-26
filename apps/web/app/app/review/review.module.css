@@ -420,12 +420,6 @@
   text-underline-offset: 3px;
 }
 
-.error {
-  margin: 14px 0 0;
-  font-size: 13px;
-  color: var(--merah-deep);
-}
-
 /* ---- Fix it, Skip, Accept ---- */
 
 .facts {

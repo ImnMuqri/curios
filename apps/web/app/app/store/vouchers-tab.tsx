@@ -170,9 +170,9 @@ function VoucherForm({
             </label>
           </div>
           {codeProblem ? (
-            <p className={ui.saveError} role="alert">
+            <Callout tone="error">
               {codeProblem}
-            </p>
+            </Callout>
           ) : (
             <p className={ui.note}>3 to 20 letters and numbers. Capitals and small letters count the same.</p>
           )}
@@ -240,9 +240,9 @@ function VoucherForm({
       </div>
 
       {problem ? (
-        <p className={ui.saveError} role="alert">
+        <Callout tone="error">
           {problem}
-        </p>
+        </Callout>
       ) : null}
 
       <div className={styles.vActions}>
