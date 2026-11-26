@@ -10,6 +10,7 @@ import { shopCopy } from './copy.js';
 import { itemPromo, minText, offText, shopPromo } from './promo.js';
 import type { ViewItem } from './shop-view.js';
 import styles from './shop-page.module.css';
+import { SHOP_SORTS, sortItems, type ShopSort } from './sort.js';
 
 const ICON = {
   store: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
@@ -114,7 +115,8 @@ export function ShopPageView(props: {
     }
     return [...counts];
   })();
-  const shown = category ? props.items.filter((item) => categoryOf(item) === category) : props.items;
+  const [sort, setSort] = useState<ShopSort>('shop');
+  const shown = sortItems(category ? props.items.filter((item) => categoryOf(item) === category) : props.items, sort);
 
   function add(line: BasketLine) {
     writeBasket(key, addToBasket(readBasket(key), line));
@@ -224,6 +226,20 @@ export function ShopPageView(props: {
                   <em>{count}</em>
                 </button>
               ))}
+            </div>
+          ) : null}
+          {props.items.length > 1 ? (
+            <div className={styles.sortRow}>
+              <label className={styles.sort}>
+                <span>{copy.sortLabel}</span>
+                <select value={sort} onChange={(event) => setSort(event.target.value as ShopSort)}>
+                  {SHOP_SORTS.map((key) => (
+                    <option key={key} value={key}>
+                      {copy.sortNames[key]}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           ) : null}
           <ul className={styles.grid}>

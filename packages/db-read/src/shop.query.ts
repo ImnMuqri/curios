@@ -34,6 +34,8 @@ export interface ShopItem {
   askForPrice?: boolean;
   /** What can be bought: with choice groups, the combinations that are on sale (the shop's, never the owner's off ones). */
   options: { id: string; label: string; priceCents: number }[];
+  /** When the owner added it (ISO), for the shop's Latest / Earliest sort. Only the public shop read sets it. */
+  createdAt?: string;
   /**
    * Choice groups inside the options ("Flavour" x "Size"): the groups, the choices (with the public square key of
    * their photo) and every combination, switched-off ones too, so the page can grey them. Absent on a plain item.
@@ -86,6 +88,7 @@ const ITEM_SELECT = {
 
 const PUBLIC_ITEM_SELECT = {
   ...ITEM_SELECT,
+  createdAt: true,
   kind: true,
   delivery: true,
   // Read only to know whether there is a link; stripped before the item leaves this file.
@@ -227,8 +230,9 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
   });
   if (!page || page.mode !== 'BUSINESS' || !page.storeEnabled) return null;
   const { id: pageId, mode: _mode, storeEnabled: _open, items, ...shop } = page;
-  const publicItems: PublicItem[] = items.map(({ files, sessions, _count, accessUrl, sessionMinutes, sessionPlace, kind, delivery, ...item }) => ({
+  const publicItems: PublicItem[] = items.map(({ files, sessions, _count, accessUrl, sessionMinutes, sessionPlace, kind, delivery, createdAt, ...item }) => ({
     ...shaped(item, true),
+    createdAt: createdAt.toISOString(),
     ...digitalFacts(
       {
         kind,

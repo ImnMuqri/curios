@@ -40,6 +40,9 @@ export interface ShopCopy {
   halal: string;
   allItems: string;
   categories: string;
+  /** The visitor's sort: its label and each order's name (shop, latest, earliest, low, high). */
+  sortLabel: string;
+  sortNames: { shop: string; latest: string; earliest: string; low: string; high: string };
   addNamed: (name: string, inBasket: number) => string;
   /** Said once, after a tap on a card's +. */
   addedNamed: (name: string, inBasket: number) => string;
@@ -492,6 +495,8 @@ const EN: ShopCopy = {
   halal: 'Halal',
   allItems: 'All',
   categories: 'Categories',
+  sortLabel: 'Sort',
+  sortNames: { shop: 'Shop’s order', latest: 'Latest', earliest: 'Earliest', low: 'Price: low to high', high: 'Price: high to low' },
   addNamed: (name, n) => (n > 0 ? `Add ${name}, ${n} in basket` : `Add ${name}`),
   addedNamed: (name, n) => `${name} added. ${n} in basket.`,
   shopOf: (name) => `${name}’s shop`,
@@ -866,6 +871,8 @@ const MS: ShopCopy = {
   halal: 'Halal',
   allItems: 'Semua',
   categories: 'Kategori',
+  sortLabel: 'Susun',
+  sortNames: { shop: 'Susunan kedai', latest: 'Terbaru', earliest: 'Terawal', low: 'Harga: rendah ke tinggi', high: 'Harga: tinggi ke rendah' },
   addNamed: (name, n) => (n > 0 ? `Tambah ${name}, ${n} dalam bakul` : `Tambah ${name}`),
   addedNamed: (name, n) => `${name} ditambah. ${n} dalam bakul.`,
   shopOf: (name) => `Kedai ${name}`,
