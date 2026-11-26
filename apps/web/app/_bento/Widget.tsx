@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { cardTypeName, hasCard, WIDGET_NAMES, widgetHeight, widgetOpenUrl, widgetSrc, type WidgetProvider } from '@curios/core/widgets';
+import { cardImageOk, cardTypeName, hasCard, WIDGET_NAMES, widgetHeight, widgetOpenUrl, widgetSrc, type WidgetProvider } from '@curios/core/widgets';
 import styles from './Bento.module.css';
 
 export interface WidgetProps {
@@ -11,6 +11,8 @@ export interface WidgetProps {
   /** A card's title and cover (Spotify, Apple Music), fetched when the widget was saved; null falls back to the label and the service's mark. */
   title?: string | null;
   image?: string | null;
+  /** The page's words for a card's type line and spoken name (page-copy); English when left out. */
+  words?: { types: Record<string, string>; on: string };
   /** False in the editor's preview: a cover over the frame, nothing to press. */
   interactive?: boolean;
   /** In a Bento tile: the player fills the tile, never shorter than its own height. */
@@ -42,7 +44,7 @@ function ServiceMark({ provider }: { provider: WidgetProvider }) {
  * opens the item in the service. Drawn like a link button, so it sits with the links in List and Bento.
  * Null when the stored ref is not one of ours; the caller then draws the plain fallback.
  */
-function CardWidget({ provider, embedRef, label, title, image, interactive, fill }: Required<Pick<WidgetProps, 'interactive' | 'fill'>> & Pick<WidgetProps, 'provider' | 'embedRef' | 'label' | 'title' | 'image'>) {
+function CardWidget({ provider, embedRef, label, title, image, words, interactive, fill }: Required<Pick<WidgetProps, 'interactive' | 'fill'>> & Pick<WidgetProps, 'provider' | 'embedRef' | 'label' | 'title' | 'image' | 'words'>) {
   let href: string;
   try {
     href = widgetOpenUrl(provider, embedRef);
@@ -50,12 +52,13 @@ function CardWidget({ provider, embedRef, label, title, image, interactive, fill
     return null;
   }
   const service = WIDGET_NAMES[provider];
-  const type = cardTypeName(provider, embedRef);
+  const english = cardTypeName(provider, embedRef);
+  const type = words?.types[english] ?? english;
   const named = label.trim() !== '' && label !== service ? label : null;
   const shown = title ?? named ?? service;
   // The owner's label sits above the card, unless the card already says it.
   const showLabel = named !== null && shown !== named;
-  const cover = image && image.startsWith('https://') ? image : null;
+  const cover = cardImageOk(provider, image) ? image : null;
   const inner = (
     <span className={styles.cardIn}>
       <span className={styles.cardCover} data-card-cover>
@@ -81,7 +84,7 @@ function CardWidget({ provider, embedRef, label, title, image, interactive, fill
         </p>
       ) : null}
       {interactive ? (
-        <a className={styles.card} href={href} rel="noopener" aria-label={`${shown}, ${type ? `${type} on ${service}` : service}`} data-widget-card>
+        <a className={styles.card} href={href} rel="noopener" aria-label={`${shown}, ${type ? (words?.on ?? '{type} on {service}').replace('{type}', type).replace('{service}', service) : service}`} data-widget-card>
           {inner}
         </a>
       ) : (
@@ -94,9 +97,9 @@ function CardWidget({ provider, embedRef, label, title, image, interactive, fill
 }
 
 /** Server-safe: no hooks. One bad stored row (widgetSrc throws) draws the fallback only. */
-export function Widget({ provider, embedRef, label, url, title = null, image = null, interactive = true, fill = false }: WidgetProps) {
+export function Widget({ provider, embedRef, label, url, title = null, image = null, words, interactive = true, fill = false }: WidgetProps) {
   if (hasCard(provider)) {
-    const card = CardWidget({ provider, embedRef, label, title, image, interactive, fill });
+    const card = CardWidget({ provider, embedRef, label, title, image, words, interactive, fill });
     if (card) return card;
   }
   const service = WIDGET_NAMES[provider];

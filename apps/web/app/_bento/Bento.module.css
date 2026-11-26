@@ -136,11 +136,11 @@
 }
 
 /* Chunky and Outline have no ring; Chunky keeps room for its shadow. */
-.page:is([data-style='CHUNKY'], [data-style='OUTLINE']) :is(.link, .shopLink) {
+.page:is([data-style='CHUNKY'], [data-style='OUTLINE']) :is(.link, .shopLink, .card) {
   padding: 0;
 }
 
-.page[data-style='CHUNKY'] :is(.link, .shopLink) {
+.page[data-style='CHUNKY'] :is(.link, .shopLink, .card) {
   padding: 0 4px 4px 0;
 }
 
@@ -680,21 +680,23 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  a.link {
+  a.link,
+  a.card {
     transition: transform 200ms ease;
   }
 
-  a.link:hover {
+  a.link:hover,
+  a.card:hover {
     transform: scale(1.015);
   }
 
   /* Chunky lifts off its shadow on hover and presses into it on tap. */
-  .page[data-style='CHUNKY'] :is(a.link, a.shopLink):hover {
+  .page[data-style='CHUNKY'] :is(a.link, a.shopLink, a.card):hover {
     --btn-shadow: 5px 5px 0 var(--btn-second-or-fg);
     transform: translate(-1px, -1px);
   }
 
-  .page[data-style='CHUNKY'] :is(a.link, a.shopLink):active {
+  .page[data-style='CHUNKY'] :is(a.link, a.shopLink, a.card):active {
     --btn-shadow: 1px 1px 0 var(--btn-second-or-fg);
     transform: translate(3px, 3px);
   }
@@ -921,7 +923,8 @@
     gap: 6px;
   }
 
-  .link {
+  .link,
+  .card {
     padding: 4px;
   }
 
@@ -1102,7 +1105,9 @@
 .bentoGrid > li > .shopLink,
 .bentoGrid > li > .link,
 .bentoGrid > li > .link > span,
-.bentoGrid > li > .shopLink > .shopIn {
+.bentoGrid > li > .shopLink > .shopIn,
+.bentoGrid > li > .widget > .card,
+.bentoGrid > li > .widget > .card > .cardIn {
   border-radius: min(var(--btn-radius, 16px), 16px);
 }
 

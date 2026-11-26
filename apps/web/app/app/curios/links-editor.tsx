@@ -19,7 +19,7 @@ export type LinkItem = {
   kind: LinkKind;
   provider: WidgetProvider | null;
   embedRef: string | null;
-  /** A Spotify card's title and cover, fetched when the widget was saved; null otherwise. */
+  /** A music card's title and cover (Spotify, Apple Music), fetched when the widget was saved; null otherwise. */
   embedTitle: string | null;
   embedImage: string | null;
 };

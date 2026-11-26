@@ -344,6 +344,25 @@ export function widgetHeight(provider: WidgetProvider, embedRef: string): number
 export const CARD_PROVIDERS: readonly WidgetProvider[] = ['SPOTIFY', 'APPLE_MUSIC'];
 export const hasCard = (provider: WidgetProvider): boolean => CARD_PROVIDERS.includes(provider);
 
+/** The longest cover address we store or draw. */
+export const CARD_IMAGE_MAX = 2048;
+
+/** Is `image` a cover we may store or draw for a card: plain https, no credentials, on the service's own image host, not over-long? */
+export function cardImageOk(provider: WidgetProvider, image: string | null | undefined): image is string {
+  if (typeof image !== 'string' || image.length > CARD_IMAGE_MAX) return false;
+  let u: URL;
+  try {
+    u = new URL(image);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:' || u.username !== '' || u.password !== '' || u.port !== '') return false;
+  const h = u.hostname;
+  if (provider === 'SPOTIFY') return h === 'i.scdn.co' || h.endsWith('.scdn.co') || h.endsWith('.spotifycdn.com');
+  if (provider === 'APPLE_MUSIC') return h.endsWith('.mzstatic.com');
+  return false;
+}
+
 /** The smallest tile a widget reads well in. A card (Spotify, Apple Music) fits a small tile whatever it holds. */
 export function minWidgetSize(provider: WidgetProvider, _embedRef: string): TileSize {
   return hasCard(provider) ? 'SMALL' : 'WIDE';

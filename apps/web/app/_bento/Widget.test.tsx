@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { widgetHeight, widgetSrc } from '@curios/core/widgets';
 import { Widget } from './Widget.js';
+import { pageCopy } from './page-copy.js';
 import { BentoPage, type BentoPageProps } from './BentoPage.js';
 
 const url = 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M';
@@ -150,6 +151,33 @@ describe('Widget card (Spotify and Apple Music)', () => {
   it('refuses a cover that is not https', () => {
     const { container } = render(<Widget provider="SPOTIFY" embedRef={track} label="Spotify" url="https://open.spotify.com/x" title="T" image="javascript:alert(1)" interactive />);
     expect(container.querySelector('img')).toBeNull();
+  });
+
+  it("refuses a cover on a host that is not the service's own", () => {
+    const { container } = render(<Widget provider="SPOTIFY" embedRef={track} label="Spotify" url="https://open.spotify.com/x" title="T" image="https://evil.example/a.jpg" interactive />);
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  it('speaks the page language: Malay type line and spoken name', () => {
+    const ms = pageCopy('ms');
+    render(<Widget provider="SPOTIFY" embedRef={track} label="Spotify" url="https://open.spotify.com/x" title="Lagu Saya" words={{ types: ms.cardTypes, on: ms.cardOn }} interactive />);
+    expect(screen.getByRole('link', { name: 'Lagu Saya, Lagu di Spotify' })).toBeTruthy();
+    expect(screen.getByText('Lagu · Spotify')).toBeTruthy();
+    expect(pageCopy('ms').cardTypes.Playlist).toBe('Senarai main');
+    expect(pageCopy('en').cardOn).toBe('{type} on {service}');
+  });
+
+  it('draws on the page in Malay through BentoPage', () => {
+    render(<BentoPage displayName="N" handle="n" bio={null} avatarUrl={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" language="ms" links={[{ id: 'w', label: 'Spotify', url: 'https://open.spotify.com/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'album/abc', embedTitle: 'Satu' }]} />);
+    expect(screen.getByRole('link', { name: 'Satu, Album di Spotify' })).toBeTruthy();
+  });
+
+  it('matches the link rows: Chunky and Outline padding, hover, and no stadium tiles', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/:is\(\[data-style='CHUNKY'\], \[data-style='OUTLINE'\]\) :is\(\.link, \.shopLink, \.card\)/);
+    expect(css).toMatch(/:is\(a\.link, a\.shopLink, a\.card\):hover/);
+    expect(css).toMatch(/:is\(a\.link, a\.shopLink, a\.card\):active/);
+    expect(css).toMatch(/\.bentoGrid > li > \.widget > \.card > \.cardIn\s*\{[^}]*border-radius:\s*min\(var\(--btn-radius, 16px\), 16px\)/s);
   });
 
   it('in the editor preview is the same card but not a link', () => {

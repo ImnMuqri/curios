@@ -35,6 +35,7 @@ describe('fetchWidgetCard for Spotify', () => {
     expect(await image('https://notscdn.co/x')).toBeNull();
     expect(await image('https://user:pw@i.scdn.co/x')).toBeNull();
     expect(await image('javascript:alert(1)')).toBeNull();
+    expect(await image('https://i.scdn.co/image/' + 'x'.repeat(2100))).toBeNull();
     expect(await image('not a url')).toBeNull();
   });
 

@@ -13,6 +13,10 @@ export interface PageCopy {
   questions: string;
   madeWith: string;
   report: string;
+  /** A music card's type line, by the English name cardTypeName gives; plain strings, so the object can cross to a client component. */
+  cardTypes: Record<string, string>;
+  /** A music card's spoken name; `{type}` and `{service}` are filled in. */
+  cardOn: string;
 }
 
 const EN: PageCopy = {
@@ -25,6 +29,8 @@ const EN: PageCopy = {
   questions: 'Questions',
   madeWith: 'Made with Curios',
   report: 'Report this page',
+  cardTypes: { Song: 'Song', Album: 'Album', Playlist: 'Playlist', Artist: 'Artist', Podcast: 'Podcast', Episode: 'Episode' },
+  cardOn: '{type} on {service}',
 };
 
 const MS: PageCopy = {
@@ -37,6 +43,8 @@ const MS: PageCopy = {
   questions: 'Soalan',
   madeWith: 'Dibuat dengan Curios',
   report: 'Laporkan halaman ini',
+  cardTypes: { Song: 'Lagu', Album: 'Album', Playlist: 'Senarai main', Artist: 'Artis', Podcast: 'Podcast', Episode: 'Episod' },
+  cardOn: '{type} di {service}',
 };
 
 export function pageCopy(language: string | undefined): PageCopy {

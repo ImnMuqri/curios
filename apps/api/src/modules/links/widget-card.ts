@@ -1,4 +1,4 @@
-import { appleLookup, widgetOpenUrl, type WidgetProvider } from '@curios/core/widgets';
+import { appleLookup, cardImageOk, widgetOpenUrl, type WidgetProvider } from '@curios/core/widgets';
 
 const TIMEOUT_MS = 3000;
 const MAX_BYTES = 64 * 1024;
@@ -8,23 +8,6 @@ export type WidgetCard = { title: string | null; image: string | null };
 export type FetchWidgetCard = (provider: WidgetProvider, embedRef: string) => Promise<WidgetCard>;
 
 const NONE: WidgetCard = { title: null, image: null };
-
-type HostOk = (host: string) => boolean;
-const spotifyHost: HostOk = (h) => h === 'i.scdn.co' || h.endsWith('.scdn.co') || h.endsWith('.spotifycdn.com');
-const appleHost: HostOk = (h) => h.endsWith('.mzstatic.com');
-
-/** A cover is kept only when it is a plain https address on one of the service's own image hosts. */
-function coverOk(raw: unknown, hostOk: HostOk): string | null {
-  if (typeof raw !== 'string') return null;
-  let u: URL;
-  try {
-    u = new URL(raw);
-  } catch {
-    return null;
-  }
-  if (u.protocol !== 'https:' || u.username !== '' || u.password !== '' || u.port !== '') return null;
-  return hostOk(u.hostname) ? u.toString() : null;
-}
 
 /** The body as text, or null when it runs past MAX_BYTES (the rest is never read). */
 async function readCapped(res: Response): Promise<string | null> {
@@ -66,6 +49,9 @@ async function lookup(url: string, deps: { fetch: typeof fetch }): Promise<Recor
   return typeof data === 'object' && data !== null && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
 }
 
+/** The cover when it is on the service's own image host (and not over-long), else null. */
+const cover = (provider: WidgetProvider, raw: unknown): string | null => (typeof raw === 'string' && cardImageOk(provider, raw) ? raw : null);
+
 const cleanTitle = (title: unknown): string | null => {
   const t = typeof title === 'string' ? title.trim().slice(0, TITLE_MAX).trim() : '';
   return t === '' ? null : t;
@@ -83,7 +69,7 @@ export async function fetchWidgetCard(provider: WidgetProvider, embedRef: string
     if (provider === 'SPOTIFY') {
       const canonical = widgetOpenUrl('SPOTIFY', embedRef);
       const data = await lookup(`https://open.spotify.com/oembed?url=${encodeURIComponent(canonical)}`, deps);
-      return data ? { title: cleanTitle(data.title), image: coverOk(data.thumbnail_url, spotifyHost) } : NONE;
+      return data ? { title: cleanTitle(data.title), image: cover('SPOTIFY', data.thumbnail_url) } : NONE;
     }
     if (provider === 'APPLE_MUSIC') {
       widgetOpenUrl('APPLE_MUSIC', embedRef);
@@ -95,7 +81,7 @@ export async function fetchWidgetCard(provider: WidgetProvider, embedRef: string
       if (typeof first !== 'object' || first === null) return NONE;
       const r = first as Record<string, unknown>;
       const art = typeof r.artworkUrl100 === 'string' ? r.artworkUrl100.replace('100x100', '300x300') : null;
-      return { title: cleanTitle(appleTitle(r)), image: coverOk(art, appleHost) };
+      return { title: cleanTitle(appleTitle(r)), image: cover('APPLE_MUSIC', art) };
     }
     return NONE;
   } catch {

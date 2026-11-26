@@ -5,6 +5,7 @@ import {
   WIDGET_PROVIDERS,
   minWidgetSize,
   appleLookup,
+  cardImageOk,
   cardTypeName,
   hasCard,
   widgetOpenUrl,
@@ -110,6 +111,18 @@ describe('Spotify', () => {
     expect(appleLookup('us/album/x/123')).toEqual({ id: '123', country: 'us' });
     expect(appleLookup('gb/artist/x/789')).toEqual({ id: '789', country: 'gb' });
     expect(appleLookup('us/playlist/x/pl.abc')).toBeNull();
+  });
+  it("accepts a cover only on the service's own https image host, and not over-long", () => {
+    expect(cardImageOk('SPOTIFY', 'https://i.scdn.co/image/a')).toBe(true);
+    expect(cardImageOk('SPOTIFY', 'https://x.spotifycdn.com/a')).toBe(true);
+    expect(cardImageOk('SPOTIFY', 'https://is1-ssl.mzstatic.com/a')).toBe(false);
+    expect(cardImageOk('APPLE_MUSIC', 'https://is1-ssl.mzstatic.com/a')).toBe(true);
+    expect(cardImageOk('APPLE_MUSIC', 'https://i.scdn.co/a')).toBe(false);
+    expect(cardImageOk('APPLE_MUSIC', 'http://is1-ssl.mzstatic.com/a')).toBe(false);
+    expect(cardImageOk('APPLE_MUSIC', 'https://evil.example/mzstatic.com')).toBe(false);
+    expect(cardImageOk('SPOTIFY', 'https://i.scdn.co/' + 'x'.repeat(2100))).toBe(false);
+    expect(cardImageOk('YOUTUBE', 'https://i.scdn.co/a')).toBe(false);
+    expect(cardImageOk('SPOTIFY', null)).toBe(false);
   });
   it('a card fits a small tile for Spotify and Apple Music only', () => {
     expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('SMALL');
