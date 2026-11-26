@@ -478,9 +478,9 @@ export function HelpPanel({
               </button>
             </div>
             {error ? (
-              <Callout tone="error">
-                {error}
-              </Callout>
+              <div className={styles.composerError}>
+                <Callout tone="error">{error}</Callout>
+              </div>
             ) : null}
           </form>
         )}

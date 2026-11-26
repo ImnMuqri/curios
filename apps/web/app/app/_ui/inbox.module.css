@@ -555,6 +555,11 @@
   animation: confirmIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
+/* The failed-try notice: the panel's gap spaces it, so the callout's own margin goes. */
+.confirmError > p {
+  margin: 0;
+}
+
 .confirmPanel > p:not([role]) {
   margin: 0;
   font-size: 14px;

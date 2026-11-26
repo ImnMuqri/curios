@@ -709,6 +709,15 @@
   border-top: 1px solid var(--line);
 }
 
+/* The composer's failure notice: room above it, none below, as the composer's padding is the foot. */
+.composerError {
+  margin-top: 12px;
+}
+
+.composerError > p {
+  margin: 0;
+}
+
 .composerRow {
   display: flex;
   align-items: center;

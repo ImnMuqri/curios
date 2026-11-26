@@ -146,9 +146,9 @@ export function InlineConfirm({
         <div className={styles.confirmPanel} role="group" aria-label={trigger} aria-busy={busy || undefined} onKeyDown={onKeyDown}>
           <p>{question}</p>
           {failed ? (
-            <Callout tone="error">
-              {FAILED}
-            </Callout>
+            <div className={styles.confirmError}>
+              <Callout tone="error">{FAILED}</Callout>
+            </div>
           ) : null}
           <div className={styles.confirmButtons}>
             <button type="button" className={styles.confirmYes} aria-disabled={busy || undefined} onClick={() => void confirm()}>

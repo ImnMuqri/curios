@@ -12,12 +12,15 @@ import styles from './Callout.module.css';
 export function Callout({
   children,
   tone,
+  role,
 }: {
   children: ReactNode;
   tone: 'error' | 'info' | 'action';
+  /** Overrides the role the tone gives: `none` for a message already on the page that should not be announced. */
+  role?: 'alert' | 'status' | 'none';
 }) {
   return (
-    <p className={`${styles.callout} ${styles[tone]}`} role={tone === 'error' ? 'alert' : 'status'}>
+    <p className={`${styles.callout} ${styles[tone]}`} role={role ?? (tone === 'error' ? 'alert' : 'status')}>
       {children}
     </p>
   );

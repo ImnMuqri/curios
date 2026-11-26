@@ -157,6 +157,8 @@
 
 .ask > p {
   margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
   font-weight: 500;
   color: var(--ink);
 }
@@ -408,6 +410,7 @@
 .buttons > p {
   flex-basis: 100%;
   margin: 0;
+  line-height: 1.5;
   font-size: 14px;
   font-weight: 500;
   color: var(--ink);

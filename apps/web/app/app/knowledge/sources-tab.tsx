@@ -414,7 +414,7 @@ export function SourceList({
                         ? `Could not read it · added ${addedOn(source.createdAt)}`
                         : `${what(source)} · added ${addedOn(source.createdAt)}${source.tracked ? '' : ' · Facts from before tracking are listed under Facts'}`}
                   </span>
-                  {!isReading && source.status === 'FAILED' && source.error ? <Callout tone="error">{source.error}</Callout> : null}
+                  {!isReading && source.status === 'FAILED' && source.error ? <Callout tone="error" role="none">{source.error}</Callout> : null}
                   {!isReading && outcome ? (
                     outcome.found > 0 ? (
                       <span className={styles.newFacts}>
