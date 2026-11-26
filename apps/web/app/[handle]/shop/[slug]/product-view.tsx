@@ -81,7 +81,11 @@ export function ProductView(props: {
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [optionId, setOptionId] = useState<string | null>(item.options[0]?.id ?? null);
   const choices = item.choices ?? null;
-  const [picked, setPicked] = useState<PickedChoices>(() => (choices ? firstAvailable(choices) : { oneId: null, twoId: null }));
+  const [pickedState, setPicked] = useState<PickedChoices>(() => (choices ? firstAvailable(choices) : { oneId: null, twoId: null }));
+  // A pick that no longer names a combination on sale (the store preview after a save: every save gives the
+  // combinations new ids, or the owner switched that one off) falls back to the first one on sale.
+  const picked: PickedChoices =
+    choices && !choices.combos.some((c) => c.oneId === pickedState.oneId && c.twoId === pickedState.twoId && c.available) ? firstAvailable(choices) : pickedState;
   const [show, setShow] = useState<{ index: number } | undefined>(undefined);
   const [quantity, setQuantity] = useState(1);
   const times = item.sessions ?? [];
