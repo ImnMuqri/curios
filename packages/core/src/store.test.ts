@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  catalogLine,
+  choiceCombos,
+  type ChoicesPricing,
   formatRinggit,
   fromPrice,
+  lowestAvailablePrice,
   MAX_OPTIONS,
   PRICE_MAX_CENTS,
   normalizeBankAccountNumber,
@@ -150,5 +154,81 @@ describe('storeGaps', () => {
     expect(storeGapMessage(['payment', 'fulfilment'])).toBe(
       'Before your shop can open, add a way to pay (connect CHIP, or add a DuitNow QR or your bank account) and turn on pickup or delivery.',
     );
+  });
+});
+
+describe('choices pricing', () => {
+  const two: ChoicesPricing = {
+    kind: 'choices',
+    groupOne: { name: 'Flavour', choices: [{ label: 'Vanilla' }, { label: 'Chocolate', photoId: 'p1' }] },
+    groupTwo: { name: 'Size', choices: [{ label: '500g' }, { label: '1kg' }] },
+    combos: [
+      { one: 0, two: 0, priceCents: 5000, available: true },
+      { one: 0, two: 1, priceCents: 8000, available: true },
+      { one: 1, two: 0, priceCents: 6000, available: false },
+      { one: 1, two: 1, priceCents: 9000, available: true },
+    ],
+  };
+  const one: ChoicesPricing = {
+    kind: 'choices',
+    groupOne: { name: 'Size', choices: [{ label: '500g' }, { label: '1kg' }] },
+    combos: [
+      { one: 0, priceCents: 5000, available: true },
+      { one: 1, priceCents: 8000, available: false },
+    ],
+  };
+  const withCombos = (base: ChoicesPricing, combos: ChoicesPricing['combos']): ChoicesPricing => ({ ...base, combos });
+
+  it('accepts a full two-group grid and a single group', () => {
+    expect(pricingProblem(two)).toBeNull();
+    expect(pricingProblem(one)).toBeNull();
+  });
+  it('builds labels in group-one-major order', () => {
+    expect(choiceCombos(two).map((c) => c.label)).toEqual(['Vanilla · 500g', 'Vanilla · 1kg', 'Chocolate · 500g', 'Chocolate · 1kg']);
+    expect(choiceCombos(one).map((c) => c.label)).toEqual(['500g', '1kg']);
+    expect(choiceCombos(two).map((c) => c.position)).toEqual([0, 1, 2, 3]);
+  });
+  it('sorts combos sent in any order', () => {
+    expect(choiceCombos(withCombos(two, [...two.combos].reverse())).map((c) => c.label)[0]).toBe('Vanilla · 500g');
+  });
+  it('refuses a missing, duplicate or unknown combination', () => {
+    expect(pricingProblem(withCombos(two, two.combos.slice(1)))).toMatch(/price for every/i);
+    expect(pricingProblem(withCombos(two, [...two.combos, two.combos[0]!]))).toMatch(/price for every/i);
+    expect(pricingProblem(withCombos(two, [...two.combos.slice(1), { one: 5, two: 0, priceCents: 100, available: true }]))).toMatch(/price for every/i);
+    expect(pricingProblem(withCombos(one, [{ one: 0, two: 0, priceCents: 100, available: true }, one.combos[1]!]))).toMatch(/price for every/i);
+  });
+  it('needs at least one combination on', () => {
+    expect(pricingProblem(withCombos(one, one.combos.map((c) => ({ ...c, available: false }))))).toMatch(/at least one/i);
+  });
+  it('holds prices to the option limit', () => {
+    expect(pricingProblem(withCombos(one, [{ one: 0, priceCents: 0, available: true }, one.combos[1]!]))).toMatch(/RM0/);
+    expect(pricingProblem(withCombos(one, [{ one: 0, priceCents: PRICE_MAX_CENTS + 1, available: true }, one.combos[1]!]))).toMatch(/RM/);
+    expect(pricingProblem(withCombos(one, [{ one: 0, priceCents: 1.5, available: true }, one.combos[1]!]))).toMatch(/RM/);
+  });
+  it('limits choices and names', () => {
+    const many = Array.from({ length: 11 }, (_, i) => ({ label: `c${i}` }));
+    expect(pricingProblem({ ...one, groupOne: { name: 'Size', choices: many }, combos: [] })).toMatch(/at most 10/);
+    expect(pricingProblem({ ...one, groupOne: { name: 'Size', choices: [] }, combos: [] })).toMatch(/at least one choice/i);
+    expect(pricingProblem({ ...one, groupOne: { name: ' ', choices: one.groupOne.choices } })).toMatch(/name/i);
+    expect(pricingProblem({ ...one, groupOne: { name: 'x'.repeat(41), choices: one.groupOne.choices } })).toMatch(/name/i);
+    expect(pricingProblem({ ...one, groupOne: { name: 'Size', choices: [{ label: 'x'.repeat(41) }, { label: 'b' }] } })).toMatch(/40/);
+  });
+  it('refuses a duplicate label within a group and the separator inside a label', () => {
+    expect(pricingProblem({ ...one, groupOne: { name: 'Size', choices: [{ label: 'A' }, { label: ' a ' }] } })).toMatch(/twice/);
+    expect(pricingProblem({ ...one, groupOne: { name: 'Size', choices: [{ label: 'A · B' }, { label: 'C' }] } })).toMatch(/·/);
+  });
+  it('finds the lowest available price, ignoring combinations that are off', () => {
+    expect(lowestAvailablePrice(two.combos)).toBe(5000);
+    expect(lowestAvailablePrice([{ priceCents: 100, available: false }, { priceCents: 900, available: true }])).toBe(900);
+    expect(lowestAvailablePrice([{ priceCents: 100, available: false }])).toBeNull();
+    expect(lowestAvailablePrice([])).toBeNull();
+  });
+  it('writes the catalog line from the available combinations only', () => {
+    expect(catalogLine({ priceCents: null, options: [{ label: 'Vanilla · 500g', priceCents: 5000 }, { label: 'Chocolate · 1kg', priceCents: 9000 }], choiceGroups: ['Flavour', 'Size'] })).toBe(
+      'Flavour / Size: Vanilla · 500g RM50; Chocolate · 1kg RM90',
+    );
+    expect(catalogLine({ priceCents: null, options: [{ label: '1kg', priceCents: 9000 }], choiceGroups: ['Size'] })).toBe('Size: 1kg RM90');
+    expect(catalogLine({ priceCents: null, options: [{ label: '1kg', priceCents: 9000 }, { label: '2kg', priceCents: 17000 }] })).toBe('1kg RM90 · 2kg RM170');
+    expect(catalogLine({ priceCents: 2500, options: [] })).toBe('RM25');
   });
 });
