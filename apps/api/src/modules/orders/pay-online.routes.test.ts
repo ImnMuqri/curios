@@ -1169,6 +1169,16 @@ describe('POST /store/orders/:token/pay-another-way', () => {
     expect(client.cancelPurchase).not.toHaveBeenCalled();
   });
 
+  it('leaves out a line whose option has been switched off since, as one that is gone', async () => {
+    const shop = await aFailedOrder(app);
+    await app.prisma.itemOption.update({ where: { id: shop.twoKg }, data: { available: false } });
+
+    const res = await anotherWay(app, shop.token);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ lines: [{ itemId: shop.tart, optionId: null, quantity: 2, sessionId: null }] });
+  });
+
   it('a code the order held is free again afterwards', async () => {
     const shop = await aFailedOrder(app);
     expect(await app.prisma.itemCode.count({ where: { itemId: shop.tart, orderLineId: null } })).toBe(0);
