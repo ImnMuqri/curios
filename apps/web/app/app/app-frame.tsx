@@ -15,6 +15,7 @@ import { Notifications, WAITING, type Waiting } from './_ui/notifications.js';
 import { OverlayContext } from './_ui/overlay-context.js';
 import { NewVersion } from './_ui/new-version.js';
 import { InstallPrompt } from './_ui/install-prompt.js';
+import { PushPrompt } from './_ui/push-prompt.js';
 import { CuriosLoader } from '../_ui/curios-loader.js';
 import { PhoneMenu } from './_ui/phone-menu.js';
 import { SaveStatusProvider, SaveStatusSlot } from './_ui/save-status.js';
@@ -531,6 +532,7 @@ export function AppFrame({
         <PhoneMenu pathname={pathname} items={items} badges={badges} billingDot={billingDot} className={styles.phoneMenu} />
         <NewVersion version={version} onShowing={setVersionShowing} />
         <InstallPrompt held={versionShowing} />
+        <PushPrompt held={versionShowing} />
         {boot !== 'gone' ? <CuriosLoader className={boot === 'leaving' ? `${styles.boot} ${styles.bootLeaving}` : styles.boot} /> : null}
         {/* SideSheet, Dialog and the toast render here (_ui/overlay-context): inside the frame for its tokens and dark mode, outside the screen so nothing in it can trap a fixed layer. */}
         <div ref={setLayerHost} className={styles.layers} />
