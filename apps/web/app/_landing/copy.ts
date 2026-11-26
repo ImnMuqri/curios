@@ -302,7 +302,7 @@ const EN: LandingBase = {
     title: 'Curios: a link in bio people can ask',
     description:
       'Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English. Free for anyone.',
-    ogAlt: 'Aisyah’s Curios page, asked if she is taking commissions, answering that two November slots are left.',
+    ogAlt: 'Curios. Don’t read the bio. Ask. The link in bio people can ask, in Malay or English, with Peek the mascot.',
     ogLocale: 'en_MY',
   },
   skip: 'Skip to content',
@@ -548,7 +548,7 @@ const MS: LandingBase = {
     title: 'Curios: link bio yang orang boleh tanya',
     description:
       'Curios ialah link bio yang orang boleh tanya. Tentang anda, kerja anda, harga anda, kedai anda. Ia jawab ikut fakta yang anda luluskan, dalam BM atau English. Percuma untuk semua.',
-    ogAlt: 'Halaman Curios Aisyah, ditanya sama ada dia ambil tempahan, menjawab tinggal dua slot November.',
+    ogAlt: 'Curios. Tak payah baca bio. Tanya. Link bio yang orang boleh tanya, dalam BM atau English, bersama Peek si maskot.',
     ogLocale: 'ms_MY',
   },
   skip: 'Langkau ke kandungan',
