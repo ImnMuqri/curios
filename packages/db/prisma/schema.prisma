@@ -483,6 +483,10 @@ model Item {
   position       Int
   createdAt      DateTime         @default(now())
   options        ItemOption[]
+  /// Choices inside options: the two groups' names ("Flavour", "Size"). Both null is a plain options list.
+  choiceGroupOne String?
+  choiceGroupTwo String?
+  choices        ItemChoice[]
   orderLines     OrderLine[]
   vouchers       ShopVoucher[]
   enquiries      Lead[]
@@ -529,6 +533,7 @@ model ItemPhoto {
   /// The crop frame's side as a fraction of the original's shorter side, min(width, height), in (0, 1].
   frameSize   Float
   createdAt   DateTime @default(now())
+  choices     ItemChoice[]
 
   @@index([itemId, position])
 }
@@ -618,8 +623,31 @@ model ItemOption {
   label      String
   priceCents Int
   position   Int
+  /// With choice groups: the group-one and group-two choices this combination is made of; null on a plain option.
+  choiceOneId String?
+  choiceOne   ItemChoice? @relation("ChoiceOne", fields: [choiceOneId], references: [id], onDelete: Cascade)
+  choiceTwoId String?
+  choiceTwo   ItemChoice? @relation("ChoiceTwo", fields: [choiceTwoId], references: [id], onDelete: Cascade)
+  /// Off: not made or not sold. A basket line or order for it is refused.
+  available   Boolean     @default(true)
 
   @@index([itemId, position])
+}
+
+/// One choice of an item's choice group (group 1 or 2), in order. A group-one choice may show one of the item's photos.
+model ItemChoice {
+  id        String      @id @default(cuid())
+  itemId    String
+  item      Item        @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  group     Int
+  label     String
+  position  Int
+  photoId   String?
+  photo     ItemPhoto?  @relation(fields: [photoId], references: [id], onDelete: SetNull)
+  asOne     ItemOption[] @relation("ChoiceOne")
+  asTwo     ItemOption[] @relation("ChoiceTwo")
+
+  @@index([itemId, group, position])
 }
 
 model Fact {
