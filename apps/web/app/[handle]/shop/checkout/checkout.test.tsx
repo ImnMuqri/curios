@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Checkout } from './checkout.js';
+import { attachReceipt } from './receipt-test-helper.js';
 import type { PublicPickupPlace } from '@curios/db-read';
 import { shopCopy } from '../copy.js';
 
@@ -57,9 +58,10 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(copy.name), 'Mira Hassan');
   await user.type(screen.getByLabelText(copy.whatsappNumber), '012-987 6543');
   await user.click(screen.getByRole('button', { name: 'Sat 17' }));
+  await attachReceipt(user);
 }
 
-const placeButton = (total: string) => screen.getByRole('button', { name: copy.placeOrder(total) });
+const placeButton = (total: string) => screen.getByRole('button', { name: copy.sendOrder(total) });
 
 describe('Checkout', () => {
   it("checkout's title sits on the page background and the form on a white sheet", async () => {
@@ -155,7 +157,7 @@ describe('Checkout', () => {
     expect(screen.getByRole('button', { name: 'Fri 16' })).toBeInTheDocument();
   });
 
-  it('holds Place order until name, phone, a day and (for delivery) the address are in', async () => {
+  it('holds Send order until name, phone, a day, the receipt and (for delivery) the address are in', async () => {
     const user = userEvent.setup();
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
@@ -166,9 +168,18 @@ describe('Checkout', () => {
     expect(placeButton('RM215')).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Sat 17' }));
     expect(screen.getByRole('button', { name: 'Sat 17' })).toHaveAttribute('aria-pressed', 'true');
+    // Everything else is in, but the order is not sent until the receipt is attached, and the screen says so.
+    expect(placeButton('RM215')).toBeDisabled();
+    expect(placeButton('RM215')).toHaveAccessibleDescription(copy.receiptNeeded);
+    await attachReceipt(user);
     expect(placeButton('RM215')).toBeEnabled();
 
+    // A dearer total is a different payment: the receipt goes, and the screen says why.
     await user.click(screen.getByRole('radio', { name: /Delivery/ }));
+    expect(placeButton('RM225')).toBeDisabled();
+    expect(screen.getByText(copy.receiptTotalChanged('RM225'))).toBeInTheDocument();
+    expect(placeButton('RM225')).toHaveAccessibleDescription(copy.receiptTotalChanged('RM225'));
+    await attachReceipt(user);
     expect(placeButton('RM225')).toBeDisabled();
     await user.type(screen.getByLabelText(copy.address), '12 Jalan Mawar, Seksyen 7');
     expect(placeButton('RM225')).toBeEnabled();
@@ -176,7 +187,7 @@ describe('Checkout', () => {
 
   it('sends what the visitor saw and shows the placed screen with the code', async () => {
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -187,6 +198,10 @@ describe('Checkout', () => {
     expect(url).toMatch(/\/store\/keklina\/orders$/);
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body as string)).toEqual({
+      // Paid by the shop's QR first: the receipt goes in the same request, so the order is made with it.
+      receipt: { contentType: 'image/jpeg', data: expect.any(String) },
+      // One key per checkout attempt, so a retry after a lost response cannot make a second order.
+      placeKey: expect.stringMatching(/^[A-Za-z0-9_-]{16,64}$/),
       lines: [
         { itemId: 'cake', optionId: 'k2', quantity: 1 },
         { itemId: 'batik', optionId: null, quantity: 1 },
@@ -203,12 +218,12 @@ describe('Checkout', () => {
     });
 
     // Focus moves to the new screen's heading, so a screen reader hears it arrive.
-    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toHaveFocus();
-    expect(screen.getByText(copy.placedSub('Kek Lina'))).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: copy.orderSent })).toHaveFocus();
+    expect(screen.getByText(copy.orderSentSub('Kek Lina'))).toBeInTheDocument();
     expect(screen.getByLabelText('Order code 7Q4M')).toHaveTextContent('7Q4M');
     expect(screen.getByRole('button', { name: copy.copyCode })).toBeInTheDocument();
     expect(screen.getByText(/where is my order 7Q4M\?/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: copy.payNow('RM215') })).toHaveAttribute('href', '/keklina/order/tok_abc');
+    expect(screen.getByRole('link', { name: copy.seeOrder })).toHaveAttribute('href', '/keklina/order/tok_abc');
     const send = screen.getByRole('link', { name: copy.sendLink }).getAttribute('href') ?? '';
     expect(send).toBe(`https://wa.me/60129876543?text=${encodeURIComponent(`${window.location.origin}/keklina/order/tok_abc`)}`);
     expect(saved()).toEqual([]);
@@ -223,7 +238,7 @@ describe('Checkout', () => {
       ]),
     );
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     const field = screen.getByLabelText(new RegExp(copy.noteFor('Kek Lina')));
@@ -255,12 +270,12 @@ describe('Checkout', () => {
 
   it('puts the mascot with a tick on the placed screen, and a summary of how it is got and what it holds', async () => {
     const user = userEvent.setup();
-    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     const { container } = render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
     await user.click(placeButton('RM215'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     expect(container.querySelector('svg[viewBox="0 0 160 150"]')).not.toBeNull();
     const summary = screen.getByRole('list', { name: copy.items });
     expect(within(summary).getByText(copy.pickupLabel)).toBeInTheDocument();
@@ -275,12 +290,13 @@ describe('Checkout', () => {
 
   it('puts the drawn +60 on a number typed without its 0', async () => {
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 't', totalCents: 21500 });
+    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 't', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await user.type(screen.getByLabelText(copy.name), 'Mira');
     await user.type(screen.getByLabelText(copy.whatsappNumber), '12-987 6543');
     await user.click(screen.getByRole('button', { name: 'Sat 17' }));
+    await attachReceipt(user);
     await user.click(placeButton('RM215'));
     expect(JSON.parse((fetch.mock.calls[0] as [string, RequestInit])[1].body as string)).toMatchObject({ phone: '+6012-987 6543' });
     expect((await screen.findByRole('link', { name: copy.sendLink })).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60129876543\?text=/);
@@ -288,7 +304,7 @@ describe('Checkout', () => {
 
   it('copies the code', async () => {
     const user = userEvent.setup();
-    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -301,16 +317,18 @@ describe('Checkout', () => {
 
   it('sends a delivery with its address', async () => {
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 3, code: 'ABCD', token: 't', totalCents: 22500 });
+    const fetch = reply(201, { number: 3, code: 'ABCD', token: 't', totalCents: 22500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
     await user.click(screen.getByRole('radio', { name: /Delivery/ }));
     await user.type(screen.getByLabelText(copy.address), '12 Jalan Mawar');
+    // Delivery made the total RM225: the RM215 receipt went, so this one is for the new total.
+    await attachReceipt(user);
     await user.click(placeButton('RM225'));
     const body = JSON.parse((fetch.mock.calls[0] as [string, RequestInit])[1].body as string) as Record<string, unknown>;
     expect(body).toMatchObject({ method: 'DELIVERY', address: '12 Jalan Mawar', note: null, seenTotalCents: 22500 });
-    expect(await screen.findByRole('link', { name: copy.payNow('RM225') })).toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: copy.seeOrder })).toBeInTheDocument();
   });
 
   it('reloads the basket when prices changed, saying so', async () => {
@@ -329,10 +347,15 @@ describe('Checkout', () => {
     expect(await screen.findByText(copy.pricesChanged)).toBeInTheDocument();
     const cake = screen.getByText('Kek coklat moist').closest('li') as HTMLElement;
     expect(within(cake).getByText('2kg · RM180 each')).toBeInTheDocument();
+    // They paid RM215 and it is now RM225: the receipt stays, nothing is sent again by itself, and they are told who to send it to.
+    expect(screen.getByText(copy.paidPricesChanged('Kek Lina', 'RM215'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
+    expect(placeButton('RM225')).toBeDisabled();
+    await attachReceipt(user);
     expect(placeButton('RM225')).toBeEnabled();
     // The photo it had is kept: the shelf hands back keys, not URLs.
     expect(screen.getByText('Kek batik').closest('li')?.querySelector('img')?.getAttribute('src')).toBe('https://cdn.test/items/b.webp');
-    expect(screen.queryByRole('heading', { name: copy.orderPlaced })).toBeNull();
+    expect(screen.queryByRole('heading', { name: copy.orderSent })).toBeNull();
   });
 
   it('reloads the delivery fee when it changed', async () => {
@@ -348,11 +371,13 @@ describe('Checkout', () => {
     await fillDetails(user);
     await user.click(screen.getByRole('radio', { name: /Delivery/ }));
     await user.type(screen.getByLabelText(copy.address), '12 Jalan Mawar');
+    await attachReceipt(user);
     await user.click(placeButton('RM225'));
     expect(await screen.findByText(copy.pricesChanged)).toBeInTheDocument();
     expect(within(screen.getByRole('radio', { name: /Delivery/ })).getByText('RM15')).toBeInTheDocument();
-    // The retry sends the total the shop now asks for.
-    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ number: 2, code: 'ABCD', token: 't', totalCents: 23000 }), { status: 201 }));
+    // The retry sends the total the shop now asks for, with a receipt for it.
+    await attachReceipt(user);
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ number: 2, code: 'ABCD', token: 't', totalCents: 23000, receipt: true }), { status: 201 }));
     await user.click(placeButton('RM230'));
     expect(JSON.parse((fetch.mock.calls[1] as [string, RequestInit])[1].body as string)).toMatchObject({ seenTotalCents: 23000 });
     unmount();
@@ -365,10 +390,12 @@ describe('Checkout', () => {
     await fillDetails(user);
     await user.click(screen.getByRole('radio', { name: /Delivery/ }));
     await user.type(screen.getByLabelText(copy.address), '12 Jalan Mawar');
+    await attachReceipt(user);
     await user.click(placeButton('RM55'));
     expect(await screen.findByText(copy.deliveryOff)).toBeInTheDocument();
     expect(screen.queryByRole('radio', { name: /Delivery/ })).toBeNull();
     expect(screen.getByRole('radio', { name: /Pickup/ })).toHaveAttribute('aria-checked', 'true');
+    await attachReceipt(user);
     expect(placeButton('RM45')).toBeEnabled();
   });
 
@@ -400,7 +427,9 @@ describe('Checkout', () => {
     await fillDetails(user);
     await user.click(placeButton('RM215'));
     expect(await screen.findByText(copy.tooLarge('Kek Lina'))).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: copy.orderOnWhatsApp }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60123456789\?text=/);
+    // They paid by QR first, so the notice about that carries the one WhatsApp link, not a second one from the bar.
+    expect(screen.getAllByRole('link', { name: /WhatsApp/ })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60123456789\?text=/);
     expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
   });
 
@@ -412,9 +441,13 @@ describe('Checkout', () => {
     await fillDetails(user);
     await user.click(placeButton('RM215'));
     expect(await screen.findByText(copy.paused('Kek Lina'))).toBeInTheDocument();
-    const href = screen.getByRole('link', { name: copy.orderOnWhatsApp }).getAttribute('href') ?? '';
+    expect(screen.getAllByRole('link', { name: /WhatsApp/ })).toHaveLength(1);
+    const href = screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') }).getAttribute('href') ?? '';
     expect(href.startsWith('https://wa.me/60123456789?text=')).toBe(true);
-    expect(decodeURIComponent(href.split('?text=')[1] ?? '')).toContain('1 × Kek coklat moist (2kg) — RM170');
+    // What they paid, for what, and that the receipt follows: not the plain basket text.
+    const text = decodeURIComponent(href.split('?text=')[1] ?? '');
+    expect(text).toContain(copy.paidMessage('Kek Lina', 'RM215'));
+    expect(text).toContain('1 × Kek coklat moist (2kg)');
     expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
   });
 
@@ -448,7 +481,7 @@ describe('Checkout: how you’ll pay', () => {
     const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
     const spy = vi.fn(async (url: string) => {
       if (url.includes('/pay-methods')) return json(200, routes.methods ?? ALL);
-      if (url.endsWith('/orders')) return json(201, routes.place ?? { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+      if (url.endsWith('/orders')) return json(201, routes.place ?? { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
       if (url.endsWith('/pay')) {
         if (routes.pay instanceof Error) throw routes.pay;
         return json(routes.payStatus ?? 200, routes.pay ?? { url: 'https://gate.chip-in.asia/p/x/?preferred=fpx&fpx_bank_code=MB2U0227' });
@@ -492,6 +525,20 @@ describe('Checkout: how you’ll pay', () => {
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/store/keklina/pay-methods?amount=21500'))).toBe(true);
   });
 
+  it('each way ends in the real marks of what it takes', async () => {
+    api({});
+    render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    const marks = within(payGroup()).getAllByRole('radio').map((radio) => Array.from(radio.querySelectorAll('img')).map((img) => img.getAttribute('src')));
+    expect(marks).toEqual([
+      ['/pay/fpx.png'],
+      ['/pay/tng.svg', '/pay/grab.svg', '/pay/shopeepay.png'],
+      ['/pay/visa.svg', '/pay/mastercard.svg'],
+      ['/pay/duitnow.svg'],
+    ]);
+    expect(within(payGroup()).queryByText('VISA')).toBeNull();
+  });
+
   it('Boost is not offered', async () => {
     const user = userEvent.setup();
     api({});
@@ -499,7 +546,10 @@ describe('Checkout: how you’ll pay', () => {
     await screen.findByText('Kek coklat moist');
     await choose(user, new RegExp(copy.eWallet));
     const wallets = within(screen.getByRole('radiogroup', { name: copy.yourWallet })).getAllByRole('radio').map((radio) => radio.textContent);
-    expect(wallets).toEqual(['TTouch ’n Go', 'GGrabPay', 'SShopeePay']);
+    expect(wallets).toEqual(['Touch ’n Go', 'GrabPay', 'ShopeePay']);
+    // Each e-wallet wears its own logo, not a letter.
+    const picks = within(screen.getByRole('radiogroup', { name: copy.yourWallet })).getAllByRole('radio');
+    expect(picks.map((pick) => pick.querySelector('img')?.getAttribute('src'))).toEqual(['/pay/tng.svg', '/pay/grab.svg', '/pay/shopeepay.png']);
     expect(screen.queryByText(/Boost/)).toBeNull();
   });
 
@@ -535,7 +585,7 @@ describe('Checkout: how you’ll pay', () => {
 
     await choose(user, new RegExp(copy.duitnowQr));
     expect(placeButton('RM215')).toBeInTheDocument();
-    expect(screen.getByText(`${copy.payNote('Kek Lina')} ${copy.consent('Kek Lina')}`)).toBeInTheDocument();
+    expect(screen.getByText(`${copy.payNoteQr('Kek Lina')} ${copy.consent('Kek Lina')}`)).toBeInTheDocument();
   });
 
   it('an online choice asks for an email, for the receipt', async () => {
@@ -650,7 +700,8 @@ describe('Checkout: how you’ll pay', () => {
     expect(screen.queryByRole('radiogroup', { name: copy.howYoullPay })).toBeNull();
     expect(screen.getByText(copy.payOnWhatsApp('Kek Lina'))).toBeInTheDocument();
     await fillDetails(user);
-    await user.click(placeButton('RM215'));
+    // No QR to pay by, so no receipt to send: the order is placed as before, and WhatsApp is the way to pay.
+    await user.click(screen.getByRole('button', { name: copy.placeOrder('RM215') }));
 
     expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: copy.payNow('RM215') })).toBeNull();
@@ -733,7 +784,7 @@ describe('Checkout: where and when to collect', () => {
         { id: 'w1', from: 600, to: 720, full: false },
         { id: 'w2', from: 840, to: 960, full: false },
       ],
-      () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 }),
+      () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true }),
     );
     render(<Checkout {...base} pickupPlaces={[home, stall]} />);
     await screen.findByText('Kek coklat moist');
@@ -751,12 +802,13 @@ describe('Checkout: where and when to collect', () => {
     // And the times under them.
     expect(sat.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     await user.click(within(time).getByRole('radio', { name: '10am–12pm' }));
+    await attachReceipt(user);
     expect(placeButton('RM215')).toBeEnabled();
 
     await user.click(placeButton('RM215'));
     const [, init] = orderCalls(fetch)[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toMatchObject({ method: 'PICKUP', day: '2026-10-17', pickupPlaceId: 'home', pickupWindowId: 'w1' });
-    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: copy.orderSent })).toBeInTheDocument();
   });
 
   it('a time that filled up meanwhile: says so, asks for the times again and keeps the form', async () => {
@@ -786,7 +838,7 @@ describe('Checkout: where and when to collect', () => {
     // Nothing typed is lost, and another time places the order.
     expect(screen.getByLabelText(copy.name)).toHaveValue('Mira Hassan');
     expect(screen.getByRole('button', { name: 'Sat 17' })).toHaveAttribute('aria-pressed', 'true');
-    expect(screen.queryByRole('heading', { name: copy.orderPlaced })).toBeNull();
+    expect(screen.queryByRole('heading', { name: copy.orderSent })).toBeNull();
     expect(placeButton('RM215')).toBeDisabled();
     await user.click(screen.getByRole('radio', { name: '2pm–4pm' }));
     expect(placeButton('RM215')).toBeEnabled();
@@ -794,7 +846,7 @@ describe('Checkout: where and when to collect', () => {
 
   it('a shop with pickup but no places yet takes pickup as before, with no place asked or sent', async () => {
     const user = userEvent.setup();
-    const fetch = routes(() => [], () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 }));
+    const fetch = routes(() => [], () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true }));
     render(<Checkout {...base} pickupPlaces={[]} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -819,6 +871,7 @@ describe('Checkout: where and when to collect', () => {
     await user.type(screen.getByLabelText(ms.whatsappNumber), '012-987 6543');
     await user.click(screen.getByRole('button', { name: ms.dayPill('2026-10-17') }));
     await user.click(await screen.findByRole('radio', { name: '10am–12pm' }));
+    await attachReceipt(user, 'receipt.jpg', 'ms');
     await user.click(screen.getByRole('button', { name: /RM215/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent(ms.pickupTimeGone);
     expect(timeCalls(fetch)).toHaveLength(2);
@@ -844,6 +897,7 @@ describe('Checkout: where and when to collect', () => {
     await user.type(screen.getByLabelText(ms.name), 'Mira Hassan');
     await user.type(screen.getByLabelText(ms.whatsappNumber), '012-987 6543');
     await user.click(screen.getByRole('button', { name: ms.dayPill('2026-10-17') }));
+    await attachReceipt(user, 'receipt.jpg', 'ms');
     await user.click(screen.getByRole('button', { name: /RM215/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent(ms.pickupPlacesChanged);
     expect(ms.pickupPlacesChanged).toMatch(/[Mm]uat semula/);

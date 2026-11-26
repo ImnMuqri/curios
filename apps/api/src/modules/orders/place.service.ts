@@ -1,14 +1,17 @@
 import { randomBytes } from 'node:crypto';
 import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, newOrderPush, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
 import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
-import { sealSecret } from '@curios/core/secret-box';
-import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
+import { openSecret, sealSecret } from '@curios/core/secret-box';
+import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals, RECEIPT_MAX_BYTES } from '@curios/core/orders';
 import { pickVoucher } from '@curios/core/vouchers';
 import type { Prisma, PrismaClient } from '@curios/db';
 import type { Settings } from '@curios/core/settings';
 import { PageNotFoundError } from '../chat/chat.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { InvalidPhoneError } from '../leads/lead.service.js';
+import { decodeReceipt } from '../pages/avatar.js';
+import { StorageNotConfiguredError } from '../pages/page.routes.js';
+import type { AvatarStore } from '../pages/storage.js';
 import { StoreBusinessOnlyError } from '../store/store.errors.js';
 import { liveVouchers } from '../store/voucher.service.js';
 import { deliverOrder, queueDeliveryMail } from './deliver.service.js';
@@ -52,6 +55,8 @@ export interface PlaceDeps {
   secretsKey?: Buffer | null;
   /** The admin's settings, read per request: the free trial is `settings.freeOrders` orders long. */
   settings: Settings;
+  /** Where a receipt sent with the order is kept. Null or left out: uploads are off, and an order with a receipt is refused. */
+  store?: AvatarStore | null;
 }
 
 export interface PlaceInput {
@@ -76,6 +81,16 @@ export interface PlaceInput {
   pickupPlaceId?: string | null;
   /** One of that place's times, when it has set times. Ignored at an any-time place and on delivery. */
   pickupWindowId?: string | null;
+  /**
+   * Paying first, by the owner's QR or bank: the receipt, as the receipt upload takes it. The order is then created
+   * already holding it (to check), never waiting for payment. Refused on an order that comes to RM0.
+   */
+  receipt?: { contentType: string; data: string } | null;
+  /**
+   * One checkout attempt's idempotency key, made by the browser. A repeat of the same key on this page (a retry after a
+   * lost response) returns the order already made, with the same link, instead of making a second.
+   */
+  placeKey?: string | null;
 }
 
 export interface Placed {
@@ -83,6 +98,8 @@ export interface Placed {
   code: string;
   token: string;
   totalCents: number;
+  /** The order was made with its receipt on it (so it is to check). A client that attached one must see this before it says "sent". */
+  receipt: boolean;
 }
 
 /** getPublicShop's item select, so PRICES_CHANGED hands back what the shop renders. */
@@ -132,6 +149,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   const address = input.method === 'DELIVERY' ? blankToNull(input.address) : null;
   const email = blankToNull(input.email ?? null);
   const note = blankToNull(input.note);
+  // Checked before anything is stored or locked: the same type, signature and size rules as the receipt upload.
+  const receipt = input.receipt ? decodeReceipt(input.receipt, RECEIPT_MAX_BYTES) : null;
+  if (receipt && !deps.store) throw new StorageNotConfiguredError();
 
   // An early, unlocked read: the cheap refusals happen before a lock is taken.
   // Every one of them is checked again under the lock below, which is the
@@ -149,7 +169,44 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     throw new OrderDateError();
   }
 
+  // Only a hash of the attempt's key is stored, so a database read gives nobody anything to open an order with.
+  const placeKey = input.placeKey ? hashSessionValue(input.placeKey) : null;
+  // Always random, as for any order; a repeat gets it back from the sealed copy (below).
   const token = randomBytes(32).toString('base64url');
+
+  // A repeat of an attempt that already went through: the same order again, with nothing new made, stored or sent.
+  const already = async (): Promise<Placed | null> => {
+    if (!placeKey) return null;
+    const order = await deps.prisma.order.findUnique({
+      where: { pageId_placeKeyHash: { pageId: found.id, placeKeyHash: placeKey } },
+      select: { id: true, number: true, code: true, totalCents: true, tokenSealed: true, receiptKey: true },
+    });
+    if (!order) return null;
+    let own: string | null = null;
+    if (order.tokenSealed && deps.secretsKey) {
+      try {
+        own = openSecret(order.tokenSealed, deps.secretsKey);
+      } catch {
+        own = null;
+      }
+    }
+    if (own === null) {
+      // Not sealed (no PAYMENT_SECRETS_KEY, which production refuses to start without) or sealed under another key: the
+      // link the lost answer carried is unrecoverable, so this attempt's order gets a new one, and that is the answer.
+      await deps.prisma.order.update({
+        where: { id: order.id },
+        data: { tokenHash: hashSessionValue(token), tokenSealed: deps.secretsKey ? sealSecret(token, deps.secretsKey) : null },
+      });
+    }
+    return { number: order.number, code: order.code, token: own ?? token, totalCents: order.totalCents, receipt: order.receiptKey !== null };
+  };
+  const repeat = await already();
+  if (repeat) return repeat;
+
+  // Stored before the transaction, never inside it (a slow bucket would hold the page lock). Random, so the URL
+  // cannot be guessed. If the placement is refused or fails, the file is removed below: nothing points at it.
+  const receiptKey = receipt ? `receipts/${found.id}/${randomBytes(16).toString('hex')}.${receipt.ext}` : null;
+  if (receipt && receiptKey && deps.store) await deps.store.put(receiptKey, receipt.body, input.receipt!.contentType);
 
   const placed = await deps.prisma.$transaction(async (tx) => {
     await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${found.id} FOR UPDATE`;
@@ -169,6 +226,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         minNoticeDays: true,
         closedDays: true,
         notifyOrders: true,
+        notifyReceipts: true,
         accountId: true,
         account: { select: { email: true } },
       },
@@ -237,6 +295,8 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
 
     // Only a voucher takes a total to RM0: every item is priced above it.
     const free = totals.totalCents === 0;
+    // Nothing was paid by QR, so nothing to attach: the rollback leaves the stored file to the catch below.
+    if (free && receiptKey) throw new OrderShapeError('This order is free, so there is no payment to send a receipt for. Remove the receipt and try again.');
     // Counted like any other order, free or not: it is still an order the shop took.
     const number = page.ordersPlaced + 1;
     await tx.page.update({ where: { id: found.id }, data: { ordersPlaced: number } });
@@ -259,6 +319,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         number,
         code,
         tokenHash: hashSessionValue(token),
+        placeKeyHash: placeKey,
         tokenSealed: deps.secretsKey ? sealSecret(token, deps.secretsKey) : null,
         customerName,
         phone,
@@ -283,6 +344,10 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         pickupTo: pickup?.window?.toMinute ?? null,
         // Nothing to pay: paid as it is placed, by the voucher, with no CHIP, QR or receipt.
         ...(free ? { status: 'PAID' as const, paidVia: 'VOUCHER' as const, paidAt: now } : {}),
+        // Paid first, by the owner's QR or bank: the order is born with its receipt, so it is to check and never waiting for payment.
+        ...(receipt && receiptKey && input.receipt
+          ? { receiptKey, receiptType: input.receipt.contentType, receiptUploadedAt: now }
+          : {}),
         lines: {
           create: lines.map((line, position) => ({
             itemId: line.itemId,
@@ -324,13 +389,25 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       voucherLabel: picked?.voucher.label ?? null,
       pickup,
       notify: page.notifyOrders,
+      notifyReceipts: page.notifyReceipts,
       ownerEmail: page.account.email,
       accountId: page.accountId,
     };
     // Above Prisma's 2s/5s defaults: a burst on one shop queues on the row
     // lock, one placement after another, and the last in line must not be
     // refused for waiting its turn.
-  }, { maxWait: 10_000, timeout: 10_000 });
+  }, { maxWait: 10_000, timeout: 10_000 }).catch(async (error: unknown) => {
+    // Nothing points at the stored receipt now: it would be unreachable, and unremoved.
+    if (receiptKey) await deps.store?.remove(receiptKey).catch(() => undefined);
+    // The same attempt landed first, in a request running at the same time: its order is the answer.
+    if (placeKey && typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002') {
+      const first = await already();
+      if (first) return first;
+    }
+    throw error;
+  });
+  // Only the concurrent duplicate comes back as a finished placement.
+  if ('token' in placed) return placed;
 
   // After the commit, never inside it: the order is placed whether or not the
   // email can be queued, and a queued email must never announce an order a
@@ -341,8 +418,10 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   }
   // The device's own switch, not the email's: queued whatever "Email me when" says.
   const orderUrl = `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${placed.orderId}`;
-  queueOwnerPush(deps.pushQueue, { accountId: placed.accountId, ...newOrderPush({ number: placed.number, customerName, totalCents: placed.totals.totalCents, url: orderUrl }) }, (details, message) => deps.log?.warn?.({ orderId: placed.orderId, ...details }, message));
-  if (placed.notify) {
+  queueOwnerPush(deps.pushQueue, { accountId: placed.accountId, ...newOrderPush({ number: placed.number, customerName, totalCents: placed.totals.totalCents, url: orderUrl, receipt: receiptKey !== null }) }, (details, message) => deps.log?.warn?.({ orderId: placed.orderId, ...details }, message));
+  // An order that came with its receipt is one notification: this email says so, and no receipt email follows.
+  // An owner with only receipt emails on still hears about it, as they would have when the receipt was uploaded later.
+  if (placed.notify || (receiptKey !== null && placed.notifyReceipts)) {
     const warn = (error: unknown) =>
       deps.log?.warn?.({ orderId: placed.orderId, err: error instanceof Error ? error.message : String(error) }, 'could not queue the new-order email');
     try {
@@ -356,6 +435,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         discountCents: placed.totals.discountCents,
         voucherLabel: placed.voucherLabel,
         paidWithVoucher: placed.free,
+        receiptAttached: receiptKey !== null,
         day: placed.day,
         pickupPlaceName: placed.pickup?.place.name ?? null,
         pickupFrom: placed.pickup?.window?.fromMinute ?? null,
@@ -382,7 +462,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     }
   }
 
-  return { number: placed.number, code: placed.code, token, totalCents: placed.totals.totalCents };
+  return { number: placed.number, code: placed.code, token, totalCents: placed.totals.totalCents, receipt: receiptKey !== null };
 }
 
 /**

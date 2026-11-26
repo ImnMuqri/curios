@@ -442,6 +442,10 @@ model Link {
   /// What the player address is built from (a track id, a map query, a booking
   /// path), parsed from the pasted link by @curios/core/widgets; null on a LINK.
   embedRef String?
+  /// A card's title and cover (Spotify, Apple Music), fetched once from the service's public lookup when the widget is saved;
+  /// null for every other row, and when the fetch failed (the card then falls back to the label).
+  embedTitle String?
+  embedImage String?
 
   @@index([pageId, position])
 }
@@ -1067,6 +1071,9 @@ model Order {
   /// hashSessionValue of the order link's secret. Only the hash is stored, so
   /// a database read cannot open anybody's order page.
   tokenHash          String         @unique
+  /// hashSessionValue of the checkout attempt's idempotency key (client-made): a repeat of the same placement, per page,
+  /// returns this order instead of making a second. Only the hash, so a database read opens nothing. Null without a key.
+  placeKeyHash       String?
   /// The order token sealed with PAYMENT_SECRETS_KEY (sealSecret), so later emails can carry the order link. Null where there is no key.
   tokenSealed        String?
   customerName       String
@@ -1150,6 +1157,7 @@ model Order {
 
   @@unique([pageId, number])
   @@unique([pageId, code])
+  @@unique([pageId, placeKeyHash])
   @@index([pageId, createdAt])
   @@index([voucherId])
   @@index([pickupWindowId, day])

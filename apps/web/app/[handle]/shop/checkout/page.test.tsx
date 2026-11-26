@@ -51,6 +51,8 @@ const shop: Checkout = {
   canEnquire: true,
   payByQr: true,
   hasQr: true,
+  qrKey: 'qr/kek.png',
+  bank: { name: 'Maybank', accountName: 'Lina', accountNumber: '1122334455' },
   chipMethods: ['fpx', 'visa'],
   vouchers: [],
 };
@@ -92,6 +94,9 @@ describe('/[handle]/shop/checkout', () => {
       minNoticeDays: 2,
       payByQr: true,
       hasQr: true,
+      // Paying first by QR draws the owner's QR and bank beside the total, as the order page does.
+      qrUrl: 'https://cdn.test/qr/kek.png',
+      bank: { name: 'Maybank', accountName: 'Lina', accountNumber: '1122334455' },
       chipMethods: ['fpx', 'visa'],
     });
     expect((props.items as { photoUrl: string | null }[])[0]?.photoUrl).toBe('https://cdn.test/items/b.webp');

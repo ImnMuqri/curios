@@ -54,6 +54,8 @@ const shop = {
   canEnquire: true,
   payByQr: true,
   hasQr: true,
+  qrKey: null,
+  bank: { name: null, accountName: null, accountNumber: null },
   chipMethods: null,
   vouchers: [],
 } as Checkout;

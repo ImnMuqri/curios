@@ -51,6 +51,8 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
         closedDays={shop.closedDays}
         payByQr={shop.payByQr}
         hasQr={shop.hasQr}
+        qrUrl={avatarUrl(shop.qrKey)}
+        bank={shop.bank}
         vouchers={shop.vouchers}
         chipMethods={switches.chipPayments ? shop.chipMethods : null}
         // The server's clock, so the day pills the browser draws are the ones it rendered.

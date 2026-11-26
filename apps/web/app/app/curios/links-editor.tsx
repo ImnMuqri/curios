@@ -19,6 +19,9 @@ export type LinkItem = {
   kind: LinkKind;
   provider: WidgetProvider | null;
   embedRef: string | null;
+  /** A music card's title and cover (Spotify, Apple Music), fetched when the widget was saved; null otherwise. */
+  embedTitle: string | null;
+  embedImage: string | null;
 };
 
 const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';

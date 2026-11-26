@@ -10,6 +10,7 @@ import { ApiError, apiFetch } from '../../../../lib/api.js';
 import {
   basketMessage,
   basketNote,
+  paidMessage,
   defaultStorageKey,
   priceBasket,
   QUANTITY_MAX,
@@ -24,6 +25,9 @@ import { payingKey, retryKey } from './paying.js';
 import { payButtonText, PayWays, useOnlineOffer, usePayChoice } from './pay-ways.js';
 import { PickupTime, PickupWhere } from './pickup-picker.js';
 import { Placed } from './placed.js';
+import { PayBox } from '../../order/[token]/pay-box.js';
+import { base64 } from '../../order/[token]/receipt-file.js';
+import { ReceiptPicker } from '../../order/[token]/receipt-picker.js';
 import { TopBar } from '../../top-bar.js';
 import sheet from '../../sheet.module.css';
 import styles from './checkout.module.css';
@@ -60,6 +64,9 @@ export interface CheckoutProps {
   payByQr?: boolean;
   /** The owner's own DuitNow QR: with CHIP beside it, the choice is the board's "DuitNow QR". */
   hasQr?: boolean;
+  /** The owner's QR picture and bank details, drawn at checkout when the customer pays by QR first (the order page draws the same). */
+  qrUrl?: string | null;
+  bank?: { name: string | null; accountName: string | null; accountNumber: string | null };
   /**
    * The methods the owner's CHIP account listed when last checked; null or absent when
    * the shop takes nothing online. Only the first draw: the API says what it takes at
@@ -84,6 +91,8 @@ interface PlacedOrder {
   digitalNote: string | null;
   /** The order holds a code or a class seat until it is paid. */
   holds: boolean;
+  /** Paid first by QR: the order came with its receipt and is waiting for the owner to check it. */
+  receiptSent: boolean;
   /** The order came to RM0: it is paid already, with nothing to pay. */
   free: boolean;
   /** What the placed screen's summary card shows, read from the basket as it was placed. */
@@ -91,6 +100,13 @@ interface PlacedOrder {
 }
 
 const goTo = (url: string) => window.location.assign(url);
+
+/** One checkout attempt's key: the API makes one order for it however many times it is sent. */
+export function newPlaceKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  // An older browser: 16 random bytes from the browser's secure source, never Math.random (the key guards a retry).
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+}
 
 /** Where a refusal is said: under the field it is about, or above Place order. */
 type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'pickup' | 'email' | 'form'; message: string };
@@ -168,6 +184,17 @@ export function Checkout(props: CheckoutProps) {
   /** Checkout cannot take this basket: the shop paused, or the order is too big. WhatsApp replaces Place order. */
   const [fallback, setFallback] = useState<'paused' | 'tooLarge' | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
+  // Paying first by QR: the receipt is held here and goes with the order, never on its own. `forCents` is the total it was attached for.
+  const [receipt, setReceipt] = useState<{ file: File; contentType: string; forCents: number } | null>(null);
+  /** The receipt went because the total changed under it: the total to attach one for. */
+  const [receiptGone, setReceiptGone] = useState<number | null>(null);
+  /** The order was refused after the customer paid and attached a receipt: what happened, and the receipt stays. */
+  const [paidFail, setPaidFail] = useState<'prices' | 'other' | 'unsure' | 'contact' | null>(null);
+  // The key of the attempt in flight, and what it was an attempt at: a retry of the same thing reuses it (so a lost response
+  // never makes a second order), and any change to the order makes a new one.
+  const attempt = useRef<{ key: string; sig: string } | null>(null);
+  /** After a refusal for prices, the first change of total is the shelf coming back, not the customer changing the basket. */
+  const priceReload = useRef(false);
   const chip = props.chipMethods ?? null;
   const payByQr = props.payByQr ?? true;
   const top = useRef<HTMLDivElement>(null);
@@ -178,6 +205,7 @@ export function Checkout(props: CheckoutProps) {
   const methodsRef = useRef<HTMLDivElement>(null);
   const pickupErrorRef = useRef<HTMLParagraphElement>(null);
   const formErrorRef = useRef<HTMLParagraphElement>(null);
+  const paidFailRef = useRef<HTMLDivElement>(null);
 
   // Place order sits at the foot of the screen; a refusal about a field far
   // above it would otherwise go unseen. Focusing the field scrolls it in.
@@ -195,6 +223,12 @@ export function Checkout(props: CheckoutProps) {
     }[problem.field];
     target?.focus();
   }, [problem]);
+
+  // The notice that they paid but the order was not made is read out and scrolled to, as a form error is.
+  useEffect(() => {
+    // A refused field takes the focus itself (its own effect above): this is for a refusal with no field to point at.
+    if (paidFail && !problem) paidFailRef.current?.focus();
+  }, [paidFail, problem]);
 
   // Read after mount: storage is the browser's, and the server rendered no basket.
   useEffect(() => {
@@ -263,6 +297,24 @@ export function Checkout(props: CheckoutProps) {
   // without CHIP from having neither, and a shop that slips through gets the WhatsApp line.
   const pick = usePayChoice(offer, payByQr, anyDigital ? email.trim() : null);
   const { ways, how, online } = pick;
+  // The owner's own QR or bank chosen: pay first, attach the receipt, and the order is placed with it (never "awaiting payment").
+  const qrFirst = how === 'qr' && !free;
+  const receiptReady = receipt !== null && receipt.forCents === totals.totalCents;
+
+  // The total moved (basket, voucher, delivery): a receipt for the old one is not for this order. After a refusal the customer
+  // already paid, so it stays (paidFail) and the screen says what to do instead.
+  useEffect(() => {
+    if (!receipt || receipt.forCents === totals.totalCents) return;
+    if (paidFail === 'prices' && priceReload.current) {
+      // The shelf came back dearer: they paid the old total, so the receipt stays, with the notice about it.
+      priceReload.current = false;
+      return;
+    }
+    // The customer changed the basket: the receipt (and the notice about it) is for an order that is gone.
+    setReceipt(null);
+    setReceiptGone(totals.totalCents);
+    setPaidFail(null);
+  }, [receipt, totals.totalCents, paidFail]);
 
   const flatFee = delivery.mode === 'FLAT' && delivery.feeCents ? formatRinggit(delivery.feeCents) : null;
   const deliveryPrice = delivery.mode === 'RIDER' ? copy.riderFee : (flatFee ?? copy.free);
@@ -281,6 +333,7 @@ export function Checkout(props: CheckoutProps) {
     (!anyDigital || EMAIL.test(email.trim())) &&
     !soldOutLine &&
     (free || pick.ready) &&
+    (!qrFirst || receiptReady) &&
     !sending;
 
   async function applyCode() {
@@ -330,14 +383,23 @@ export function Checkout(props: CheckoutProps) {
     setProblem(null);
     setPricesChanged(false);
     setDeliveryOff(false);
+    setPaidFail(null);
+    // The same attempt again keeps its key; anything the customer changed since makes it a new one.
+    const sig = JSON.stringify([priced.lines.map((l) => [l.itemId, l.optionId, l.quantity, l.sessionId ?? null]), totals.totalCents, how, method, day, placeId, windowId, name.trim(), sentPhone, address.trim(), email.trim(), note.trim(), typed && typedFits ? typed.label : null]);
+    if (attempt.current?.sig !== sig) attempt.current = { key: newPlaceKey(), sig };
+    const placeKey = attempt.current.key;
     // Going to CHIP: the button stays busy until the page is gone.
     let leaving = false;
     try {
-      const result = await apiFetch<{ number: number; code: string; token: string; totalCents: number }>(
+      // Paying first: the receipt goes in the same request, so the order is made with it or not at all.
+      const sentReceipt = qrFirst && receipt ? { contentType: receipt.contentType, data: await base64(receipt.file) } : null;
+      const result = await apiFetch<{ number: number; code: string; token: string; totalCents: number; receipt?: boolean }>(
         `/store/${props.handle}/orders`,
         {
           method: 'POST',
           body: JSON.stringify({
+            placeKey,
+            ...(sentReceipt ? { receipt: sentReceipt } : {}),
             lines: priced.lines.map(({ itemId, optionId, quantity, sessionId }) => ({ itemId, optionId, quantity, ...(sessionId ? { sessionId } : {}) })),
             ...(digitalOnly ? {} : { method, day }),
             ...pickupSent,
@@ -353,7 +415,12 @@ export function Checkout(props: CheckoutProps) {
           }),
         },
       );
+      // The API says whether the order was made with the receipt on it. An older API (mid-deploy) ignores a receipt it does not
+      // know and makes an order awaiting payment: that is not "sent", so the paid-but-not-sent notice is the answer.
+      if (sentReceipt && result.receipt !== true) throw new ApiError(200, 'RECEIPT_NOT_ATTACHED', copy.failed);
       changeLines([]);
+      // Done: the next order is a new attempt.
+      attempt.current = null;
       // Placed first, exactly as for the QR; paying online only follows. If it cannot
       // start, the order waits for the QR (or the shop's WhatsApp) like any other.
       let onlineUnavailable: PlacedOrder['onlineUnavailable'] = null;
@@ -413,10 +480,20 @@ export function Checkout(props: CheckoutProps) {
           count: priced.lines.reduce((sum, line) => sum + line.quantity, 0),
           thumbs: priced.lines.map((line) => ({ name: line.name, url: items.find((i) => i.id === line.itemId)?.photoUrl ?? null })),
         },
-        holds: priced.lines.some((l) => l.digital && ['CODES', 'SESSION'].includes(items.find((i) => i.id === l.itemId)?.delivery ?? '')),
+        receiptSent: sentReceipt !== null,
+        holds: sentReceipt === null && priced.lines.some((l) => l.digital && ['CODES', 'SESSION'].includes(items.find((i) => i.id === l.itemId)?.delivery ?? '')),
       });
       top.current?.scrollIntoView?.();
     } catch (error) {
+      // They have paid: whatever went wrong, the receipt stays in the form and the screen says to contact the shop with it.
+      if (qrFirst && receipt) {
+        // No answer (offline, a timeout, a proxy error): the order may be made already, and sending again is safe (same key).
+        // Receipts switched off (503) is definite, and no retry will fix it.
+        const off = error instanceof ApiError && error.code === 'STORAGE_NOT_CONFIGURED';
+        const unsure = !(error instanceof ApiError) || error.status === 0 || error.code === 'NETWORK' || (error.status >= 500 && !off);
+        priceReload.current = error instanceof ApiError && error.code === 'PRICES_CHANGED';
+        setPaidFail(priceReload.current ? 'prices' : off ? 'contact' : unsure ? 'unsure' : 'other');
+      }
       if (!(error instanceof ApiError)) {
         setProblem({ field: 'form', message: copy.failed });
       } else if (error.code === 'PRICES_CHANGED') {
@@ -452,7 +529,10 @@ export function Checkout(props: CheckoutProps) {
       } else if (error.code === 'ORDER_TOO_LARGE') {
         setFallback('tooLarge');
       } else {
-        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: copy.digitalError(error.code) ?? error.message });
+        setProblem({
+          field: FIELD_OF[error.code] ?? 'form',
+          message: error.code === 'STORAGE_NOT_CONFIGURED' ? copy.receiptsOff(props.displayName) : (copy.digitalError(error.code) ?? error.message),
+        });
       }
     } finally {
       if (!leaving) setSending(false);
@@ -475,6 +555,7 @@ export function Checkout(props: CheckoutProps) {
           onlineUnavailable={placed.onlineUnavailable}
           digitalNote={placed.digitalNote}
           holds={placed.holds}
+          receiptSent={placed.receiptSent}
           free={placed.free}
           summary={placed.summary}
           payByQr={payByQr}
@@ -486,9 +567,13 @@ export function Checkout(props: CheckoutProps) {
 
   const shopHref = `/${props.handle}/shop`;
   const total = formatRinggit(totals.totalCents);
-  const goText = (free ? null : payButtonText(copy, total, pick)) ?? copy.placeOrder(total);
+  const goText = qrFirst ? copy.sendOrder(total) : ((free ? null : payButtonText(copy, total, pick)) ?? copy.placeOrder(total));
+  const receiptHintId = 'ck-receipt-hint';
+  const receiptHint = qrFirst && !receiptReady ? (receiptGone !== null && !receipt ? copy.receiptTotalChanged(formatRinggit(receiptGone)) : copy.receiptNeeded) : null;
   const payNote = free
     ? copy.consent(props.displayName)
+    : qrFirst
+    ? `${copy.payNoteQr(props.displayName)} ${copy.consent(props.displayName)}`
     : online
     ? `${how === 'card' ? copy.noteCard : how === 'wallet' ? copy.noteWallet : copy.noteBank} ${copy.chipNote(props.displayName)}`
     : `${copy.payNote(props.displayName)} ${copy.consent(props.displayName)}`;
@@ -876,6 +961,24 @@ export function Checkout(props: CheckoutProps) {
                 }
               />
             )}
+            {qrFirst ? (
+              <div className={styles.qrFirst}>
+                <p className={styles.qrAmount}>{copy.qrPayAmount(total)}</p>
+                <PayBox name={props.displayName} qrUrl={props.qrUrl ?? null} bank={props.bank ?? { name: null, accountName: null, accountNumber: null }} copy={copy} />
+                <ReceiptPicker
+                  copy={copy}
+                  disabled={sending}
+                  file={receipt ? { name: receipt.file.name } : null}
+                  hint={receiptHint}
+                  hintId={receiptHintId}
+                  onPick={(file, contentType) => {
+                    setReceipt({ file, contentType, forCents: totals.totalCents });
+                    setReceiptGone(null);
+                    setPaidFail(null);
+                  }}
+                />
+              </div>
+            ) : null}
           </section>
           )}
 
@@ -921,10 +1024,32 @@ export function Checkout(props: CheckoutProps) {
             </p>
           ) : null}
 
+          {paidFail ? (
+            // They paid before ordering, so this is never only an error: it says not to pay again, and who to send the receipt to.
+            <div ref={paidFailRef} className={styles.paidFail} role="status" tabIndex={-1}>
+              <p>
+                {paidFail === 'prices' && receipt
+                  ? copy.paidPricesChanged(props.displayName, formatRinggit(receipt.forCents))
+                  : paidFail === 'unsure'
+                    ? copy.paidMaybeSent(props.displayName)
+                    : paidFail === 'contact'
+                      ? copy.paidNotSentContact(props.displayName)
+                      : copy.paidNotSent(props.displayName)}
+              </p>
+              {props.whatsapp ? (
+                <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, paidMessage(props.displayName, priced, receipt?.forCents ?? totals.totalCents, copy))} rel="noopener">
+                  {copy.whatsappAbout(props.displayName)}
+                </a>
+              ) : (
+                <p>{copy.paidContactLinks(props.displayName)}</p>
+              )}
+            </div>
+          ) : null}
+
           {fallback ? (
             <div className={styles.pausedBar} role="status">
               <p>{fallback === 'paused' ? copy.paused(props.displayName) : copy.tooLarge(props.displayName)}</p>
-              {props.whatsapp ? (
+              {paidFail ? null : props.whatsapp ? (
                 <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, basketMessage(props.displayName, priced, copy))} rel="noopener">
                   {copy.orderOnWhatsApp}
                 </a>
@@ -933,7 +1058,7 @@ export function Checkout(props: CheckoutProps) {
               )}
             </div>
           ) : (
-            <button type="button" className={styles.go} disabled={!canPlace} aria-busy={sending} onClick={() => void place()}>
+            <button type="button" className={styles.go} disabled={!canPlace} aria-busy={sending} aria-describedby={receiptHint ? receiptHintId : undefined} onClick={() => void place()}>
               {sending ? <span className={styles.goSpinner} aria-hidden="true" /> : null}
               {goText}
             </button>

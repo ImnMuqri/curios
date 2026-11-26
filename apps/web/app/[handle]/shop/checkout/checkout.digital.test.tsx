@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { PHYSICAL_FACTS, type DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { Checkout } from './checkout.js';
+import { attachReceipt } from './receipt-test-helper.js';
 import { shopCopy } from '../copy.js';
 
 const en = shopCopy('en');
@@ -63,6 +64,7 @@ function reply(status: number, body: unknown) {
 async function fillDetails(user: ReturnType<typeof userEvent.setup>, copy = en) {
   await user.type(screen.getByLabelText(copy.name), 'Mira Hassan');
   await user.type(screen.getByLabelText(copy.whatsappNumber), '012-987 6543');
+  await attachReceipt(user, 'receipt.jpg', copy === ms ? 'ms' : 'en');
 }
 
 describe('Checkout with digital items', () => {
@@ -90,7 +92,7 @@ describe('Checkout with digital items', () => {
     render(<Checkout {...base} />);
     await screen.findByText('Recipe e-book');
     await fillDetails(user);
-    const place = screen.getByRole('button', { name: en.placeOrder('RM25') });
+    const place = screen.getByRole('button', { name: en.sendOrder('RM25') });
     expect(screen.getByText(en.emailFor('files'))).toBeInTheDocument();
     expect(place).toBeDisabled();
     await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
@@ -100,14 +102,17 @@ describe('Checkout with digital items', () => {
   it('places a digital-only order with no method or day, sending the email and the class time', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'class', optionId: null, quantity: 2, sessionId: 'time1' }]);
-    const fetch = reply(201, { number: 3, code: 'ABCD', token: 'tok', totalCents: 12000 });
+    const fetch = reply(201, { number: 3, code: 'ABCD', token: 'tok', totalCents: 12000, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Online class');
     await fillDetails(user);
     await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
-    await user.click(screen.getByRole('button', { name: en.placeOrder('RM120') }));
+    await user.click(screen.getByRole('button', { name: en.sendOrder('RM120') }));
     const [, init] = fetch.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string)).toEqual({
+      // Paid by the shop's QR first, so the receipt goes with the order.
+      receipt: { contentType: 'image/jpeg', data: expect.any(String) },
+      placeKey: expect.any(String),
       lines: [{ itemId: 'class', optionId: null, quantity: 2, sessionId: 'time1' }],
       email: 'mira@example.com',
       customerName: 'Mira Hassan',
@@ -123,7 +128,7 @@ describe('Checkout with digital items', () => {
   it('mixed: keeps Getting it and Day, says the digital part comes by email, and sends both', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'cake', optionId: null, quantity: 1 }, { itemId: 'ebook', optionId: null, quantity: 1 }]);
-    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 'tok2', totalCents: 7000 });
+    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 'tok2', totalCents: 7000, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek batik');
     expect(screen.getByText(en.mixedLine)).toBeInTheDocument();
@@ -132,7 +137,7 @@ describe('Checkout with digital items', () => {
     expect(screen.getByText(en.emailFor('files'))).toBeInTheDocument();
     await fillDetails(user);
     await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
-    const place = screen.getByRole('button', { name: en.placeOrder('RM70') });
+    const place = screen.getByRole('button', { name: en.sendOrder('RM70') });
     // No day yet.
     expect(place).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Sat 17' }));
@@ -149,7 +154,7 @@ describe('Checkout with digital items', () => {
     expect(within(line).getByText(en.soldOut)).toBeInTheDocument();
     await fillDetails(user);
     await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
-    expect(screen.getByRole('button', { name: en.placeOrder('RM50') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: en.sendOrder('RM50') })).toBeDisabled();
   });
 
   it('stops a class line with no time, a time that is gone, or too few seats, and links to the item page', async () => {
@@ -161,7 +166,7 @@ describe('Checkout with digital items', () => {
     expect(within(line).getByRole('link', { name: en.pickATime })).toHaveAttribute('href', '/keklina/shop/class');
     await fillDetails(user);
     await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
-    expect(screen.getByRole('button', { name: en.placeOrder('RM60') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: en.sendOrder('RM60') })).toBeDisabled();
     unmount();
 
     window.sessionStorage.clear();
@@ -174,30 +179,52 @@ describe('Checkout with digital items', () => {
     basket([{ itemId: 'class', optionId: null, quantity: 5, sessionId: 'time1' }]);
     render(<Checkout {...base} />);
     expect(await screen.findByText(en.seatsLeft(3))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: en.placeOrder('RM300') })).toBeDisabled();
+    expect(screen.getByRole('button', { name: en.sendOrder('RM300') })).toBeDisabled();
   });
 
-  it('says the unpaid hold on the placed screen for a code or a seat, in both languages, and not otherwise', async () => {
+  it('says the unpaid hold on the placed screen for a code or a seat, in both languages, when nothing was paid (paying online could not start)', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
-    reply(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000 });
+    const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('/pay-methods')) return json(200, { fpx: false, wallets: [], card: true });
+        if (url.endsWith('/orders')) return json(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000, receipt: true });
+        return json(500, { error: { code: 'PAY_FAILED', message: 'no' } });
+      }),
+    );
+    render(<Checkout {...base} language="ms" chipMethods={['visa']} />);
+    await screen.findByText('Online class');
+    await user.type(screen.getByLabelText(ms.name), 'Mira Hassan');
+    await user.type(screen.getByLabelText(ms.whatsappNumber), '012-987 6543');
+    await user.type(screen.getByLabelText(new RegExp(ms.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: ms.payByCard('RM60') }));
+    expect(await screen.findByText(ms.holdNote)).toBeInTheDocument();
+  });
+
+  it('says no hold when the order came with its receipt: the shop checks it, and nothing is released meanwhile', async () => {
+    const user = userEvent.setup();
+    basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
+    reply(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000, receipt: true });
     render(<Checkout {...base} language="ms" />);
     await screen.findByText('Online class');
     await fillDetails(user, ms);
     await user.type(screen.getByLabelText(new RegExp(ms.email)), 'mira@example.com');
-    await user.click(screen.getByRole('button', { name: ms.placeOrder('RM60') }));
-    expect(await screen.findByText(ms.holdNote)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: ms.sendOrder('RM60') }));
+    expect(await screen.findByText(ms.digitalPlacedNote(false, 'mira@example.com'))).toBeInTheDocument();
+    expect(screen.queryByText(ms.holdNote)).toBeNull();
   });
 
   it('does not say it for files, which hold nothing', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'ebook', optionId: null, quantity: 1 }]);
-    reply(201, { number: 8, code: 'FILE', token: 'tk2', totalCents: 2500 });
+    reply(201, { number: 8, code: 'FILE', token: 'tk2', totalCents: 2500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Recipe e-book');
     await fillDetails(user);
     await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
-    await user.click(screen.getByRole('button', { name: en.placeOrder('RM25') }));
+    await user.click(screen.getByRole('button', { name: en.sendOrder('RM25') }));
     expect(await screen.findByText(en.digitalPlacedNote(false, 'mira@example.com'))).toBeInTheDocument();
     expect(screen.queryByText(en.holdNote)).toBeNull();
   });
@@ -212,7 +239,7 @@ describe('Checkout with digital items', () => {
       await screen.findByText('Online class');
       await fillDetails(user, ms);
       await user.type(screen.getByLabelText(new RegExp(ms.email)), 'mira@example.com');
-      await user.click(screen.getByRole('button', { name: ms.placeOrder('RM60') }));
+      await user.click(screen.getByRole('button', { name: ms.sendOrder('RM60') }));
       expect(await screen.findByText(ms.digitalError(key)!)).toBeInTheDocument();
       expect(screen.queryByText('ENGLISH FROM THE API')).toBeNull();
       view.unmount();

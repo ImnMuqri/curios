@@ -206,14 +206,29 @@
   flex-direction: column;
   border-radius: 12px;
   background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--edge);
   overflow: hidden;
   transition: box-shadow 200ms ease, transform 200ms ease;
 }
 
+/* The ring is drawn over the card, not on it: an inset shadow on the card sits under the photo, so the
+   hover ring showed only round the words below it. */
+.card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--edge);
+  pointer-events: none;
+  transition: box-shadow 200ms ease;
+}
+
 .card:hover {
-  box-shadow: inset 0 0 0 1px var(--calm-hover-ring), var(--calm-hover-shadow);
+  box-shadow: var(--calm-hover-shadow);
   transform: translateY(-2px);
+}
+
+.card:hover::after {
+  box-shadow: inset 0 0 0 1px var(--calm-hover-ring);
 }
 
 .cardLink {
@@ -855,6 +870,10 @@
 
 .ghost {
   justify-self: start;
+  /* Its own width on one line: squeezed in a row it wrapped to two, outside its 38px hover pill. */
+  flex: none;
+  width: max-content;
+  white-space: nowrap;
   height: 38px;
   margin: 6px 0 0 -12px;
   padding: 0 12px;
@@ -902,35 +921,24 @@
   margin-bottom: 12px;
 }
 
-.gwMarks i {
-  display: grid;
-  place-items: center;
-  height: 24px;
-  padding: 0 8px;
+/* Each way's real mark on a small white tile, so it reads in both themes; FPX's white logo sits on navy. */
+.payMark {
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  padding: 3px;
   border-radius: 6px;
-  font-size: 10.5px;
-  font-style: normal;
-  font-weight: 700;
+  background: var(--logo-tile);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+  object-fit: contain;
 }
 
-.gwMarks .markFpx {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
+.payMarkWide {
+  width: 44px;
 }
 
-.gwMarks .markTng {
-  background: var(--mark-tng-muda);
-  color: var(--mark-tng);
-}
-
-.gwMarks .markGrab {
-  background: var(--mark-grab-muda);
-  color: var(--mark-grab);
-}
-
-.gwMarks .markCard {
-  background: var(--mark-card-muda);
-  color: var(--mark-card);
+.payMarkNavy {
+  background: #1c2a4a;
 }
 
 .gwList {

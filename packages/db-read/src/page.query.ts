@@ -20,6 +20,8 @@ export interface PublicLink {
   kind: LinkKind;
   provider: WidgetProvider | null;
   embedRef: string | null;
+  embedTitle: string | null;
+  embedImage: string | null;
 }
 
 export interface PublicFact {
@@ -156,7 +158,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       faqPosition: true,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true },
+        select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true },
       },
       facts: {
         where: { verified: true },

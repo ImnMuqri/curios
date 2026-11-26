@@ -168,6 +168,12 @@ export function basketMessage(shopName: string, basket: { lines: PricedLine[]; t
   return [copy.greeting(shopName), ...lines, copy.totalLine(formatRinggit(basket.totalCents))].join('\n');
 }
 
+/** After paying by QR but not getting the order through: says what was paid and for what, and that the receipt follows. */
+export function paidMessage(shopName: string, basket: { lines: PricedLine[] }, paidCents: number, copy: ShopCopy): string {
+  const lines = basket.lines.map((line) => `• ${line.quantity} × ${line.name}${line.optionLabel ? ` (${line.optionLabel})` : ''}`);
+  return [copy.paidMessage(shopName, formatRinggit(paidCents)), ...lines].join('\n');
+}
+
 export function whatsappOrderUrl(number: string, text: string): string {
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }

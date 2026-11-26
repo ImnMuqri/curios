@@ -37,6 +37,17 @@ describe('newOrderMail', () => {
     expect(mail.html).toContain(said);
   });
 
+  it('says an order sent with its receipt is waiting to be checked, and that no second email follows', () => {
+    const mail = newOrderMail({ ...order, receiptAttached: true });
+    const said = 'They paid you by your QR or bank transfer and attached the receipt. Check it against your bank and mark it paid.';
+    expect(mail.subject).toBe('New order #12 · RM190 · Receipt to check');
+    expect(mail.text).toContain(said);
+    expect(mail.html).toContain(said);
+    expect(mail.html).toContain('Receipt to check');
+    expect(mail.text).not.toContain('We’ll email you again');
+    expect(mail.html).not.toContain('Waiting for payment');
+  });
+
   it('lists the lines and the total', () => {
     const mail = newOrderMail(order);
     expect(mail.html).toContain('Kek coklat moist');

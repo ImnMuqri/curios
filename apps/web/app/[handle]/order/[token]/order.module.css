@@ -51,9 +51,8 @@
 }
 
 /*
- * The status, as the shop's sign wears "Open for orders": a frosted veil of the page's own text
- * colour, so it sits on the cover or the plain page alike, and only the dot (with its soft halo)
- * carries the tone. Waiting is amber, checking biru, done hijau, stopped merah.
+ * The status: the page's own text colour beside a dot (with its soft halo) that carries the tone.
+ * Waiting is amber, checking biru, done hijau, stopped merah.
  */
 .pill {
   --dot: var(--faint);
@@ -61,11 +60,8 @@
   align-items: center;
   gap: 7px;
   height: 28px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--page-fg) 12%, transparent);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
+  /* No chip behind it (owner, 26 Nov): the dot and the words, on the sheet like the title beside them. */
+  padding: 0;
   color: var(--page-fg);
   font-size: 12.5px;
   font-weight: 600;
@@ -361,6 +357,13 @@
 .problem {
   margin: 8px 0 0;
   color: var(--merah-deep);
+  font-size: 12.5px;
+}
+
+/* Why Send order waits, under the receipt box: a plain word, not an error. */
+.hint {
+  margin: 8px 0 0;
+  color: var(--muted);
   font-size: 12.5px;
 }
 

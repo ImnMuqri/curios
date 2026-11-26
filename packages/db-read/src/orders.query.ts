@@ -601,6 +601,9 @@ export interface Checkout extends PublicShop {
   payByQr: boolean;
   /** The owner's own DuitNow QR, which the choice is named after when CHIP sits beside it. */
   hasQr: boolean;
+  /** The owner's QR picture key and bank details, for paying first at checkout (the order page draws the same). */
+  qrKey: string | null;
+  bank: { name: string | null; accountName: string | null; accountNumber: string | null };
   /**
    * The methods the owner's CHIP account listed when last checked, for checkout's first
    * draw (the API says what it takes at the order's total); null when there is no
@@ -642,6 +645,8 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
     // The same rule as storeGaps: a QR, or all three bank details.
     payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
     hasQr: Boolean(paymentQrKey),
+    qrKey: paymentQrKey,
+    bank: { name: bankName, accountName: bankAccountName, accountNumber: bankAccountNumber },
     chipMethods: usableChipMethods(chip),
     vouchers: await getLiveAutoVouchers(pageId, now),
   };

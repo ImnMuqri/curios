@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { Callout } from '@curios/ui';
 import { BANK_ACCOUNT_NAME_MAX, BANK_NAME_MAX } from '@curios/core/store';
 import { ApiError } from '../../../lib/api.js';
+import { PAY_MARKS } from '../../../lib/pay-marks.js';
 import { relativeTime } from '../_ui/relative-time.js';
 import ui from '../_ui/editor.module.css';
 import { SaveState } from '../_ui/save-state.js';
@@ -189,10 +190,16 @@ function OnlinePayments({
       ) : (
         <div className={styles.gw}>
           <div className={styles.gwMarks} aria-hidden="true">
-            <i className={styles.markFpx}>FPX</i>
-            <i className={styles.markTng}>TNG</i>
-            <i className={styles.markGrab}>Grab</i>
-            <i className={styles.markCard}>Card</i>
+            {(['fpx', 'tng', 'grab', 'spay', 'visa', 'mastercard'] as const).map((id) => (
+              <img
+                key={id}
+                className={`${styles.payMark} ${PAY_MARKS[id].wide ? styles.payMarkWide : ''} ${PAY_MARKS[id].navy ? styles.payMarkNavy : ''}`}
+                src={PAY_MARKS[id].src}
+                alt=""
+                width={PAY_MARKS[id].wide ? 44 : 26}
+                height={26}
+              />
+            ))}
           </div>
           <b>Let customers pay online</b>
           <p>Connect your own CHIP account. Customers pick their bank or e-wallet at checkout, and the order marks itself paid. No receipts to check.</p>
@@ -289,7 +296,7 @@ export function PaymentTab({
       <OnlinePayments chip={chip} chipApi={chipApi} onChip={onChip} displayName={displayName} now={now} navigate={navigate} />
 
       <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="qr-title">
-        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it on their order page, with the exact total shown. No CHIP fee." />
+        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it at checkout, with the exact total shown, and send their receipt with the order. No CHIP fee." />
         {qr.has ? (
           <div className={styles.qrCard}>
             <span className={styles.qrBox}>
@@ -300,7 +307,7 @@ export function PaymentTab({
             <span className={styles.qrText}>
               <span className={styles.rowCopy}>
                 <b>Your QR is ready</b>
-                <p>{displayName} · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.</p>
+                <p>{displayName} · DuitNow. Checkout shows it with the exact total, so customers pay the right amount.</p>
               </span>
               <span className={styles.buttons}>
                 <button type="button" className={styles.outline} disabled={!uploadsEnabled} onClick={() => file.current?.click()}>

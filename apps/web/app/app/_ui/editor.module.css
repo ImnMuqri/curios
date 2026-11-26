@@ -167,8 +167,10 @@ a.headLink {
   min-width: 0;
 }
 
-/* Each control column measures itself: the heading column has taken 256px of the content width. */
-.sectionRow > :not(.sectionHead) {
+/* Each control column measures itself: the heading column has taken 256px of the content width.
+   Not a lone button: a size container counts its content as nothing, so "Remove item" collapsed to its
+   padding and its words spilled out of its hover pill. */
+.sectionRow > :not(.sectionHead, button) {
   container-type: inline-size;
 }
 

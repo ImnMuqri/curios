@@ -72,7 +72,7 @@ Open: /app/curios
 Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
 
 ### page-widgets · How do I add a song, a map or a booking calendar to my page?
-Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s.
+Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Spotify and Apple Music are the exception: each shows a card with the cover and title that opens in that app, so nothing plays on your page. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s.
 Open: /app/curios
 Source: packages/core/src/widgets.ts; apps/web/app/app/curios/links-editor.tsx
 
@@ -203,7 +203,7 @@ Open: /app/store
 Source: apps/web/app/app/store/item-editor.tsx (How they order: Ask for a price); apps/api/src/modules/store/enquiry.service.ts
 
 ### shop-pay · How do my customers pay?
-Two ways. By your own DuitNow QR or bank account: customers pay you directly and upload a receipt, and you check it and mark the order paid. Or connect your own CHIP account: customers pay by FPX, e-wallet or card at checkout and the order marks itself paid. Curios never holds your money and takes no cut.
+Two ways. By your own DuitNow QR or bank account: customers pay you directly at checkout, attach their receipt and send the order, and you check the receipt and mark the order paid. Or connect your own CHIP account: customers pay by FPX, e-wallet or card at checkout and the order marks itself paid. Curios never holds your money and takes no cut.
 Open: /app/store?tab=payment
 Source: devDocs/chip-payments-design.md (Part 2); Store copy
 
@@ -228,7 +228,7 @@ Open: /app/store?tab=vouchers
 Source: devDocs/vouchers-design.md (Part A)
 
 ### order-flow · What do I do when an order comes in?
-It shows in Orders. If the customer paid by QR or bank transfer, check their receipt and mark it paid. Then make it, and mark it completed. Online CHIP payments are marked paid for you. You can turn the new order and receipt emails on or off in Settings.
+It shows in Orders. If the customer paid by QR or bank transfer, their receipt comes with the order: check it and mark it paid. Then make it, and mark it completed. Online CHIP payments are marked paid for you. You can turn the new order and receipt emails on or off in Settings.
 Open: /app/orders
 Source: Orders copy “You check it, mark it paid, and make it.”; Settings notifications
 

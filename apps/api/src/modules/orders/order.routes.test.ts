@@ -148,7 +148,7 @@ describe('POST /store/:handle/orders', () => {
 
     expect(res.statusCode).toBe(201);
     const body = res.json();
-    expect(body).toEqual({ number: 1, code: expect.stringMatching(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/), token: expect.any(String), totalCents: 21_000 });
+    expect(body).toEqual({ number: 1, code: expect.stringMatching(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/), token: expect.any(String), totalCents: 21_000, receipt: false });
     // 32 bytes, base64url.
     expect(body.token).toMatch(/^[A-Za-z0-9_-]{43}$/);
 

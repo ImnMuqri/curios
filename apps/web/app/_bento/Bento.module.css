@@ -136,11 +136,11 @@
 }
 
 /* Chunky and Outline have no ring; Chunky keeps room for its shadow. */
-.page:is([data-style='CHUNKY'], [data-style='OUTLINE']) :is(.link, .shopLink) {
+.page:is([data-style='CHUNKY'], [data-style='OUTLINE']) :is(.link, .shopLink, .card) {
   padding: 0;
 }
 
-.page[data-style='CHUNKY'] :is(.link, .shopLink) {
+.page[data-style='CHUNKY'] :is(.link, .shopLink, .card) {
   padding: 0 4px 4px 0;
 }
 
@@ -680,21 +680,23 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  a.link {
+  a.link,
+  a.card {
     transition: transform 200ms ease;
   }
 
-  a.link:hover {
+  a.link:hover,
+  a.card:hover {
     transform: scale(1.015);
   }
 
   /* Chunky lifts off its shadow on hover and presses into it on tap. */
-  .page[data-style='CHUNKY'] :is(a.link, a.shopLink):hover {
+  .page[data-style='CHUNKY'] :is(a.link, a.shopLink, a.card):hover {
     --btn-shadow: 5px 5px 0 var(--btn-second-or-fg);
     transform: translate(-1px, -1px);
   }
 
-  .page[data-style='CHUNKY'] :is(a.link, a.shopLink):active {
+  .page[data-style='CHUNKY'] :is(a.link, a.shopLink, a.card):active {
     --btn-shadow: 1px 1px 0 var(--btn-second-or-fg);
     transform: translate(3px, 3px);
   }
@@ -921,7 +923,8 @@
     gap: 6px;
   }
 
-  .link {
+  .link,
+  .card {
     padding: 4px;
   }
 
@@ -1102,7 +1105,9 @@
 .bentoGrid > li > .shopLink,
 .bentoGrid > li > .link,
 .bentoGrid > li > .link > span,
-.bentoGrid > li > .shopLink > .shopIn {
+.bentoGrid > li > .shopLink > .shopIn,
+.bentoGrid > li > .widget > .card,
+.bentoGrid > li > .widget > .card > .cardIn {
   border-radius: min(var(--btn-radius, 16px), 16px);
 }
 
@@ -1121,4 +1126,118 @@
 .bentoGrid > li:not([data-size='WIDE'], [data-size='BIG']) .shopText {
   flex: none;
   max-width: 100%;
+}
+
+/* A card widget (Spotify, Apple Music): drawn like a link button, with the cover, title and a play mark in it. */
+.widgetCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.card {
+  display: block;
+  flex: 0 0 auto;
+  padding: 5px;
+  border-radius: var(--btn-radius);
+  background: var(--pill-ring);
+  color: var(--pill-fg);
+  text-decoration: none;
+}
+
+.widgetFill > .card {
+  flex: 1;
+  display: flex;
+}
+
+.cardIn {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 14px 8px 8px;
+  border: var(--btn-edge) solid var(--btn-edge-color);
+  border-radius: var(--btn-radius);
+  background: var(--pill);
+  box-shadow: var(--btn-shadow);
+  text-align: left;
+}
+
+.cardCover {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  overflow: hidden;
+  border-radius: min(var(--btn-radius, 16px), 12px);
+  background: var(--pill-ring);
+}
+
+.cardCover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cardMark {
+  width: 28px;
+  height: 28px;
+}
+
+.cardText {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+
+.cardTitle {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardType {
+  overflow: hidden;
+  font-size: 12px;
+  opacity: 0.7;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardPlay {
+  flex: none;
+  width: 30px;
+  height: 30px;
+}
+
+/* A small or tall tile is narrow: the cover on top, the title under it, two lines at most. */
+.bentoGrid > li:is([data-size='SMALL'], [data-size='TALL']) .cardIn {
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.bentoGrid > li:is([data-size='SMALL'], [data-size='TALL']) .cardText {
+  flex: none;
+  width: 100%;
+}
+
+.bentoGrid > li:is([data-size='SMALL'], [data-size='TALL']) .cardTitle {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.bentoGrid > li:is([data-size='SMALL'], [data-size='TALL']) .cardPlay {
+  display: none;
 }

@@ -602,9 +602,14 @@ describe('getCheckout', () => {
     expect(await getCheckout(plain.handle, NOW)).toMatchObject({ payByQr: false, hasQr: false, chipMethods: null });
 
     const qr = await anOwner({ paymentQrKey: 'qr/a.png' });
-    expect(await getCheckout(qr.handle, NOW)).toMatchObject({ payByQr: true, hasQr: true });
+    expect(await getCheckout(qr.handle, NOW)).toMatchObject({ payByQr: true, hasQr: true, qrKey: 'qr/a.png' });
     const bank = await anOwner({ bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122' });
-    expect(await getCheckout(bank.handle, NOW)).toMatchObject({ payByQr: true, hasQr: false });
+    expect(await getCheckout(bank.handle, NOW)).toMatchObject({
+      payByQr: true,
+      hasQr: false,
+      qrKey: null,
+      bank: { name: 'Maybank', accountName: 'Nor', accountNumber: '1122' },
+    });
     const halfBank = await anOwner({ bankName: 'Maybank', bankAccountName: '', bankAccountNumber: '1122' });
     expect((await getCheckout(halfBank.handle, NOW))?.payByQr).toBe(false);
 

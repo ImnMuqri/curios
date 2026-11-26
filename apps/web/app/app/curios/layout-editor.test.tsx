@@ -1,11 +1,11 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import { pageEntries } from '@curios/core/bento';
 import { LayoutEditor, edgeScroll } from './layout-editor.js';
 import type { LinkItem } from './links-editor.js';
 
-const link = (id: string, label: string, url = `https://${id}.example.com`): LinkItem => ({ id, label, url, size: null, kind: 'LINK', provider: null, embedRef: null });
-const spotify: LinkItem = { id: 'w', label: 'Mix', url: 'https://open.spotify.com/track/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x' };
+const link = (id: string, label: string, url = `https://${id}.example.com`): LinkItem => ({ id, label, url, size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null });
+const spotify: LinkItem = { id: 'w', label: 'Mix', url: 'https://open.spotify.com/track/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null };
 const links = [link('a', 'Portfolio'), link('b', 'WhatsApp'), link('c', 'GitHub')];
 
 const names = () => screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
@@ -22,8 +22,55 @@ function show(
   return onReorder as ReturnType<typeof vi.fn>;
 }
 
+/** A requestAnimationFrame that runs only when told to, so a frame is a step. */
+function frames() {
+  const queue = new Map<number, FrameRequestCallback>();
+  let next = 1;
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+    queue.set(next, cb);
+    return next++;
+  });
+  vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => void queue.delete(id));
+  return {
+    pending: () => queue.size,
+    step: () => {
+      const [id, cb] = [...queue][0]!;
+      queue.delete(id);
+      act(() => cb(0));
+    },
+  };
+}
+
+/** The transform each row has at the moment a glide is flushed (the layout is forced): what every glide starts from. */
+function glides() {
+  const seen: Record<string, string> = {};
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get(this: HTMLElement) {
+      for (const li of this.parentElement?.children ?? []) seen[(li as HTMLElement).dataset.id!] = (li as HTMLElement).style.transform;
+      return 0;
+    },
+  });
+  return seen;
+}
+
+const rects = () =>
+  vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+    const at = this.parentElement ? [...this.parentElement.children].indexOf(this) : 0;
+    return { top: at * 50, bottom: at * 50 + 50, height: 50, left: 0, right: 300, width: 300, x: 0, y: at * 50, toJSON: () => ({}) };
+  });
+
+const reduceMotion = () =>
+  vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }) as never);
+
+beforeEach(() => {
+  // jsdom has no scrolling: a drag held near an edge asks for it every frame.
+  vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
+  delete (HTMLElement.prototype as { offsetHeight?: number }).offsetHeight;
 });
 
 describe('LayoutEditor', () => {
@@ -60,6 +107,51 @@ describe('LayoutEditor', () => {
     expect(onReorder).toHaveBeenCalledTimes(1);
     expect(onReorder).toHaveBeenCalledWith(['shop', 'a', 'b', 'c', 'faq']);
     expect(names()).toEqual(['Shop', 'Portfolio', 'WhatsApp', 'GitHub', 'People often ask']);
+  });
+
+  it('glides the rows that changed place on an arrow move, and not under reduced motion', () => {
+    rects();
+    const seen = glides();
+    show();
+    row('Portfolio').focus();
+    fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    fireEvent.keyDown(row('Portfolio'), { key: 'ArrowDown' });
+    expect(seen['a']).toBe('translate3d(0, -50px, 0)');
+    expect(seen['shop']).toBe('translate3d(0, 50px, 0)');
+    expect(row('Portfolio').style.transform).toBe('');
+    expect(seen['b']).toBe('');
+  });
+
+  it('moves instantly with the keyboard under reduced motion', () => {
+    reduceMotion();
+    rects();
+    const seen = glides();
+    show();
+    row('Portfolio').focus();
+    fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    fireEvent.keyDown(row('Portfolio'), { key: 'ArrowDown' });
+    expect(names()).toEqual(['Shop', 'Portfolio', 'WhatsApp', 'GitHub', 'People often ask']);
+    expect(seen['a']).toBeUndefined();
+  });
+
+  it('glides the rows back when a save fails', async () => {
+    rects();
+    const seen = glides();
+    show(
+      undefined,
+      vi.fn(async () => {
+        throw new Error('nope');
+      }),
+    );
+    row('Portfolio').focus();
+    fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    fireEvent.keyDown(row('Portfolio'), { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    });
+    expect(names()).toEqual(ORIGINAL);
+    // Portfolio was seen at slot 1 (50) and is back at slot 0.
+    expect(seen['a']).toBe('translate3d(0, 50px, 0)');
   });
 
   it('keeps focus on the moved row', () => {
@@ -143,22 +235,17 @@ describe('LayoutEditor', () => {
       fireEvent(handle, event);
     };
     pointer('pointerDown', 25);
-    pointer('pointerMove', 120); // over the third row, short of its middle
-    expect(names()).toEqual(['Shop', 'WhatsApp', 'Portfolio', 'GitHub', 'People often ask']);
+    pointer('pointerMove', 120); // past the second row's middle, short of the third's
+    expect(names()).toEqual(ORIGINAL);
     expect(onReorder).not.toHaveBeenCalled();
     await act(async () => {
       pointer('pointerUp', 120);
     });
     expect(onReorder).toHaveBeenCalledTimes(1);
-    expect(onReorder).toHaveBeenCalledWith(['shop', 'b', 'a', 'c', 'faq']);
+    expect(onReorder).toHaveBeenCalledWith(['shop', 'a', 'b', 'c', 'faq']);
   });
 
   describe('a pointer drag', () => {
-    const rects = () =>
-      vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
-        const at = this.parentElement ? [...this.parentElement.children].indexOf(this) : 0;
-        return { top: at * 50, bottom: at * 50 + 50, height: 50, left: 0, right: 300, width: 300, x: 0, y: at * 50, toJSON: () => ({}) };
-      });
     const fire = (type: 'pointerDown' | 'pointerMove' | 'pointerUp' | 'lostPointerCapture', clientY = 0, pointerId = 1) => {
       const handle = row('Portfolio').querySelector('[data-handle]')!;
       const event = createEvent[type](handle, {});
@@ -193,25 +280,6 @@ describe('LayoutEditor', () => {
     });
 
     describe('near the edge of the screen', () => {
-      /** A requestAnimationFrame that runs only when told to, so a frame is a step. */
-      function frames() {
-        const queue = new Map<number, FrameRequestCallback>();
-        let next = 1;
-        vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
-          queue.set(next, cb);
-          return next++;
-        });
-        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation((id) => void queue.delete(id));
-        return {
-          pending: () => queue.size,
-          step: () => {
-            const [id, cb] = [...queue][0]!;
-            queue.delete(id);
-            act(() => cb(0));
-          },
-        };
-      }
-
       it('works out a speed from how close the pointer is', () => {
         expect(edgeScroll(400, 800)).toBe(0);
         expect(edgeScroll(48, 800)).toBe(0);
@@ -231,8 +299,10 @@ describe('LayoutEditor', () => {
         fire('pointerMove', 820);
         raf.step();
         expect(scrollBy).toHaveBeenCalledWith(0, 12);
-        // The rows followed the pointer, which is below every row's middle.
-        expect(names()[names().length - 1]).toBe('Portfolio');
+        // The lifted row went as far down as the list goes, and every other row made room.
+        expect(row('Portfolio').style.transform).toBe('translate3d(0, 200px, 0)');
+        expect(row('People often ask').style.transform).toBe('translate3d(0, -50px, 0)');
+        expect(names()).toEqual(ORIGINAL);
       });
 
       it('scrolls up near the top, and not at all in the middle', () => {
@@ -283,9 +353,163 @@ describe('LayoutEditor', () => {
     it('moves by the middle of a row, not its bottom', () => {
       show();
       rects();
+      const raf = frames();
       fire('pointerDown', 25);
-      fire('pointerMove', 80); // past the second row's middle (75)
+      fire('pointerMove', 70); // short of the second row's middle (75)
+      raf.step();
+      expect(row('Shop').style.transform).toBe('');
+      fire('pointerMove', 80); // past it
+      raf.step();
+      expect(row('Shop').style.transform).toBe('translate3d(0, -50px, 0)');
+      expect(row('WhatsApp').style.transform).toBe('');
+    });
+
+    it('follows the pointer by a transform while the DOM order stays fixed, and others glide into the gap', () => {
+      show();
+      rects();
+      const raf = frames();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      raf.step();
+      expect(names()).toEqual(ORIGINAL);
+      expect(row('Portfolio')).toHaveAttribute('data-following');
+      expect(row('Portfolio').style.transform).toBe('translate3d(0, 105px, 0)');
+      // Shop and WhatsApp made room by the lifted row's height; the rest stayed.
+      expect(row('Shop').style.transform).toBe('translate3d(0, -50px, 0)');
+      expect(row('WhatsApp').style.transform).toBe('translate3d(0, -50px, 0)');
+      expect(row('GitHub').style.transform).toBe('');
+      // Back up: the shifts are shed.
+      fire('pointerMove', 30);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('');
+      expect(row('Portfolio').style.transform).toBe('translate3d(0, 5px, 0)');
+    });
+
+    it('shifts rows down when a row from below is lifted above them, clamped to the list', () => {
+      show();
+      rects();
+      const raf = frames();
+      const handle = row('GitHub').querySelector('[data-handle]')!;
+      const event = createEvent.pointerDown(handle, {});
+      Object.defineProperty(event, 'clientY', { value: 175 });
+      Object.defineProperty(event, 'pointerId', { value: 1 });
+      fireEvent(handle, event);
+      fire('pointerMove', -300);
+      raf.step();
+      expect(row('GitHub').style.transform).toBe('translate3d(0, -150px, 0)');
+      for (const name of ['Portfolio', 'Shop', 'WhatsApp']) expect(row(name).style.transform).toBe('translate3d(0, 50px, 0)');
+      expect(row('People often ask').style.transform).toBe('');
+    });
+
+    it('commits the new order once on drop, from the pointer, with the DOM fixed until then', async () => {
+      const onReorder = show();
+      rects();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      expect(names()).toEqual(ORIGINAL);
+      await act(async () => {
+        fire('pointerUp', 130);
+      });
+      expect(onReorder).toHaveBeenCalledTimes(1);
+      expect(onReorder).toHaveBeenCalledWith(['shop', 'b', 'a', 'c', 'faq']);
       expect(names()).toEqual(['Shop', 'WhatsApp', 'Portfolio', 'GitHub', 'People often ask']);
+      for (const li of screen.getAllByRole('listitem')) expect(li.style.transform).toBe('');
+    });
+
+    it('does not save a drop back in the same slot', async () => {
+      const onReorder = show();
+      rects();
+      fire('pointerDown', 25);
+      fire('pointerMove', 60);
+      await act(async () => {
+        fire('pointerUp', 60);
+      });
+      expect(onReorder).not.toHaveBeenCalled();
+      expect(names()).toEqual(ORIGINAL);
+    });
+
+    it('settles the released row into its slot: it starts where it was let go and ends with no transform', async () => {
+      show();
+      rects();
+      const seen = glides();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      await act(async () => {
+        fire('pointerUp', 130);
+      });
+      // The mock lays rows out by DOM index, so let go at 0 and landed at 100: it starts 100px above its slot.
+      expect(seen['a']).toBe('translate3d(0, -100px, 0)');
+      expect(row('Portfolio').style.transform).toBe('');
+      expect(row('Portfolio').style.transition).toBe('');
+    });
+
+    it('writes every translate in the element\'s own pixels under CSS zoom', async () => {
+      Object.defineProperty(Element.prototype, 'currentCSSZoom', { configurable: true, get: () => 0.9 });
+      try {
+        show();
+        rects();
+        const raf = frames();
+        const seen = glides();
+        fire('pointerDown', 25);
+        fire('pointerMove', 130);
+        raf.step();
+        // The window pixels the pointer moved (105) and a row's height (50), divided by the zoom.
+        expect(row('Portfolio').style.transform).toBe(`translate3d(0, ${105 / 0.9}px, 0)`);
+        expect(row('Shop').style.transform).toBe(`translate3d(0, ${-50 / 0.9}px, 0)`);
+        await act(async () => {
+          fire('pointerUp', 130);
+        });
+        expect(seen['a']).toBe(`translate3d(0, ${-100 / 0.9}px, 0)`);
+      } finally {
+        delete (Element.prototype as { currentCSSZoom?: number }).currentCSSZoom;
+      }
+    });
+
+    it('places the lifted row again when the page scrolls under a still pointer', () => {
+      show();
+      rects();
+      const raf = frames();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('translate3d(0, -50px, 0)');
+      fire('pointerMove', 30);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('');
+      // No pointer event: a scroll alone marks the frame.
+      fireEvent.scroll(window);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('');
+    });
+
+    it('puts the row back on cancel with no save and nothing left shifted', () => {
+      const onReorder = show();
+      rects();
+      const raf = frames();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      raf.step();
+      expect(row('Shop').style.transform).not.toBe('');
+      fire('lostPointerCapture');
+      expect(onReorder).not.toHaveBeenCalled();
+      expect(names()).toEqual(ORIGINAL);
+      for (const li of screen.getAllByRole('listitem')) expect(li.style.transform).toBe('');
+      expect(row('Portfolio')).not.toHaveAttribute('data-following');
+    });
+
+    it('moves the same way under reduced motion, with nothing to glide', async () => {
+      reduceMotion();
+      const onReorder = show();
+      rects();
+      const seen = glides();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      await act(async () => {
+        fire('pointerUp', 130);
+      });
+      expect(onReorder).toHaveBeenCalledWith(['shop', 'b', 'a', 'c', 'faq']);
+      expect(seen['a']).toBe('');
+      for (const li of screen.getAllByRole('listitem')) expect(li.style.transform).toBe('');
     });
   });
 
@@ -332,7 +556,7 @@ describe('LayoutEditor', () => {
 });
 
 describe('LayoutEditor, List or Bento', () => {
-  const playlist: LinkItem = { id: 'p', label: 'Mix', url: 'https://open.spotify.com/playlist/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/x' };
+  const playlist: LinkItem = { id: 'p', label: 'Mix', url: 'https://calendly.com/nadia', size: null, kind: 'WIDGET', provider: 'CALENDLY', embedRef: 'nadia', embedTitle: null, embedImage: null };
   const sizeGroup = (name: string) => screen.queryByRole('radiogroup', { name: `Size of ${name}` });
 
   function showBento(over: Partial<{ layout: 'LIST' | 'BENTO'; onLayout: (l: 'LIST' | 'BENTO') => Promise<void>; onResize: (id: string, size: string) => Promise<void> }> = {}) {

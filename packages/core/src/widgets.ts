@@ -325,7 +325,8 @@ export function widgetHeight(provider: WidgetProvider, embedRef: string): number
     case 'SPOTIFY':
       return embedRef.startsWith('track/') || embedRef.startsWith('episode/') ? 152 : 352;
     case 'APPLE_MUSIC':
-      return embedRef.split('/')[1] === 'song' ? 175 : 450;
+      // A song is `cc/song/...`, or Apple's "Share song" link: the album with `?i=<song>`. Both draw one song.
+      return embedRef.split('/')[1] === 'song' || embedRef.includes('?i=') ? 175 : 450;
     case 'YOUTUBE':
     case 'CANVA':
       return 0;
@@ -339,8 +340,62 @@ export function widgetHeight(provider: WidgetProvider, embedRef: string): number
   }
 }
 
-/** The smallest tile a widget reads well in. */
-export function minWidgetSize(provider: WidgetProvider, embedRef: string): TileSize {
-  if (provider === 'SPOTIFY' && (embedRef.startsWith('track/') || embedRef.startsWith('episode/'))) return 'SMALL';
-  return 'WIDE';
+/** Providers whose widget is our own card that opens the service, not the service's player. */
+export const CARD_PROVIDERS: readonly WidgetProvider[] = ['SPOTIFY', 'APPLE_MUSIC'];
+export const hasCard = (provider: WidgetProvider): boolean => CARD_PROVIDERS.includes(provider);
+
+/** The longest cover address we store or draw. */
+export const CARD_IMAGE_MAX = 2048;
+
+/** Is `image` a cover we may store or draw for a card: plain https, no credentials, on the service's own image host, not over-long? */
+export function cardImageOk(provider: WidgetProvider, image: string | null | undefined): image is string {
+  if (typeof image !== 'string' || image.length > CARD_IMAGE_MAX) return false;
+  let u: URL;
+  try {
+    u = new URL(image);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== 'https:' || u.username !== '' || u.password !== '' || u.port !== '') return false;
+  const h = u.hostname;
+  if (provider === 'SPOTIFY') return h === 'i.scdn.co' || h.endsWith('.scdn.co') || h.endsWith('.spotifycdn.com');
+  if (provider === 'APPLE_MUSIC') return h.endsWith('.mzstatic.com');
+  return false;
+}
+
+/** The smallest tile a widget reads well in. A card (Spotify, Apple Music) fits a small tile whatever it holds. */
+export function minWidgetSize(provider: WidgetProvider, _embedRef: string): TileSize {
+  return hasCard(provider) ? 'SMALL' : 'WIDE';
+}
+
+/** Where a card opens: built from the stored ref, never from the owner's pasted link. Throws on a bad ref or a provider with no card. */
+export function widgetOpenUrl(provider: WidgetProvider, embedRef: string): string {
+  if (!hasCard(provider) || !refOk(provider, embedRef)) throw new Error(`Invalid ${provider} widget reference`);
+  return provider === 'SPOTIFY' ? `https://open.spotify.com/${embedRef}` : `https://music.apple.com/${embedRef}`;
+}
+
+const SPOTIFY_TYPE_NAMES: Record<string, string> = {
+  track: 'Song',
+  album: 'Album',
+  playlist: 'Playlist',
+  artist: 'Artist',
+  show: 'Podcast',
+  episode: 'Episode',
+};
+const APPLE_TYPE_NAMES: Record<string, string> = { song: 'Song', album: 'Album', playlist: 'Playlist', artist: 'Artist' };
+
+/** What a card's item is, in words: a Spotify track is a Song, a show a Podcast; an Apple album with ?i= is a Song. Empty when unknown. */
+export function cardTypeName(provider: WidgetProvider, embedRef: string): string {
+  if (provider === 'SPOTIFY') return SPOTIFY_TYPE_NAMES[embedRef.split('/')[0] ?? ''] ?? '';
+  if (provider === 'APPLE_MUSIC') return embedRef.includes('?i=') ? 'Song' : (APPLE_TYPE_NAMES[embedRef.split('/')[1] ?? ''] ?? '');
+  return '';
+}
+
+/** The id to look up at Apple's lookup API for an Apple Music ref: the song after `?i=`, else a numeric last segment; null for a playlist. */
+export function appleLookup(embedRef: string): { id: string; country: string } | null {
+  const [path = '', query] = embedRef.split('?');
+  const parts = path.split('/');
+  const country = parts[0] ?? '';
+  const id = query?.startsWith('i=') ? query.slice(2) : (parts[parts.length - 1] ?? '');
+  return /^[a-z]{2}$/.test(country) && /^\d{1,20}$/.test(id) ? { id, country } : null;
 }

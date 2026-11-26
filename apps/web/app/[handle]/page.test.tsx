@@ -45,8 +45,8 @@ const page: PublicPage = {
   paidUntil: null,
   leadsCaptured: 0,
   links: [
-    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0, size: null, kind: 'LINK', provider: null, embedRef: null },
-    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1, size: null, kind: 'LINK', provider: null, embedRef: null },
+    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0, size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
+    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1, size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
   ],
   facts: [
     {

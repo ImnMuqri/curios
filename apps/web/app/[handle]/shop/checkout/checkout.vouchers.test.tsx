@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { Checkout } from './checkout.js';
+import { attachReceipt } from './receipt-test-helper.js';
 import { shopCopy } from '../copy.js';
 
 const copy = shopCopy('en');
@@ -69,9 +70,10 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(copy.name), 'Mira Hassan');
   await user.type(screen.getByLabelText(copy.whatsappNumber), '012-987 6543');
   await user.click(screen.getByRole('button', { name: 'Sat 17' }));
+  await attachReceipt(user);
 }
-const placeButton = (total: string) => screen.getByRole('button', { name: copy.placeOrder(total) });
-const placed = { number: 1, code: 'ABCD', token: 'tok' };
+const placeButton = (total: string) => screen.getByRole('button', { name: copy.sendOrder(total) });
+const placed = { number: 1, code: 'ABCD', token: 'tok', receipt: true };
 
 async function typeCode(user: ReturnType<typeof userEvent.setup>, code: string) {
   await user.click(await screen.findByRole('button', { name: copy.haveACode }));
@@ -82,13 +84,13 @@ async function typeCode(user: ReturnType<typeof userEvent.setup>, code: string) 
 describe('Checkout vouchers', () => {
   it('applies the automatic voucher by itself, and places the order at the discounted total', async () => {
     const user = userEvent.setup();
-    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 8550 } }));
+    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 8550, receipt: true } }));
     render(<Checkout {...base} vouchers={[raya]} />);
     expect(await screen.findByText('Raya promo −RM9.50')).toBeInTheDocument();
     expect(placeButton('RM85.50')).toBeInTheDocument();
     await fillDetails(user);
     await user.click(placeButton('RM85.50'));
-    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: copy.orderSent })).toBeInTheDocument();
     expect(sent(spy, '/store/keklina/orders')).toMatchObject({ seenTotalCents: 8550 });
     expect(sent(spy, '/store/keklina/orders')).not.toHaveProperty('voucherCode');
   });
@@ -96,7 +98,7 @@ describe('Checkout vouchers', () => {
   it('a typed code is checked, uppercased, and replaces the line when it saves more', async () => {
     const user = userEvent.setup();
     const spy = api((url) =>
-      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta() } } : { status: 201, body: { ...placed, totalCents: 8075 } },
+      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta() } } : { status: 201, body: { ...placed, totalCents: 8075, receipt: true } },
     );
     render(<Checkout {...base} vouchers={[raya]} />);
     await typeCode(user, 'insta15');
@@ -105,7 +107,7 @@ describe('Checkout vouchers', () => {
     expect(sent(spy, '/store/keklina/vouchers/check')).toEqual({ code: 'INSTA15' });
     await fillDetails(user);
     await user.click(placeButton('RM80.75'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     expect(sent(spy, '/store/keklina/orders')).toMatchObject({ seenTotalCents: 8075, voucherCode: 'INSTA15' });
   });
 
@@ -152,17 +154,22 @@ describe('Checkout vouchers', () => {
     await user.click(placeButton('RM85.50'));
     expect(await screen.findByText(copy.pricesChanged)).toBeInTheDocument();
     expect(screen.queryByText(/Raya promo/)).toBeNull();
+    // They paid RM85.50: the receipt stays for the shop, and a new one (for RM95) is needed to send it again.
+    expect(screen.getByText(copy.paidPricesChanged('Kek Lina', 'RM85.50'))).toBeInTheDocument();
+    expect(placeButton('RM95')).toBeDisabled();
+    await attachReceipt(user);
     expect(placeButton('RM95')).toBeEnabled();
   });
 
   it('a total of RM0 offers no way to pay, and the placed screen says it is paid', async () => {
     const user = userEvent.setup();
-    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 0 } }));
+    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 0, receipt: true } }));
     render(<Checkout {...base} chipMethods={['fpx', 'visa']} payByQr vouchers={[voucher({ kind: 'AMOUNT', percent: null, amountCents: 9500, label: 'FREEBIE' })]} />);
     expect(await screen.findByText('FREEBIE −RM95')).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: copy.howYoullPay })).toBeNull();
     await fillDetails(user);
-    await user.click(placeButton('RM0'));
+    // Nothing to pay, so no receipt and the plain button.
+    await user.click(screen.getByRole('button', { name: copy.placeOrder('RM0') }));
     expect(await screen.findByText(copy.freeOrderPaid)).toBeInTheDocument();
     expect(sent(spy, '/store/keklina/orders')).toMatchObject({ seenTotalCents: 0 });
     expect(calls(spy, '/store/orders/tok/pay')).toHaveLength(0);
@@ -183,7 +190,7 @@ describe('Checkout vouchers', () => {
       }
       return placeCalls++ === 0
         ? { status: 409, body: { error: { code: 'PRICES_CHANGED', message: '' }, items: items.map(({ photoUrl: _p, ...i }) => i), vouchers: [] } }
-        : { status: 201, body: { ...placed, totalCents: 9500 } };
+        : { status: 201, body: { ...placed, totalCents: 9500, receipt: true } };
     });
     render(<Checkout {...base} vouchers={[]} />);
     await typeCode(user, 'insta15');
@@ -192,9 +199,11 @@ describe('Checkout vouchers', () => {
     await user.click(placeButton('RM80.75'));
     expect(await screen.findByText(copy.codeUnknown)).toBeInTheDocument();
     expect(screen.queryByText(/INSTA15 −/)).toBeNull();
+    expect(placeButton('RM95')).toBeDisabled();
+    await attachReceipt(user);
     expect(placeButton('RM95')).toBeEnabled();
     await user.click(placeButton('RM95'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     const body = JSON.parse((calls(spy, '/store/keklina/orders')[1]![1] as RequestInit).body as string) as Record<string, unknown>;
     expect(body).toMatchObject({ seenTotalCents: 9500 });
     expect(body).not.toHaveProperty('voucherCode');
@@ -203,7 +212,7 @@ describe('Checkout vouchers', () => {
   it('a typed code that does not fit says so and is not sent; nothing is called better', async () => {
     const user = userEvent.setup();
     const spy = api((url) =>
-      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta({ minSpendCents: 50000 }) } } : { status: 201, body: { ...placed, totalCents: 9500 } },
+      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta({ minSpendCents: 50000 }) } } : { status: 201, body: { ...placed, totalCents: 9500, receipt: true } },
     );
     render(<Checkout {...base} vouchers={[]} />);
     await typeCode(user, 'insta15');
@@ -211,7 +220,7 @@ describe('Checkout vouchers', () => {
     expect(screen.queryByText(copy.betterVoucherApplied)).toBeNull();
     await fillDetails(user);
     await user.click(placeButton('RM95'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     expect(sent(spy, '/store/keklina/orders')).not.toHaveProperty('voucherCode');
   });
 

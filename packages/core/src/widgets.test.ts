@@ -4,6 +4,11 @@ import {
   WIDGET_NAMES,
   WIDGET_PROVIDERS,
   minWidgetSize,
+  appleLookup,
+  cardImageOk,
+  cardTypeName,
+  hasCard,
+  widgetOpenUrl,
   parseWidgetLink,
   widgetHeight,
   widgetSrc,
@@ -75,8 +80,55 @@ describe('Spotify', () => {
     expect(minWidgetSize('SPOTIFY', 'track/abc')).toBe('SMALL');
     expect(minWidgetSize('SPOTIFY', 'episode/abc')).toBe('SMALL');
     for (const t of ['playlist', 'album', 'artist', 'show']) {
-      expect(minWidgetSize('SPOTIFY', `${t}/abc`)).toBe('WIDE');
+      expect(minWidgetSize('SPOTIFY', `${t}/abc`)).toBe('SMALL');
     }
+  });
+  it('builds a card address from the stored ref, and names the type', () => {
+    expect(widgetOpenUrl('SPOTIFY', 'track/abc123')).toBe('https://open.spotify.com/track/abc123');
+    expect(() => widgetOpenUrl('SPOTIFY', 'user/abc')).toThrow();
+    expect(() => widgetOpenUrl('SPOTIFY', 'track/a"><x')).toThrow();
+    expect(() => widgetOpenUrl('YOUTUBE', 'v/abc')).toThrow();
+    expect(widgetOpenUrl('APPLE_MUSIC', 'us/album/blinding-lights/1499378108?i=1499378113')).toBe(
+      'https://music.apple.com/us/album/blinding-lights/1499378108?i=1499378113',
+    );
+    expect(() => widgetOpenUrl('APPLE_MUSIC', 'us/album/../x')).toThrow();
+    expect(cardTypeName('SPOTIFY', 'track/a')).toBe('Song');
+    expect(cardTypeName('SPOTIFY', 'show/a')).toBe('Podcast');
+    expect(cardTypeName('SPOTIFY', 'episode/a')).toBe('Episode');
+    expect(cardTypeName('SPOTIFY', 'album/a')).toBe('Album');
+    expect(cardTypeName('SPOTIFY', 'playlist/a')).toBe('Playlist');
+    expect(cardTypeName('SPOTIFY', 'artist/a')).toBe('Artist');
+    expect(cardTypeName('SPOTIFY', 'nope/a')).toBe('');
+    expect(cardTypeName('APPLE_MUSIC', 'us/song/x/123')).toBe('Song');
+    expect(cardTypeName('APPLE_MUSIC', 'us/album/x/123?i=456')).toBe('Song');
+    expect(cardTypeName('APPLE_MUSIC', 'us/album/x/123')).toBe('Album');
+    expect(cardTypeName('APPLE_MUSIC', 'us/playlist/x/pl.abc')).toBe('Playlist');
+    expect(cardTypeName('APPLE_MUSIC', 'us/artist/x/123')).toBe('Artist');
+    expect(cardTypeName('YOUTUBE', 'v/abc')).toBe('');
+  });
+  it('picks the Apple lookup id: the ?i= song, else a numeric last segment, never a playlist', () => {
+    expect(appleLookup('us/album/x/123?i=456')).toEqual({ id: '456', country: 'us' });
+    expect(appleLookup('us/album/x/123')).toEqual({ id: '123', country: 'us' });
+    expect(appleLookup('gb/artist/x/789')).toEqual({ id: '789', country: 'gb' });
+    expect(appleLookup('us/playlist/x/pl.abc')).toBeNull();
+  });
+  it("accepts a cover only on the service's own https image host, and not over-long", () => {
+    expect(cardImageOk('SPOTIFY', 'https://i.scdn.co/image/a')).toBe(true);
+    expect(cardImageOk('SPOTIFY', 'https://x.spotifycdn.com/a')).toBe(true);
+    expect(cardImageOk('SPOTIFY', 'https://is1-ssl.mzstatic.com/a')).toBe(false);
+    expect(cardImageOk('APPLE_MUSIC', 'https://is1-ssl.mzstatic.com/a')).toBe(true);
+    expect(cardImageOk('APPLE_MUSIC', 'https://i.scdn.co/a')).toBe(false);
+    expect(cardImageOk('APPLE_MUSIC', 'http://is1-ssl.mzstatic.com/a')).toBe(false);
+    expect(cardImageOk('APPLE_MUSIC', 'https://evil.example/mzstatic.com')).toBe(false);
+    expect(cardImageOk('SPOTIFY', 'https://i.scdn.co/' + 'x'.repeat(2100))).toBe(false);
+    expect(cardImageOk('YOUTUBE', 'https://i.scdn.co/a')).toBe(false);
+    expect(cardImageOk('SPOTIFY', null)).toBe(false);
+  });
+  it('a card fits a small tile for Spotify and Apple Music only', () => {
+    expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('SMALL');
+    expect(minWidgetSize('APPLE_MUSIC', 'us/playlist/x/pl.abc')).toBe('SMALL');
+    expect(hasCard('SPOTIFY')).toBe(true);
+    expect(hasCard('YOUTUBE')).toBe(false);
   });
   it('refuses a user page, a bad id and a lookalike host', () => {
     const r = refused('https://open.spotify.com/user/x');
@@ -122,7 +174,9 @@ describe('Apple Music', () => {
   it('heights and size', () => {
     expect(widgetHeight('APPLE_MUSIC', 'us/song/x/123')).toBe(175);
     expect(widgetHeight('APPLE_MUSIC', 'us/album/x/123')).toBe(450);
-    expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('WIDE');
+    // Apple's "Share song" link is the album with ?i=<song>: the embed draws one song, 175 high.
+    expect(widgetHeight('APPLE_MUSIC', 'my/album/iqro/1440833098?i=1440833107')).toBe(175);
+    expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('SMALL');
   });
   it('refuses bad shapes and traversal', () => {
     refused('https://music.apple.com/us/station/x/ra.1');

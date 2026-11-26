@@ -11,7 +11,7 @@ const initial: EditorPage = {
   style: 'SOFT', secondaryColor: null, coverWash: true, layout: 'LIST' as const, accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
   socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',
-  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null }],
+  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null }],
 };
 
 const business: EditorPage = {
@@ -24,8 +24,8 @@ const business: EditorPage = {
 };
 
 const api = () => ({
-  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null })),
-  addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/x' })),
+  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null })),
+  addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/x', embedTitle: null, embedImage: null })),
   updateLink: vi.fn(async (_id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
@@ -451,7 +451,7 @@ describe('without the template look', () => {
 
   // The v3 board brings the kind tile back on link rows and the Shop link row (.ri .ki, .shoprow .ki).
   it('marks each link row with its kind, read off the address, and the Shop link as the first row', async () => {
-    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null }] });
+    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null }] });
     await userEvent.click(editTab('Links'));
     const kinds = [...document.querySelectorAll('#panel-links [data-kind]')].filter((el) => el.tagName === 'SPAN');
     expect(kinds.map((el) => el.getAttribute('data-kind'))).toEqual(['shop', 'link', 'whatsapp']);
@@ -468,8 +468,8 @@ describe('the Layout tab', () => {
     shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] },
     faqPosition: null,
     links: [
-      { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
-      { id: 'b', label: 'Cafe menu', url: 'https://cafe.dev', size: null, kind: 'LINK', provider: null, embedRef: null },
+      { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
+      { id: 'b', label: 'Cafe menu', url: 'https://cafe.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
     ],
   };
   const layout = () => within(screen.getByRole('tabpanel', { name: 'Layout' }));
