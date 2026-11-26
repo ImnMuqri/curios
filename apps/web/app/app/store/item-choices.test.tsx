@@ -127,7 +127,7 @@ describe('ItemEditor, choices inside options', () => {
     fireEvent.click(screen.getByRole('button', { name: '+ Add a choice group' }));
     expect(screen.getByText('Group two')).toBeInTheDocument();
     expect(screen.getByText(/Add photos above to pick one per/)).toBeInTheDocument();
-    expect(screen.getAllByRole('radio', { name: 'No photo' })[0]).toBeDisabled();
+    expect(screen.queryByRole('radio', { name: 'No photo' })).toBeNull();
     type('Group one name', 'Size');
     type('Group two name', 'Flavour');
     type('Group two choice 1 name', 'Vanilla');
@@ -140,10 +140,58 @@ describe('ItemEditor, choices inside options', () => {
     });
   });
 
+  it('asks first, and "+ Add a choice group" straight after puts the groups back', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(cake);
+    fireEvent.click(screen.getByRole('button', { name: 'Use a plain list of options instead' }));
+    await pause();
+    expect(calls.update).not.toHaveBeenCalled();
+    expect(screen.getByText(/groups, photos and switched-off combinations are removed/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, make it a list' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add a choice group' }));
+    await pause();
+    expect(screen.getByLabelText('Vanilla, 1kg on sale')).toHaveAttribute('aria-checked', 'false');
+    expect((lastPricing(calls) as { kind: string }).kind).toBe('choices');
+  });
+
+  it('same price ticked then unticked keeps every price and switch', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(cake);
+    fireEvent.click(screen.getByLabelText('Same price for every Flavour'));
+    expect(screen.getByLabelText('Vanilla, 1kg on sale')).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(screen.getByLabelText('Same price for every Flavour'));
+    expect((screen.getByLabelText('Chocolate, 1kg price') as HTMLInputElement).value).toBe('90');
+    await pause();
+    expect(lastPricing(calls)).toMatchObject({ combos: [{ priceCents: 4500 }, { priceCents: 8000, available: false }, { priceCents: 5000 }, { priceCents: 9000 }] });
+  });
+
+  it('photo picker: one tab stop, arrow keys pick, and a deleted photo reads as No photo', async () => {
+    vi.useFakeTimers();
+    const gone = { ...cake, choices: { ...choices, groupOne: { ...choices.groupOne, choices: [{ ...choices.groupOne.choices[0]!, photoId: 'deleted', photoKey: null }, choices.groupOne.choices[1]!] } } };
+    const { calls } = show(gone);
+    const picker = screen.getByRole('radiogroup', { name: 'Photo for Vanilla' });
+    const radios = within(picker).getAllByRole('radio');
+    expect(radios.map((r) => r.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+    expect(radios[0]).toHaveAttribute('aria-checked', 'true');
+    fireEvent.keyDown(picker, { key: 'ArrowRight' });
+    await pause();
+    expect((lastPricing(calls) as { groupOne: { choices: { photoId?: string }[] } }).groupOne.choices[0]!.photoId).toBe('p1');
+  });
+
+  it('a pending save is dropped when the draft turns invalid', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(cake);
+    type('Name', 'Kek lapis');
+    type('Vanilla, 500g price', '0');
+    await pause();
+    expect(calls.update).not.toHaveBeenCalled();
+  });
+
   it('goes back to a plain list of the combinations on sale', async () => {
     vi.useFakeTimers();
     const { calls } = show(cake);
     fireEvent.click(screen.getByRole('button', { name: 'Use a plain list of options instead' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, make it a list' }));
     await pause();
     expect(lastPricing(calls)).toEqual({
       kind: 'options',

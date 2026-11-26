@@ -1,6 +1,6 @@
 'use client';
 
-import type { CSSProperties } from 'react';
+import type { CSSProperties, KeyboardEvent } from 'react';
 import { CHOICE_LABEL_MAX, CHOICE_NAME_MAX, MAX_CHOICES } from '@curios/core/store';
 import ui from '../_ui/editor.module.css';
 import { addGroupTwo, blankChoice, cellKey, cellOf, dropGroupTwo, setSame, type CellDraft, type ChoiceDraft, type ChoicesDraft } from './pricing.js';
@@ -41,6 +41,20 @@ export function ItemChoicesEditor({
   const remove = (which: 'one' | 'two', key: number) => onChange({ ...draft, [which]: (draft[which] ?? []).filter((choice) => choice.key !== key) });
   const add = (which: 'one' | 'two') => onChange({ ...draft, [which]: [...(draft[which] ?? []), blankChoice()] });
 
+  /** The photo a choice shows as picked: one the item no longer has counts as none. */
+  const pickedOf = (choice: ChoiceDraft, items: OwnerPhoto[]) => (items.some((photo) => photo.id === choice.photoId) ? choice.photoId : null);
+  /** Arrow keys move through "No photo" and the photos, picking as they go; one tab stop for the whole row. */
+  const pickKey = (event: KeyboardEvent<HTMLDivElement>, choice: ChoiceDraft, items: OwnerPhoto[]) => {
+    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    if (step === 0) return;
+    event.preventDefault();
+    const ids = [null, ...items.map((photo) => photo.id)];
+    const at = ids.indexOf(pickedOf(choice, items));
+    const next = (at + step + ids.length) % ids.length;
+    edit('one', choice.key, { photoId: ids[next] ?? null });
+    event.currentTarget.querySelectorAll<HTMLElement>('[role="radio"]')[next]?.focus();
+  };
+
   const group = (which: 'one' | 'two') => {
     const choices = (which === 'one' ? one : two) ?? [];
     const title = which === 'one' ? 'Group one' : 'Group two';
@@ -69,13 +83,14 @@ export function ItemChoicesEditor({
                 autoComplete="off"
                 onChange={(event) => edit(which, choice.key, { label: event.target.value })}
               />
-              {which === 'one' ? (
-                <div className={styles.pick} role="radiogroup" aria-label={`Photo for ${labelOf(choice, index, 'group one')}`}>
-                  <button type="button" role="radio" aria-checked={choice.photoId === null} aria-label="No photo" className={styles.none} disabled={photos.length === 0} onClick={() => edit('one', choice.key, { photoId: null })}>
+              {/* No photos on the item yet: just the hint below, not a row of empty pickers. */}
+              {which === 'one' && photos.length > 0 ? (
+                <div className={styles.pick} role="radiogroup" aria-label={`Photo for ${labelOf(choice, index, 'group one')}`} onKeyDown={(event) => pickKey(event, choice, photos)}>
+                  <button type="button" role="radio" aria-checked={pickedOf(choice, photos) === null} tabIndex={pickedOf(choice, photos) === null ? 0 : -1} aria-label="No photo" className={styles.none} onClick={() => edit('one', choice.key, { photoId: null })}>
                     <span aria-hidden="true">–</span>
                   </button>
                   {photos.map((photo, n) => (
-                    <button key={photo.id} type="button" role="radio" aria-checked={choice.photoId === photo.id} aria-label={`Photo ${n + 1}`} className={styles.square} onClick={() => edit('one', choice.key, { photoId: photo.id })}>
+                    <button key={photo.id} type="button" role="radio" aria-checked={pickedOf(choice, photos) === photo.id} tabIndex={pickedOf(choice, photos) === photo.id ? 0 : -1} aria-label={`Photo ${n + 1}`} className={styles.square} onClick={() => edit('one', choice.key, { photoId: photo.id })}>
                       {/* eslint-disable-next-line @next/next/no-img-element -- a 512px square the item already shows */}
                       <img src={photoUrl(photo.squareKey)} alt="" />
                     </button>
@@ -102,19 +117,23 @@ export function ItemChoicesEditor({
     );
   };
 
-  const cellFor = (oneKey: number, twoKey: number | null, tag: string, label: string, shared: boolean) => {
+  /** One combination: its price, its on/off, or just one of them when "same price" splits the two into separate rows. */
+  const cellFor = (oneKey: number, twoKey: number | null, tag: string, label: string, show: 'both' | 'price' | 'switch', shared = false) => {
     const cell = cellOf(draft, oneKey, twoKey);
-    const at = shared ? '*' : oneKey;
     return (
       <div key={twoKey ?? 'only'} className={styles.cell} data-off={cell.available ? undefined : ''}>
         {tag ? <span className={styles.tag}>{tag}</span> : null}
-        <label className={styles.money}>
-          <span>RM</span>
-          <input value={cell.price} inputMode="decimal" placeholder="0.00" aria-label={`${label} price`} onChange={(event) => setCell(at, twoKey, { price: event.target.value })} />
-        </label>
-        <button type="button" className={ui.switch} role="switch" aria-checked={cell.available} aria-label={`${label} on sale`} onClick={() => setCell(at, twoKey, { available: !cell.available })}>
-          <i />
-        </button>
+        {show !== 'switch' ? (
+          <label className={styles.money}>
+            <span>RM</span>
+            <input value={cell.price} inputMode="decimal" placeholder="0.00" aria-label={`${label} price`} onChange={(event) => setCell(shared ? '*' : oneKey, twoKey, { price: event.target.value })} />
+          </label>
+        ) : null}
+        {show !== 'price' ? (
+          <button type="button" className={ui.switch} role="switch" aria-checked={cell.available} aria-label={`${label} on sale`} onClick={() => setCell(oneKey, twoKey, { available: !cell.available })}>
+            <i />
+          </button>
+        ) : null}
       </div>
     );
   };
@@ -157,15 +176,23 @@ export function ItemChoicesEditor({
           {draft.same && two ? (
             <div className={styles.row}>
               <span className={styles.rowName}>Every {nameOne}</span>
-              {two.map((t, j) => cellFor(one[0]?.key ?? 0, t.key, labelOf(t, j, 'group two'), `${labelOf(t, j, 'group two')}, every ${nameOne}`, true))}
+              {two.map((t, j) => cellFor(one[0]?.key ?? 0, t.key, labelOf(t, j, 'group two'), `${labelOf(t, j, 'group two')}, every ${nameOne}`, 'price', true))}
             </div>
+          ) : null}
+          {draft.same && two ? (
+            one.map((o, i) => (
+              <div key={o.key} className={styles.row} role="group" aria-label={`${labelOf(o, i, 'group one')} on sale`}>
+                <span className={styles.rowName}>{labelOf(o, i, 'group one')}</span>
+                {two.map((t, j) => cellFor(o.key, t.key, labelOf(t, j, 'group two'), `${labelOf(o, i, 'group one')}, ${labelOf(t, j, 'group two')}`, 'switch'))}
+              </div>
+            ))
           ) : (
             one.map((o, i) => (
               <div key={o.key} className={styles.row} role="group" aria-label={labelOf(o, i, 'group one')}>
                 <span className={styles.rowName}>{labelOf(o, i, 'group one')}</span>
                 {two
-                  ? two.map((t, j) => cellFor(o.key, t.key, labelOf(t, j, 'group two'), `${labelOf(o, i, 'group one')}, ${labelOf(t, j, 'group two')}`, false))
-                  : cellFor(o.key, null, '', labelOf(o, i, 'group one'), false)}
+                  ? two.map((t, j) => cellFor(o.key, t.key, labelOf(t, j, 'group two'), `${labelOf(o, i, 'group one')}, ${labelOf(t, j, 'group two')}`, 'both'))
+                  : cellFor(o.key, null, '', labelOf(o, i, 'group one'), 'both')}
               </div>
             ))
           )}

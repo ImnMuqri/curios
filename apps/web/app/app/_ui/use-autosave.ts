@@ -59,7 +59,14 @@ export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAV
     return flush();
   }, [flush]);
 
+  /** Drops a save that is still waiting, and what retry would resend: the screen no longer holds anything worth sending. */
+  const cancel = useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    latest.current = null;
+  }, []);
+
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  return { status, error, schedule, retry: () => void flush(), flushPending };
+  return { status, error, schedule, cancel, retry: () => void flush(), flushPending };
 }

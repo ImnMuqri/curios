@@ -168,13 +168,22 @@ describe('choices', () => {
     expect(pricingOf({ ...draft, choices: off })).toEqual({ error: 'Keep at least one combination on sale.' });
   });
 
-  it('same price fills every group-one choice, and turning it off copies back', () => {
-    const c = setSame(draftOf(item).choices!, true);
+  it('same price shares prices only: on or off stays per combination, and unticking restores each row', () => {
+    const original = draftOf(item).choices!;
+    const c = setSame(original, true);
+    const k = (o: number, t: number) => [c.one[o]!.key, c.two![t]!.key] as const;
+    // Ticking changed nothing about on/off: Vanilla 1kg is still off, and every row shows the first row's price.
+    expect(cellOf(c, ...k(0, 1)).available).toBe(false);
+    expect(cellOf(c, ...k(1, 1))).toEqual({ price: '80', available: true });
     const shared = { ...c, cells: { ...c.cells, [cellKey('*', c.two![1]!.key)]: { price: '70', available: true } } };
-    expect(cellOf(shared, c.one[1]!.key, c.two![1]!.key).price).toBe('70');
+    expect(cellOf(shared, ...k(1, 1)).price).toBe('70');
+    // Unticking gives each row the price it had; the shared edit does not overwrite them.
     const back = setSame(shared, false);
-    expect(cellOf(back, c.one[0]!.key, c.two![1]!.key).price).toBe('70');
-    expect(cellOf(back, c.one[1]!.key, c.two![1]!.key).price).toBe('70');
+    expect(cellOf(back, ...k(0, 1))).toEqual({ price: '80', available: false });
+    expect(cellOf(back, ...k(1, 1))).toEqual({ price: '90', available: true });
+    // A tick and an untick with no edit is a round trip.
+    const trip = setSame(setSame(original, true), false);
+    for (const o of original.one) for (const t of original.two!) expect(cellOf(trip, o.key, t.key)).toEqual(cellOf(original, o.key, t.key));
   });
 
   it('flattens to a plain list of the combinations on sale, and starts from a plain list', () => {

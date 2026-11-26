@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useId, useRef, useState, type CSSProperties, type MouseEvent } from 'react';
 import { Callout } from '@curios/ui';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS } from '@curios/core/store';
+import { InlineConfirm } from '../_ui/inline-confirm.js';
 import { PageHead } from '../_ui/page-head.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
@@ -159,6 +160,8 @@ export function ItemEditor({
   const [draft, setDraft] = useState<PricingDraft>(() => draftOf(item));
   const [digital, setDigital] = useState<DigitalDraft>(() => digitalDraftOf(item));
   const listId = useId();
+  // The groups just turned into a plain list, with the list they became (compared by identity: any edit to the list makes a new one).
+  const [shelved, setShelved] = useState<{ choices: NonNullable<PricingDraft['choices']>; options: PricingDraft['options'] } | null>(null);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -259,7 +262,11 @@ export function ItemEditor({
     const fields = checkFields(nextName, nextDescription, pricingFor(nextDraft, nextDigital), { category: nextCategory, tag: nextTag, sku: nextSku, photoIds: (savedRef.current?.photos ?? []).map((photo) => photo.id) });
     const kinds = checkDigital(nextDigital);
     // A digital item that is not yet complete (no link, no length) is not sent: it would be saved as the wrong thing.
-    if ('error' in fields || 'error' in kinds) return;
+    if ('error' in fields || 'error' in kinds) {
+      // What is on screen is not an item: a save waiting from before would send a half-edited one.
+      autosave.cancel();
+      return;
+    }
     const wasDigital = savedRef.current?.kind === 'DIGITAL';
     autosave.schedule(nextDigital.kind === 'DIGITAL' || wasDigital ? { ...fields, digital: kinds.fields } : fields);
   }
@@ -523,9 +530,19 @@ export function ItemEditor({
                   photoUrl={api.photoUrl}
                   onChange={(choices) => edit({ draft: { ...draft, choices } })}
                 />
-                <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, options: choicesToOptions(draft.choices!), choices: null } })}>
-                  Use a plain list of options instead
-                </button>
+                <InlineConfirm
+                  trigger="Use a plain list of options instead"
+                  question="Turn this into a plain list? Your groups, photos and switched-off combinations are removed."
+                  yes="Yes, make it a list"
+                  no="Keep my groups"
+                  tone="quiet"
+                  onYes={() => {
+                    const options = choicesToOptions(draft.choices!);
+                    // Kept for this session: "+ Add a choice group" straight after puts the groups back as they were.
+                    setShelved({ choices: draft.choices!, options });
+                    edit({ draft: { ...draft, options, choices: null } });
+                  }}
+                />
               </>
             ) : (
               <>
@@ -570,7 +587,7 @@ export function ItemEditor({
                 ) : (
                   <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
                 )}
-                <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: startChoices(draft.options) } })}>
+                <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: shelved && shelved.options === draft.options ? shelved.choices : startChoices(draft.options) } })}>
                   + Add a choice group
                 </button>
               </>

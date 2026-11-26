@@ -48,7 +48,10 @@ const BLANK_CELL: CellDraft = { price: '', available: true };
 
 /** The combination's cell: in "same price" mode every group-one choice reads the shared one. */
 export function cellOf(c: ChoicesDraft, oneKey: number, twoKey: number | null): CellDraft {
-  return c.cells[cellKey(c.same && c.two ? '*' : oneKey, twoKey)] ?? BLANK_CELL;
+  const own = c.cells[cellKey(oneKey, twoKey)];
+  if (!c.same || !c.two) return own ?? BLANK_CELL;
+  // Shared mode: the price is the shared one; on or off stays per combination.
+  return { price: c.cells[cellKey('*', twoKey)]?.price ?? own?.price ?? '', available: own?.available ?? true };
 }
 
 /** What the owner's editor holds for an item's stored choices. */
@@ -93,15 +96,23 @@ export function addGroupTwo(c: ChoicesDraft): ChoicesDraft {
   return { ...c, two, nameTwo: '', same: false, cells };
 }
 
-/** "Same price for every ..." on or off: on seeds the shared prices from the first row, off copies them back to every row. */
+/**
+ * "Same price for every ..." on or off. On seeds the shared prices from the first row and touches nothing else (on or off stays
+ * per combination). Off gives every row back the price it had; only a row with none takes the shared one.
+ */
 export function setSame(c: ChoicesDraft, same: boolean): ChoicesDraft {
   if (!c.two || same === c.same) return c;
   const cells = { ...c.cells };
   if (same) {
     const first = c.one[0];
-    for (const t of c.two) cells[cellKey('*', t.key)] = first ? (c.cells[cellKey(first.key, t.key)] ?? BLANK_CELL) : BLANK_CELL;
+    for (const t of c.two) cells[cellKey('*', t.key)] = { price: first ? (c.cells[cellKey(first.key, t.key)]?.price ?? '') : '', available: true };
   } else {
-    for (const o of c.one) for (const t of c.two) cells[cellKey(o.key, t.key)] = cellOf(c, o.key, t.key);
+    for (const o of c.one) {
+      for (const t of c.two) {
+        const own = c.cells[cellKey(o.key, t.key)];
+        cells[cellKey(o.key, t.key)] = { price: own?.price.trim() ? own.price : (c.cells[cellKey('*', t.key)]?.price ?? ''), available: own?.available ?? true };
+      }
+    }
   }
   return { ...c, same, cells };
 }
