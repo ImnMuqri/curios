@@ -4,8 +4,10 @@ import {
   WIDGET_NAMES,
   WIDGET_PROVIDERS,
   minWidgetSize,
-  spotifyOpenUrl,
-  spotifyTypeName,
+  appleLookup,
+  cardTypeName,
+  hasCard,
+  widgetOpenUrl,
   parseWidgetLink,
   widgetHeight,
   widgetSrc,
@@ -80,17 +82,40 @@ describe('Spotify', () => {
       expect(minWidgetSize('SPOTIFY', `${t}/abc`)).toBe('SMALL');
     }
   });
-  it('builds the Spotify card address from the stored ref, and names the type', () => {
-    expect(spotifyOpenUrl('track/abc123')).toBe('https://open.spotify.com/track/abc123');
-    expect(() => spotifyOpenUrl('user/abc')).toThrow();
-    expect(() => spotifyOpenUrl('track/a"><x')).toThrow();
-    expect(spotifyTypeName('track/a')).toBe('Song');
-    expect(spotifyTypeName('show/a')).toBe('Podcast');
-    expect(spotifyTypeName('episode/a')).toBe('Episode');
-    expect(spotifyTypeName('album/a')).toBe('Album');
-    expect(spotifyTypeName('playlist/a')).toBe('Playlist');
-    expect(spotifyTypeName('artist/a')).toBe('Artist');
-    expect(spotifyTypeName('nope/a')).toBe('');
+  it('builds a card address from the stored ref, and names the type', () => {
+    expect(widgetOpenUrl('SPOTIFY', 'track/abc123')).toBe('https://open.spotify.com/track/abc123');
+    expect(() => widgetOpenUrl('SPOTIFY', 'user/abc')).toThrow();
+    expect(() => widgetOpenUrl('SPOTIFY', 'track/a"><x')).toThrow();
+    expect(() => widgetOpenUrl('YOUTUBE', 'v/abc')).toThrow();
+    expect(widgetOpenUrl('APPLE_MUSIC', 'us/album/blinding-lights/1499378108?i=1499378113')).toBe(
+      'https://music.apple.com/us/album/blinding-lights/1499378108?i=1499378113',
+    );
+    expect(() => widgetOpenUrl('APPLE_MUSIC', 'us/album/../x')).toThrow();
+    expect(cardTypeName('SPOTIFY', 'track/a')).toBe('Song');
+    expect(cardTypeName('SPOTIFY', 'show/a')).toBe('Podcast');
+    expect(cardTypeName('SPOTIFY', 'episode/a')).toBe('Episode');
+    expect(cardTypeName('SPOTIFY', 'album/a')).toBe('Album');
+    expect(cardTypeName('SPOTIFY', 'playlist/a')).toBe('Playlist');
+    expect(cardTypeName('SPOTIFY', 'artist/a')).toBe('Artist');
+    expect(cardTypeName('SPOTIFY', 'nope/a')).toBe('');
+    expect(cardTypeName('APPLE_MUSIC', 'us/song/x/123')).toBe('Song');
+    expect(cardTypeName('APPLE_MUSIC', 'us/album/x/123?i=456')).toBe('Song');
+    expect(cardTypeName('APPLE_MUSIC', 'us/album/x/123')).toBe('Album');
+    expect(cardTypeName('APPLE_MUSIC', 'us/playlist/x/pl.abc')).toBe('Playlist');
+    expect(cardTypeName('APPLE_MUSIC', 'us/artist/x/123')).toBe('Artist');
+    expect(cardTypeName('YOUTUBE', 'v/abc')).toBe('');
+  });
+  it('picks the Apple lookup id: the ?i= song, else a numeric last segment, never a playlist', () => {
+    expect(appleLookup('us/album/x/123?i=456')).toEqual({ id: '456', country: 'us' });
+    expect(appleLookup('us/album/x/123')).toEqual({ id: '123', country: 'us' });
+    expect(appleLookup('gb/artist/x/789')).toEqual({ id: '789', country: 'gb' });
+    expect(appleLookup('us/playlist/x/pl.abc')).toBeNull();
+  });
+  it('a card fits a small tile for Spotify and Apple Music only', () => {
+    expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('SMALL');
+    expect(minWidgetSize('APPLE_MUSIC', 'us/playlist/x/pl.abc')).toBe('SMALL');
+    expect(hasCard('SPOTIFY')).toBe(true);
+    expect(hasCard('YOUTUBE')).toBe(false);
   });
   it('refuses a user page, a bad id and a lookalike host', () => {
     const r = refused('https://open.spotify.com/user/x');
@@ -138,7 +163,7 @@ describe('Apple Music', () => {
     expect(widgetHeight('APPLE_MUSIC', 'us/album/x/123')).toBe(450);
     // Apple's "Share song" link is the album with ?i=<song>: the embed draws one song, 175 high.
     expect(widgetHeight('APPLE_MUSIC', 'my/album/iqro/1440833098?i=1440833107')).toBe(175);
-    expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('WIDE');
+    expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('SMALL');
   });
   it('refuses bad shapes and traversal', () => {
     refused('https://music.apple.com/us/station/x/ra.1');
