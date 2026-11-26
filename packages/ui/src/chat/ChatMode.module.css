@@ -528,16 +528,20 @@
   padding: 5px 5px 5px 6px;
   border-radius: 999px;
   background: var(--paper);
+  /* The same pill focused or not (owner, 26 Nov): a light edge and a soft lift; focus only colours the
+     edge and adds a halo, rather than swapping a heavy shadow for a ring. */
   box-shadow:
-    inset 0 0 0 1.5px var(--ask-border, transparent),
-    0 14px 30px -14px rgb(0 0 0 / 60%);
+    inset 0 0 0 1.5px var(--ask-border, color-mix(in srgb, var(--ink) 10%, transparent)),
+    0 8px 22px -12px rgb(0 0 0 / 22%);
   transition: box-shadow 120ms ease;
 }
 
 .composerRow:focus-within {
   /* The page's accent, same as `.send` below -- see its comment. */
-  border-color: var(--accent, var(--biru));
-  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent, var(--biru)) 22%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent, var(--biru)),
+    0 0 0 3px color-mix(in oklab, var(--accent, var(--biru)) 22%, transparent),
+    0 8px 22px -12px rgb(0 0 0 / 22%);
 }
 
 .input {

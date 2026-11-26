@@ -986,7 +986,7 @@ describe('ChatMode, styling', () => {
   // cascade regardless.
   it('reads its send button and focus ring from BentoPage-supplied accent variables, with a fallback', () => {
     const css = readFileSync(join(import.meta.dirname, 'ChatMode.module.css'), 'utf8');
-    expect(css).toMatch(/border-color:\s*var\(--accent,\s*var\(--biru\)\)/);
+    expect(css).toMatch(/inset 0 0 0 1\.5px var\(--accent,\s*var\(--biru\)\)/);
     expect(css).toMatch(/background:\s*var\(--accent,\s*var\(--biru\)\)/);
     expect(css).toMatch(/color:\s*var\(--on-accent,\s*var\(--paper\)\)/);
   });
