@@ -2,6 +2,7 @@ import type { Prisma, PrismaClient, WidgetProvider as DbWidgetProvider } from '@
 import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, positionsAfterAdd, type TileSize } from '@curios/core/bento';
 import { parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
+import type { FetchSpotifyCard } from './spotify-card.js';
 
 export class InvalidLinkError extends Error {
   readonly statusCode = 400;
@@ -49,7 +50,7 @@ export class LinkOrderStaleError extends Error {
   }
 }
 
-const SELECT = { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true } as const;
+const SELECT = { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true } as const;
 export type LinkRow = {
   id: string;
   label: string;
@@ -58,8 +59,17 @@ export type LinkRow = {
   kind: 'LINK' | 'WIDGET';
   provider: DbWidgetProvider | null;
   embedRef: string | null;
+  embedTitle: string | null;
+  embedImage: string | null;
 };
 export type ResolveShort = (url: string) => Promise<string | null>;
+
+/** The card a widget row draws: only Spotify has one, every other row (and a failed fetch) keeps both null. */
+async function cardFor(provider: DbWidgetProvider, embedRef: string, card: FetchSpotifyCard): Promise<{ embedTitle: string | null; embedImage: string | null }> {
+  if (provider !== 'SPOTIFY') return { embedTitle: null, embedImage: null };
+  const { title, image } = await card(embedRef);
+  return { embedTitle: title, embedImage: image };
+}
 
 async function pageIdFor(prisma: PrismaClient, accountId: string): Promise<string> {
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });
@@ -150,6 +160,7 @@ export async function addWidget(
   accountId: string,
   input: { url: string; label: string | null },
   resolve: ResolveShort,
+  card: FetchSpotifyCard = async () => ({ title: null, image: null }),
 ): Promise<LinkRow> {
   const pageId = await pageIdFor(prisma, accountId);
   const url = input.url.trim();
@@ -158,11 +169,13 @@ export async function addWidget(
 
   const count = await prisma.link.count({ where: { pageId } });
   if (count >= MAX_LINKS) throw new LinkLimitError();
+  // Asked once, outside the transaction; a failure is two nulls and the widget saves anyway.
+  const embedCard = await cardFor(provider, embedRef, card);
 
   return prisma.$transaction(async (tx) => {
     await makeRoomAtEndOfLinks(tx, pageId, count);
     return tx.link.create({
-      data: { pageId, label, url, position: count, kind: 'WIDGET', provider, embedRef },
+      data: { pageId, label, url, position: count, kind: 'WIDGET', provider, embedRef, ...embedCard },
       select: SELECT,
     });
   });
@@ -174,6 +187,7 @@ export async function updateLink(
   id: string,
   input: { label?: string; url?: string; size?: TileSize | null },
   resolve: ResolveShort = async () => null,
+  card: FetchSpotifyCard = async () => ({ title: null, image: null }),
 ): Promise<LinkRow> {
   const pageId = await pageIdFor(prisma, accountId);
   const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true, provider: true } });
@@ -185,11 +199,15 @@ export async function updateLink(
     size?: TileSize | null;
     provider?: DbWidgetProvider;
     embedRef?: string;
+    embedTitle?: string | null;
+    embedImage?: string | null;
   } = {};
   if (input.url !== undefined) {
     if (existing.kind === 'WIDGET') {
       data.url = input.url.trim();
-      Object.assign(data, await parseWidget(data.url, resolve));
+      const parsed = await parseWidget(data.url, resolve);
+      // A new address means a new card; a row that stopped being Spotify loses the old one.
+      Object.assign(data, parsed, await cardFor(parsed.provider, parsed.embedRef, card));
     } else {
       data.url = checkUrl(input.url);
     }

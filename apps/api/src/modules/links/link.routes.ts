@@ -4,6 +4,7 @@ import { TILE_SIZES } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { createHostGuard, type HostGuard } from '../ingest/host-guard.js';
 import { resolveShortLink } from './widget-resolve.js';
+import { fetchSpotifyCard, type FetchSpotifyCard } from './spotify-card.js';
 import { addLink, addWidget, listLinks, removeLink, reorderLinks, updateLink } from './link.service.js';
 
 // Payload bounds only. Every rule an owner can break is checked in the service,
@@ -16,11 +17,14 @@ export interface LinkRouteOptions {
   /** Tests inject this; the real one fetches the short link through the host guard. */
   resolve?: (url: string) => Promise<string | null>;
   guard?: HostGuard;
+  /** Tests inject this; the real one asks Spotify's oEmbed for the card's title and cover. */
+  card?: FetchSpotifyCard;
 }
 
 export const linkRoutes: FastifyPluginAsyncZod<LinkRouteOptions> = async (app, options) => {
   const guard = options.guard ?? createHostGuard();
   const resolve = options.resolve ?? ((target: string) => resolveShortLink(target, { fetch, guard }));
+  const card = options.card ?? ((embedRef: string) => fetchSpotifyCard(embedRef, { fetch }));
 
   app.get('/links', async (request) => {
     if (!request.account) throw new UnauthenticatedError();
@@ -38,7 +42,7 @@ export const linkRoutes: FastifyPluginAsyncZod<LinkRouteOptions> = async (app, o
     { schema: { body: z.object({ url, label: label.nullable() }) } },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
-      const link = await addWidget(app.prisma, request.account.id, request.body, resolve);
+      const link = await addWidget(app.prisma, request.account.id, request.body, resolve, card);
       return reply.status(201).send({ link });
     },
   );
@@ -53,7 +57,7 @@ export const linkRoutes: FastifyPluginAsyncZod<LinkRouteOptions> = async (app, o
     },
     async (request) => {
       if (!request.account) throw new UnauthenticatedError();
-      return { link: await updateLink(app.prisma, request.account.id, request.params.id, request.body, resolve) };
+      return { link: await updateLink(app.prisma, request.account.id, request.params.id, request.body, resolve, card) };
     },
   );
 

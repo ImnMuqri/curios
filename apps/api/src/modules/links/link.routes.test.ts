@@ -14,9 +14,16 @@ const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 // The short-link resolver is injected; no test touches the network.
 let shortAnswer: string | null = null;
 const resolveStub = async () => shortAnswer;
+// So is the Spotify card (title and cover from oEmbed); a test sets `cardAnswer`, or makes it throw.
+let cardAnswer: { title: string | null; image: string | null } = { title: null, image: null };
+let cardCalls = 0;
+const cardStub = async () => {
+  cardCalls += 1;
+  return cardAnswer;
+};
 
 beforeAll(async () => {
-  app = await buildApp({ links: { resolve: resolveStub } });
+  app = await buildApp({ links: { resolve: resolveStub, card: cardStub } });
   await app.ready();
 });
 
@@ -554,6 +561,62 @@ describe('POST /links/widgets', () => {
     });
     const account = await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId }, select: { accountId: true } });
     await expect(addWidget(app.prisma, account.accountId, { url: spotify, label: null }, async () => null)).rejects.toBeInstanceOf(LinkLimitError);
+  });
+});
+
+describe('the Spotify card on a widget', () => {
+  const spotify = 'https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC';
+  const youtube = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+
+  it('stores the title and cover the card fetch found, asked once', async () => {
+    const owner = await anOwner();
+    cardAnswer = { title: 'Blinding Lights', image: 'https://i.scdn.co/image/abc' };
+    cardCalls = 0;
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null });
+    expect(res.statusCode).toBe(201);
+    expect(cardCalls).toBe(1);
+    expect(res.json().link).toMatchObject({ embedTitle: 'Blinding Lights', embedImage: 'https://i.scdn.co/image/abc' });
+    const listed = (await call(owner.cookie, 'GET', '/links')).json().links[0];
+    expect(listed).toMatchObject({ embedTitle: 'Blinding Lights', embedImage: 'https://i.scdn.co/image/abc' });
+    cardAnswer = { title: null, image: null };
+  });
+
+  it('still saves the widget, with both null, when the fetch found nothing', async () => {
+    const owner = await anOwner();
+    cardAnswer = { title: null, image: null };
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null });
+    expect(res.statusCode).toBe(201);
+    expect(res.json().link).toMatchObject({ provider: 'SPOTIFY', embedTitle: null, embedImage: null });
+  });
+
+  it('never asks for a widget that is not Spotify, and plain links have none', async () => {
+    const owner = await anOwner();
+    cardAnswer = { title: 'Wrong', image: 'https://i.scdn.co/image/abc' };
+    cardCalls = 0;
+    const yt = (await call(owner.cookie, 'POST', '/links/widgets', { url: youtube, label: null })).json().link;
+    const plain = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link;
+    expect(cardCalls).toBe(0);
+    expect(yt).toMatchObject({ embedTitle: null, embedImage: null });
+    expect(plain).toMatchObject({ embedTitle: null, embedImage: null });
+    cardAnswer = { title: null, image: null };
+  });
+
+  it('fetches again when the address changes, and clears the card when the row stops being Spotify', async () => {
+    const owner = await anOwner();
+    cardAnswer = { title: 'First', image: 'https://i.scdn.co/image/one' };
+    const { link } = (await call(owner.cookie, 'POST', '/links/widgets', { url: spotify, label: null })).json();
+    cardAnswer = { title: 'Second', image: null };
+    const again = await call(owner.cookie, 'PATCH', `/links/${link.id}`, { url: 'https://open.spotify.com/album/1DFixLWuPkv3KT3TnV35m3' });
+    expect(again.json().link).toMatchObject({ embedRef: 'album/1DFixLWuPkv3KT3TnV35m3', embedTitle: 'Second', embedImage: null });
+
+    cardCalls = 0;
+    const label = await call(owner.cookie, 'PATCH', `/links/${link.id}`, { label: 'Mine' });
+    expect(cardCalls).toBe(0);
+    expect(label.json().link).toMatchObject({ embedTitle: 'Second' });
+
+    const gone = await call(owner.cookie, 'PATCH', `/links/${link.id}`, { url: youtube });
+    expect(gone.json().link).toMatchObject({ provider: 'YOUTUBE', embedTitle: null, embedImage: null });
+    cardAnswer = { title: null, image: null };
   });
 });
 
