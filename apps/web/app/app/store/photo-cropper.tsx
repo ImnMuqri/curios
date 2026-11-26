@@ -4,6 +4,7 @@ import { MIN_FRAME_PX, framePixels, moveFrame, zoomFrame } from '@curios/core/it
 import { useEffect, useRef, useState } from 'react';
 import styles from './store.module.css';
 import { cssZoom } from '../../../lib/css-zoom.js';
+import { LayerPortal, useOverlayOpen } from '../_ui/overlay-context.js';
 import type { Frame } from './store-types.js';
 
 /** What the stage measures in a browser without layout (tests): the scale still has a size to work from. */
@@ -44,6 +45,9 @@ export function PhotoCropper({
   /** Why the last save or picture failed, shown inside the window: the editor's own error is under the overlay. */
   error?: string;
 }) {
+  // In the frame's layer, like every dialog: inside the editor, its size-container columns trap a fixed
+  // box, so the window sat in the editor's column and off its foot instead of the middle of the screen.
+  useOverlayOpen(true);
   const [frame, setFrame] = useState<Frame>(initial);
   const [stage, setStage] = useState(0);
   const dialog = useRef<HTMLDivElement>(null);
@@ -180,6 +184,7 @@ export function PhotoCropper({
   }
 
   return (
+    <LayerPortal>
     <div
       className={styles.cropModal}
       onClick={(event) => {
@@ -269,5 +274,6 @@ export function PhotoCropper({
         </div>
       </div>
     </div>
+    </LayerPortal>
   );
 }
