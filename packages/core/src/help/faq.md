@@ -72,7 +72,7 @@ Open: /app/curios
 Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
 
 ### page-widgets · How do I add a song, a map or a booking calendar to my page?
-Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s.
+Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Spotify is the exception: it shows a card with the cover and title that opens in Spotify, so nothing plays on your page. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s.
 Open: /app/curios
 Source: packages/core/src/widgets.ts; apps/web/app/app/curios/links-editor.tsx
 

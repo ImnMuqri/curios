@@ -4,6 +4,8 @@ import {
   WIDGET_NAMES,
   WIDGET_PROVIDERS,
   minWidgetSize,
+  spotifyOpenUrl,
+  spotifyTypeName,
   parseWidgetLink,
   widgetHeight,
   widgetSrc,
@@ -75,8 +77,20 @@ describe('Spotify', () => {
     expect(minWidgetSize('SPOTIFY', 'track/abc')).toBe('SMALL');
     expect(minWidgetSize('SPOTIFY', 'episode/abc')).toBe('SMALL');
     for (const t of ['playlist', 'album', 'artist', 'show']) {
-      expect(minWidgetSize('SPOTIFY', `${t}/abc`)).toBe('WIDE');
+      expect(minWidgetSize('SPOTIFY', `${t}/abc`)).toBe('SMALL');
     }
+  });
+  it('builds the Spotify card address from the stored ref, and names the type', () => {
+    expect(spotifyOpenUrl('track/abc123')).toBe('https://open.spotify.com/track/abc123');
+    expect(() => spotifyOpenUrl('user/abc')).toThrow();
+    expect(() => spotifyOpenUrl('track/a"><x')).toThrow();
+    expect(spotifyTypeName('track/a')).toBe('Song');
+    expect(spotifyTypeName('show/a')).toBe('Podcast');
+    expect(spotifyTypeName('episode/a')).toBe('Episode');
+    expect(spotifyTypeName('album/a')).toBe('Album');
+    expect(spotifyTypeName('playlist/a')).toBe('Playlist');
+    expect(spotifyTypeName('artist/a')).toBe('Artist');
+    expect(spotifyTypeName('nope/a')).toBe('');
   });
   it('refuses a user page, a bad id and a lookalike host', () => {
     const r = refused('https://open.spotify.com/user/x');

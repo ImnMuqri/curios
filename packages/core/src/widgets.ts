@@ -340,8 +340,27 @@ export function widgetHeight(provider: WidgetProvider, embedRef: string): number
   }
 }
 
-/** The smallest tile a widget reads well in. */
-export function minWidgetSize(provider: WidgetProvider, embedRef: string): TileSize {
-  if (provider === 'SPOTIFY' && (embedRef.startsWith('track/') || embedRef.startsWith('episode/'))) return 'SMALL';
-  return 'WIDE';
+/** The smallest tile a widget reads well in. Spotify is our own card, so every Spotify type fits a small tile. */
+export function minWidgetSize(provider: WidgetProvider, _embedRef: string): TileSize {
+  return provider === 'SPOTIFY' ? 'SMALL' : 'WIDE';
+}
+
+/** Where a Spotify card opens: built from the stored ref, never from the owner's pasted link. Throws on a bad ref. */
+export function spotifyOpenUrl(embedRef: string): string {
+  if (!refOk('SPOTIFY', embedRef)) throw new Error('Invalid SPOTIFY widget reference');
+  return `https://open.spotify.com/${embedRef}`;
+}
+
+const SPOTIFY_TYPE_NAMES: Record<string, string> = {
+  track: 'Song',
+  album: 'Album',
+  playlist: 'Playlist',
+  artist: 'Artist',
+  show: 'Podcast',
+  episode: 'Episode',
+};
+
+/** What a Spotify ref is, in words: track is a Song, show a Podcast. Empty when the ref is not one of ours. */
+export function spotifyTypeName(embedRef: string): string {
+  return SPOTIFY_TYPE_NAMES[embedRef.split('/')[0] ?? ''] ?? '';
 }
