@@ -230,9 +230,13 @@ export function ShopPageView(props: {
           ) : null}
           {props.items.length > 1 ? (
             <div className={styles.sortRow}>
-              <label className={styles.sort}>
-                <span>{copy.sortLabel}</span>
-                <select value={sort} onChange={(event) => setSort(event.target.value as ShopSort)}>
+              {/* Icon only (owner, 26 Nov): the phone's own picker opens from the round button; filled while a sort other
+                  than the shop's own order is on, and the current one is in its name for a screen reader. */}
+              <label className={styles.sort} data-on={sort === 'shop' ? undefined : ''}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 4v16M7 20l-3.5-3.5M7 20l3.5-3.5M17 20V4M17 4l-3.5 3.5M17 4l3.5 3.5" />
+                </svg>
+                <select value={sort} aria-label={`${copy.sortLabel}: ${copy.sortNames[sort]}`} onChange={(event) => setSort(event.target.value as ShopSort)}>
                   {SHOP_SORTS.map((key) => (
                     <option key={key} value={key}>
                       {copy.sortNames[key]}

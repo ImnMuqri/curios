@@ -205,7 +205,8 @@
   opacity: 0.55;
 }
 
-/* The visitor's sort (owner, 26 Nov): a quiet line at the grid's right, the phone's own picker on tap. */
+/* The visitor's sort (owner, 26 Nov): a round icon at the grid's right; the native select lies over it,
+   invisible, so a tap opens the phone's own picker. Filled like a chosen chip while a sort is on. */
 .sortRow {
   display: flex;
   justify-content: flex-end;
@@ -213,33 +214,44 @@
 }
 
 .sort {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--page-soft);
-  font-size: 13px;
-  font-weight: 600;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--sheet-ring);
+  color: var(--page-fg);
+}
+
+.sort[data-on] {
+  background: var(--page-fg);
+  box-shadow: none;
+  color: var(--page-bg);
+}
+
+.sort svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .sort select {
-  height: 34px;
-  padding: 0 32px 0 14px;
-  border: 0;
-  border-radius: 999px;
-  background:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
-      right 11px center / 14px no-repeat,
-    var(--card);
-  box-shadow: inset 0 0 0 1px var(--sheet-ring);
-  color: var(--page-fg);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
   cursor: pointer;
 }
 
-.sort select:focus-visible {
+.sort:focus-within {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
