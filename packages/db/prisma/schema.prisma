@@ -442,6 +442,10 @@ model Link {
   /// What the player address is built from (a track id, a map query, a booking
   /// path), parsed from the pasted link by @curios/core/widgets; null on a LINK.
   embedRef String?
+  /// A Spotify card's title and cover, fetched once from Spotify's oEmbed when the widget is saved;
+  /// null for every other row, and when the fetch failed (the card then falls back to the label).
+  embedTitle String?
+  embedImage String?
 
   @@index([pageId, position])
 }
