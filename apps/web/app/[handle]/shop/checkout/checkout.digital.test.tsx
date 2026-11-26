@@ -112,6 +112,7 @@ describe('Checkout with digital items', () => {
     expect(JSON.parse(init.body as string)).toEqual({
       // Paid by the shop's QR first, so the receipt goes with the order.
       receipt: { contentType: 'image/jpeg', data: expect.any(String) },
+      placeKey: expect.any(String),
       lines: [{ itemId: 'class', optionId: null, quantity: 2, sessionId: 'time1' }],
       email: 'mira@example.com',
       customerName: 'Mira Hassan',

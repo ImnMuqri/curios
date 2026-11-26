@@ -10,6 +10,7 @@ import { ApiError, apiFetch } from '../../../../lib/api.js';
 import {
   basketMessage,
   basketNote,
+  paidMessage,
   defaultStorageKey,
   priceBasket,
   QUANTITY_MAX,
@@ -100,6 +101,12 @@ interface PlacedOrder {
 
 const goTo = (url: string) => window.location.assign(url);
 
+/** One checkout attempt's key: the API makes one order for it however many times it is sent. */
+function newPlaceKey(): string {
+  const made = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : null;
+  return made ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+}
+
 /** Where a refusal is said: under the field it is about, or above Place order. */
 type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'pickup' | 'email' | 'form'; message: string };
 
@@ -181,7 +188,12 @@ export function Checkout(props: CheckoutProps) {
   /** The receipt went because the total changed under it: the total to attach one for. */
   const [receiptGone, setReceiptGone] = useState<number | null>(null);
   /** The order was refused after the customer paid and attached a receipt: what happened, and the receipt stays. */
-  const [paidFail, setPaidFail] = useState<'prices' | 'other' | null>(null);
+  const [paidFail, setPaidFail] = useState<'prices' | 'other' | 'unsure' | null>(null);
+  // The key of the attempt in flight, and what it was an attempt at: a retry of the same thing reuses it (so a lost response
+  // never makes a second order), and any change to the order makes a new one.
+  const attempt = useRef<{ key: string; sig: string } | null>(null);
+  /** After a refusal for prices, the first change of total is the shelf coming back, not the customer changing the basket. */
+  const priceReload = useRef(false);
   const chip = props.chipMethods ?? null;
   const payByQr = props.payByQr ?? true;
   const top = useRef<HTMLDivElement>(null);
@@ -291,9 +303,16 @@ export function Checkout(props: CheckoutProps) {
   // The total moved (basket, voucher, delivery): a receipt for the old one is not for this order. After a refusal the customer
   // already paid, so it stays (paidFail) and the screen says what to do instead.
   useEffect(() => {
-    if (!receipt || receipt.forCents === totals.totalCents || paidFail) return;
+    if (!receipt || receipt.forCents === totals.totalCents) return;
+    if (paidFail === 'prices' && priceReload.current) {
+      // The shelf came back dearer: they paid the old total, so the receipt stays, with the notice about it.
+      priceReload.current = false;
+      return;
+    }
+    // The customer changed the basket: the receipt (and the notice about it) is for an order that is gone.
     setReceipt(null);
     setReceiptGone(totals.totalCents);
+    setPaidFail(null);
   }, [receipt, totals.totalCents, paidFail]);
 
   const flatFee = delivery.mode === 'FLAT' && delivery.feeCents ? formatRinggit(delivery.feeCents) : null;
@@ -364,6 +383,10 @@ export function Checkout(props: CheckoutProps) {
     setPricesChanged(false);
     setDeliveryOff(false);
     setPaidFail(null);
+    // The same attempt again keeps its key; anything the customer changed since makes it a new one.
+    const sig = JSON.stringify([priced.lines.map((l) => [l.itemId, l.optionId, l.quantity, l.sessionId ?? null]), totals.totalCents, how, method, day, placeId, windowId, name.trim(), sentPhone, address.trim(), email.trim(), note.trim(), typed && typedFits ? typed.label : null]);
+    if (attempt.current?.sig !== sig) attempt.current = { key: newPlaceKey(), sig };
+    const placeKey = attempt.current.key;
     // Going to CHIP: the button stays busy until the page is gone.
     let leaving = false;
     try {
@@ -374,6 +397,7 @@ export function Checkout(props: CheckoutProps) {
         {
           method: 'POST',
           body: JSON.stringify({
+            placeKey,
             ...(sentReceipt ? { receipt: sentReceipt } : {}),
             lines: priced.lines.map(({ itemId, optionId, quantity, sessionId }) => ({ itemId, optionId, quantity, ...(sessionId ? { sessionId } : {}) })),
             ...(digitalOnly ? {} : { method, day }),
@@ -391,6 +415,8 @@ export function Checkout(props: CheckoutProps) {
         },
       );
       changeLines([]);
+      // Done: the next order is a new attempt.
+      attempt.current = null;
       // Placed first, exactly as for the QR; paying online only follows. If it cannot
       // start, the order waits for the QR (or the shop's WhatsApp) like any other.
       let onlineUnavailable: PlacedOrder['onlineUnavailable'] = null;
@@ -456,7 +482,12 @@ export function Checkout(props: CheckoutProps) {
       top.current?.scrollIntoView?.();
     } catch (error) {
       // They have paid: whatever went wrong, the receipt stays in the form and the screen says to contact the shop with it.
-      if (qrFirst && receipt) setPaidFail(error instanceof ApiError && error.code === 'PRICES_CHANGED' ? 'prices' : 'other');
+      if (qrFirst && receipt) {
+        // No answer (offline, a timeout, a proxy error): the order may be made already, and sending again is safe (same key).
+        const unsure = !(error instanceof ApiError) || error.status === 0 || error.code === 'NETWORK' || error.status >= 500;
+        priceReload.current = error instanceof ApiError && error.code === 'PRICES_CHANGED';
+        setPaidFail(priceReload.current ? 'prices' : unsure ? 'unsure' : 'other');
+      }
       if (!(error instanceof ApiError)) {
         setProblem({ field: 'form', message: copy.failed });
       } else if (error.code === 'PRICES_CHANGED') {
@@ -927,6 +958,7 @@ export function Checkout(props: CheckoutProps) {
                 <PayBox name={props.displayName} qrUrl={props.qrUrl ?? null} bank={props.bank ?? { name: null, accountName: null, accountNumber: null }} copy={copy} />
                 <ReceiptPicker
                   copy={copy}
+                  disabled={sending}
                   file={receipt ? { name: receipt.file.name } : null}
                   hint={receiptHint}
                   hintId={receiptHintId}
@@ -986,9 +1018,15 @@ export function Checkout(props: CheckoutProps) {
           {paidFail ? (
             // They paid before ordering, so this is never only an error: it says not to pay again, and who to send the receipt to.
             <div ref={paidFailRef} className={styles.paidFail} role="status" tabIndex={-1}>
-              <p>{paidFail === 'prices' && receipt ? copy.paidPricesChanged(props.displayName, formatRinggit(receipt.forCents)) : copy.paidNotSent(props.displayName)}</p>
+              <p>
+                {paidFail === 'prices' && receipt
+                  ? copy.paidPricesChanged(props.displayName, formatRinggit(receipt.forCents))
+                  : paidFail === 'unsure'
+                    ? copy.paidMaybeSent(props.displayName)
+                    : copy.paidNotSent(props.displayName)}
+              </p>
               {props.whatsapp ? (
-                <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, basketMessage(props.displayName, priced, copy))} rel="noopener">
+                <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, paidMessage(props.displayName, priced, receipt?.forCents ?? totals.totalCents, copy))} rel="noopener">
                   {copy.whatsappAbout(props.displayName)}
                 </a>
               ) : (
@@ -1000,7 +1038,7 @@ export function Checkout(props: CheckoutProps) {
           {fallback ? (
             <div className={styles.pausedBar} role="status">
               <p>{fallback === 'paused' ? copy.paused(props.displayName) : copy.tooLarge(props.displayName)}</p>
-              {props.whatsapp ? (
+              {paidFail ? null : props.whatsapp ? (
                 <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, basketMessage(props.displayName, priced, copy))} rel="noopener">
                   {copy.orderOnWhatsApp}
                 </a>

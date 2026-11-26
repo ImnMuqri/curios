@@ -200,6 +200,8 @@ describe('Checkout', () => {
     expect(JSON.parse(init.body as string)).toEqual({
       // Paid by the shop's QR first: the receipt goes in the same request, so the order is made with it.
       receipt: { contentType: 'image/jpeg', data: expect.any(String) },
+      // One key per checkout attempt, so a retry after a lost response cannot make a second order.
+      placeKey: expect.stringMatching(/^[A-Za-z0-9_-]{16,64}$/),
       lines: [
         { itemId: 'cake', optionId: 'k2', quantity: 1 },
         { itemId: 'batik', optionId: null, quantity: 1 },
@@ -425,7 +427,9 @@ describe('Checkout', () => {
     await fillDetails(user);
     await user.click(placeButton('RM215'));
     expect(await screen.findByText(copy.tooLarge('Kek Lina'))).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: copy.orderOnWhatsApp }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60123456789\?text=/);
+    // They paid by QR first, so the notice about that carries the one WhatsApp link, not a second one from the bar.
+    expect(screen.getAllByRole('link', { name: /WhatsApp/ })).toHaveLength(1);
+    expect(screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60123456789\?text=/);
     expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
   });
 
@@ -437,9 +441,13 @@ describe('Checkout', () => {
     await fillDetails(user);
     await user.click(placeButton('RM215'));
     expect(await screen.findByText(copy.paused('Kek Lina'))).toBeInTheDocument();
-    const href = screen.getByRole('link', { name: copy.orderOnWhatsApp }).getAttribute('href') ?? '';
+    expect(screen.getAllByRole('link', { name: /WhatsApp/ })).toHaveLength(1);
+    const href = screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') }).getAttribute('href') ?? '';
     expect(href.startsWith('https://wa.me/60123456789?text=')).toBe(true);
-    expect(decodeURIComponent(href.split('?text=')[1] ?? '')).toContain('1 × Kek coklat moist (2kg) — RM170');
+    // What they paid, for what, and that the receipt follows: not the plain basket text.
+    const text = decodeURIComponent(href.split('?text=')[1] ?? '');
+    expect(text).toContain(copy.paidMessage('Kek Lina', 'RM215'));
+    expect(text).toContain('1 × Kek coklat moist (2kg)');
     expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
   });
 

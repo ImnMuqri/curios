@@ -261,7 +261,9 @@ describe('Checkout, paying first by the shop’s QR', () => {
     await user.click(send());
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
-    expect(screen.getByText(copy.paidNotSent('Kek Lina'))).toBeInTheDocument();
+    // No answer: it may have gone through, so it does not say it was not sent.
+    expect(screen.getByText(copy.paidMaybeSent('Kek Lina'))).toBeInTheDocument();
+    expect(screen.queryByText(copy.paidNotSent('Kek Lina'))).toBeNull();
     expect(screen.getByText(copy.paidContactLinks('Kek Lina'))).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: copy.whatsappAbout('Kek Lina') })).toBeNull();
     expect(screen.getByText('receipt.jpg')).toBeInTheDocument();
@@ -321,5 +323,122 @@ describe('Checkout, paying first by the shop’s QR', () => {
     await screen.findByText('Kek batik');
     expect(screen.queryByLabelText(new RegExp(copy.attachReceipt))).toBeNull();
     expect(screen.getByRole('button', { name: copy.placeOrder('RM0') })).toBeInTheDocument();
+  });
+});
+
+describe('Checkout, paying first: one attempt, one key', () => {
+  const keys = (spy: ReturnType<typeof api>) =>
+    spy.mock.calls.filter(([url]) => String(url).endsWith('/orders')).map((_, n) => orderBody(spy, n).placeKey as string);
+
+  it('a retry after a lost answer sends the same key, so the API makes one order', async () => {
+    const user = userEvent.setup();
+    let calls = 0;
+    const spy = vi.fn(async (url: string) => {
+      if (url.includes('/pay-methods')) return json(200, { fpx: true, wallets: [], card: true });
+      if (calls++ === 0) throw new TypeError('Failed to fetch');
+      return json(201, placed);
+    });
+    vi.stubGlobal('fetch', spy);
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+
+    // It may have gone through: the screen says so, that sending again is safe, and keeps Send order for the retry.
+    expect(await screen.findByText(copy.paidMaybeSent('Kek Lina'))).toBeInTheDocument();
+    expect(send()).toBeEnabled();
+    await user.click(send());
+    expect(await screen.findByRole('heading', { name: copy.orderSent })).toBeInTheDocument();
+    const [first, second] = keys(spy);
+    expect(first).toMatch(/^[A-Za-z0-9_-]{16,64}$/);
+    expect(second).toBe(first);
+  });
+
+  it('a 502 is as unsure as no answer', async () => {
+    const user = userEvent.setup();
+    api(() => json(502, { error: { code: 'BAD_GATEWAY', message: 'Bad gateway' } }));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    expect(await screen.findByText(copy.paidMaybeSent('Kek Lina'))).toBeInTheDocument();
+  });
+
+  it('a change to the order makes a new key', async () => {
+    const user = userEvent.setup();
+    const spy = api(() => json(409, { error: { code: 'ITEM_UNAVAILABLE', message: 'Gone.' } }));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    await screen.findByText(copy.paidNotSent('Kek Lina'));
+    // Same order again: same key.
+    await user.click(send());
+    await vi.waitFor(() => expect(keys(spy)).toHaveLength(2));
+    expect(keys(spy)[1]).toBe(keys(spy)[0]);
+
+    // A different address, name or basket is a different order.
+    await user.clear(screen.getByLabelText(copy.name));
+    await user.type(screen.getByLabelText(copy.name), 'Mira H');
+    await user.click(send());
+    await vi.waitFor(() => expect(keys(spy)).toHaveLength(3));
+    expect(keys(spy)[2]).not.toBe(keys(spy)[0]);
+  });
+
+  it('a placed order ends the attempt: the next order has its own key', async () => {
+    const user = userEvent.setup();
+    const spy = api(() => json(201, placed));
+    const first = render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    await screen.findByRole('heading', { name: copy.orderSent });
+    first.unmount();
+
+    window.sessionStorage.setItem(KEY, JSON.stringify([{ itemId: 'batik', optionId: null, quantity: 1 }]));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    await vi.waitFor(() => expect(keys(spy)).toHaveLength(2));
+    expect(keys(spy)[1]).not.toBe(keys(spy)[0]);
+  });
+
+  it('the basket changing after a refusal drops the receipt and says why, as before paying', async () => {
+    const user = userEvent.setup();
+    api(() => json(409, { error: { code: 'ITEM_UNAVAILABLE', message: 'Gone.' } }));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    await screen.findByText(copy.paidNotSent('Kek Lina'));
+    expect(screen.getByText('receipt.jpg')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: copy.oneMore }));
+    expect(screen.queryByText('receipt.jpg')).toBeNull();
+    expect(screen.getByText(copy.receiptTotalChanged('RM90'))).toBeInTheDocument();
+    // The notice said the file was still attached: it goes with the file.
+    expect(screen.queryByText(copy.paidNotSent('Kek Lina'))).toBeNull();
+    expect(send('RM90')).toBeDisabled();
+  });
+
+  it('holds the receipt box while the order is being sent', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => (String(url).includes('/pay-methods') ? json(200, { fpx: true, wallets: [], card: true }) : new Promise<Response>(() => {}))),
+    );
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    expect(screen.getByLabelText(copy.uploadDifferent)).toHaveAttribute('aria-disabled', 'true');
   });
 });
