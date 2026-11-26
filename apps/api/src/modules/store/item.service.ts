@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '@curios/db';
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, MAX_ITEMS, choiceCombos, itemChoicesOf, pricingProblem, type ItemChoices, type Pricing } from '@curios/core/store';
 import { itemSlug } from '@curios/core/slug';
 import { InvalidItemError, ItemHasBookingsError, ItemHasSalesError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError, StoreNotReadyError } from './store.errors.js';
 import { DIGITAL_COLUMNS, DIGITAL_RELATIONS, NO_DIGITAL, digitalDetail, hasBookings, resolveDigital, type DigitalDetail, type DigitalFields, type DigitalInput } from './digital-item.service.js';
@@ -23,7 +23,10 @@ export interface ItemRow extends DigitalFields, DigitalDetail {
   priceCents: number | null;
   /** An Ask item: an enquiry instead of a basket (HANDOFF "Shop: Ask items", 8 Nov 2026). */
   askForPrice: boolean;
+  /** Every option, in order: with choice groups, every combination, switched-off ones too. */
   options: { id: string; label: string; priceCents: number }[];
+  /** The choice groups, choices and combinations (with their on/off), or null on a plain options list or one price. */
+  choices: ItemChoices | null;
 }
 
 const DIGITAL_SELECT = DIGITAL_COLUMNS;
@@ -40,7 +43,10 @@ const SELECT = {
   available: true,
   priceCents: true,
   askForPrice: true,
-  options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+  options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true, available: true, choiceOneId: true, choiceTwoId: true } },
+  choiceGroupOne: true,
+  choiceGroupTwo: true,
+  choices: { orderBy: { position: 'asc' }, select: { id: true, group: true, label: true, position: true, photoId: true, photo: { select: { squareKey: true } } } },
   photos: { orderBy: { position: 'asc' }, select: OWNER_PHOTO_SELECT },
   ...DIGITAL_COLUMNS,
   ...DIGITAL_RELATIONS,
@@ -49,8 +55,14 @@ const SELECT = {
 type SelectedItem = Prisma.ItemGetPayload<{ select: typeof SELECT }>;
 
 function toRow(row: SelectedItem): ItemRow {
-  const { files: _files, sessions: _sessions, _count, photos, ...rest } = row;
-  return { ...rest, photos: photos.map(toOwnerPhoto), ...digitalDetail(row) };
+  const { files: _files, sessions: _sessions, _count, photos, options, choiceGroupOne: _one, choiceGroupTwo: _two, choices: _choices, ...rest } = row;
+  return {
+    ...rest,
+    options: options.map((o) => ({ id: o.id, label: o.label, priceCents: o.priceCents })),
+    choices: itemChoicesOf(row),
+    photos: photos.map(toOwnerPhoto),
+    ...digitalDetail(row),
+  };
 }
 
 function checkName(raw: string): string {
@@ -99,17 +111,69 @@ function slugRaced(error: unknown): boolean {
 function checkPricing(pricing: Pricing): Pricing {
   const problem = pricingProblem(pricing);
   if (problem) throw new InvalidItemError(problem);
-  return pricing.kind === 'options'
-    ? { kind: 'options', options: pricing.options.map((o) => ({ label: o.label.trim(), priceCents: o.priceCents })) }
-    : pricing;
+  if (pricing.kind === 'options') return { kind: 'options', options: pricing.options.map((o) => ({ label: o.label.trim(), priceCents: o.priceCents })) };
+  if (pricing.kind === 'choices') {
+    return {
+      ...pricing,
+      groupOne: { name: pricing.groupOne.name.trim(), choices: pricing.groupOne.choices.map((c) => ({ label: c.label.trim(), photoId: c.photoId ?? null })) },
+      ...(pricing.groupTwo ? { groupTwo: { name: pricing.groupTwo.name.trim(), choices: pricing.groupTwo.choices.map((c) => ({ label: c.label.trim() })) } } : {}),
+    };
+  }
+  return pricing;
 }
 
-/** The columns and nested options a pricing writes. Options are replaced whole, never patched. An Ask item has none. */
+type PlainOption = { label: string; priceCents: number; position: number };
+
+/** The columns and nested options a pricing writes. Options are replaced whole, never patched. An Ask item has none; a choices item's are written by writeOptions. */
 function pricingData(pricing: Pricing) {
-  const none = [] as { label: string; priceCents: number; position: number }[];
-  if (pricing.kind === 'single') return { priceCents: pricing.priceCents, askForPrice: false, options: none };
-  if (pricing.kind === 'ask') return { priceCents: pricing.fromCents, askForPrice: true, options: none };
-  return { priceCents: null, askForPrice: false, options: pricing.options.map((o, position) => ({ ...o, position })) };
+  const none = [] as PlainOption[];
+  const noGroups = { choiceGroupOne: null, choiceGroupTwo: null };
+  if (pricing.kind === 'single') return { priceCents: pricing.priceCents, askForPrice: false, options: none, choices: null, ...noGroups };
+  if (pricing.kind === 'ask') return { priceCents: pricing.fromCents, askForPrice: true, options: none, choices: null, ...noGroups };
+  if (pricing.kind === 'choices') {
+    return { priceCents: null, askForPrice: false, options: none, choices: pricing, choiceGroupOne: pricing.groupOne.name, choiceGroupTwo: pricing.groupTwo?.name ?? null };
+  }
+  return { priceCents: null, askForPrice: false, options: pricing.options.map((o, position) => ({ ...o, position })), choices: null, ...noGroups };
+}
+
+type PricingWrite = ReturnType<typeof pricingData>;
+
+/**
+ * Replaces an item's options and choices whole, inside the caller's transaction. With choices, each
+ * combination becomes an option labelled from its choices, and a photo must be one of this item's own.
+ */
+async function writeOptions(tx: Prisma.TransactionClient, itemId: string, write: PricingWrite): Promise<void> {
+  // Choices go first and take their combinations with them (Cascade); the rest are the plain options.
+  await tx.itemChoice.deleteMany({ where: { itemId } });
+  await tx.itemOption.deleteMany({ where: { itemId } });
+  const { choices } = write;
+  if (!choices) {
+    if (write.options.length > 0) await tx.itemOption.createMany({ data: write.options.map((o) => ({ ...o, itemId })) });
+    return;
+  }
+  const photoIds = [...new Set(choices.groupOne.choices.flatMap((c) => (c.photoId ? [c.photoId] : [])))];
+  if (photoIds.length > 0 && (await tx.itemPhoto.count({ where: { itemId, id: { in: photoIds } } })) !== photoIds.length) {
+    throw new InvalidItemError("Pick a photo from this item's own photos.");
+  }
+  const one: { id: string }[] = [];
+  for (const [position, c] of choices.groupOne.choices.entries()) {
+    one.push(await tx.itemChoice.create({ data: { itemId, group: 1, label: c.label, position, photoId: c.photoId ?? null }, select: { id: true } }));
+  }
+  const two: { id: string }[] = [];
+  for (const [position, c] of (choices.groupTwo?.choices ?? []).entries()) {
+    two.push(await tx.itemChoice.create({ data: { itemId, group: 2, label: c.label, position }, select: { id: true } }));
+  }
+  await tx.itemOption.createMany({
+    data: choiceCombos(choices).map((combo) => ({
+      itemId,
+      label: combo.label,
+      priceCents: combo.priceCents,
+      position: combo.position,
+      available: combo.available,
+      choiceOneId: one[combo.one]!.id,
+      choiceTwoId: combo.two === null ? null : two[combo.two]!.id,
+    })),
+  });
 }
 
 const ASK_PHYSICAL_ONLY = 'Only a physical item can ask for a price. A digital one is bought straight away.';
@@ -142,7 +206,8 @@ export async function addItem(
   const category = checkCategory(input.category ?? null);
   const tag = checkTag(input.tag ?? null);
   const sku = checkSku(input.sku ?? null);
-  const { priceCents, askForPrice, options } = pricingData(checkPricing(input.pricing));
+  const write = pricingData(checkPricing(input.pricing));
+  const { priceCents, askForPrice, choiceGroupOne, choiceGroupTwo } = write;
   const digital = resolveDigital(NO_DIGITAL, input);
   if (askForPrice && digital.kind !== 'PHYSICAL') throw new InvalidItemError(ASK_PHYSICAL_ONLY);
   const page = await storePageFor(prisma, accountId);
@@ -157,12 +222,14 @@ export async function addItem(
   for (let attempt = 0; ; attempt++) {
     const taken = new Set((await prisma.item.findMany({ where: { pageId: page.id }, select: { slug: true } })).map((row) => row.slug));
     try {
-      return toRow(
-        await prisma.item.create({
-          data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, sku, priceCents, askForPrice, position: count, options: { create: options }, ...digital },
-          select: SELECT,
-        }),
-      );
+      return await prisma.$transaction(async (tx) => {
+        const created = await tx.item.create({
+          data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, sku, priceCents, askForPrice, choiceGroupOne, choiceGroupTwo, position: count, ...digital },
+          select: { id: true },
+        });
+        await writeOptions(tx, created.id, write);
+        return toRow(await tx.item.findUniqueOrThrow({ where: { id: created.id }, select: SELECT }));
+      });
     } catch (error) {
       if (attempt >= 4 || !slugRaced(error)) throw error;
     }
@@ -187,6 +254,8 @@ export async function updateItem(
   if (pricing) {
     data.priceCents = pricing.priceCents;
     data.askForPrice = pricing.askForPrice;
+    data.choiceGroupOne = pricing.choiceGroupOne;
+    data.choiceGroupTwo = pricing.choiceGroupTwo;
   }
   const touchesDigital = (['kind', 'delivery', 'accessUrl', 'accessNote', 'sessionMinutes', 'sessionPlace', 'sessionWhere'] as const).some((key) => input[key] !== undefined);
 
@@ -201,8 +270,7 @@ export async function updateItem(
     const updated = await tx.item.updateMany({ where: { id, pageId: page.id }, data });
     if (updated.count !== 1) throw new ItemNotFoundError();
     if (pricing) {
-      await tx.itemOption.deleteMany({ where: { itemId: id } });
-      if (pricing.options.length > 0) await tx.itemOption.createMany({ data: pricing.options.map((o) => ({ ...o, itemId: id })) });
+      await writeOptions(tx, id, pricing);
     }
     const row = toRow(await tx.item.findUniqueOrThrow({ where: { id }, select: SELECT }));
     // Judged on the item as it now stands, so made digital while asking, or asking while digital, rolls back alike.

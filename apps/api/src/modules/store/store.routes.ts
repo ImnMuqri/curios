@@ -74,6 +74,13 @@ const pricing = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('single'), priceCents: z.number() }),
   z.object({ kind: z.literal('options'), options: z.array(z.object({ label: z.string().max(400), priceCents: z.number() })).max(100) }),
   z.object({ kind: z.literal('ask'), fromCents: z.number().nullable() }),
+  // Payload bounds only; choicesProblem owns every rule with a sentence.
+  z.object({
+    kind: z.literal('choices'),
+    groupOne: z.object({ name: z.string().max(400), choices: z.array(z.object({ label: z.string().max(400), photoId: z.string().max(64).nullable().optional() })).max(100) }),
+    groupTwo: z.object({ name: z.string().max(400), choices: z.array(z.object({ label: z.string().max(400) })).max(100) }).optional(),
+    combos: z.array(z.object({ one: z.number(), two: z.number().optional(), priceCents: z.number(), available: z.boolean() })).max(200),
+  }),
 ]);
 
 /** `x-photo-frame: <x>,<y>,<size>`. Anything else is a frame of NaNs, which frameProblem refuses with its sentence. */
