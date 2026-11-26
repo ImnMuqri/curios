@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, newOrderPush, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
 import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
 import { sealSecret } from '@curios/core/secret-box';
@@ -86,6 +86,11 @@ export interface PlaceInput {
    * already holding it (to check), never waiting for payment. Refused on an order that comes to RM0.
    */
   receipt?: { contentType: string; data: string } | null;
+  /**
+   * One checkout attempt's idempotency key, made by the browser. A repeat of the same key on this page (a retry after a
+   * lost response) returns the order already made, with the same link, instead of making a second.
+   */
+  placeKey?: string | null;
 }
 
 export interface Placed {
@@ -113,6 +118,12 @@ const SHELF_SELECT = {
   sessions: { select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
   _count: { select: { codes: { where: { orderLineId: null } } } },
 } as const;
+
+/**
+ * The order link's secret for an attempt that came with a key: derived from the page and the key, so a repeat can hand
+ * back the same link (only its hash is stored). The key is the browser's random UUID, as unguessable as the random token.
+ */
+const tokenFor = (pageId: string, placeKey: string) => createHash('sha256').update(`curios-order-token:${pageId}:${placeKey}`).digest('base64url');
 
 /** Enough to catch a typo; the mail server says the rest. */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -162,7 +173,20 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     throw new OrderDateError();
   }
 
-  const token = randomBytes(32).toString('base64url');
+  const placeKey = input.placeKey ?? null;
+  const token = placeKey ? tokenFor(found.id, placeKey) : randomBytes(32).toString('base64url');
+
+  // A repeat of an attempt that already went through: the same order again, with nothing new made, stored or sent.
+  const already = async () => {
+    if (!placeKey) return null;
+    const order = await deps.prisma.order.findUnique({
+      where: { pageId_placeKey: { pageId: found.id, placeKey } },
+      select: { number: true, code: true, totalCents: true },
+    });
+    return order ? { number: order.number, code: order.code, token, totalCents: order.totalCents } : null;
+  };
+  const repeat = await already();
+  if (repeat) return repeat;
 
   // Stored before the transaction, never inside it (a slow bucket would hold the page lock). Random, so the URL
   // cannot be guessed. If the placement is refused or fails, the file is removed below: nothing points at it.
@@ -280,6 +304,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         number,
         code,
         tokenHash: hashSessionValue(token),
+        placeKey,
         tokenSealed: deps.secretsKey ? sealSecret(token, deps.secretsKey) : null,
         customerName,
         phone,
@@ -359,8 +384,15 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   }, { maxWait: 10_000, timeout: 10_000 }).catch(async (error: unknown) => {
     // Nothing points at the stored receipt now: it would be unreachable, and unremoved.
     if (receiptKey) await deps.store?.remove(receiptKey).catch(() => undefined);
+    // The same attempt landed first, in a request running at the same time: its order is the answer.
+    if (placeKey && typeof error === 'object' && error !== null && (error as { code?: string }).code === 'P2002') {
+      const first = await already();
+      if (first) return first;
+    }
     throw error;
   });
+  // Only the concurrent duplicate comes back as a finished placement.
+  if ('token' in placed) return placed;
 
   // After the commit, never inside it: the order is placed whether or not the
   // email can be queued, and a queued email must never announce an order a

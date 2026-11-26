@@ -108,6 +108,8 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           pickupWindowId: z.string().min(1).max(64).nullable().optional(),
           // Paying first by the owner's QR or bank: its receipt, checked as the receipt upload checks it.
           receipt: z.object({ contentType: z.string().max(40), data: z.string().max(7_000_000) }).nullable().optional(),
+          // One checkout attempt's key: a retry after a lost response returns the same order.
+          placeKey: z.string().min(16).max(64).regex(/^[A-Za-z0-9_-]+$/).nullable().optional(),
         }),
         response: {
           201: z.object({ number: z.number(), code: z.string(), token: z.string(), totalCents: z.number() }),

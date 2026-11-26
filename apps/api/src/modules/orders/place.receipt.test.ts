@@ -225,3 +225,80 @@ describe('POST /store/:handle/orders with a receipt', () => {
     expect(mailQueue.add.mock.calls[0]![1].subject).toBe('New order #1 · RM170');
   });
 });
+
+describe('POST /store/:handle/orders with a placeKey (a retry after a lost response)', () => {
+  const key = () => randomUUID();
+
+  it('the same key twice is one order: the second answer is the first, nothing more is stored, sent or counted', async () => {
+    const shop = await aShop();
+    const placeKey = key();
+    const first = await place(shop, aBasket(shop, { placeKey }));
+    expect(first.statusCode).toBe(201);
+    const second = await place(shop, aBasket(shop, { placeKey }));
+
+    expect(second.statusCode).toBe(201);
+    expect(second.json()).toEqual(first.json());
+    expect(await rows(shop)).toHaveLength(1);
+    expect((await rows(shop))[0]!.tokenHash).toBe(hashSessionValue(first.json().token));
+    expect((await app.prisma.page.findUniqueOrThrow({ where: { id: shop.pageId } })).ordersPlaced).toBe(1);
+    // One file kept, no second one made; one email and one push.
+    expect(store.put).toHaveBeenCalledTimes(1);
+    expect(store.remove).not.toHaveBeenCalled();
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    expect(pushQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('two at the same time: one order, one file kept, the other deleted, and both are told the same order', async () => {
+    const shop = await aShop();
+    const placeKey = key();
+    const [a, b] = await Promise.all([place(shop, aBasket(shop, { placeKey })), place(shop, aBasket(shop, { placeKey }))]);
+
+    expect([a.statusCode, b.statusCode]).toEqual([201, 201]);
+    expect(a.json()).toEqual(b.json());
+    const [order] = await rows(shop);
+    expect(await rows(shop)).toHaveLength(1);
+    const kept = order!.receiptKey;
+    const stored = store.put.mock.calls.map((call) => call[0] as string);
+    const removed = store.remove.mock.calls.map((call) => call[0] as string);
+    expect(stored).toContain(kept);
+    // Every file stored beyond the kept one was removed.
+    expect(stored.filter((k) => k !== kept).sort()).toEqual(removed.sort());
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('a different key is a different order', async () => {
+    const shop = await aShop();
+    const a = await place(shop, aBasket(shop, { placeKey: key() }));
+    const b = await place(shop, aBasket(shop, { placeKey: key() }));
+    expect(a.json().token).not.toBe(b.json().token);
+    expect(await rows(shop)).toHaveLength(2);
+  });
+
+  it('works for an order with no receipt, and the same key on another shop is its own order', async () => {
+    const one = await aShop();
+    const two = await aShop();
+    const placeKey = key();
+    const { receipt: _r, ...plain } = aBasket(one);
+    const a = await place(one, { ...plain, placeKey });
+    const again = await place(one, { ...plain, placeKey });
+    expect(again.json()).toEqual(a.json());
+    expect(await rows(one)).toHaveLength(1);
+    const { receipt: _r2, ...plain2 } = aBasket(two);
+    expect((await place(two, { ...plain2, placeKey })).statusCode).toBe(201);
+    expect(await rows(two)).toHaveLength(1);
+  });
+
+  it('a refused attempt leaves the key free, so the retry with it can still place the order', async () => {
+    const shop = await aShop();
+    const placeKey = key();
+    expect((await place(shop, aBasket(shop, { placeKey, seenTotalCents: 99 }))).statusCode).toBe(409);
+    expect((await place(shop, aBasket(shop, { placeKey }))).statusCode).toBe(201);
+    expect(await rows(shop)).toHaveLength(1);
+  });
+
+  it('refuses a key that is too short or has odd characters', async () => {
+    const shop = await aShop();
+    expect((await place(shop, aBasket(shop, { placeKey: 'abc' }))).statusCode).toBe(400);
+    expect((await place(shop, aBasket(shop, { placeKey: 'a'.repeat(20) + '!' }))).statusCode).toBe(400);
+  });
+});

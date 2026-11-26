@@ -1071,6 +1071,8 @@ model Order {
   /// hashSessionValue of the order link's secret. Only the hash is stored, so
   /// a database read cannot open anybody's order page.
   tokenHash          String         @unique
+  /// The checkout attempt's idempotency key (client-made, per page): a repeat of the same placement returns this order instead of making a second. Null for orders placed without one.
+  placeKey           String?
   /// The order token sealed with PAYMENT_SECRETS_KEY (sealSecret), so later emails can carry the order link. Null where there is no key.
   tokenSealed        String?
   customerName       String
@@ -1154,6 +1156,7 @@ model Order {
 
   @@unique([pageId, number])
   @@unique([pageId, code])
+  @@unique([pageId, placeKey])
   @@index([pageId, createdAt])
   @@index([voucherId])
   @@index([pickupWindowId, day])
