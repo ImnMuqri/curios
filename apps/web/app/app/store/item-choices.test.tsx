@@ -178,13 +178,21 @@ describe('ItemEditor, choices inside options', () => {
     expect((lastPricing(calls) as { groupOne: { choices: { photoId?: string }[] } }).groupOne.choices[0]!.photoId).toBe('p1');
   });
 
-  it('a pending save is dropped when the draft turns invalid', async () => {
+  it('after the list is made, focus is on "+ Add a choice group", with a hint that it brings the groups back', () => {
+    show(cake);
+    fireEvent.click(screen.getByRole('button', { name: 'Use a plain list of options instead' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, make it a list' }));
+    expect(screen.getByRole('button', { name: '+ Add a choice group' })).toHaveFocus();
+    expect(screen.getByText(/Brings back the groups/)).toBeInTheDocument();
+  });
+
+  it('an invalid edit leaves the last valid save waiting', async () => {
     vi.useFakeTimers();
     const { calls } = show(cake);
     type('Name', 'Kek lapis');
     type('Vanilla, 500g price', '0');
     await pause();
-    expect(calls.update).not.toHaveBeenCalled();
+    expect(calls.update).toHaveBeenCalledWith('k', expect.objectContaining({ name: 'Kek lapis' }));
   });
 
   it('goes back to a plain list of the combinations on sale', async () => {

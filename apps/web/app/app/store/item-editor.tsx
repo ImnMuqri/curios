@@ -162,6 +162,7 @@ export function ItemEditor({
   const listId = useId();
   // The groups just turned into a plain list, with the list they became (compared by identity: any edit to the list makes a new one).
   const [shelved, setShelved] = useState<{ choices: NonNullable<PricingDraft['choices']>; options: PricingDraft['options'] } | null>(null);
+  const addGroup = useRef<HTMLButtonElement>(null);
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const nameRef = useRef<HTMLInputElement>(null);
@@ -170,6 +171,13 @@ export function ItemEditor({
   const creating = useRef<Promise<EditorItem> | null>(null);
   const savedRef = useRef(saved);
   savedRef.current = saved;
+
+  const canRestore = !!shelved && !draft.choices && shelved.options === draft.options;
+  // "Yes, make it a list" removes the button that had focus: put it on the way back.
+  useEffect(() => {
+    if (shelved && !draft.choices) addGroup.current?.focus();
+    // Only when the groups are shelved, not on every edit of the list after.
+  }, [shelved]);
 
   const asking = digital.kind !== 'DIGITAL' && draft.ask === true;
   const photoIds = (saved?.photos ?? []).map((photo) => photo.id);
@@ -262,11 +270,7 @@ export function ItemEditor({
     const fields = checkFields(nextName, nextDescription, pricingFor(nextDraft, nextDigital), { category: nextCategory, tag: nextTag, sku: nextSku, photoIds: (savedRef.current?.photos ?? []).map((photo) => photo.id) });
     const kinds = checkDigital(nextDigital);
     // A digital item that is not yet complete (no link, no length) is not sent: it would be saved as the wrong thing.
-    if ('error' in fields || 'error' in kinds) {
-      // What is on screen is not an item: a save waiting from before would send a half-edited one.
-      autosave.cancel();
-      return;
-    }
+    if ('error' in fields || 'error' in kinds) return;
     const wasDigital = savedRef.current?.kind === 'DIGITAL';
     autosave.schedule(nextDigital.kind === 'DIGITAL' || wasDigital ? { ...fields, digital: kinds.fields } : fields);
   }
@@ -587,9 +591,10 @@ export function ItemEditor({
                 ) : (
                   <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
                 )}
-                <button type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: shelved && shelved.options === draft.options ? shelved.choices : startChoices(draft.options) } })}>
+                <button ref={addGroup} type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: canRestore ? shelved!.choices : startChoices(draft.options) } })}>
                   + Add a choice group
                 </button>
+                {canRestore ? <p className={ui.note}>Brings back the groups you just turned into a list.</p> : null}
               </>
             )}
 

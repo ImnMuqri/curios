@@ -179,7 +179,7 @@ export function AutoRenewCard({
           </div>
         )}
         {error ? (
-          <div className={styles.errorRow}>
+          <div className={styles.renewError}>
             <Callout tone="error">{error}</Callout>
           </div>
         ) : null}

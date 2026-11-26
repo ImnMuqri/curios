@@ -98,7 +98,7 @@ export function addGroupTwo(c: ChoicesDraft): ChoicesDraft {
 
 /**
  * "Same price for every ..." on or off. On seeds the shared prices from the first row and touches nothing else (on or off stays
- * per combination). Off gives every row back the price it had; only a row with none takes the shared one.
+ * per combination). Off gives every row back its own price, unless the shared price was changed while ticked: then that price is kept for the column.
  */
 export function setSame(c: ChoicesDraft, same: boolean): ChoicesDraft {
   if (!c.two || same === c.same) return c;
@@ -107,10 +107,14 @@ export function setSame(c: ChoicesDraft, same: boolean): ChoicesDraft {
     const first = c.one[0];
     for (const t of c.two) cells[cellKey('*', t.key)] = { price: first ? (c.cells[cellKey(first.key, t.key)]?.price ?? '') : '', available: true };
   } else {
-    for (const o of c.one) {
-      for (const t of c.two) {
+    const first = c.one[0];
+    for (const t of c.two) {
+      const shared = c.cells[cellKey('*', t.key)]?.price ?? '';
+      // The shared price still being what the tick set (the first row's own) means it was not touched: every row gets its own back.
+      const untouched = !first || shared === (c.cells[cellKey(first.key, t.key)]?.price ?? '');
+      for (const o of c.one) {
         const own = c.cells[cellKey(o.key, t.key)];
-        cells[cellKey(o.key, t.key)] = { price: own?.price.trim() ? own.price : (c.cells[cellKey('*', t.key)]?.price ?? ''), available: own?.available ?? true };
+        cells[cellKey(o.key, t.key)] = { price: untouched && own?.price.trim() ? own.price : shared, available: own?.available ?? true };
       }
     }
   }

@@ -177,10 +177,12 @@ describe('choices', () => {
     expect(cellOf(c, ...k(1, 1))).toEqual({ price: '80', available: true });
     const shared = { ...c, cells: { ...c.cells, [cellKey('*', c.two![1]!.key)]: { price: '70', available: true } } };
     expect(cellOf(shared, ...k(1, 1)).price).toBe('70');
-    // Unticking gives each row the price it had; the shared edit does not overwrite them.
+    // A shared price changed while ticked is kept on untick, for every row of its column; the other column gets its own prices back.
     const back = setSame(shared, false);
-    expect(cellOf(back, ...k(0, 1))).toEqual({ price: '80', available: false });
-    expect(cellOf(back, ...k(1, 1))).toEqual({ price: '90', available: true });
+    expect(cellOf(back, ...k(0, 1))).toEqual({ price: '70', available: false });
+    expect(cellOf(back, ...k(1, 1))).toEqual({ price: '70', available: true });
+    expect(cellOf(back, ...k(1, 0)).price).toBe('50');
+    expect(cellOf(back, ...k(0, 0)).price).toBe('45');
     // A tick and an untick with no edit is a round trip.
     const trip = setSame(setSame(original, true), false);
     for (const o of original.one) for (const t of original.two!) expect(cellOf(trip, o.key, t.key)).toEqual(cellOf(original, o.key, t.key));

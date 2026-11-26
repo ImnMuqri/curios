@@ -407,6 +407,15 @@
   flex-basis: 100%;
 }
 
+/* Auto-renew's failed try: a gap under the buttons, and none below it at the card's foot. */
+.renewError {
+  margin-top: 12px;
+}
+
+.renewError > * {
+  margin-bottom: 0;
+}
+
 .buttons > p {
   flex-basis: 100%;
   margin: 0;
