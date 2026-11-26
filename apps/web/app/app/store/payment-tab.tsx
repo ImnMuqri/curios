@@ -296,7 +296,7 @@ export function PaymentTab({
       <OnlinePayments chip={chip} chipApi={chipApi} onChip={onChip} displayName={displayName} now={now} navigate={navigate} />
 
       <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="qr-title">
-        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it on their order page, with the exact total shown. No CHIP fee." />
+        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it at checkout, with the exact total shown, and send their receipt with the order. No CHIP fee." />
         {qr.has ? (
           <div className={styles.qrCard}>
             <span className={styles.qrBox}>
@@ -307,7 +307,7 @@ export function PaymentTab({
             <span className={styles.qrText}>
               <span className={styles.rowCopy}>
                 <b>Your QR is ready</b>
-                <p>{displayName} · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.</p>
+                <p>{displayName} · DuitNow. Checkout shows it with the exact total, so customers pay the right amount.</p>
               </span>
               <span className={styles.buttons}>
                 <button type="button" className={styles.outline} disabled={!uploadsEnabled} onClick={() => file.current?.click()}>

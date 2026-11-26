@@ -133,9 +133,9 @@ describe('PaymentTab, the QR', () => {
 
   it('says where customers see the QR, in the board’s words', () => {
     show({}, { qr: { has: true, url: null } });
-    expect(screen.getByText('Customers scan it on their order page, with the exact total shown. No CHIP fee.')).toBeInTheDocument();
+    expect(screen.getByText('Customers scan it at checkout, with the exact total shown, and send their receipt with the order. No CHIP fee.')).toBeInTheDocument();
     expect(screen.getByText('Your QR is ready')).toBeInTheDocument();
-    expect(screen.getByText('Kek Lina · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.')).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina · DuitNow. Checkout shows it with the exact total, so customers pay the right amount.')).toBeInTheDocument();
   });
 
   it('says uploads are off, while the bank fields still work', () => {
