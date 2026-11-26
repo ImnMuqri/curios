@@ -296,6 +296,8 @@
   --on-photo: #ffffff;
   /* The tile a bank's logo sits on: white whatever the theme, so a dark mark still reads in the dark theme. */
   --logo-tile: #ffffff;
+  /* FPX's white mark sits on its own navy, whatever the theme. */
+  --logo-tile-navy: #1c2a4a;
 }
 
 /*

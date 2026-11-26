@@ -811,7 +811,7 @@
 }
 
 .markNavy {
-  background: #1c2a4a;
+  background: var(--logo-tile-navy);
 }
 
 .subHead {
