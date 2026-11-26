@@ -1,8 +1,8 @@
 import type { Prisma, PrismaClient, WidgetProvider as DbWidgetProvider } from '@curios/db';
 import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, positionsAfterAdd, type TileSize } from '@curios/core/bento';
-import { parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
+import { hasCard, parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
-import type { FetchSpotifyCard } from './spotify-card.js';
+import type { FetchWidgetCard } from './widget-card.js';
 
 export class InvalidLinkError extends Error {
   readonly statusCode = 400;
@@ -64,10 +64,10 @@ export type LinkRow = {
 };
 export type ResolveShort = (url: string) => Promise<string | null>;
 
-/** The card a widget row draws: only Spotify has one, every other row (and a failed fetch) keeps both null. */
-async function cardFor(provider: DbWidgetProvider, embedRef: string, card: FetchSpotifyCard): Promise<{ embedTitle: string | null; embedImage: string | null }> {
-  if (provider !== 'SPOTIFY') return { embedTitle: null, embedImage: null };
-  const { title, image } = await card(embedRef);
+/** The card a widget row draws: only Spotify and Apple Music have one, every other row (and a failed fetch) keeps both null. */
+async function cardFor(provider: DbWidgetProvider, embedRef: string, card: FetchWidgetCard): Promise<{ embedTitle: string | null; embedImage: string | null }> {
+  if (!hasCard(provider)) return { embedTitle: null, embedImage: null };
+  const { title, image } = await card(provider, embedRef);
   return { embedTitle: title, embedImage: image };
 }
 
@@ -160,7 +160,7 @@ export async function addWidget(
   accountId: string,
   input: { url: string; label: string | null },
   resolve: ResolveShort,
-  card: FetchSpotifyCard = async () => ({ title: null, image: null }),
+  card: FetchWidgetCard = async () => ({ title: null, image: null }),
 ): Promise<LinkRow> {
   const pageId = await pageIdFor(prisma, accountId);
   const url = input.url.trim();
@@ -187,7 +187,7 @@ export async function updateLink(
   id: string,
   input: { label?: string; url?: string; size?: TileSize | null },
   resolve: ResolveShort = async () => null,
-  card: FetchSpotifyCard = async () => ({ title: null, image: null }),
+  card: FetchWidgetCard = async () => ({ title: null, image: null }),
 ): Promise<LinkRow> {
   const pageId = await pageIdFor(prisma, accountId);
   const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true, provider: true } });
@@ -206,7 +206,7 @@ export async function updateLink(
     if (existing.kind === 'WIDGET') {
       data.url = input.url.trim();
       const parsed = await parseWidget(data.url, resolve);
-      // A new address means a new card; a row that stopped being Spotify loses the old one.
+      // A new address means a new card; a row that stopped being a card loses the old one.
       Object.assign(data, parsed, await cardFor(parsed.provider, parsed.embedRef, card));
     } else {
       data.url = checkUrl(input.url);

@@ -4,7 +4,7 @@ import { TILE_SIZES } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { createHostGuard, type HostGuard } from '../ingest/host-guard.js';
 import { resolveShortLink } from './widget-resolve.js';
-import { fetchSpotifyCard, type FetchSpotifyCard } from './spotify-card.js';
+import { fetchWidgetCard, type FetchWidgetCard } from './widget-card.js';
 import { addLink, addWidget, listLinks, removeLink, reorderLinks, updateLink } from './link.service.js';
 
 // Payload bounds only. Every rule an owner can break is checked in the service,
@@ -17,14 +17,14 @@ export interface LinkRouteOptions {
   /** Tests inject this; the real one fetches the short link through the host guard. */
   resolve?: (url: string) => Promise<string | null>;
   guard?: HostGuard;
-  /** Tests inject this; the real one asks Spotify's oEmbed for the card's title and cover. */
-  card?: FetchSpotifyCard;
+  /** Tests inject this; the real one asks the service's own lookup for the card's title and cover. */
+  card?: FetchWidgetCard;
 }
 
 export const linkRoutes: FastifyPluginAsyncZod<LinkRouteOptions> = async (app, options) => {
   const guard = options.guard ?? createHostGuard();
   const resolve = options.resolve ?? ((target: string) => resolveShortLink(target, { fetch, guard }));
-  const card = options.card ?? ((embedRef: string) => fetchSpotifyCard(embedRef, { fetch }));
+  const card = options.card ?? ((provider, embedRef) => fetchWidgetCard(provider, embedRef, { fetch }));
 
   app.get('/links', async (request) => {
     if (!request.account) throw new UnauthenticatedError();

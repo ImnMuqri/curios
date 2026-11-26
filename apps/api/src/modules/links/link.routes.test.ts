@@ -601,6 +601,14 @@ describe('the Spotify card on a widget', () => {
     cardAnswer = { title: null, image: null };
   });
 
+  it('gives an Apple Music widget a card too', async () => {
+    const owner = await anOwner();
+    cardAnswer = { title: 'After Hours', image: 'https://is1-ssl.mzstatic.com/x/300x300bb.jpg' };
+    const res = await call(owner.cookie, 'POST', '/links/widgets', { url: 'https://music.apple.com/us/album/after-hours/1499378108', label: null });
+    expect(res.json().link).toMatchObject({ provider: 'APPLE_MUSIC', embedTitle: 'After Hours', embedImage: 'https://is1-ssl.mzstatic.com/x/300x300bb.jpg' });
+    cardAnswer = { title: null, image: null };
+  });
+
   it('fetches again when the address changes, and clears the card when the row stops being Spotify', async () => {
     const owner = await anOwner();
     cardAnswer = { title: 'First', image: 'https://i.scdn.co/image/one' };

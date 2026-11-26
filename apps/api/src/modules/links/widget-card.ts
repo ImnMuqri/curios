@@ -1,16 +1,20 @@
-import { spotifyOpenUrl } from '@curios/core/widgets';
+import { appleLookup, widgetOpenUrl, type WidgetProvider } from '@curios/core/widgets';
 
 const TIMEOUT_MS = 3000;
 const MAX_BYTES = 64 * 1024;
 const TITLE_MAX = 200;
 
-export type SpotifyCard = { title: string | null; image: string | null };
-export type FetchSpotifyCard = (embedRef: string) => Promise<SpotifyCard>;
+export type WidgetCard = { title: string | null; image: string | null };
+export type FetchWidgetCard = (provider: WidgetProvider, embedRef: string) => Promise<WidgetCard>;
 
-const NONE: SpotifyCard = { title: null, image: null };
+const NONE: WidgetCard = { title: null, image: null };
 
-/** A cover is kept only when it is a plain https address on one of Spotify's own image hosts. */
-function coverOk(raw: unknown): string | null {
+type HostOk = (host: string) => boolean;
+const spotifyHost: HostOk = (h) => h === 'i.scdn.co' || h.endsWith('.scdn.co') || h.endsWith('.spotifycdn.com');
+const appleHost: HostOk = (h) => h.endsWith('.mzstatic.com');
+
+/** A cover is kept only when it is a plain https address on one of the service's own image hosts. */
+function coverOk(raw: unknown, hostOk: HostOk): string | null {
   if (typeof raw !== 'string') return null;
   let u: URL;
   try {
@@ -19,8 +23,7 @@ function coverOk(raw: unknown): string | null {
     return null;
   }
   if (u.protocol !== 'https:' || u.username !== '' || u.password !== '' || u.port !== '') return null;
-  const h = u.hostname;
-  return h === 'i.scdn.co' || h.endsWith('.scdn.co') || h.endsWith('.spotifycdn.com') ? u.toString() : null;
+  return hostOk(u.hostname) ? u.toString() : null;
 }
 
 /** The body as text, or null when it runs past MAX_BYTES (the rest is never read). */
@@ -42,31 +45,59 @@ async function readCapped(res: Response): Promise<string | null> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+/** The name Apple's lookup gives the item: a song's, else an album's, else an artist's. */
+function appleTitle(r: Record<string, unknown>): unknown {
+  return r.trackName ?? r.collectionName ?? r.artistName;
+}
+
 /**
- * The title and cover for a Spotify card, from Spotify's public oEmbed, asked once when the widget is saved.
- * The address is built from the stored ref, so the host is fixed and needs no private-address guard.
- * Anything that goes wrong -- a network error, a timeout, a redirect, a non-200, a big or odd body -- is
- * two nulls: the card then falls back to the owner's label and the Spotify mark, and the save goes on.
+ * Asks the service's public lookup for `url`, once, and returns the JSON object it answers with, or null:
+ * no redirects, a short timeout, a capped body, and nothing but a plain object counts.
  */
-export async function fetchSpotifyCard(embedRef: string, deps: { fetch: typeof fetch }): Promise<SpotifyCard> {
+async function lookup(url: string, deps: { fetch: typeof fetch }): Promise<Record<string, unknown> | null> {
+  const res = await deps.fetch(url, { redirect: 'manual', signal: AbortSignal.timeout(TIMEOUT_MS), headers: { accept: 'application/json' } });
+  if (res.status !== 200) {
+    await res.body?.cancel().catch(() => undefined);
+    return null;
+  }
+  const text = await readCapped(res);
+  if (text === null) return null;
+  const data: unknown = JSON.parse(text);
+  return typeof data === 'object' && data !== null && !Array.isArray(data) ? (data as Record<string, unknown>) : null;
+}
+
+const cleanTitle = (title: unknown): string | null => {
+  const t = typeof title === 'string' ? title.trim().slice(0, TITLE_MAX).trim() : '';
+  return t === '' ? null : t;
+};
+
+/**
+ * The title and cover for a card (Spotify or Apple Music), from the service's public lookup, asked once when
+ * the widget is saved. The address is built from the stored ref, so the host is fixed and needs no
+ * private-address guard. Anything that goes wrong -- a network error, a timeout, a redirect, a non-200, a big
+ * or odd body, a playlist Apple cannot look up -- is two nulls: the card then falls back to the owner's label
+ * and the service's mark, and the save goes on.
+ */
+export async function fetchWidgetCard(provider: WidgetProvider, embedRef: string, deps: { fetch: typeof fetch }): Promise<WidgetCard> {
   try {
-    const canonical = spotifyOpenUrl(embedRef);
-    const res = await deps.fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(canonical)}`, {
-      redirect: 'manual',
-      signal: AbortSignal.timeout(TIMEOUT_MS),
-      headers: { accept: 'application/json' },
-    });
-    if (res.status !== 200) {
-      await res.body?.cancel().catch(() => undefined);
-      return NONE;
+    if (provider === 'SPOTIFY') {
+      const canonical = widgetOpenUrl('SPOTIFY', embedRef);
+      const data = await lookup(`https://open.spotify.com/oembed?url=${encodeURIComponent(canonical)}`, deps);
+      return data ? { title: cleanTitle(data.title), image: coverOk(data.thumbnail_url, spotifyHost) } : NONE;
     }
-    const text = await readCapped(res);
-    if (text === null) return NONE;
-    const data: unknown = JSON.parse(text);
-    if (typeof data !== 'object' || data === null || Array.isArray(data)) return NONE;
-    const { title, thumbnail_url } = data as { title?: unknown; thumbnail_url?: unknown };
-    const trimmed = typeof title === 'string' ? title.trim().slice(0, TITLE_MAX).trim() : '';
-    return { title: trimmed === '' ? null : trimmed, image: coverOk(thumbnail_url) };
+    if (provider === 'APPLE_MUSIC') {
+      widgetOpenUrl('APPLE_MUSIC', embedRef);
+      const found = appleLookup(embedRef);
+      if (!found) return NONE;
+      const data = await lookup(`https://itunes.apple.com/lookup?id=${found.id}&country=${found.country}`, deps);
+      const results = data?.results;
+      const first: unknown = Array.isArray(results) ? results[0] : null;
+      if (typeof first !== 'object' || first === null) return NONE;
+      const r = first as Record<string, unknown>;
+      const art = typeof r.artworkUrl100 === 'string' ? r.artworkUrl100.replace('100x100', '300x300') : null;
+      return { title: cleanTitle(appleTitle(r)), image: coverOk(art, appleHost) };
+    }
+    return NONE;
   } catch {
     return NONE;
   }
