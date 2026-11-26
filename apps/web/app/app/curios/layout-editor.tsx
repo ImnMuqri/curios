@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { Callout } from '@curios/ui';
+import { cssZoom } from '../../../lib/css-zoom.js';
 import { arrangeTiles, type PageEntry, type PageLayout, type TileSize } from '@curios/core/bento';
 import { WIDGET_NAMES, minWidgetSize } from '@curios/core/widgets';
 import { Segmented } from '../_ui/segmented.js';
@@ -50,10 +51,18 @@ export function edgeScroll(y: number, viewportHeight: number): number {
 type Drag = { id: string; by: 'key' | 'pointer'; draft: LayoutEntry[]; pointerId?: number };
 
 /** What a pointer drag measures once, at the lift, in document coordinates (so a scrolling page does not matter). */
-type Geometry = { ids: string[]; from: number; tops: number[]; heights: number[]; gap: number; startY: number };
+type Geometry = { ids: string[]; from: number; tops: number[]; heights: number[]; gap: number; startY: number; listTop: number };
 
 const reducedMotion = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-const lowered = (dy: number) => `translate3d(0, ${dy}px, 0)`;
+/** A translate of `dy` window pixels, written in the element's own CSS pixels (CSS zoom shrinks it again). */
+const lowered = (element: Element, dy: number) => `translate3d(0, ${dy / cssZoom(element)}px, 0)`;
+
+/** A row's top and height in window pixels as laid out: its transform still counted, the lift's scale not. */
+function flat(element: Element) {
+  const box = element.getBoundingClientRect();
+  const scale = parseFloat(getComputedStyle(element).scale) || 1;
+  return { top: box.top + (box.height * (1 - 1 / scale)) / 2, height: box.height / scale };
+}
 
 /**
  * The Layout tab: everything on the page in the order visitors see it -- links, widgets, the shop
@@ -151,13 +160,15 @@ export function LayoutEditor({
     const glide: HTMLLIElement[] = [];
     const park = (element: HTMLLIElement, offset: number) => {
       element.style.transition = 'none';
-      element.style.transform = offset ? lowered(offset) : '';
-      glide.push(element);
+      element.style.transform = offset ? lowered(element, offset) : '';
+      if (!glide.includes(element)) glide.push(element);
     };
     if (from && !quick) {
+      // Measure where each row now lies with no glide still in flight, and glide from where it was seen.
+      for (const element of rows.current.values()) park(element, 0);
       for (const [id, top] of from) {
         const element = rows.current.get(id);
-        const delta = element ? top - element.getBoundingClientRect().top : 0;
+        const delta = element ? top - flat(element).top : 0;
         if (element && delta) park(element, delta);
       }
     }
@@ -171,8 +182,8 @@ export function LayoutEditor({
       const lifted = rows.current.get(end.id);
       if (lifted) {
         park(lifted, 0);
-        const delta = quick ? 0 : end.top - lifted.getBoundingClientRect().top;
-        if (delta) lifted.style.transform = lowered(delta);
+        const delta = quick ? 0 : end.top - flat(lifted).top;
+        if (delta) lifted.style.transform = lowered(lifted, delta);
       }
     } else if (!drag && staleStyles.current) {
       // New entries ended the drag: no glide, just no shift left over.
@@ -185,7 +196,7 @@ export function LayoutEditor({
       element.style.transition = '';
       element.style.transform = '';
     }
-  }, [drag]);
+  }, [drag, order]);
 
   const shownOrder = drag?.draft ?? order;
   const say = (verb: string, list: LayoutEntry[], id: string) => {
@@ -224,8 +235,16 @@ export function LayoutEditor({
       }
       frame = window.requestAnimationFrame(tick);
     };
+    // A wheel or trackpad scroll moves the rows under a still pointer: place the lifted row again.
+    const onScroll = () => {
+      dirty.current = true;
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
     frame = window.requestAnimationFrame(tick);
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('scroll', onScroll);
+    };
   }, [pointerDragging]);
 
   function lift(id: string, by: Drag['by'], pointerId?: number) {
@@ -233,12 +252,19 @@ export function LayoutEditor({
     setError('');
     if (by === 'pointer') {
       const ids = orderRef.current.map((item) => item.id);
-      const boxes = ids.map((key) => rows.current.get(key)!.getBoundingClientRect());
-      const tops = boxes.map((box) => box.top + window.scrollY);
+      // Measured at rest: a glide still running from the last drag would put every row somewhere it is not.
+      const elements = ids.map((key) => rows.current.get(key)!);
+      for (const element of elements) {
+        element.style.transition = 'none';
+        element.style.transform = '';
+      }
+      const boxes = elements.map(flat);
+      for (const element of elements) element.style.transition = '';
+      const tops = boxes.map((box) => box.top);
       const heights = boxes.map((box) => box.height);
       const from = ids.indexOf(id);
       const gap = from + 1 < ids.length ? tops[from + 1]! - (tops[from]! + heights[from]!) : from > 0 ? tops[from]! - (tops[from - 1]! + heights[from - 1]!) : 0;
-      geo.current = { ids, from, tops, heights, gap, startY: pointerY.current + window.scrollY };
+      geo.current = { ids, from, tops, heights, gap, startY: pointerY.current, listTop: list.current?.getBoundingClientRect().top ?? 0 };
     }
     setDrag({ id, by, draft: orderRef.current, pointerId });
     if (by === 'key') {
@@ -262,7 +288,7 @@ export function LayoutEditor({
 
   /** Where every row is now, to glide it from there after the DOM changes. */
   function tops() {
-    return new Map([...rows.current].map(([id, element]) => [id, element.getBoundingClientRect().top] as const));
+    return new Map([...rows.current].map(([id, element]) => [id, flat(element).top] as const));
   }
 
   /** Where the pointer puts the lifted row: how far it is from where it was lifted, and the slot it would take. */
@@ -270,7 +296,8 @@ export function LayoutEditor({
     const last = g.ids.length - 1;
     const own = g.tops[g.from]!;
     const lowest = g.tops[last]! + g.heights[last]! - (own + g.heights[g.from]!);
-    const y = pointerY.current + window.scrollY;
+    // The page may have scrolled since the lift: the pointer, in the rows' layout as measured then.
+    const y = pointerY.current - ((list.current?.getBoundingClientRect().top ?? g.listTop) - g.listTop);
     const dy = Math.min(lowest, Math.max(g.tops[0]! - own, y - g.startY));
     // The lifted row passes another when the pointer passes that row's middle: rows of different heights do not flicker.
     let to = g.from;
@@ -295,9 +322,9 @@ export function LayoutEditor({
     g.ids.forEach((id, at) => {
       const element = rows.current.get(id);
       if (!element) return;
-      if (at === g.from) element.style.transform = lowered(dy);
-      else if (g.from < to && at > g.from && at <= to) element.style.transform = lowered(-space);
-      else if (to < g.from && at >= to && at < g.from) element.style.transform = lowered(space);
+      if (at === g.from) element.style.transform = lowered(element, dy);
+      else if (g.from < to && at > g.from && at <= to) element.style.transform = lowered(element, -space);
+      else if (to < g.from && at >= to && at < g.from) element.style.transform = lowered(element, space);
       else element.style.transform = '';
     });
   }
@@ -307,7 +334,7 @@ export function LayoutEditor({
     if (!current) return;
     if (current.by === 'pointer') {
       const lifted = rows.current.get(current.id);
-      if (lifted) settle.current = { id: current.id, top: lifted.getBoundingClientRect().top, commit: false };
+      if (lifted) settle.current = { id: current.id, top: flat(lifted).top, commit: false };
       geo.current = null;
     } else {
       flip.current = tops();
@@ -329,7 +356,7 @@ export function LayoutEditor({
       if (to !== g.from) draft = moved(draft, g.from, to);
       geo.current = null;
       const lifted = rows.current.get(current.id);
-      if (lifted) settle.current = { id: current.id, top: lifted.getBoundingClientRect().top, commit: draft !== current.draft };
+      if (lifted) settle.current = { id: current.id, top: flat(lifted).top, commit: draft !== current.draft };
     }
     setDrag(null);
     const before = orderRef.current;
@@ -343,6 +370,7 @@ export function LayoutEditor({
     try {
       await onReorder(ids);
     } catch (failure) {
+      flip.current = tops();
       setOrder(before);
       setError(message(failure));
       setAnnouncement('That did not save. The order is back as it was.');

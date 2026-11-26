@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, createEvent, fireEvent, render, screen, within } from '@testing-library/react';
 import { pageEntries } from '@curios/core/bento';
 import { LayoutEditor, edgeScroll } from './layout-editor.js';
@@ -62,6 +62,11 @@ const rects = () =>
 
 const reduceMotion = () =>
   vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }) as never);
+
+beforeEach(() => {
+  // jsdom has no scrolling: a drag held near an edge asks for it every frame.
+  vi.spyOn(window, 'scrollBy').mockImplementation(() => undefined);
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -127,6 +132,26 @@ describe('LayoutEditor', () => {
     fireEvent.keyDown(row('Portfolio'), { key: 'ArrowDown' });
     expect(names()).toEqual(['Shop', 'Portfolio', 'WhatsApp', 'GitHub', 'People often ask']);
     expect(seen['a']).toBeUndefined();
+  });
+
+  it('glides the rows back when a save fails', async () => {
+    rects();
+    const seen = glides();
+    show(
+      undefined,
+      vi.fn(async () => {
+        throw new Error('nope');
+      }),
+    );
+    row('Portfolio').focus();
+    fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    fireEvent.keyDown(row('Portfolio'), { key: 'ArrowDown' });
+    await act(async () => {
+      fireEvent.keyDown(row('Portfolio'), { key: ' ' });
+    });
+    expect(names()).toEqual(ORIGINAL);
+    // Portfolio was seen at slot 1 (50) and is back at slot 0.
+    expect(seen['a']).toBe('translate3d(0, 50px, 0)');
   });
 
   it('keeps focus on the moved row', () => {
@@ -416,6 +441,45 @@ describe('LayoutEditor', () => {
       expect(seen['a']).toBe('translate3d(0, -100px, 0)');
       expect(row('Portfolio').style.transform).toBe('');
       expect(row('Portfolio').style.transition).toBe('');
+    });
+
+    it('writes every translate in the element\'s own pixels under CSS zoom', async () => {
+      Object.defineProperty(Element.prototype, 'currentCSSZoom', { configurable: true, get: () => 0.9 });
+      try {
+        show();
+        rects();
+        const raf = frames();
+        const seen = glides();
+        fire('pointerDown', 25);
+        fire('pointerMove', 130);
+        raf.step();
+        // The window pixels the pointer moved (105) and a row's height (50), divided by the zoom.
+        expect(row('Portfolio').style.transform).toBe(`translate3d(0, ${105 / 0.9}px, 0)`);
+        expect(row('Shop').style.transform).toBe(`translate3d(0, ${-50 / 0.9}px, 0)`);
+        await act(async () => {
+          fire('pointerUp', 130);
+        });
+        expect(seen['a']).toBe(`translate3d(0, ${-100 / 0.9}px, 0)`);
+      } finally {
+        delete (Element.prototype as { currentCSSZoom?: number }).currentCSSZoom;
+      }
+    });
+
+    it('places the lifted row again when the page scrolls under a still pointer', () => {
+      show();
+      rects();
+      const raf = frames();
+      fire('pointerDown', 25);
+      fire('pointerMove', 130);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('translate3d(0, -50px, 0)');
+      fire('pointerMove', 30);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('');
+      // No pointer event: a scroll alone marks the frame.
+      fireEvent.scroll(window);
+      raf.step();
+      expect(row('Shop').style.transform).toBe('');
     });
 
     it('puts the row back on cancel with no save and nothing left shifted', () => {
