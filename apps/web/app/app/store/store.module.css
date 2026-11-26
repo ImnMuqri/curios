@@ -921,35 +921,24 @@
   margin-bottom: 12px;
 }
 
-.gwMarks i {
-  display: grid;
-  place-items: center;
-  height: 24px;
-  padding: 0 8px;
+/* Each way's real mark on a small white tile, so it reads in both themes; FPX's white logo sits on navy. */
+.payMark {
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  padding: 3px;
   border-radius: 6px;
-  font-size: 10.5px;
-  font-style: normal;
-  font-weight: 700;
+  background: var(--logo-tile);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+  object-fit: contain;
 }
 
-.gwMarks .markFpx {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
+.payMarkWide {
+  width: 44px;
 }
 
-.gwMarks .markTng {
-  background: var(--mark-tng-muda);
-  color: var(--mark-tng);
-}
-
-.gwMarks .markGrab {
-  background: var(--mark-grab-muda);
-  color: var(--mark-grab);
-}
-
-.gwMarks .markCard {
-  background: var(--mark-card-muda);
-  color: var(--mark-card);
+.payMarkNavy {
+  background: #1c2a4a;
 }
 
 .gwList {

@@ -794,48 +794,24 @@
   margin-left: auto;
 }
 
-.marks i {
-  display: grid;
-  place-items: center;
-  min-width: 26px;
-  height: 20px;
+/* Each way's real mark on a small white tile, so it reads in both themes; FPX's white logo sits on navy. */
+.mark {
   box-sizing: border-box;
-  padding: 0 4px;
-  border-radius: 5px;
-  font-size: 9px;
-  font-style: normal;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  width: 22px;
+  height: 22px;
+  padding: 3px;
+  border-radius: 6px;
+  background: var(--logo-tile);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 8%);
+  object-fit: contain;
 }
 
-.marks .markFpx {
-  background: var(--mark-fpx);
-  color: var(--mark-fpx-ink);
+.markWide {
+  width: 38px;
 }
 
-.marks .markTng {
-  background: var(--mark-tng-muda);
-  color: var(--mark-tng);
-}
-
-.marks .markGrab {
-  background: var(--mark-grab-muda);
-  color: var(--mark-grab);
-}
-
-.marks .markVisa {
-  background: var(--mark-visa-muda);
-  color: var(--mark-visa);
-}
-
-.marks .markMc {
-  background: var(--mark-card-muda);
-  color: var(--mark-card);
-}
-
-.marks .markQr {
-  background: var(--mark-qr-muda);
-  color: var(--rose);
+.markNavy {
+  background: #1c2a4a;
 }
 
 .subHead {
@@ -875,20 +851,6 @@
   box-shadow: inset 0 0 0 2px var(--sheet-accent, var(--accent));
 }
 
-.pick i {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  border-radius: 7px;
-  background: var(--ink-soft);
-  color: var(--card);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 800;
-}
-
 /* A bank's own logo on a white tile, as the owner's bank picker shows it. */
 .bankLogo {
   box-sizing: border-box;
@@ -902,16 +864,8 @@
   object-fit: contain;
 }
 
-.pick[data-mark='tng'] i {
-  background: var(--mark-tng);
-}
-
-.pick[data-mark='grab'] i {
-  background: var(--wallet-grab);
-}
-
-.pick[data-mark='spay'] i {
-  background: var(--wallet-shopee);
+.logoWide {
+  width: 40px;
 }
 
 /* The placed screen's word when paying online did not happen, under the sub-line. */

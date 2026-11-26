@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { FPX_BANKS, onlineOffer, WALLETS, type FpxBankId, type OnlineChoice, type OnlineOffer, type WalletId } from '@curios/core/shop-pay';
 import { apiFetch } from '../../../../lib/api.js';
+import { PAY_MARKS, type PayMarkId } from '../../../../lib/pay-marks.js';
 import type { ShopCopy } from '../copy.js';
 import styles from './checkout.module.css';
 
@@ -109,18 +110,17 @@ export function PayWays({
   /** Keeps ids apart where two sets could share a page. */
   idPrefix?: string;
 }) {
-  const wayText: Record<Way, { label: string; sub: string; marks: { text: string; className: string | undefined }[] }> = {
-    fpx: { label: copy.onlineBanking, sub: copy.onlineBankingSub, marks: [{ text: 'FPX', className: styles.markFpx }] },
+  const wayText: Record<Way, { label: string; sub: string; marks: PayMarkId[] }> = {
+    fpx: { label: copy.onlineBanking, sub: copy.onlineBankingSub, marks: ['fpx'] },
     wallet: {
       label: copy.eWallet,
       sub: (offer?.wallets ?? []).map((id) => WALLETS.find((w) => w.id === id)?.name).join(', '),
       marks: [
-        ...(offer?.wallets.includes('tng') ? [{ text: 'TNG', className: styles.markTng }] : []),
-        ...(offer?.wallets.includes('grab') ? [{ text: 'Grab', className: styles.markGrab }] : []),
+        ...(WALLETS.filter((w) => offer?.wallets.includes(w.id)).map((w) => w.id) satisfies PayMarkId[]),
       ],
     },
-    card: { label: copy.card, sub: copy.cardSub, marks: [{ text: 'VISA', className: styles.markVisa }, { text: 'MC', className: styles.markMc }] },
-    qr: { label: qr?.label ?? copy.qrOrBank, sub: qr?.sub ?? '', marks: [{ text: 'QR', className: styles.markQr }] },
+    card: { label: copy.card, sub: copy.cardSub, marks: ['visa', 'mastercard'] },
+    qr: { label: qr?.label ?? copy.qrOrBank, sub: qr?.sub ?? '', marks: ['duitnow'] },
   };
 
   return (
@@ -135,9 +135,14 @@ export function PayWays({
             </span>
             <span className={styles.marks} aria-hidden="true">
               {wayText[w].marks.map((mark) => (
-                <i key={mark.text} className={mark.className}>
-                  {mark.text}
-                </i>
+                <img
+                  key={mark}
+                  className={`${styles.mark} ${PAY_MARKS[mark].wide ? styles.markWide : ''} ${PAY_MARKS[mark].navy ? styles.markNavy : ''}`}
+                  src={PAY_MARKS[mark].src}
+                  alt=""
+                  width={PAY_MARKS[mark].wide ? 38 : 22}
+                  height={22}
+                />
               ))}
             </span>
           </button>
@@ -166,7 +171,7 @@ export function PayWays({
           <div className={styles.picks} role="radiogroup" aria-labelledby={`${idPrefix}-wallet`}>
             {WALLETS.filter((w) => offer?.wallets.includes(w.id)).map((w) => (
               <button key={w.id} type="button" role="radio" aria-checked={pick.walletPick === w.id} className={styles.pick} data-mark={w.id} onClick={() => pick.setWallet(w.id)}>
-                <i aria-hidden="true">{w.name.charAt(0)}</i>
+                <img className={`${styles.bankLogo} ${PAY_MARKS[w.id].wide ? styles.logoWide : ''}`} src={PAY_MARKS[w.id].src} alt="" width={PAY_MARKS[w.id].wide ? 40 : 24} height={24} />
                 {w.name}
               </button>
             ))}

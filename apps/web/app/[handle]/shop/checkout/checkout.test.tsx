@@ -492,6 +492,20 @@ describe('Checkout: how you’ll pay', () => {
     expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/store/keklina/pay-methods?amount=21500'))).toBe(true);
   });
 
+  it('each way ends in the real marks of what it takes', async () => {
+    api({});
+    render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    const marks = within(payGroup()).getAllByRole('radio').map((radio) => Array.from(radio.querySelectorAll('img')).map((img) => img.getAttribute('src')));
+    expect(marks).toEqual([
+      ['/pay/fpx.png'],
+      ['/pay/tng.svg', '/pay/grab.svg', '/pay/shopeepay.png'],
+      ['/pay/visa.svg', '/pay/mastercard.svg'],
+      ['/pay/duitnow.svg'],
+    ]);
+    expect(within(payGroup()).queryByText('VISA')).toBeNull();
+  });
+
   it('Boost is not offered', async () => {
     const user = userEvent.setup();
     api({});
@@ -499,7 +513,10 @@ describe('Checkout: how you’ll pay', () => {
     await screen.findByText('Kek coklat moist');
     await choose(user, new RegExp(copy.eWallet));
     const wallets = within(screen.getByRole('radiogroup', { name: copy.yourWallet })).getAllByRole('radio').map((radio) => radio.textContent);
-    expect(wallets).toEqual(['TTouch ’n Go', 'GGrabPay', 'SShopeePay']);
+    expect(wallets).toEqual(['Touch ’n Go', 'GrabPay', 'ShopeePay']);
+    // Each e-wallet wears its own logo, not a letter.
+    const picks = within(screen.getByRole('radiogroup', { name: copy.yourWallet })).getAllByRole('radio');
+    expect(picks.map((pick) => pick.querySelector('img')?.getAttribute('src'))).toEqual(['/pay/tng.svg', '/pay/grab.svg', '/pay/shopeepay.png']);
     expect(screen.queryByText(/Boost/)).toBeNull();
   });
 
