@@ -13,6 +13,15 @@ describe('the owner push notifications', () => {
     });
   });
 
+  it('says an order that came with its receipt is ready to check', () => {
+    expect(newOrderPush({ number: 15, customerName: 'Aisha', totalCents: 4550, url, receipt: true })).toEqual({
+      title: 'New order #15 · receipt to check',
+      body: 'Aisha · RM45.50. Check the receipt and mark it paid.',
+      url,
+      tag: 'order-15',
+    });
+  });
+
   // One order, one notification on the lock screen: a payment replaces the "new order" before it.
   it('tells an online payment under the same tag as the order', () => {
     expect(paidOrderPush({ number: 15, customerName: 'Aisha', totalCents: 4550, kind: 'paid', url })).toMatchObject({

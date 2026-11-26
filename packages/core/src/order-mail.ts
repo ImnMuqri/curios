@@ -39,6 +39,8 @@ export interface NewOrderMailInput {
   voucherLabel?: string | null;
   /** A voucher took the total to RM0, so the order was paid as it was placed (and a digital one sent). */
   paidWithVoucher?: boolean;
+  /** The customer paid by the owner's QR or bank first and the order came with its receipt: there is nothing to wait for, only to check. */
+  receiptAttached?: boolean;
   /** The pickup place and time the order kept (minutes after midnight); absent or null on an order without them. */
   pickupPlaceName?: string | null;
   pickupFrom?: number | null;
@@ -89,13 +91,16 @@ function gettingItLine(o: Pick<NewOrderMailInput, 'deliveryCents' | 'pickupPlace
 export function newOrderMail(o: NewOrderMailInput): Mail {
   const total = formatRinggit(o.totalCents);
   const free = o.paidWithVoucher === true;
-  const subject = free ? `New order #${o.number} · ${total} · Paid` : `New order #${o.number} · ${total}`;
+  const receipt = !free && o.receiptAttached === true;
+  const subject = free ? `New order #${o.number} · ${total} · Paid` : receipt ? `New order #${o.number} · ${total} · Receipt to check` : `New order #${o.number} · ${total}`;
   const heading = free ? `${o.customerName} ordered from your shop with a voucher` : `${o.customerName} ordered ${total} from your shop`;
   // Not the board's "She’s paying by DuitNow QR": we know neither how they will
   // pay nor who they are (DEVIATIONS 101). A free order has nothing to pay at all.
   const said = free
     ? `A voucher covered the whole order, so there’s nothing to pay and no receipt to check. ${o.method === null || o.day === null ? 'Their digital items were sent to them straight away.' : 'Just get it ready.'}`
-    : 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
+    : receipt
+      ? 'They paid you by your QR or bank transfer and attached the receipt. Check it against your bank and mark it paid.'
+      : 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
   const voucher = voucherRow(o);
   const delivery = deliveryRow(o);
   const totalLabel = free ? 'Paid' : 'Total';
@@ -126,7 +131,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
     html: renderMailHtml({
       subject,
       topRight: `Order #${o.number}`,
-      tag: free ? { label: 'Paid with a voucher', tone: 'hijau' } : { label: 'Waiting for payment', tone: 'amber' },
+      tag: free ? { label: 'Paid with a voucher', tone: 'hijau' } : receipt ? { label: 'Receipt to check', tone: 'amber' } : { label: 'Waiting for payment', tone: 'amber' },
       heading,
       blocks: [
         { kind: 'p', text: said },

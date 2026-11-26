@@ -31,7 +31,16 @@ function short(text: string, max = 40): string {
 
 type OrderFacts = { number: number; customerName: string; totalCents: number; url: string };
 
-export function newOrderPush(o: OrderFacts): PushMessage {
+/** `receipt`: the customer paid by the owner's QR first and the order came with its receipt, so this is also the one notification for it. */
+export function newOrderPush(o: OrderFacts & { receipt?: boolean }): PushMessage {
+  if (o.receipt) {
+    return {
+      title: `New order #${o.number} · receipt to check`,
+      body: `${short(o.customerName)} · ${ringgit(o.totalCents)}. Check the receipt and mark it paid.`,
+      url: o.url,
+      tag: `order-${o.number}`,
+    };
+  }
   return { title: `New order #${o.number}`, body: `${short(o.customerName)} · ${ringgit(o.totalCents)}`, url: o.url, tag: `order-${o.number}` };
 }
 
