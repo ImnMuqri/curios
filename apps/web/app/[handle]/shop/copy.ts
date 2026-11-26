@@ -348,6 +348,8 @@ export interface ShopCopy {
   paidContactLinks: (name: string) => string;
   /** No answer came (offline, a timeout): it may have gone through, and sending again is safe. */
   paidMaybeSent: (name: string) => string;
+  /** Definitely not sent and not something a retry fixes (receipts are switched off here): who to send the receipt to. */
+  paidNotSentContact: (name: string) => string;
   /** The WhatsApp message to the shop after paying but not ordering; the items follow it. */
   paidMessage: (name: string, paid: string) => string;
   uploadDifferent: string;
@@ -738,6 +740,7 @@ const EN: ShopCopy = {
   paidNotSent: (name) => `Your order wasn’t sent. You’ve already paid, so don’t pay again: your receipt is still attached here, so you can try again, or send it to ${name}.`,
   paidPricesChanged: (name, paid) => `A price changed while you were paying, so your order wasn’t sent. You paid ${paid}: send your receipt to ${name} and they’ll sort it out.`,
   paidContactLinks: (name) => `Send your receipt to ${name} through the links on their page.`,
+  paidNotSentContact: (name) => `Your order wasn’t sent. You’ve already paid, so don’t pay again: send your receipt to ${name} instead.`,
   paidMaybeSent: (name) => `Your order may have gone through, but we didn’t hear back. Tap Send order again: it won’t make a second order. If it keeps failing, send your receipt to ${name}.`,
   paidMessage: (name, paid) => `Hi ${name}, I paid ${paid} by QR or bank transfer for this order and will send the receipt here:`,
   uploadDifferent: 'Upload a different receipt',
@@ -1109,6 +1112,7 @@ const MS: ShopCopy = {
   paidNotSent: (name) => `Tempahan anda tidak dihantar. Anda sudah membayar, jadi jangan bayar lagi: resit anda masih dilampirkan di sini, jadi cuba lagi, atau hantarkan kepada ${name}.`,
   paidPricesChanged: (name, paid) => `Harga berubah semasa anda membayar, jadi tempahan anda tidak dihantar. Anda telah membayar ${paid}: hantar resit anda kepada ${name} dan mereka akan menyelesaikannya.`,
   paidContactLinks: (name) => `Hantar resit anda kepada ${name} melalui pautan di halaman mereka.`,
+  paidNotSentContact: (name) => `Tempahan anda tidak dihantar. Anda sudah membayar, jadi jangan bayar lagi: hantar resit anda kepada ${name}.`,
   paidMaybeSent: (name) => `Tempahan anda mungkin sudah berjaya, tetapi kami tidak menerima jawapan. Tekan Hantar tempahan sekali lagi: ia tidak akan membuat tempahan kedua. Jika masih gagal, hantar resit anda kepada ${name}.`,
   paidMessage: (name, paid) => `Hai ${name}, saya telah membayar ${paid} melalui QR atau pindahan bank untuk tempahan ini dan akan hantar resit di sini:`,
   uploadDifferent: 'Muat naik resit lain',

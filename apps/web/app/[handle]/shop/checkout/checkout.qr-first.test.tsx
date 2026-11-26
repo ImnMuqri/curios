@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { Checkout } from './checkout.js';
+import { Checkout, newPlaceKey } from './checkout.js';
 import { attachReceipt } from './receipt-test-helper.js';
 import { shopCopy } from '../copy.js';
 
@@ -34,7 +34,7 @@ const base = {
 };
 
 const KEY = 'curios-basket:keklina';
-const placed = { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 4500 };
+const placed = { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 4500, receipt: true };
 
 beforeEach(() => {
   window.sessionStorage.clear();
@@ -440,5 +440,65 @@ describe('Checkout, paying first: one attempt, one key', () => {
     await attachReceipt(user);
     await user.click(send());
     expect(screen.getByLabelText(copy.uploadDifferent)).toHaveAttribute('aria-disabled', 'true');
+  });
+});
+
+describe('Checkout, paying first: hardening', () => {
+  it('says Order sent only when the API says the order holds the receipt; an older API that did not is the paid-but-not-sent path', async () => {
+    const user = userEvent.setup();
+    // An API from before receipts rode with the order: it made an order awaiting payment and said nothing of a receipt.
+    api(() => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 4500 }));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+
+    expect(await screen.findByText(copy.paidNotSent('Kek Lina'))).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: copy.orderSent })).toBeNull();
+    expect(screen.queryByRole('heading', { name: copy.orderPlaced })).toBeNull();
+    // The receipt stays and the basket is kept, so nothing is lost.
+    expect(screen.getByText('receipt.jpg')).toBeInTheDocument();
+    expect(screen.getByText('Kek batik')).toBeInTheDocument();
+  });
+
+  it('receipts switched off on the server is a definite "not sent, send it to the shop", not "may have gone through"', async () => {
+    const user = userEvent.setup();
+    api(() => json(503, { error: { code: 'STORAGE_NOT_CONFIGURED', message: 'Pictures are switched off here.' } }));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+
+    expect(await screen.findByText(copy.paidNotSentContact('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(copy.receiptsOff('Kek Lina'));
+    expect(screen.queryByText(copy.paidMaybeSent('Kek Lina'))).toBeNull();
+    expect(screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') })).toBeInTheDocument();
+  });
+
+  it('a 503 that is only the server being down is still unsure', async () => {
+    const user = userEvent.setup();
+    api(() => json(503, { error: { code: 'UNAVAILABLE', message: 'Down.' } }));
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fill(user);
+    await attachReceipt(user);
+    await user.click(send());
+    expect(await screen.findByText(copy.paidMaybeSent('Kek Lina'))).toBeInTheDocument();
+  });
+
+  it('makes the key from the browser’s secure random source when randomUUID is missing, never Math.random', () => {
+    const random = vi.spyOn(Math, 'random');
+    const bytes = vi.fn((array: Uint8Array) => {
+      array.forEach((_, i) => (array[i] = i * 17));
+      return array;
+    });
+    vi.stubGlobal('crypto', { getRandomValues: bytes });
+    const key = newPlaceKey();
+    expect(bytes).toHaveBeenCalledTimes(1);
+    expect(random).not.toHaveBeenCalled();
+    expect(key).toMatch(/^[0-9a-f]{32}$/);
+    expect(key).toBe('00112233445566778899aabbccddeeff');
   });
 });

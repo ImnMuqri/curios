@@ -102,9 +102,10 @@ interface PlacedOrder {
 const goTo = (url: string) => window.location.assign(url);
 
 /** One checkout attempt's key: the API makes one order for it however many times it is sent. */
-function newPlaceKey(): string {
-  const made = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : null;
-  return made ?? `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+export function newPlaceKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID();
+  // An older browser: 16 random bytes from the browser's secure source, never Math.random (the key guards a retry).
+  return Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /** Where a refusal is said: under the field it is about, or above Place order. */
@@ -188,7 +189,7 @@ export function Checkout(props: CheckoutProps) {
   /** The receipt went because the total changed under it: the total to attach one for. */
   const [receiptGone, setReceiptGone] = useState<number | null>(null);
   /** The order was refused after the customer paid and attached a receipt: what happened, and the receipt stays. */
-  const [paidFail, setPaidFail] = useState<'prices' | 'other' | 'unsure' | null>(null);
+  const [paidFail, setPaidFail] = useState<'prices' | 'other' | 'unsure' | 'contact' | null>(null);
   // The key of the attempt in flight, and what it was an attempt at: a retry of the same thing reuses it (so a lost response
   // never makes a second order), and any change to the order makes a new one.
   const attempt = useRef<{ key: string; sig: string } | null>(null);
@@ -392,7 +393,7 @@ export function Checkout(props: CheckoutProps) {
     try {
       // Paying first: the receipt goes in the same request, so the order is made with it or not at all.
       const sentReceipt = qrFirst && receipt ? { contentType: receipt.contentType, data: await base64(receipt.file) } : null;
-      const result = await apiFetch<{ number: number; code: string; token: string; totalCents: number }>(
+      const result = await apiFetch<{ number: number; code: string; token: string; totalCents: number; receipt?: boolean }>(
         `/store/${props.handle}/orders`,
         {
           method: 'POST',
@@ -414,6 +415,9 @@ export function Checkout(props: CheckoutProps) {
           }),
         },
       );
+      // The API says whether the order was made with the receipt on it. An older API (mid-deploy) ignores a receipt it does not
+      // know and makes an order awaiting payment: that is not "sent", so the paid-but-not-sent notice is the answer.
+      if (sentReceipt && result.receipt !== true) throw new ApiError(200, 'RECEIPT_NOT_ATTACHED', copy.failed);
       changeLines([]);
       // Done: the next order is a new attempt.
       attempt.current = null;
@@ -484,9 +488,11 @@ export function Checkout(props: CheckoutProps) {
       // They have paid: whatever went wrong, the receipt stays in the form and the screen says to contact the shop with it.
       if (qrFirst && receipt) {
         // No answer (offline, a timeout, a proxy error): the order may be made already, and sending again is safe (same key).
-        const unsure = !(error instanceof ApiError) || error.status === 0 || error.code === 'NETWORK' || error.status >= 500;
+        // Receipts switched off (503) is definite, and no retry will fix it.
+        const off = error instanceof ApiError && error.code === 'STORAGE_NOT_CONFIGURED';
+        const unsure = !(error instanceof ApiError) || error.status === 0 || error.code === 'NETWORK' || (error.status >= 500 && !off);
         priceReload.current = error instanceof ApiError && error.code === 'PRICES_CHANGED';
-        setPaidFail(priceReload.current ? 'prices' : unsure ? 'unsure' : 'other');
+        setPaidFail(priceReload.current ? 'prices' : off ? 'contact' : unsure ? 'unsure' : 'other');
       }
       if (!(error instanceof ApiError)) {
         setProblem({ field: 'form', message: copy.failed });
@@ -523,7 +529,10 @@ export function Checkout(props: CheckoutProps) {
       } else if (error.code === 'ORDER_TOO_LARGE') {
         setFallback('tooLarge');
       } else {
-        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: copy.digitalError(error.code) ?? error.message });
+        setProblem({
+          field: FIELD_OF[error.code] ?? 'form',
+          message: error.code === 'STORAGE_NOT_CONFIGURED' ? copy.receiptsOff(props.displayName) : (copy.digitalError(error.code) ?? error.message),
+        });
       }
     } finally {
       if (!leaving) setSending(false);
@@ -1023,7 +1032,9 @@ export function Checkout(props: CheckoutProps) {
                   ? copy.paidPricesChanged(props.displayName, formatRinggit(receipt.forCents))
                   : paidFail === 'unsure'
                     ? copy.paidMaybeSent(props.displayName)
-                    : copy.paidNotSent(props.displayName)}
+                    : paidFail === 'contact'
+                      ? copy.paidNotSentContact(props.displayName)
+                      : copy.paidNotSent(props.displayName)}
               </p>
               {props.whatsapp ? (
                 <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, paidMessage(props.displayName, priced, receipt?.forCents ?? totals.totalCents, copy))} rel="noopener">

@@ -102,7 +102,7 @@ describe('Checkout with digital items', () => {
   it('places a digital-only order with no method or day, sending the email and the class time', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'class', optionId: null, quantity: 2, sessionId: 'time1' }]);
-    const fetch = reply(201, { number: 3, code: 'ABCD', token: 'tok', totalCents: 12000 });
+    const fetch = reply(201, { number: 3, code: 'ABCD', token: 'tok', totalCents: 12000, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Online class');
     await fillDetails(user);
@@ -128,7 +128,7 @@ describe('Checkout with digital items', () => {
   it('mixed: keeps Getting it and Day, says the digital part comes by email, and sends both', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'cake', optionId: null, quantity: 1 }, { itemId: 'ebook', optionId: null, quantity: 1 }]);
-    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 'tok2', totalCents: 7000 });
+    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 'tok2', totalCents: 7000, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek batik');
     expect(screen.getByText(en.mixedLine)).toBeInTheDocument();
@@ -190,7 +190,7 @@ describe('Checkout with digital items', () => {
       'fetch',
       vi.fn(async (url: string) => {
         if (url.includes('/pay-methods')) return json(200, { fpx: false, wallets: [], card: true });
-        if (url.endsWith('/orders')) return json(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000 });
+        if (url.endsWith('/orders')) return json(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000, receipt: true });
         return json(500, { error: { code: 'PAY_FAILED', message: 'no' } });
       }),
     );
@@ -206,7 +206,7 @@ describe('Checkout with digital items', () => {
   it('says no hold when the order came with its receipt: the shop checks it, and nothing is released meanwhile', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
-    reply(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000 });
+    reply(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000, receipt: true });
     render(<Checkout {...base} language="ms" />);
     await screen.findByText('Online class');
     await fillDetails(user, ms);
@@ -219,7 +219,7 @@ describe('Checkout with digital items', () => {
   it('does not say it for files, which hold nothing', async () => {
     const user = userEvent.setup();
     basket([{ itemId: 'ebook', optionId: null, quantity: 1 }]);
-    reply(201, { number: 8, code: 'FILE', token: 'tk2', totalCents: 2500 });
+    reply(201, { number: 8, code: 'FILE', token: 'tk2', totalCents: 2500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Recipe e-book');
     await fillDetails(user);

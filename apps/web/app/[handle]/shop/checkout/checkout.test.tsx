@@ -187,7 +187,7 @@ describe('Checkout', () => {
 
   it('sends what the visitor saw and shows the placed screen with the code', async () => {
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -238,7 +238,7 @@ describe('Checkout', () => {
       ]),
     );
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    const fetch = reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     const field = screen.getByLabelText(new RegExp(copy.noteFor('Kek Lina')));
@@ -270,7 +270,7 @@ describe('Checkout', () => {
 
   it('puts the mascot with a tick on the placed screen, and a summary of how it is got and what it holds', async () => {
     const user = userEvent.setup();
-    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     const { container } = render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -290,7 +290,7 @@ describe('Checkout', () => {
 
   it('puts the drawn +60 on a number typed without its 0', async () => {
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 't', totalCents: 21500 });
+    const fetch = reply(201, { number: 4, code: 'WXYZ', token: 't', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await user.type(screen.getByLabelText(copy.name), 'Mira');
@@ -304,7 +304,7 @@ describe('Checkout', () => {
 
   it('copies the code', async () => {
     const user = userEvent.setup();
-    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+    reply(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -317,7 +317,7 @@ describe('Checkout', () => {
 
   it('sends a delivery with its address', async () => {
     const user = userEvent.setup();
-    const fetch = reply(201, { number: 3, code: 'ABCD', token: 't', totalCents: 22500 });
+    const fetch = reply(201, { number: 3, code: 'ABCD', token: 't', totalCents: 22500, receipt: true });
     render(<Checkout {...base} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);
@@ -377,7 +377,7 @@ describe('Checkout', () => {
     expect(within(screen.getByRole('radio', { name: /Delivery/ })).getByText('RM15')).toBeInTheDocument();
     // The retry sends the total the shop now asks for, with a receipt for it.
     await attachReceipt(user);
-    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ number: 2, code: 'ABCD', token: 't', totalCents: 23000 }), { status: 201 }));
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ number: 2, code: 'ABCD', token: 't', totalCents: 23000, receipt: true }), { status: 201 }));
     await user.click(placeButton('RM230'));
     expect(JSON.parse((fetch.mock.calls[1] as [string, RequestInit])[1].body as string)).toMatchObject({ seenTotalCents: 23000 });
     unmount();
@@ -481,7 +481,7 @@ describe('Checkout: how you’ll pay', () => {
     const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
     const spy = vi.fn(async (url: string) => {
       if (url.includes('/pay-methods')) return json(200, routes.methods ?? ALL);
-      if (url.endsWith('/orders')) return json(201, routes.place ?? { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+      if (url.endsWith('/orders')) return json(201, routes.place ?? { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true });
       if (url.endsWith('/pay')) {
         if (routes.pay instanceof Error) throw routes.pay;
         return json(routes.payStatus ?? 200, routes.pay ?? { url: 'https://gate.chip-in.asia/p/x/?preferred=fpx&fpx_bank_code=MB2U0227' });
@@ -784,7 +784,7 @@ describe('Checkout: where and when to collect', () => {
         { id: 'w1', from: 600, to: 720, full: false },
         { id: 'w2', from: 840, to: 960, full: false },
       ],
-      () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 }),
+      () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true }),
     );
     render(<Checkout {...base} pickupPlaces={[home, stall]} />);
     await screen.findByText('Kek coklat moist');
@@ -846,7 +846,7 @@ describe('Checkout: where and when to collect', () => {
 
   it('a shop with pickup but no places yet takes pickup as before, with no place asked or sent', async () => {
     const user = userEvent.setup();
-    const fetch = routes(() => [], () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 }));
+    const fetch = routes(() => [], () => json(201, { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500, receipt: true }));
     render(<Checkout {...base} pickupPlaces={[]} />);
     await screen.findByText('Kek coklat moist');
     await fillDetails(user);

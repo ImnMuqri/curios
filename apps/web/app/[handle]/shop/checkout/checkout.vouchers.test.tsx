@@ -73,7 +73,7 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
   await attachReceipt(user);
 }
 const placeButton = (total: string) => screen.getByRole('button', { name: copy.sendOrder(total) });
-const placed = { number: 1, code: 'ABCD', token: 'tok' };
+const placed = { number: 1, code: 'ABCD', token: 'tok', receipt: true };
 
 async function typeCode(user: ReturnType<typeof userEvent.setup>, code: string) {
   await user.click(await screen.findByRole('button', { name: copy.haveACode }));
@@ -84,7 +84,7 @@ async function typeCode(user: ReturnType<typeof userEvent.setup>, code: string) 
 describe('Checkout vouchers', () => {
   it('applies the automatic voucher by itself, and places the order at the discounted total', async () => {
     const user = userEvent.setup();
-    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 8550 } }));
+    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 8550, receipt: true } }));
     render(<Checkout {...base} vouchers={[raya]} />);
     expect(await screen.findByText('Raya promo −RM9.50')).toBeInTheDocument();
     expect(placeButton('RM85.50')).toBeInTheDocument();
@@ -98,7 +98,7 @@ describe('Checkout vouchers', () => {
   it('a typed code is checked, uppercased, and replaces the line when it saves more', async () => {
     const user = userEvent.setup();
     const spy = api((url) =>
-      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta() } } : { status: 201, body: { ...placed, totalCents: 8075 } },
+      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta() } } : { status: 201, body: { ...placed, totalCents: 8075, receipt: true } },
     );
     render(<Checkout {...base} vouchers={[raya]} />);
     await typeCode(user, 'insta15');
@@ -163,7 +163,7 @@ describe('Checkout vouchers', () => {
 
   it('a total of RM0 offers no way to pay, and the placed screen says it is paid', async () => {
     const user = userEvent.setup();
-    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 0 } }));
+    const spy = api(() => ({ status: 201, body: { ...placed, totalCents: 0, receipt: true } }));
     render(<Checkout {...base} chipMethods={['fpx', 'visa']} payByQr vouchers={[voucher({ kind: 'AMOUNT', percent: null, amountCents: 9500, label: 'FREEBIE' })]} />);
     expect(await screen.findByText('FREEBIE −RM95')).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: copy.howYoullPay })).toBeNull();
@@ -190,7 +190,7 @@ describe('Checkout vouchers', () => {
       }
       return placeCalls++ === 0
         ? { status: 409, body: { error: { code: 'PRICES_CHANGED', message: '' }, items: items.map(({ photoUrl: _p, ...i }) => i), vouchers: [] } }
-        : { status: 201, body: { ...placed, totalCents: 9500 } };
+        : { status: 201, body: { ...placed, totalCents: 9500, receipt: true } };
     });
     render(<Checkout {...base} vouchers={[]} />);
     await typeCode(user, 'insta15');
@@ -212,7 +212,7 @@ describe('Checkout vouchers', () => {
   it('a typed code that does not fit says so and is not sent; nothing is called better', async () => {
     const user = userEvent.setup();
     const spy = api((url) =>
-      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta({ minSpendCents: 50000 }) } } : { status: 201, body: { ...placed, totalCents: 9500 } },
+      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta({ minSpendCents: 50000 }) } } : { status: 201, body: { ...placed, totalCents: 9500, receipt: true } },
     );
     render(<Checkout {...base} vouchers={[]} />);
     await typeCode(user, 'insta15');
