@@ -1,4 +1,4 @@
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, formatRinggit, parseRinggit, priceLine, pricingProblem, type Pricing } from '@curios/core/store';
+import { choiceCombos, ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, formatRinggit, parseRinggit, priceLine, pricingProblem, type Pricing } from '@curios/core/store';
 
 /**
  * An item's fields as the owner types them, and the checks that turn them
@@ -102,6 +102,7 @@ export function checkFields(
 export function pricedFields(pricing: Pricing): { priceCents: number | null; askForPrice: boolean; options: { label: string; priceCents: number }[] } {
   if (pricing.kind === 'single') return { priceCents: pricing.priceCents, askForPrice: false, options: [] };
   if (pricing.kind === 'ask') return { priceCents: pricing.fromCents, askForPrice: true, options: [] };
+  if (pricing.kind === 'choices') return { priceCents: null, askForPrice: false, options: choiceCombos(pricing).map(({ label, priceCents }) => ({ label, priceCents })) };
   return { priceCents: null, askForPrice: false, options: pricing.options };
 }
 
