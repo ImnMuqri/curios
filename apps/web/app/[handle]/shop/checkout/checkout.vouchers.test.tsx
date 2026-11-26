@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { Checkout } from './checkout.js';
+import { attachReceipt } from './receipt-test-helper.js';
 import { shopCopy } from '../copy.js';
 
 const copy = shopCopy('en');
@@ -69,8 +70,9 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText(copy.name), 'Mira Hassan');
   await user.type(screen.getByLabelText(copy.whatsappNumber), '012-987 6543');
   await user.click(screen.getByRole('button', { name: 'Sat 17' }));
+  await attachReceipt(user);
 }
-const placeButton = (total: string) => screen.getByRole('button', { name: copy.placeOrder(total) });
+const placeButton = (total: string) => screen.getByRole('button', { name: copy.sendOrder(total) });
 const placed = { number: 1, code: 'ABCD', token: 'tok' };
 
 async function typeCode(user: ReturnType<typeof userEvent.setup>, code: string) {
@@ -88,7 +90,7 @@ describe('Checkout vouchers', () => {
     expect(placeButton('RM85.50')).toBeInTheDocument();
     await fillDetails(user);
     await user.click(placeButton('RM85.50'));
-    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: copy.orderSent })).toBeInTheDocument();
     expect(sent(spy, '/store/keklina/orders')).toMatchObject({ seenTotalCents: 8550 });
     expect(sent(spy, '/store/keklina/orders')).not.toHaveProperty('voucherCode');
   });
@@ -105,7 +107,7 @@ describe('Checkout vouchers', () => {
     expect(sent(spy, '/store/keklina/vouchers/check')).toEqual({ code: 'INSTA15' });
     await fillDetails(user);
     await user.click(placeButton('RM80.75'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     expect(sent(spy, '/store/keklina/orders')).toMatchObject({ seenTotalCents: 8075, voucherCode: 'INSTA15' });
   });
 
@@ -152,6 +154,10 @@ describe('Checkout vouchers', () => {
     await user.click(placeButton('RM85.50'));
     expect(await screen.findByText(copy.pricesChanged)).toBeInTheDocument();
     expect(screen.queryByText(/Raya promo/)).toBeNull();
+    // They paid RM85.50: the receipt stays for the shop, and a new one (for RM95) is needed to send it again.
+    expect(screen.getByText(copy.paidPricesChanged('Kek Lina', 'RM85.50'))).toBeInTheDocument();
+    expect(placeButton('RM95')).toBeDisabled();
+    await attachReceipt(user);
     expect(placeButton('RM95')).toBeEnabled();
   });
 
@@ -162,7 +168,8 @@ describe('Checkout vouchers', () => {
     expect(await screen.findByText('FREEBIE −RM95')).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup', { name: copy.howYoullPay })).toBeNull();
     await fillDetails(user);
-    await user.click(placeButton('RM0'));
+    // Nothing to pay, so no receipt and the plain button.
+    await user.click(screen.getByRole('button', { name: copy.placeOrder('RM0') }));
     expect(await screen.findByText(copy.freeOrderPaid)).toBeInTheDocument();
     expect(sent(spy, '/store/keklina/orders')).toMatchObject({ seenTotalCents: 0 });
     expect(calls(spy, '/store/orders/tok/pay')).toHaveLength(0);
@@ -192,9 +199,11 @@ describe('Checkout vouchers', () => {
     await user.click(placeButton('RM80.75'));
     expect(await screen.findByText(copy.codeUnknown)).toBeInTheDocument();
     expect(screen.queryByText(/INSTA15 −/)).toBeNull();
+    expect(placeButton('RM95')).toBeDisabled();
+    await attachReceipt(user);
     expect(placeButton('RM95')).toBeEnabled();
     await user.click(placeButton('RM95'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     const body = JSON.parse((calls(spy, '/store/keklina/orders')[1]![1] as RequestInit).body as string) as Record<string, unknown>;
     expect(body).toMatchObject({ seenTotalCents: 9500 });
     expect(body).not.toHaveProperty('voucherCode');
@@ -211,7 +220,7 @@ describe('Checkout vouchers', () => {
     expect(screen.queryByText(copy.betterVoucherApplied)).toBeNull();
     await fillDetails(user);
     await user.click(placeButton('RM95'));
-    await screen.findByRole('heading', { name: copy.orderPlaced });
+    await screen.findByRole('heading', { name: copy.orderSent });
     expect(sent(spy, '/store/keklina/orders')).not.toHaveProperty('voucherCode');
   });
 

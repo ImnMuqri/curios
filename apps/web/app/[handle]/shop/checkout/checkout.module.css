@@ -1172,3 +1172,35 @@ span.method {
   font-weight: 600;
   text-decoration: none;
 }
+
+/* Paying first by the owner's QR or bank: the amount, the QR and account, then the receipt box, under "How you'll pay". */
+.qrFirst {
+  margin-top: 14px;
+}
+
+.qrAmount {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Paid, but the order was not made: kept clear of the error red, since the customer did nothing wrong. */
+.paidFail {
+  display: grid;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--lp-tint);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.paidFail p {
+  margin: 0;
+}
+
+.paidFail:focus {
+  outline: 2px solid var(--sheet-accent, var(--accent));
+  outline-offset: 2px;
+}

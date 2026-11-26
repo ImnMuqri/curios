@@ -51,6 +51,8 @@ export function Placed(props: {
   holds?: boolean;
   /** The order came to RM0, so it was placed paid: nothing to pay, only the order to see. */
   free?: boolean;
+  /** Paid first by the owner's QR or bank: the order came with its receipt, and the shop checks it. "Order sent", then See your order. */
+  receiptSent?: boolean;
   /** The board's summary card: how it is got (when and where), and what it holds (a few photos and the total). */
   summary?: { how: { label: string; value: string } | null; count: number; thumbs: { name: string; url: string | null }[] } | null;
 }) {
@@ -65,6 +67,7 @@ export function Placed(props: {
   const path = `/${props.handle}/order/${props.token}`;
   const paid = props.onSeeOrder !== undefined;
   const free = props.free === true;
+  const sent = props.receiptSent === true;
   // Too many tries: the order page has the retry, so the link there stays even with no QR.
   const noWayToPay = !paid && !free && props.payByQr === false && props.onlineUnavailable !== 'tooMany';
   const total = formatRinggit(props.totalCents);
@@ -93,7 +96,7 @@ export function Placed(props: {
     <div className={styles.placed}>
       <ResultMark tone="ok" />
       <h1 ref={heading} className={styles.placedTitle} tabIndex={-1}>
-        {paid ? (props.paidDigital ? copy.paidPlacedDigital : copy.paidPlaced) : copy.orderPlaced}
+        {paid ? (props.paidDigital ? copy.paidPlacedDigital : copy.paidPlaced) : sent ? copy.orderSent : copy.orderPlaced}
       </h1>
       <p className={styles.placedSub}>
         {free
@@ -102,7 +105,9 @@ export function Placed(props: {
             ? props.paidDigital
               ? copy.paidPlacedDigitalSub(total, props.paidDigital.what)
               : copy.paidPlacedSub(total, props.displayName)
-            : copy.placedSub(props.displayName)}
+            : sent
+              ? copy.orderSentSub(props.displayName)
+              : copy.placedSub(props.displayName)}
       </p>
       {props.onlineUnavailable && !free ? (
         <p className={styles.placedNotice} role="status">
@@ -172,18 +177,18 @@ export function Placed(props: {
         )
       ) : (
         <a className={styles.pay} href={path}>
-          {free ? copy.seeOrder : copy.payNow(total)}
+          {free || sent ? copy.seeOrder : copy.payNow(total)}
           {arrow}
         </a>
       )}
-      {(paid || free) && props.whatsapp && props.number !== undefined ? (
+      {(paid || free || sent) && props.whatsapp && props.number !== undefined ? (
         <a className={styles.placedLite} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(props.number, props.code))} rel="noopener">
           {copy.whatsappShop(props.displayName)}
         </a>
       ) : null}
       {props.digitalNote ? <p className={styles.digitalNote}>{props.digitalNote}</p> : null}
       {/* Nothing left to do here once it is paid: a way back to the shop (owner, 12 Nov 2026). */}
-      {paid || free ? (
+      {paid || free || sent ? (
         <a className={styles.sendLink} href={`/${props.handle}/shop`}>
           {copy.backTo(props.displayName)}
         </a>

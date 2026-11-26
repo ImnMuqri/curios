@@ -328,6 +328,24 @@ export interface ShopCopy {
   copy: string;
   uploadReceipt: string;
   uploadHint: string;
+  /** Paying first by the owner's QR or bank, at checkout (the order is sent with its receipt). */
+  sendOrder: (total: string) => string;
+  qrPayAmount: (total: string) => string;
+  attachReceipt: string;
+  /** Under the chosen file's name. */
+  receiptAttached: string;
+  /** Why Send order waits. */
+  receiptNeeded: string;
+  /** The receipt went because the total changed under it. */
+  receiptTotalChanged: (total: string) => string;
+  payNoteQr: (name: string) => string;
+  /** The placed screen for an order sent with its receipt. */
+  orderSent: string;
+  orderSentSub: (name: string) => string;
+  /** The order was not made after the customer paid: what to do (the receipt stays in the form). */
+  paidNotSent: (name: string) => string;
+  paidPricesChanged: (name: string, paid: string) => string;
+  paidContactLinks: (name: string) => string;
   uploadDifferent: string;
   uploading: string;
   receiptSent: string;
@@ -704,6 +722,18 @@ const EN: ShopCopy = {
   copy: 'Copy',
   uploadReceipt: 'Upload your receipt',
   uploadHint: 'A screenshot from your bank app',
+  sendOrder: (total) => `Send order · ${total}`,
+  qrPayAmount: (total) => `Pay exactly ${total}`,
+  attachReceipt: 'Attach your receipt',
+  receiptAttached: 'Receipt attached',
+  receiptNeeded: 'Attach your receipt to send your order.',
+  receiptTotalChanged: (total) => `The total changed. Attach the receipt for ${total}.`,
+  payNoteQr: (name) => `Pay ${name} directly by QR or bank transfer, attach the receipt, then send your order. ${name} checks it and confirms.`,
+  orderSent: 'Order sent',
+  orderSentSub: (name) => `${name} will check your receipt and confirm.`,
+  paidNotSent: (name) => `Your order wasn’t sent. You’ve already paid, so don’t pay again: your receipt is still attached here, so you can try again, or send it to ${name}.`,
+  paidPricesChanged: (name, paid) => `A price changed while you were paying, so your order wasn’t sent. You paid ${paid}: send your receipt to ${name} and they’ll sort it out.`,
+  paidContactLinks: (name) => `Send your receipt to ${name} through the links on their page.`,
   uploadDifferent: 'Upload a different receipt',
   uploading: 'Uploading…',
   receiptSent: 'sent',
@@ -1061,6 +1091,18 @@ const MS: ShopCopy = {
   copy: 'Salin',
   uploadReceipt: 'Muat naik resit anda',
   uploadHint: 'Tangkapan skrin dari aplikasi bank anda',
+  sendOrder: (total) => `Hantar tempahan · ${total}`,
+  qrPayAmount: (total) => `Bayar tepat ${total}`,
+  attachReceipt: 'Lampirkan resit anda',
+  receiptAttached: 'Resit dilampirkan',
+  receiptNeeded: 'Lampirkan resit anda untuk menghantar tempahan.',
+  receiptTotalChanged: (total) => `Jumlah berubah. Lampirkan resit untuk ${total}.`,
+  payNoteQr: (name) => `Bayar ${name} terus melalui QR atau pindahan bank, lampirkan resit, kemudian hantar tempahan anda. ${name} akan menyemaknya dan mengesahkan.`,
+  orderSent: 'Tempahan dihantar',
+  orderSentSub: (name) => `${name} akan menyemak resit anda dan mengesahkan.`,
+  paidNotSent: (name) => `Tempahan anda tidak dihantar. Anda sudah membayar, jadi jangan bayar lagi: resit anda masih dilampirkan di sini, jadi cuba lagi, atau hantarkan kepada ${name}.`,
+  paidPricesChanged: (name, paid) => `Harga berubah semasa anda membayar, jadi tempahan anda tidak dihantar. Anda telah membayar ${paid}: hantar resit anda kepada ${name} dan mereka akan menyelesaikannya.`,
+  paidContactLinks: (name) => `Hantar resit anda kepada ${name} melalui pautan di halaman mereka.`,
   uploadDifferent: 'Muat naik resit lain',
   uploading: 'Sedang dimuat naik…',
   receiptSent: 'dihantar',

@@ -360,6 +360,13 @@
   font-size: 12.5px;
 }
 
+/* Why Send order waits, under the receipt box: a plain word, not an error. */
+.hint {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
 .whatsapp {
   display: flex;
   align-items: center;
