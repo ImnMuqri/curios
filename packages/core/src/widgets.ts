@@ -325,7 +325,8 @@ export function widgetHeight(provider: WidgetProvider, embedRef: string): number
     case 'SPOTIFY':
       return embedRef.startsWith('track/') || embedRef.startsWith('episode/') ? 152 : 352;
     case 'APPLE_MUSIC':
-      return embedRef.split('/')[1] === 'song' ? 175 : 450;
+      // A song is `cc/song/...`, or Apple's "Share song" link: the album with `?i=<song>`. Both draw one song.
+      return embedRef.split('/')[1] === 'song' || embedRef.includes('?i=') ? 175 : 450;
     case 'YOUTUBE':
     case 'CANVA':
       return 0;

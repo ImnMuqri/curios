@@ -122,6 +122,8 @@ describe('Apple Music', () => {
   it('heights and size', () => {
     expect(widgetHeight('APPLE_MUSIC', 'us/song/x/123')).toBe(175);
     expect(widgetHeight('APPLE_MUSIC', 'us/album/x/123')).toBe(450);
+    // Apple's "Share song" link is the album with ?i=<song>: the embed draws one song, 175 high.
+    expect(widgetHeight('APPLE_MUSIC', 'my/album/iqro/1440833098?i=1440833107')).toBe(175);
     expect(minWidgetSize('APPLE_MUSIC', 'us/album/x/123')).toBe('WIDE');
   });
   it('refuses bad shapes and traversal', () => {
