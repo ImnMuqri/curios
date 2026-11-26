@@ -9,6 +9,7 @@ import { sourcePlace } from '../_ui/source-place.js';
 import { useToast } from '../_ui/toast.js';
 import { RowMenu } from './row-menu.js';
 import styles from './knowledge.module.css';
+import { Callout } from '@curios/ui';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
@@ -207,9 +208,9 @@ function FactRow({
 
       {error ? (
         <div className={styles.fspan} role="cell">
-          <p className={styles.error} role="alert">
+          <Callout tone="error">
             {error}
-          </p>
+          </Callout>
         </div>
       ) : null}
     </div>
@@ -360,9 +361,9 @@ export function FactList({
             </button>
           </div>
           {error ? (
-            <p className={styles.error} role="alert">
+            <Callout tone="error">
               {error}
-            </p>
+            </Callout>
           ) : null}
           <span>Facts you add are trusted straight away. No review needed.</span>
         </form>

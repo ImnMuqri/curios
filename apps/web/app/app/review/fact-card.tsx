@@ -5,6 +5,7 @@ import type { FactCategory } from "@curios/core";
 import type { ReviewFact } from "@curios/db-read";
 import { sourcePlace } from "../_ui/source-place.js";
 import styles from "./review.module.css";
+import { Callout } from '@curios/ui';
 
 /** Each kind of fact: its tag's words. The board draws Price, Hours and Policy; the other four use the same tag. */
 const CATEGORIES: Record<FactCategory, string> = {
@@ -299,9 +300,9 @@ export function FactCard({
       <Source fact={fact} />
 
       {error ? (
-        <p className={styles.error} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
 
       <div className={styles.facts}>

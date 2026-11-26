@@ -28,6 +28,7 @@ import { orNull, useSettingText } from './setting-field.js';
 import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type PickupApi, type PickupPlaceView, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 import styles from './store.module.css';
 import { VouchersTab } from './vouchers-tab.js';
+import { Callout } from '@curios/ui';
 
 /** The ids stay what links and the CHIP alert say (`?tab=vouchers`); the board's label for the last is Discounts. */
 type Tab = 'items' | 'payment' | 'delivery' | 'vouchers';
@@ -537,9 +538,9 @@ export function StoreEditor({
                 </button>
               </div>
               {openError ? (
-                <p className={styles.openError} role="alert">
-                  {openError}
-                </p>
+                <div className={styles.readyError}>
+                  <Callout tone="error">{openError}</Callout>
+                </div>
               ) : null}
               <ul className={styles.steps} aria-label="Ready to take orders">
                 {steps.map((step) => (
@@ -605,9 +606,9 @@ export function StoreEditor({
                 </button>
               </div>
               {halalError ? (
-                <p className={styles.openError} role="alert">
+                <Callout tone="error">
                   {halalError}
-                </p>
+                </Callout>
               ) : null}
             </section>
 

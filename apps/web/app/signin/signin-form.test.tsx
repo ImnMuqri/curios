@@ -133,8 +133,8 @@ describe('SignInForm: the Site board layout', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     const alert = await screen.findByRole('alert');
-    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-describedby', alert.id);
-    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-describedby', alert.id);
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-describedby', alert.parentElement!.id);
+    expect(screen.getByLabelText('Password')).toHaveAttribute('aria-describedby', alert.parentElement!.id);
     expect(screen.getByLabelText('Password')).toHaveAttribute('aria-invalid', 'true');
   });
 

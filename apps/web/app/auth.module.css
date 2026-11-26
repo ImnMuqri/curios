@@ -382,17 +382,6 @@
   display: none;
 }
 
-/* A failed submit, tied to the field above it. */
-.error {
-  padding: 12px 18px;
-  border-radius: var(--r-box);
-  background: var(--calm-twice);
-  box-shadow: inset 0 0 0 1px var(--calm-twice-ring);
-  color: var(--calm-danger);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
 /* Reset: four bars under the password, amber until it is good, then green. */
 .str {
   display: flex;

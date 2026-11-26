@@ -293,19 +293,6 @@
   background: var(--hijau);
 }
 
-.error {
-  margin: 10px 0 0;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-  font-size: 12.5px;
-}
-
-.rowError {
-  margin: 0 0 14px;
-}
-
 /* ---- A switch ---- */
 
 .switch {

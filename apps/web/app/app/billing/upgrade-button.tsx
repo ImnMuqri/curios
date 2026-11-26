@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './billing.module.css';
+import { Callout } from '@curios/ui';
 
 /**
  * Personal to business, in two steps. One click must not do it: the switch is
@@ -58,9 +59,9 @@ export function UpgradeForm({
         Keep it personal
       </button>
       {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
+        <div className={styles.errorRow}>
+          <Callout tone="error">{error}</Callout>
+        </div>
       ) : null}
     </div>
   );

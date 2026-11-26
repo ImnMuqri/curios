@@ -5,6 +5,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { strength } from '../../../lib/password-strength.js';
 import { Done, KeyIcon, SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
+import { Callout } from '@curios/ui';
 
 // The reset screen draws the same meter; the rule lives in lib/.
 export { strength };
@@ -107,9 +108,9 @@ export function AddPasswordForm({ onAdd }: { onAdd: (input: { password: string }
               <i />
             </div>
             {error ? (
-              <p className={styles.error} role="alert">
+              <Callout tone="error">
                 {error}
-              </p>
+              </Callout>
             ) : null}
           </form>
         ) : null

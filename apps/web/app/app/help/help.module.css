@@ -578,16 +578,10 @@
   margin: 0;
 }
 
-.error {
-  margin: 8px 0 0;
-  font-size: 12.5px;
-  color: var(--merah-deep);
-}
-
 /* Under Topics, where there is no composer to hold it. */
 .topicsError {
   flex: none;
-  padding: 0 18px 16px;
+  padding: 0 18px;
 }
 
 /* ---- Topics ---- */

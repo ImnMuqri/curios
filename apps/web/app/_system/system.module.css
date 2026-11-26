@@ -306,15 +306,6 @@
   transform: translateY(-1px);
 }
 
-/* A failure with words, under the line. */
-.alert {
-  max-width: 26em;
-  margin-top: 16px;
-  color: var(--calm-danger);
-  font-size: 14px;
-  line-height: 1.45;
-}
-
 /* "Nothing yet? Check spam, or send again in 0:42". */
 .again {
   margin-top: 18px;

@@ -555,7 +555,7 @@
   animation: confirmIn 0.3s cubic-bezier(0.2, 0.9, 0.3, 1) both;
 }
 
-.confirmPanel p {
+.confirmPanel > p:not([role]) {
   margin: 0;
   font-size: 14px;
   font-weight: 500;
@@ -610,12 +610,6 @@
 .confirmNo[aria-disabled='true'] {
   opacity: 0.55;
   cursor: progress;
-}
-
-.confirmPanel .confirmError {
-  color: var(--calm-danger);
-  font-size: 13.5px;
-  font-weight: 600;
 }
 
 /* After a successful yes, when the page passes `done` (the board's "Done."). */

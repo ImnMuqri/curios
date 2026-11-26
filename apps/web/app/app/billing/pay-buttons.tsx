@@ -7,6 +7,7 @@ import { Dialog } from '../_ui/dialog.js';
 import { SheetAction } from '../_ui/side-sheet.js';
 import { usePayDialog } from './pay-context.js';
 import styles from './billing.module.css';
+import { Callout } from '@curios/ui';
 
 export interface PayOption {
   plan: BillingPlan;
@@ -165,9 +166,9 @@ export function PlanPay({
               </div>
             </div>
             {error ? (
-              <p className={styles.error} role="alert">
+              <Callout tone="error">
                 {error}
-              </p>
+              </Callout>
             ) : null}
             <SheetAction className={styles.continue} onClick={() => void pay()}>
               Continue to CHIP

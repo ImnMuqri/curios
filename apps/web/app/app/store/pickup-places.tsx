@@ -174,9 +174,9 @@ function PlaceForm({ api, editing, onSaved, onCancel }: { api: PickupApi; editin
       )}
 
       {problem ? (
-        <p className={ui.saveError} role="alert">
+        <Callout tone="error">
           {problem}
-        </p>
+        </Callout>
       ) : null}
 
       <div className={styles.vActions}>

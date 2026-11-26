@@ -207,12 +207,6 @@ a.headLink {
   font-size: 13px;
 }
 
-.saveError {
-  margin: 6px 0 0;
-  color: var(--merah-deep);
-  font-size: 12.5px;
-}
-
 /* ---- Fields ---- */
 
 /* A field with its label floating inside, top left. */

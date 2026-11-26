@@ -6,6 +6,7 @@ import type { KnowledgePinned } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { ICONS } from './facts-tab.js';
 import styles from './knowledge.module.css';
+import { Callout } from '@curios/ui';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
@@ -103,9 +104,9 @@ function PinnedRow({
       ) : null}
 
       {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
+        <div className={styles.pinError}>
+          <Callout tone="error">{error}</Callout>
+        </div>
       ) : null}
     </li>
   );

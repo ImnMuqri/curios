@@ -9,6 +9,7 @@ import { sourcePlace } from '../_ui/source-place.js';
 import { useToast } from '../_ui/toast.js';
 import { ICONS, sourceKind } from './facts-tab.js';
 import styles from './knowledge.module.css';
+import { Callout } from '@curios/ui';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
@@ -226,9 +227,9 @@ function AddSource({
       )}
 
       {error ? (
-        <p className={styles.error} role="alert">
+        <Callout tone="error">
           {error}
-        </p>
+        </Callout>
       ) : null}
 
       <div className={styles.addActs}>
@@ -413,7 +414,7 @@ export function SourceList({
                         ? `Could not read it · added ${addedOn(source.createdAt)}`
                         : `${what(source)} · added ${addedOn(source.createdAt)}${source.tracked ? '' : ' · Facts from before tracking are listed under Facts'}`}
                   </span>
-                  {!isReading && source.status === 'FAILED' && source.error ? <p className={styles.error}>{source.error}</p> : null}
+                  {!isReading && source.status === 'FAILED' && source.error ? <Callout tone="error">{source.error}</Callout> : null}
                   {!isReading && outcome ? (
                     outcome.found > 0 ? (
                       <span className={styles.newFacts}>
@@ -431,9 +432,9 @@ export function SourceList({
                     )
                   ) : null}
                   {errors[source.id] ? (
-                    <p className={styles.error} role="alert">
+                    <Callout tone="error">
                       {errors[source.id]}
-                    </p>
+                    </Callout>
                   ) : null}
                 </span>
 
