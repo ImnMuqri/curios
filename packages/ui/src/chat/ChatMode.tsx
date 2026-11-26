@@ -308,7 +308,11 @@ export function ChatMode({
     // The keyboard follows the eye. There is no seed answer to wait on
     // anymore -- entering chat mode always lands on an empty composer, so it
     // is what gets the focus, not a close control.
+    // Not on a touch phone: there a focus inside the tap raises the keyboard and scrolls the page to
+    // the composer (the second visit, once this bundle is loaded; the first focus lands too late for iOS).
+    // The visitor taps the box when they want to type.
     if (!open) return;
+    if (window.matchMedia?.('(hover: none) and (pointer: coarse)')?.matches) return;
     input.current?.focus();
   }, [open]);
 

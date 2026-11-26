@@ -126,6 +126,19 @@ describe('ChatMode, entering', () => {
     await waitFor(() => expect(screen.getByLabelText('Ask a question')).toHaveFocus());
   });
 
+  it('leaves the composer unfocused on a touch phone, so the keyboard does not jump up on entry', async () => {
+    const original = window.matchMedia;
+    window.matchMedia = ((query: string) => ({ matches: query.includes('pointer: coarse'), media: query })) as unknown as typeof window.matchMedia;
+    try {
+      const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
+      render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(screen.getByLabelText('Ask a question')).not.toHaveFocus();
+    } finally {
+      window.matchMedia = original;
+    }
+  });
+
   it('renders nothing visible, and drops out of the accessibility tree, while closed', () => {
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
     render(
