@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { hashSessionValue, MAIL_QUEUE, type MailJobData, type PushJobData } from '@curios/core';
@@ -24,7 +24,8 @@ let nth = 0;
 const from = () => `203.0.118.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
-  app = await buildApp({ orders: { mailQueue, pushQueue, store } });
+  // With PAYMENT_SECRETS_KEY (always set in production): orders keep a sealed copy of their link, so a repeat can return it.
+  app = await buildApp({ orders: { mailQueue, pushQueue, store }, shopChip: { clientFor: () => { throw new Error('no CHIP here'); }, secretsKey: randomBytes(32), production: false } });
   await app.ready();
 });
 afterAll(async () => {
@@ -102,6 +103,8 @@ describe('POST /store/:handle/orders with a receipt', () => {
     const res = await place(shop, aBasket(shop));
 
     expect(res.statusCode).toBe(201);
+    // Said in the answer, so the browser only claims "sent" for an order that really holds its receipt.
+    expect(res.json().receipt).toBe(true);
     const [order] = await rows(shop);
     expect(order).toMatchObject({ status: 'PLACED', paidAt: null, tokenHash: hashSessionValue(res.json().token), receiptType: 'image/jpeg', receiptRejectedAt: null });
     expect(order!.receiptKey).toMatch(new RegExp(`^receipts/${shop.pageId}/[0-9a-f]{32}\\.jpg$`));
@@ -219,7 +222,9 @@ describe('POST /store/:handle/orders with a receipt', () => {
   it('an order with no receipt is as it was: waiting for payment, its own email, nothing stored', async () => {
     const shop = await aShop();
     const { receipt: _receipt, ...basket } = aBasket(shop);
-    expect((await place(shop, basket)).statusCode).toBe(201);
+    const res = await place(shop, basket);
+    expect(res.statusCode).toBe(201);
+    expect(res.json().receipt).toBe(false);
     expect((await rows(shop))[0]).toMatchObject({ status: 'PLACED', receiptKey: null, receiptUploadedAt: null });
     expect(store.put).not.toHaveBeenCalled();
     expect(mailQueue.add.mock.calls[0]![1].subject).toBe('New order #1 · RM170');
@@ -300,5 +305,53 @@ describe('POST /store/:handle/orders with a placeKey (a retry after a lost respo
     const shop = await aShop();
     expect((await place(shop, aBasket(shop, { placeKey: 'abc' }))).statusCode).toBe(400);
     expect((await place(shop, aBasket(shop, { placeKey: 'a'.repeat(20) + '!' }))).statusCode).toBe(400);
+  });
+});
+
+describe('a placeKey is not a way into an order', () => {
+  it('stores only a hash of the key, and the order link cannot be computed from anything in the database', async () => {
+    const shop = await aShop();
+    const placeKey = randomUUID();
+    const res = await place(shop, aBasket(shop, { placeKey }));
+    const [order] = await rows(shop);
+
+    expect(order!.placeKeyHash).toBe(hashSessionValue(placeKey));
+    expect(order!.placeKeyHash).not.toBe(placeKey);
+    // The old derivation (page + key, no secret) must not give the link, and the link itself is not in any column.
+    const derived = createHash('sha256').update(`curios-order-token:${shop.pageId}:${placeKey}`).digest('base64url');
+    expect(res.json().token).not.toBe(derived);
+    expect(order!.tokenHash).not.toBe(hashSessionValue(derived));
+    expect(JSON.stringify(order)).not.toContain(res.json().token);
+    expect(JSON.stringify(order)).not.toContain(placeKey);
+  });
+
+  it('the repeat returns the very same link, which opens the same order', async () => {
+    const shop = await aShop();
+    const placeKey = randomUUID();
+    const first = await place(shop, aBasket(shop, { placeKey }));
+    const again = await place(shop, aBasket(shop, { placeKey }));
+    expect(again.json()).toEqual(first.json());
+    expect((await rows(shop))[0]!.tokenHash).toBe(hashSessionValue(again.json().token));
+    expect(again.json().receipt).toBe(true);
+  });
+
+  it('with no sealing key (development) the repeat gets a new link for the same order, and the old one stops', async () => {
+    const bare = await buildApp({ orders: { mailQueue, pushQueue, store }, shopChip: { clientFor: () => { throw new Error('no CHIP here'); }, secretsKey: null, production: false } });
+    await bare.ready();
+    try {
+      const shop = await aShop();
+      const placeKey = randomUUID();
+      const send = () => bare.inject({ method: 'POST', url: `/store/${shop.handle}/orders`, remoteAddress: from(), payload: aBasket(shop, { placeKey }) });
+      const first = await send();
+      const again = await send();
+      expect(again.statusCode).toBe(201);
+      expect(again.json()).toMatchObject({ number: first.json().number, code: first.json().code });
+      expect(again.json().token).not.toBe(first.json().token);
+      const all = await rows(shop);
+      expect(all).toHaveLength(1);
+      expect(all[0]!.tokenHash).toBe(hashSessionValue(again.json().token));
+    } finally {
+      await bare.close();
+    }
   });
 });

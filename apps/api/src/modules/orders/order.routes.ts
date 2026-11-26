@@ -112,7 +112,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           placeKey: z.string().min(16).max(64).regex(/^[A-Za-z0-9_-]+$/).nullable().optional(),
         }),
         response: {
-          201: z.object({ number: z.number(), code: z.string(), token: z.string(), totalCents: z.number() }),
+          201: z.object({ number: z.number(), code: z.string(), token: z.string(), totalCents: z.number(), receipt: z.boolean() }),
           400: errorSchema,
           403: errorSchema,
           404: errorSchema,

@@ -1,7 +1,7 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
 import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, newOrderPush, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
 import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
-import { sealSecret } from '@curios/core/secret-box';
+import { openSecret, sealSecret } from '@curios/core/secret-box';
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals, RECEIPT_MAX_BYTES } from '@curios/core/orders';
 import { pickVoucher } from '@curios/core/vouchers';
 import type { Prisma, PrismaClient } from '@curios/db';
@@ -98,6 +98,8 @@ export interface Placed {
   code: string;
   token: string;
   totalCents: number;
+  /** The order was made with its receipt on it (so it is to check). A client that attached one must see this before it says "sent". */
+  receipt: boolean;
 }
 
 /** getPublicShop's item select, so PRICES_CHANGED hands back what the shop renders. */
@@ -118,12 +120,6 @@ const SHELF_SELECT = {
   sessions: { select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
   _count: { select: { codes: { where: { orderLineId: null } } } },
 } as const;
-
-/**
- * The order link's secret for an attempt that came with a key: derived from the page and the key, so a repeat can hand
- * back the same link (only its hash is stored). The key is the browser's random UUID, as unguessable as the random token.
- */
-const tokenFor = (pageId: string, placeKey: string) => createHash('sha256').update(`curios-order-token:${pageId}:${placeKey}`).digest('base64url');
 
 /** Enough to catch a typo; the mail server says the rest. */
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -173,17 +169,36 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     throw new OrderDateError();
   }
 
-  const placeKey = input.placeKey ?? null;
-  const token = placeKey ? tokenFor(found.id, placeKey) : randomBytes(32).toString('base64url');
+  // Only a hash of the attempt's key is stored, so a database read gives nobody anything to open an order with.
+  const placeKey = input.placeKey ? hashSessionValue(input.placeKey) : null;
+  // Always random, as for any order; a repeat gets it back from the sealed copy (below).
+  const token = randomBytes(32).toString('base64url');
 
   // A repeat of an attempt that already went through: the same order again, with nothing new made, stored or sent.
-  const already = async () => {
+  const already = async (): Promise<Placed | null> => {
     if (!placeKey) return null;
     const order = await deps.prisma.order.findUnique({
-      where: { pageId_placeKey: { pageId: found.id, placeKey } },
-      select: { number: true, code: true, totalCents: true },
+      where: { pageId_placeKeyHash: { pageId: found.id, placeKeyHash: placeKey } },
+      select: { id: true, number: true, code: true, totalCents: true, tokenSealed: true, receiptKey: true },
     });
-    return order ? { number: order.number, code: order.code, token, totalCents: order.totalCents } : null;
+    if (!order) return null;
+    let own: string | null = null;
+    if (order.tokenSealed && deps.secretsKey) {
+      try {
+        own = openSecret(order.tokenSealed, deps.secretsKey);
+      } catch {
+        own = null;
+      }
+    }
+    if (own === null) {
+      // Not sealed (no PAYMENT_SECRETS_KEY, which production refuses to start without) or sealed under another key: the
+      // link the lost answer carried is unrecoverable, so this attempt's order gets a new one, and that is the answer.
+      await deps.prisma.order.update({
+        where: { id: order.id },
+        data: { tokenHash: hashSessionValue(token), tokenSealed: deps.secretsKey ? sealSecret(token, deps.secretsKey) : null },
+      });
+    }
+    return { number: order.number, code: order.code, token: own ?? token, totalCents: order.totalCents, receipt: order.receiptKey !== null };
   };
   const repeat = await already();
   if (repeat) return repeat;
@@ -304,7 +319,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         number,
         code,
         tokenHash: hashSessionValue(token),
-        placeKey,
+        placeKeyHash: placeKey,
         tokenSealed: deps.secretsKey ? sealSecret(token, deps.secretsKey) : null,
         customerName,
         phone,
@@ -447,7 +462,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     }
   }
 
-  return { number: placed.number, code: placed.code, token, totalCents: placed.totals.totalCents };
+  return { number: placed.number, code: placed.code, token, totalCents: placed.totals.totalCents, receipt: receiptKey !== null };
 }
 
 /**
