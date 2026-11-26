@@ -197,6 +197,11 @@ In Store, under Items. Give each item a name, up to 8 photos, and one price or a
 Open: /app/store
 Source: apps/web/app/app/store/item-editor.tsx; packages/core/src/item-photos.ts (MAX_ITEM_PHOTOS)
 
+### shop-item-choices · Can an item have flavours and sizes?
+Yes. In Store, open the item, choose Options, then Add a choice group. Name the first group (like Flavour) and add its choices, add a second group if you need one (like Size), then set a price for every combination. You can switch a combination off if you do not make or sell it, and give each choice of the first group one of the item's photos. Customers pick one choice from each group, and the price follows.
+Open: /app/store
+Source: packages/core/src/store.ts (ChoicesPricing); docs/superpowers/specs/2026-11-26-item-choices-design.md
+
 ### shop-ask-items · Can customers ask about an item instead of buying it?
 Yes. Set the item to Ask for a price in Store. Customers send an enquiry with one message plus their name and WhatsApp, and it lands in Leads with the details picked out for you. You can give an optional starting price so your page can answer “how much?”.
 Open: /app/store
