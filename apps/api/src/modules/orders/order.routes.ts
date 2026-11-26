@@ -62,10 +62,14 @@ const voucherTerms = z.object({
 export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app, options) => {
   // Resolved once at registration (throws in production when unset), as ownerOrderRoutes does: a free order's delivery email links here.
   const apiUrl = options.payOnline?.apiUrl ?? resolveApiUrl(process.env);
+  // For a receipt sent with the order (paying first by the owner's QR or bank).
+  const store = resolveStore(options.store);
 
   app.post(
     '/store/:handle/orders',
     {
+      // An order may carry its receipt: 5 MB of file is about 7 MB of base64, as on the receipt route.
+      bodyLimit: 7 * 1024 * 1024 + 64 * 1024,
       schema: {
         params: z.object({ handle: z.string().min(1).max(64) }),
         body: z.object({
@@ -102,6 +106,8 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           // Where and when to collect, on a pickup order; placeOrder says which a shop needs.
           pickupPlaceId: z.string().min(1).max(64).nullable().optional(),
           pickupWindowId: z.string().min(1).max(64).nullable().optional(),
+          // Paying first by the owner's QR or bank: its receipt, checked as the receipt upload checks it.
+          receipt: z.object({ contentType: z.string().max(40), data: z.string().max(7_000_000) }).nullable().optional(),
         }),
         response: {
           201: z.object({ number: z.number(), code: z.string(), token: z.string(), totalCents: z.number() }),
@@ -114,6 +120,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
             vouchers: z.array(voucherTerms).optional(),
           }),
           410: errorSchema,
+          503: errorSchema,
         },
       },
     },
@@ -130,6 +137,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
             apiUrl,
             secretsKey: options.secretsKey ?? null,
             settings: await app.settings.get(),
+            store,
           },
           { handle: request.params.handle, ...body },
           new Date(),
