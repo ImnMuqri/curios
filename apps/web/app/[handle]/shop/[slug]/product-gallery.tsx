@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ShopCopy } from '../copy.js';
 import { PhotoViewer } from './photo-viewer.js';
 import styles from './product.module.css';
@@ -10,12 +10,19 @@ import styles from './product.module.css';
  * on it, and a row of small photos under it that jump to one. A tap opens the
  * photo full screen. One photo has no count and no row; none shows the letter.
  */
-export function ProductGallery(props: { name: string; urls: string[]; copy: ShopCopy }) {
+export function ProductGallery(props: { name: string; urls: string[]; copy: ShopCopy; /** Select this photo (a new object each time asks again); the owner's order is untouched. */ show?: { index: number } }) {
   const { name, urls, copy } = props;
   const n = urls.length;
   const track = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const [viewing, setViewing] = useState<number | null>(null);
+  const show = props.show;
+  useEffect(() => {
+    if (!show || show.index < 0 || show.index >= n) return;
+    setIndex(show.index);
+    const el = track.current;
+    el?.scrollTo({ left: show.index * el.clientWidth, behavior: 'smooth' });
+  }, [show, n]);
 
   if (n === 0) {
     return (
