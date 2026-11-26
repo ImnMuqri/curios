@@ -191,7 +191,7 @@ export function ProductView(props: {
         </p>
       ) : null}
 
-      <div className={sheet.sheet}>
+      <div className={`${sheet.sheet} ${styles.sheet}`}>
 
       <ProductGallery name={item.name} urls={item.photoUrls?.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : []} copy={copy} show={show} />
 

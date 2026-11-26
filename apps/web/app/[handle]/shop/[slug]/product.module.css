@@ -52,6 +52,12 @@
   white-space: nowrap;
 }
 
+/* Its own block formatting context: the photo's 16px top margin collapsed through the sheet, so the
+   photo sat flush against the sheet's top edge (owner, 26 Nov). */
+.sheet {
+  display: flow-root;
+}
+
 .hero {
   position: relative;
   display: grid;

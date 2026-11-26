@@ -496,7 +496,7 @@ const EN: ShopCopy = {
   addedNamed: (name, n) => `${name} added. ${n} in basket.`,
   shopOf: (name) => `${name}’s shop`,
   basketLabel: 'Basket',
-  sizeLabel: 'Size',
+  sizeLabel: 'Options',
   choicePicked: (group, value) => `${group}: ${value}`,
   choiceOff: 'Not available',
   productNotice: (days, day, pickup) => {
@@ -870,7 +870,7 @@ const MS: ShopCopy = {
   addedNamed: (name, n) => `${name} ditambah. ${n} dalam bakul.`,
   shopOf: (name) => `Kedai ${name}`,
   basketLabel: 'Bakul',
-  sizeLabel: 'Saiz',
+  sizeLabel: 'Pilihan',
   choicePicked: (group, value) => `${group}: ${value}`,
   choiceOff: 'Tidak tersedia',
   productNotice: (days, day, pickup) => {
