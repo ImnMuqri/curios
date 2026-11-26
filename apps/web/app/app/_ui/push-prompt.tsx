@@ -12,6 +12,8 @@ export const PUSH_DISMISS_MS = 14 * 24 * 60 * 60 * 1000;
 /** The success line stays this long. */
 export const PUSH_DONE_MS = 3000;
 
+const FAILED = 'Couldn’t turn on notifications. Try again, or use Settings → Notifications.';
+
 function dismissedRecently(): boolean {
   try {
     const at = Number(window.localStorage.getItem(PUSH_DISMISSED_AT_KEY));
@@ -64,14 +66,18 @@ export function PushPrompt({
     return () => clearTimeout(timer);
   }, [state.kind]);
 
-  const dismiss = useCallback(() => {
+  const remember = useCallback(() => {
     try {
       window.localStorage.setItem(PUSH_DISMISSED_AT_KEY, String(Date.now()));
     } catch {
       // Blocked storage: the card may return on the next visit, which is harmless.
     }
-    setState({ kind: 'none' });
   }, []);
+
+  const dismiss = useCallback(() => {
+    remember();
+    setState({ kind: 'none' });
+  }, [remember]);
 
   // Called straight from the tap: iOS only lets requestPermission run from a user gesture.
   async function turnOn(publicKey: string) {
@@ -79,9 +85,15 @@ export function PushPrompt({
     setBusy(true);
     try {
       const result = await client.turnOn(publicKey);
+      // Closing the browser's prompt leaves permission at "default": that is a Not now, so hold the card back
+      // (Chrome on Android blocks a site after a few dismissals). A real "denied" hides it for good.
+      if (result !== 'on' && client.permission() === 'default') remember();
       setState(result === 'on' ? { kind: 'done' } : { kind: 'none' });
     } catch (failure) {
-      setError(failure instanceof Error && failure.message ? failure.message : 'Something failed.');
+      console.error('Turning on notifications failed', failure);
+      // Subscribed in the browser but not saved on the server? Undo it, so the card can offer again.
+      await client.turnOff().catch(() => undefined);
+      setError(FAILED);
     } finally {
       setBusy(false);
     }

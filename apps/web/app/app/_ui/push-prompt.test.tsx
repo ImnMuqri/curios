@@ -91,11 +91,40 @@ describe('PushPrompt', () => {
     expect(screen.queryByText('Notifications are on for this phone.')).toBeNull();
   });
 
+  it('treats a closed browser prompt as Not now, not a block', async () => {
+    const client = aClient({ turnOn: vi.fn(async () => 'denied' as const), permission: () => 'default' });
+    render(<PushPrompt client={client} installed={() => true} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn on' }));
+    await waitFor(() => expect(screen.queryByText(ASK)).toBeNull());
+    expect(Number(window.localStorage.getItem(PUSH_DISMISSED_AT_KEY))).toBeGreaterThan(0);
+  });
+
+  it('stores nothing when the answer is a real denial', async () => {
+    let permission: NotificationPermission = 'default';
+    const client = aClient({
+      turnOn: vi.fn(async () => {
+        permission = 'denied';
+        return 'denied' as const;
+      }),
+      permission: () => permission,
+    });
+    render(<PushPrompt client={client} installed={() => true} />);
+    await userEvent.click(await screen.findByRole('button', { name: 'Turn on' }));
+    await waitFor(() => expect(screen.queryByText(ASK)).toBeNull());
+    expect(window.localStorage.getItem(PUSH_DISMISSED_AT_KEY)).toBeNull();
+  });
+
   it('shows an error with Try again when turning on fails', async () => {
     const turnOn = vi.fn<PushClient['turnOn']>().mockRejectedValueOnce(new Error('Offline.')).mockResolvedValueOnce('on');
-    render(<PushPrompt client={aClient({ turnOn })} installed={() => true} />);
+    const turnOff = vi.fn(async () => undefined);
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    render(<PushPrompt client={aClient({ turnOn, turnOff })} installed={() => true} />);
     await userEvent.click(await screen.findByRole('button', { name: 'Turn on' }));
-    expect(await screen.findByText('Offline.')).toBeInTheDocument();
+    expect(await screen.findByText(/Couldn.t turn on notifications\. Try again, or use Settings/)).toBeInTheDocument();
+    expect(screen.queryByText('Offline.')).toBeNull();
+    expect(spy).toHaveBeenCalled();
+    expect(turnOff).toHaveBeenCalled();
+    spy.mockRestore();
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Notifications are on for this phone.')).toBeInTheDocument();
   });
