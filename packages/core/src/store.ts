@@ -197,6 +197,33 @@ export function choiceCombos(pricing: ChoicesPricing): { one: number; two: numbe
   return out;
 }
 
+/** The columns and relations an item is read with to know its choices; see itemChoicesOf. */
+export interface ChoicesRow {
+  choiceGroupOne: string | null;
+  choiceGroupTwo: string | null;
+  choices: { id: string; group: number; label: string; position: number; photoId: string | null; photo: { squareKey: string } | null }[];
+  options: { id: string; label: string; priceCents: number; available: boolean; choiceOneId: string | null; choiceTwoId: string | null }[];
+}
+
+/** An item's choices as a reader gets them (choices in order, every combination, off ones included), or null on an item without choice groups. */
+export function itemChoicesOf(row: ChoicesRow): ItemChoices | null {
+  if (row.choiceGroupOne === null) return null;
+  const group = (n: number, name: string): ItemChoiceGroup => ({
+    name,
+    choices: row.choices
+      .filter((c) => c.group === n)
+      .sort((a, b) => a.position - b.position)
+      .map((c) => ({ id: c.id, label: c.label, photoId: c.photoId, photoKey: c.photo?.squareKey ?? null })),
+  });
+  return {
+    groupOne: group(1, row.choiceGroupOne),
+    groupTwo: row.choiceGroupTwo === null ? null : group(2, row.choiceGroupTwo),
+    combos: row.options
+      .filter((o) => o.choiceOneId !== null)
+      .map((o) => ({ id: o.id, label: o.label, oneId: o.choiceOneId as string, twoId: o.choiceTwoId, priceCents: o.priceCents, available: o.available })),
+  };
+}
+
 /** The lowest price among the combinations on sale, for "From RM45"; null when none is. */
 export function lowestAvailablePrice(combos: { priceCents: number; available: boolean }[]): number | null {
   const on = combos.filter((combo) => combo.available).map((combo) => combo.priceCents);

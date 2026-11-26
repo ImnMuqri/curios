@@ -5,6 +5,7 @@ import {
   type ChoicesPricing,
   formatRinggit,
   fromPrice,
+  itemChoicesOf,
   lowestAvailablePrice,
   MAX_OPTIONS,
   PRICE_MAX_CENTS,
@@ -230,5 +231,35 @@ describe('choices pricing', () => {
     expect(catalogLine({ priceCents: null, options: [{ label: '1kg', priceCents: 9000 }], choiceGroups: ['Size'] })).toBe('Size: 1kg RM90');
     expect(catalogLine({ priceCents: null, options: [{ label: '1kg', priceCents: 9000 }, { label: '2kg', priceCents: 17000 }] })).toBe('1kg RM90 · 2kg RM170');
     expect(catalogLine({ priceCents: 2500, options: [] })).toBe('RM25');
+  });
+});
+
+describe('itemChoicesOf', () => {
+  const choice = (id: string, group: number, position: number, label: string, photo: string | null = null) => ({ id, group, position, label, photoId: photo ? `ph-${id}` : null, photo: photo ? { squareKey: photo } : null });
+  const row = {
+    choiceGroupOne: 'Flavour',
+    choiceGroupTwo: 'Size',
+    choices: [choice('b', 1, 1, 'Chocolate', 'k/b.webp'), choice('x', 2, 0, '500g'), choice('a', 1, 0, 'Vanilla'), choice('y', 2, 1, '1kg')],
+    options: [
+      { id: 'o1', label: 'Vanilla · 500g', priceCents: 5000, available: true, choiceOneId: 'a', choiceTwoId: 'x' },
+      { id: 'o2', label: 'Chocolate · 1kg', priceCents: 9000, available: false, choiceOneId: 'b', choiceTwoId: 'y' },
+    ],
+  };
+  it('is null on a plain options list', () => {
+    expect(itemChoicesOf({ choiceGroupOne: null, choiceGroupTwo: null, choices: [], options: [] })).toBeNull();
+  });
+  it('orders the choices, carries photos, and keeps combinations that are off', () => {
+    const out = itemChoicesOf(row);
+    expect(out?.groupOne).toEqual({ name: 'Flavour', choices: [{ id: 'a', label: 'Vanilla', photoId: null, photoKey: null }, { id: 'b', label: 'Chocolate', photoId: 'ph-b', photoKey: 'k/b.webp' }] });
+    expect(out?.groupTwo?.choices.map((c) => c.label)).toEqual(['500g', '1kg']);
+    expect(out?.combos).toEqual([
+      { id: 'o1', label: 'Vanilla · 500g', oneId: 'a', twoId: 'x', priceCents: 5000, available: true },
+      { id: 'o2', label: 'Chocolate · 1kg', oneId: 'b', twoId: 'y', priceCents: 9000, available: false },
+    ]);
+  });
+  it('has no second group with one group', () => {
+    const out = itemChoicesOf({ ...row, choiceGroupTwo: null, choices: row.choices.filter((c) => c.group === 1), options: [{ ...row.options[0]!, choiceTwoId: null }] });
+    expect(out?.groupTwo).toBeNull();
+    expect(out?.combos[0]?.twoId).toBeNull();
   });
 });
