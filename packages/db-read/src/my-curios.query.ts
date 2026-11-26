@@ -43,6 +43,8 @@ export interface MyCurios {
     kind: LinkKind;
     provider: WidgetProvider | null;
     embedRef: string | null;
+    embedTitle: string | null;
+    embedImage: string | null;
   }[];
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
@@ -89,7 +91,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       socials: true,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true },
+        select: { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true },
       },
     },
   });

@@ -142,11 +142,11 @@ describe('getPublicPage', () => {
     const row = await write.page.findFirstOrThrow({ where: { handle: 'nadia' } });
     // Position 1: nadia's seeded WhatsApp link is at 0.
     await write.link.create({
-      data: { pageId: row.id, label: 'My playlist', url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', position: 1, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M' },
+      data: { pageId: row.id, label: 'My playlist', url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', position: 1, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M', embedTitle: 'Top Hits', embedImage: 'https://i.scdn.co/image/abc' },
     });
     const page = await getPublicPage('nadia');
-    expect(page?.links[0]).toMatchObject({ kind: 'LINK', provider: null, embedRef: null });
-    expect(page?.links[1]).toMatchObject({ kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M' });
+    expect(page?.links[0]).toMatchObject({ kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null });
+    expect(page?.links[1]).toMatchObject({ kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M', embedTitle: 'Top Hits', embedImage: 'https://i.scdn.co/image/abc' });
   });
 
   it('cannot write through the read-only connection', async () => {
