@@ -1,7 +1,7 @@
 import { PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { digitalFacts, seatsLeft, type DigitalFacts } from '@curios/core/digital';
-import type { DeliveryMode } from '@curios/core/store';
+import { itemChoicesOf, type ChoicesRow, type DeliveryMode, type ItemChoices } from '@curios/core/store';
 import { prismaRead } from './client.js';
 
 export interface ShopTile {
@@ -32,7 +32,13 @@ export interface ShopItem {
    * optional so a shelf built elsewhere (a test, the Store preview) reads as basket items when it leaves it out.
    */
   askForPrice?: boolean;
+  /** What can be bought: with choice groups, the combinations that are on sale (the shop's, never the owner's off ones). */
   options: { id: string; label: string; priceCents: number }[];
+  /**
+   * Choice groups inside the options ("Flavour" x "Size"): the groups, the choices (with the public square key of
+   * their photo) and every combination, switched-off ones too, so the page can grey them. Absent on a plain item.
+   */
+  choices?: ItemChoices;
 }
 
 /**
@@ -40,6 +46,29 @@ export interface ShopItem {
  * one (see digitalFacts). The link, the codes and the files themselves never leave here.
  */
 export type PublicItem = ShopItem & DigitalFacts;
+
+/** What an item is read with to know its choices and each combination's switch; see itemChoicesOf. */
+const CHOICE_SELECT = {
+  choiceGroupOne: true,
+  choiceGroupTwo: true,
+  choices: { orderBy: { position: 'asc' }, select: { id: true, group: true, label: true, position: true, photoId: true, photo: { select: { squareKey: true } } } },
+} as const;
+
+const OPTION_SELECT = { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true, available: true, choiceOneId: true, choiceTwoId: true } } as const;
+
+/**
+ * An item row as ShopItem has it: the options as {id, label, priceCents} (only the ones on sale when `onSaleOnly`,
+ * which the shop passes and the owner's editor does not), and `choices` only when it has choice groups.
+ */
+function shaped<T extends ChoicesRow>(row: T, onSaleOnly: boolean): Omit<T, keyof ChoicesRow> & { options: ShopItem['options']; choices?: ItemChoices } {
+  const { choiceGroupOne: _one, choiceGroupTwo: _two, choices: _choices, options, ...rest } = row;
+  const choices = itemChoicesOf(row);
+  return {
+    ...rest,
+    options: options.filter((o) => !onSaleOnly || o.available).map((o) => ({ id: o.id, label: o.label, priceCents: o.priceCents })),
+    ...(choices ? { choices } : {}),
+  };
+}
 
 const ITEM_SELECT = {
   id: true,
@@ -51,7 +80,8 @@ const ITEM_SELECT = {
   photoKey: true,
   priceCents: true,
   askForPrice: true,
-  options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+  options: OPTION_SELECT,
+  ...CHOICE_SELECT,
 } as const;
 
 const PUBLIC_ITEM_SELECT = {
@@ -78,7 +108,8 @@ export const SHOP_TILE_SELECT = {
   items: {
     where: { available: true },
     orderBy: { position: 'asc' },
-    select: { id: true, photoKey: true, name: true, priceCents: true, options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } } },
+    // Only what is on sale: this feeds the page's basket, which must not be able to hold a combination that is off.
+    select: { id: true, photoKey: true, name: true, priceCents: true, options: { where: { available: true }, orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } } },
   },
 } as const;
 
@@ -197,7 +228,7 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
   if (!page || page.mode !== 'BUSINESS' || !page.storeEnabled) return null;
   const { id: pageId, mode: _mode, storeEnabled: _open, items, ...shop } = page;
   const publicItems: PublicItem[] = items.map(({ files, sessions, _count, accessUrl, sessionMinutes, sessionPlace, kind, delivery, ...item }) => ({
-    ...item,
+    ...shaped(item, true),
     ...digitalFacts(
       {
         kind,
@@ -343,7 +374,8 @@ export async function getOwnerStore(accountId: string, now: Date = new Date()): 
   const chip = paymentAccount
     ? { connected: true, ...paymentAccount }
     : { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
-  const ownerItems: OwnerItem[] = items.map(({ photos, files, sessions, _count, ...item }) => {
+  const ownerItems: OwnerItem[] = items.map(({ photos, files, sessions, _count, ...raw }) => {
+    const item = shaped(raw, false);
     const on = (delivery: OwnerItem['delivery']) => item.kind === 'DIGITAL' && item.delivery === delivery;
     return {
       ...item,
