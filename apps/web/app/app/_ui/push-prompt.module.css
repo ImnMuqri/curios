@@ -129,7 +129,7 @@
 
 .error {
   margin: 2px 0 0;
-  color: var(--danger, #b3261e);
+  color: var(--merah-deep);
   font-size: 13px;
   line-height: 1.4;
 }
