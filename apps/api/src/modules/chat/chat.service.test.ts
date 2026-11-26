@@ -2009,6 +2009,38 @@ describe('product card', () => {
     });
   });
 
+  describe('choice groups', () => {
+    /** Flavour x Size: the cheap Vanilla 500g is switched off, so Vanilla 1kg is the first on sale and Chocolate 500g the cheapest. */
+    async function seedChoices() {
+      const pageId = await pageIdFor('nadia');
+      await prisma.page.update({ where: { id: pageId }, data: { storeEnabled: true, mode: 'BUSINESS' } });
+      const item = await prisma.item.create({ data: { pageId, name: 'Kek Variasi', slug: 'kek-variasi', position: 0, available: true, choiceGroupOne: 'Flavour', choiceGroupTwo: 'Size' } });
+      const choice = (group: number, position: number, label: string) => prisma.itemChoice.create({ data: { itemId: item.id, group, position, label } });
+      const [van, choc, small, big] = [await choice(1, 0, 'Vanilla'), await choice(1, 1, 'Chocolate'), await choice(2, 0, '500g'), await choice(2, 1, '1kg')];
+      const combo = (position: number, label: string, priceCents: number, one: { id: string }, two: { id: string }, available = true) =>
+        prisma.itemOption.create({ data: { itemId: item.id, label, priceCents, position, choiceOneId: one.id, choiceTwoId: two.id, available } });
+      await combo(0, 'Vanilla · 500g', 4000, van, small, false);
+      const vanBig = await combo(1, 'Vanilla · 1kg', 8000, van, big);
+      await combo(2, 'Chocolate · 500g', 6000, choc, small);
+      await combo(3, 'Chocolate · 1kg', 9000, choc, big);
+      return { item, vanBig };
+    }
+
+    it('lists the combinations on sale with their prices, and leaves the switched-off ones out', async () => {
+      await seedChoices();
+      const { gateway, prompt } = gatewayCapturingPrompt();
+      await ask(gateway, 'ada kek variasi?');
+      expect(prompt()).toContain('<item name="Kek Variasi">Flavour / Size: Vanilla · 1kg RM80; Chocolate · 500g RM60; Chocolate · 1kg RM90</item>');
+      expect(prompt()).not.toContain('Vanilla · 500g');
+    });
+
+    it('the card is priced from, and adds, a combination that is on sale', async () => {
+      const { item, vanBig } = await seedChoices();
+      const events = await ask(gatewaySaying('Kek variasi, ya.'), 'ada kek variasi?');
+      expect(events.find((e) => e.type === 'done')?.productCards?.[0]).toMatchObject({ itemId: item.id, fromPriceCents: 6000, firstOptionId: vanBig.id });
+    });
+  });
+
   it('offers the capture card on those same three turns with the shop off (the control)', async () => {
     await seedItems(false);
     const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
