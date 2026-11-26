@@ -605,11 +605,11 @@ describe('the Bento layout', () => {
   const player: BentoPageProps['links'][number] = {
     id: 'w',
     label: 'Mix',
-    url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M',
+    url: 'https://calendly.com/nadia',
     size: null,
     kind: 'WIDGET',
-    provider: 'SPOTIFY',
-    embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M',
+    provider: 'CALENDLY',
+    embedRef: 'nadia',
   };
   const css = () => readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
 
@@ -624,7 +624,7 @@ describe('the Bento layout', () => {
       <BentoPage {...base} layout="BENTO" links={[{ ...base.links[0]!, size: 'BIG' }, { ...player, size: 'SMALL' }, base.links[1]!]} />,
     );
     const sizes = [...container.querySelectorAll('[data-bento-grid] > li')].map((li) => li.getAttribute('data-size'));
-    // A playlist cannot be Small: it is Wide, and the lone Small after the Big widens too.
+    // A booking calendar cannot be Small: it is Wide, and the lone Small after the Big widens too.
     expect(sizes.slice(0, 2)).toEqual(['BIG', 'WIDE']);
   });
 

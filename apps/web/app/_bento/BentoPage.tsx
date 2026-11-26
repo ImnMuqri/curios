@@ -39,6 +39,9 @@ export interface BentoPageProps {
     kind?: LinkKind;
     provider?: WidgetProvider | null;
     embedRef?: string | null;
+    /** A Spotify card's title and cover; null or left out, the card falls back to the label and the Spotify mark. */
+    embedTitle?: string | null;
+    embedImage?: string | null;
   }[];
   style: PageStyle;
   accentColor: string;
@@ -314,7 +317,7 @@ export function BentoPage(props: BentoPageProps) {
       // A page drawn mid-conversation (the landing's demos) shows no players.
       return props.mode === 'chat' ? null : (
         <li key={link.id} data-widget data-size={size ?? undefined}>
-          <Widget provider={link.provider!} embedRef={link.embedRef!} label={link.label} url={link.url} interactive={interactive} fill={size !== null} />
+          <Widget provider={link.provider!} embedRef={link.embedRef!} label={link.label} url={link.url} title={link.embedTitle ?? null} image={link.embedImage ?? null} interactive={interactive} fill={size !== null} />
         </li>
       );
     }
