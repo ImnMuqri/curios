@@ -33,7 +33,7 @@ function api(): ItemsApi {
     remove: vi.fn(), reorder: vi.fn(), addPhoto: vi.fn(), recropPhoto: vi.fn(), replacePhoto: vi.fn(), removePhoto: vi.fn(), reorderPhotos: vi.fn(),
     photoUrl: vi.fn((key: string) => `https://files.example/${key}`),
     originalUrl: vi.fn(), uploadFile: vi.fn(), removeFile: vi.fn(), addCodes: vi.fn(), addSession: vi.fn(), updateSession: vi.fn(), removeSession: vi.fn(),
-  } as unknown as ItemsApi;
+  };
 }
 
 function show(item: EditorItem | null) {
@@ -52,7 +52,7 @@ describe('ItemEditor, choices inside options', () => {
     vi.useFakeTimers();
     const { calls, onPreview } = show(cake);
     expect(screen.getByText('Customers see From RM45')).toBeInTheDocument();
-    expect((screen.getByLabelText('Vanilla, 1kg price') as HTMLInputElement).value).toBe('80');
+    expect(screen.getByLabelText<HTMLInputElement>('Vanilla, 1kg price').value).toBe('80');
     expect(screen.getByLabelText('Vanilla, 1kg on sale')).toHaveAttribute('aria-checked', 'false');
     type('Name', 'Kek lapis');
     await pause();
@@ -160,7 +160,7 @@ describe('ItemEditor, choices inside options', () => {
     fireEvent.click(screen.getByLabelText('Same price for every Flavour'));
     expect(screen.getByLabelText('Vanilla, 1kg on sale')).toHaveAttribute('aria-checked', 'false');
     fireEvent.click(screen.getByLabelText('Same price for every Flavour'));
-    expect((screen.getByLabelText('Chocolate, 1kg price') as HTMLInputElement).value).toBe('90');
+    expect(screen.getByLabelText<HTMLInputElement>('Chocolate, 1kg price').value).toBe('90');
     await pause();
     expect(lastPricing(calls)).toMatchObject({ combos: [{ priceCents: 4500 }, { priceCents: 8000, available: false }, { priceCents: 5000 }, { priceCents: 9000 }] });
   });

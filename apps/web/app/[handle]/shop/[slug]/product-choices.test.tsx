@@ -101,9 +101,11 @@ describe('ProductView choices', () => {
   it('picking a choice with a photo shows that photo in the gallery', async () => {
     render(<ProductView {...base} />);
     await userEvent.click(screen.getByRole('radio', { name: 'Chocolate' }));
-    vi.mocked(Element.prototype.scrollTo).mockClear();
+    // A bare function value, not called on an element: no `this` to lose.
+    const scrollTo = vi.mocked(Element.prototype.scrollTo); // eslint-disable-line @typescript-eslint/unbound-method
+    scrollTo.mockClear();
     await userEvent.click(screen.getByRole('radio', { name: /Vanilla/ }));
-    expect(Element.prototype.scrollTo).toHaveBeenCalled();
+    expect(scrollTo).toHaveBeenCalled();
   });
 
   it('uses chips for group one when no choice has a photo, and one group alone works', () => {

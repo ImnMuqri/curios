@@ -91,7 +91,6 @@ export function ItemChoicesEditor({
                   </button>
                   {photos.map((photo, n) => (
                     <button key={photo.id} type="button" role="radio" aria-checked={pickedOf(choice, photos) === photo.id} tabIndex={pickedOf(choice, photos) === photo.id ? 0 : -1} aria-label={`Photo ${n + 1}`} className={styles.square} onClick={() => edit('one', choice.key, { photoId: photo.id })}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- a 512px square the item already shows */}
                       <img src={photoUrl(photo.squareKey)} alt="" />
                     </button>
                   ))}

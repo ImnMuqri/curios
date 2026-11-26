@@ -591,7 +591,7 @@ export function ItemEditor({
                 ) : (
                   <p className={ui.note}>{MAX_OPTIONS} options is the most an item holds.</p>
                 )}
-                <button ref={addGroup} type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: canRestore ? shelved!.choices : startChoices(draft.options) } })}>
+                <button ref={addGroup} type="button" className={ui.addRow} onClick={() => edit({ draft: { ...draft, choices: canRestore ? shelved.choices : startChoices(draft.options) } })}>
                   + Add a choice group
                 </button>
                 {canRestore ? <p className={ui.note}>Brings back the groups you just turned into a list.</p> : null}

@@ -2,7 +2,6 @@
 
 import { Button, Callout } from '@curios/ui';
 import { ApiError } from '../../../lib/api.js';
-import styles from './editor.module.css';
 
 /**
  * A failed save, said under its field: the API's own words when it has them
