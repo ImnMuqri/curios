@@ -72,7 +72,7 @@ Open: /app/curios
 Source: apps/web/app/app/curios/shop-switch.tsx; packages/ui BentoPage.tsx (the shop pill)
 
 ### page-widgets · How do I add a song, a map or a booking calendar to my page?
-Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Spotify and Apple Music are the exception: each shows a card with the cover and title that opens in that app, so nothing plays on your page. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s.
+Add it as a widget. It shows right on your page as a small player or calendar, so visitors don’t have to leave. Spotify and Apple Music are the exception: each shows a card with the cover and title that opens in that app, so nothing plays on your page. Widgets work with Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly and Canva. In My Curios, open Links, choose Add a widget, paste the share link from that service, and add. You can name it, or leave the name and it will use the service’s. Pictures and GIF work differently: you upload them instead of pasting a link. A Pictures widget holds up to 6 pictures (JPG, PNG or WEBP, up to 10 MB each) shown as a carousel or a grid, and a GIF widget holds one GIF of up to 10 MB that keeps moving. Add a caption, and describe them for people who use screen readers.
 Open: /app/curios
 Source: packages/core/src/widgets.ts; apps/web/app/app/curios/links-editor.tsx
 
