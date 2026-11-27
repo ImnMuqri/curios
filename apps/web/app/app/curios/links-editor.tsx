@@ -79,6 +79,11 @@ export function LinksEditor({
   const [panel, setPanel] = useState<{ provider: PictureProvider; id: string | null; nonce: number } | null>(null);
   const [widgetError, setWidgetError] = useState('');
   const addWidgetRef = useRef<HTMLButtonElement>(null);
+  const pickerHead = useRef<HTMLDivElement>(null);
+  // "+ Add a widget" is unmounted while the picker, form or panel is open: focus returns once it is back.
+  const refocusAdd = useRef(false);
+  // Rows removed in this session: a late answer from an upload must not bring one back.
+  const gone = useRef(new Set<string>());
   const [widgetUrl, setWidgetUrl] = useState('');
   const [widgetLabel, setWidgetLabel] = useState('');
   const [widgetBusy, setWidgetBusy] = useState(false);
@@ -101,6 +106,17 @@ export function LinksEditor({
   useEffect(() => {
     if (pasting) widgetRef.current?.focus();
   }, [pasting]);
+
+  useEffect(() => {
+    if (picking) pickerHead.current?.focus();
+  }, [picking]);
+
+  useEffect(() => {
+    if (!picking && !pasting && !panel && refocusAdd.current) {
+      refocusAdd.current = false;
+      addWidgetRef.current?.focus();
+    }
+  });
 
   async function add() {
     setError('');
@@ -134,11 +150,12 @@ export function LinksEditor({
     setPasting(null);
     setWidgetUrl('');
     setWidgetLabel('');
-    addWidgetRef.current?.focus();
+    refocusAdd.current = true;
   }
 
   /** A row the Pictures panel made or changed: replaced in the list, or joined to its end. */
   function upsert(link: LinkItem) {
+    if (gone.current.has(link.id)) return;
     const current = linksRef.current;
     onChange(current.some((row) => row.id === link.id) ? current.map((row) => (row.id === link.id ? link : row)) : [...current, link]);
   }
@@ -188,6 +205,7 @@ export function LinksEditor({
 
   async function remove(id: string) {
     setError('');
+    gone.current.add(id);
     // Optimistic: the row disappears immediately, which is what actually
     // cancels that row's pending debounced save (LinkRow unmounts, and
     // useAutosave's own cleanup clears its timer).
@@ -196,6 +214,7 @@ export function LinksEditor({
     try {
       await removeLink(id);
     } catch (failure) {
+      gone.current.delete(id);
       onChange(before);
       setError(message(failure));
     }
@@ -207,9 +226,14 @@ export function LinksEditor({
   const widgets = links.filter(isWidget);
   const panelLink = panel?.id ? (links.find((link) => link.id === panel.id) ?? null) : null;
 
+  function closePicker() {
+    setPicking(false);
+    refocusAdd.current = true;
+  }
+
   function closePanel() {
     setPanel(null);
-    addWidgetRef.current?.focus();
+    refocusAdd.current = true;
   }
 
   function openWidget(link: LinkItem) {
@@ -321,12 +345,19 @@ export function LinksEditor({
         {widgetError ? <Callout tone="error">{widgetError}</Callout> : null}
 
         {picking ? (
-          <div className={pics.panel} role="group" aria-label="What do you want to show?">
+          <div
+            className={pics.panel}
+            role="group"
+            aria-label="What do you want to show?"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') closePicker();
+            }}
+          >
             <div className={pics.head}>
-              <div>
+              <div ref={pickerHead} tabIndex={-1}>
                 <b>What do you want to show?</b>
               </div>
-              <button type="button" className={pics.close} aria-label="Close" onClick={() => setPicking(false)}>
+              <button type="button" className={pics.close} aria-label="Close" onClick={closePicker}>
                 ✕
               </button>
             </div>
@@ -372,6 +403,9 @@ export function LinksEditor({
         {pasting ? (
           <form
             className={`${styles.addForm} ${styles.widgetForm}`}
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') closeWidget();
+            }}
             onSubmit={(event) => {
               event.preventDefault();
               void addWidgetRow();
@@ -417,6 +451,7 @@ export function LinksEditor({
             api={pictures}
             updateLink={updateLink}
             onLink={upsert}
+            onDiscard={(id) => void remove(id)}
             onClose={closePanel}
           />
         ) : null}

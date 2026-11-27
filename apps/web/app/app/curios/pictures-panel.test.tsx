@@ -47,8 +47,9 @@ function setup(link: LinkItem | null, provider: 'PICTURES' | 'GIF' = 'PICTURES')
   const updateLink = vi.fn(async (_id: string, patch: object) => ({ ...rows.current, ...patch }));
   const onLink = vi.fn();
   const onClose = vi.fn();
-  render(<PicturesPanel provider={provider} link={link} api={api} updateLink={updateLink} onLink={onLink} onClose={onClose} />);
-  return { api, updateLink, onLink, onClose };
+  const onDiscard = vi.fn();
+  render(<PicturesPanel provider={provider} link={link} api={api} updateLink={updateLink} onLink={onLink} onDiscard={onDiscard} onClose={onClose} />);
+  return { api, updateLink, onLink, onClose, onDiscard };
 }
 
 const choose = (files: File[]) => fireEvent.change(screen.getByLabelText(/Choose (pictures|a GIF)/), { target: { files } });
@@ -184,6 +185,30 @@ describe('PicturesPanel', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Add a picture first.');
     expect(updateLink).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  it('discards a widget made but left with no picture when the panel closes, and closes on Escape', async () => {
+    const { api, onDiscard, onClose } = setup(null);
+    (api.add as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('nope'));
+    choose([file('a.jpg', 'image/jpeg')]);
+    await screen.findByRole('alert');
+    fireEvent.keyDown(screen.getByRole('region', { name: 'Pictures widget' }), { key: 'Escape' });
+    expect(onDiscard).toHaveBeenCalledWith('g');
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it('does not exceed six with two quick picks', async () => {
+    const { api } = setup(gallery(4));
+    choose([file('a.jpg', 'image/jpeg'), file('b.jpg', 'image/jpeg')]);
+    choose([file('c.jpg', 'image/jpeg')]);
+    await waitFor(() => expect(api.add).toHaveBeenCalledTimes(2));
+  });
+
+  it('shows two failures of the same file name', async () => {
+    const { api } = setup(gallery(1));
+    (api.add as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('bad'));
+    choose([file('a.jpg', 'image/jpeg'), file('a.jpg', 'image/jpeg')]);
+    await waitFor(() => expect(screen.getAllByRole('alert')).toHaveLength(2));
   });
 
   it('closes without saving', async () => {

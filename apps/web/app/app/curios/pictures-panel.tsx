@@ -44,6 +44,7 @@ export function PicturesPanel({
   api,
   updateLink,
   onLink,
+  onDiscard,
   onClose,
 }: {
   provider: PictureProvider;
@@ -53,6 +54,8 @@ export function PicturesPanel({
   updateLink: (id: string, patch: Partial<{ label: string; pictureMode: PictureMode; altText: string | null }>) => Promise<LinkItem>;
   /** Every answer that changes the row, so the list and the preview follow. */
   onLink: (link: LinkItem) => void;
+  /** Closed with the widget made but no picture in it: it is not shown on the page, so it is removed. */
+  onDiscard: (id: string) => void;
   onClose: () => void;
 }) {
   const isGif = provider === 'GIF';
@@ -71,6 +74,8 @@ export function PicturesPanel({
   const [over, setOver] = useState<number | null>(null);
   const [announce, setAnnounce] = useState('');
   const nextId = useRef(0);
+  // Files accepted and not yet answered, current between renders (two quick picks share the room).
+  const inFlight = useRef(0);
   const input = useRef<HTMLInputElement>(null);
   const head = useRef<HTMLDivElement>(null);
 
@@ -103,7 +108,7 @@ export function PicturesPanel({
 
   async function addFiles(files: File[]) {
     const problems: string[] = [];
-    const room = max - count - sending.length;
+    const room = max - (linkRef.current?.pictures.length ?? 0) - inFlight.current;
     const accepted: File[] = [];
     for (const file of files) {
       if (isGif ? file.type !== 'image/gif' : !STILL_TYPES.includes(file.type)) {
@@ -119,6 +124,7 @@ export function PicturesPanel({
     setErrors(problems);
     if (accepted.length === 0) return;
 
+    inFlight.current += accepted.length;
     const queued = accepted.map((file) => ({ file, id: nextId.current++ }));
     setSending((current) => [...current, ...queued.map(({ file, id }) => ({ id, name: file.name, done: 0 }))]);
     const failed: string[] = [];
@@ -130,6 +136,7 @@ export function PicturesPanel({
       } catch (failure) {
         failed.push(`${file.name}: ${message(failure)}`);
       } finally {
+        inFlight.current -= 1;
         setSending((current) => current.filter((entry) => entry.id !== id));
       }
     }
@@ -205,17 +212,30 @@ export function PicturesPanel({
     document.getElementById(`mode-${other.id}`)?.focus();
   }
 
+  /** Closing a widget that never got a picture removes it (best effort), so it cannot sit empty and count toward the limit. */
+  function close() {
+    const row = linkRef.current;
+    if (row && row.pictures.length === 0) onDiscard(row.id);
+    onClose();
+  }
+
   const title = isGif ? 'GIF' : 'Pictures';
   const sub = isGif ? `Up to ${MB} MB, stays animated` : `${count} of ${max}${count > 1 ? ' · drag to reorder' : ''}`;
 
   return (
-    <section className={styles.panel} aria-label={isGif ? 'GIF widget' : 'Pictures widget'}>
+    <section
+      className={styles.panel}
+      aria-label={isGif ? 'GIF widget' : 'Pictures widget'}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') close();
+      }}
+    >
       <div className={styles.head}>
         <div ref={head} tabIndex={-1}>
           <b>{title}</b>
           <small>{sub}</small>
         </div>
-        <button type="button" className={styles.close} aria-label="Close" onClick={onClose}>
+        <button type="button" className={styles.close} aria-label="Close" onClick={close}>
           ✕
         </button>
       </div>
@@ -321,8 +341,8 @@ export function PicturesPanel({
 
       {errors.length > 0 ? (
         <div className={styles.errors}>
-          {errors.map((error) => (
-            <Callout key={error} tone="error">
+          {errors.map((error, index) => (
+            <Callout key={index} tone="error">
               {error}
             </Callout>
           ))}
