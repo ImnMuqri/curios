@@ -113,9 +113,16 @@ span.slide {
   object-fit: cover;
 }
 
-.picsFill .carousel,
-.picsFill .track {
+/* In a tile the track takes what the dots leave: at 100% it pushed the dots out under the next tile. */
+.picsFill .carousel {
+  display: flex;
+  flex-direction: column;
   height: 100%;
+}
+
+.picsFill .track {
+  flex: 1;
+  min-height: 0;
 }
 
 .picsFill .slide {
