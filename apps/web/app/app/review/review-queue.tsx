@@ -196,13 +196,17 @@ export function ReviewQueue({
   const fresh = startTotal === 0 && log.length === 0 && visible.length === 0;
   const upNext = visible.slice(1, 3);
   const allChecked = visible.length === 0 && remaining <= 0;
+  // The all-done card shows; on a page not public yet it carries Publish instead of the header.
+  const publishInDone = Boolean(footer) && allChecked && !fresh && !published;
 
   return (
     <div className={styles.rv}>
       {head ? <div className={styles.head}>{head}</div> : null}
       {/* At the top, under the header, with the screen's other notices (owner, 24 Nov 2026: the
           side panel is gone). Publish stays here, whatever the queue holds. */}
-      {footer ? <div className={styles.golive}>{footer}</div> : null}
+      {/* Once the queue is done on a page that is not public yet, Publish moves into the all-done
+          card as its one action, so it is the next thing the owner sees (owner, 28 Nov 2026). */}
+      {footer && !publishInDone ? <div className={styles.golive}>{footer}</div> : null}
 
       {/* Nothing to count before any fact arrives, or once all are checked: the heading says so. */}
       {fresh || allChecked ? null : (
@@ -324,10 +328,14 @@ export function ReviewQueue({
             </svg>
           </div>
           <h2>Nothing left to review</h2>
-          <p>{published ? 'Everything you accepted is already live on your page.' : 'Everything you accepted will be on your page once you publish it.'}</p>
-          <a className={styles.btn2} href="/app/knowledge?tab=facts">
-            See your facts
-          </a>
+          <p>{published ? 'Everything you accepted is already live on your page.' : 'Last step: publish your page so visitors can see it.'}</p>
+          {publishInDone ? (
+            <div className={`${styles.golive} ${styles.doneLive}`}>{footer}</div>
+          ) : (
+            <a className={styles.btn2} href="/app/knowledge?tab=facts">
+              See your facts
+            </a>
+          )}
         </div>
       )}
 

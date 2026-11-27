@@ -344,3 +344,22 @@ describe('billingNeedsYou', () => {
     expect(billingNeedsYou(plan({ paidUntil: new Date('2099-01-01T00:00:00.000Z') }))).toBe(false);
   });
 });
+
+describe('a page that is not public yet', () => {
+  it('says so on every screen, amber, with Publish, and cannot be dismissed', () => {
+    const alerts = alertsFor({ ...page(), unpublished: true });
+    expect(alerts[0]).toMatchObject({
+      id: 'unpublished',
+      tone: 'warn',
+      where: 'all',
+      title: 'Your page is not public yet',
+      action: { href: '/app/review#publish', label: 'Publish' },
+      fixed: true,
+    });
+  });
+
+  it('says nothing once the page is published, or while it is suspended', () => {
+    expect(alertsFor(page()).some((a) => a.id === 'unpublished')).toBe(false);
+    expect(alertsFor({ ...page(), unpublished: true, suspension: { reason: 'x' } }).some((a) => a.id === 'unpublished')).toBe(false);
+  });
+});

@@ -26,6 +26,18 @@
   margin-top: 24px;
 }
 
+/* Copying the address before the page is public: say the link does not open yet. */
+.notLive {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* The Publish card under the address, while the page is not public yet. */
+.publishCard {
+  margin-top: 16px;
+}
+
 /* The board's .addr: 44px tall, and kept on a phone (the shared .url hides under 760px; the doubled selector wins over it). */
 .addr .addrPill {
   display: flex;

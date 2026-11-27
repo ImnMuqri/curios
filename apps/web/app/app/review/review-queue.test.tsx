@@ -160,7 +160,7 @@ describe('ReviewQueue', () => {
     await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
 
     expect(await screen.findByRole('heading', { name: /nothing left to review/i })).toBeInTheDocument();
-    expect(screen.getByText(/once you publish it/i)).toBeInTheDocument();
+    expect(screen.getByText(/publish your page so visitors can see it/i)).toBeInTheDocument();
     expect(screen.queryByText(/already live/i)).toBeNull();
   });
 
@@ -284,5 +284,34 @@ describe('ReviewQueue, without the template look', () => {
   it('has no gradient blobs behind the stack', () => {
     const { container } = render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
     expect(container.querySelector('[class*="blob"]')).toBeNull();
+  });
+});
+
+describe('Publish on a page that is not public yet', () => {
+  const publish = <button type="button">Publish</button>;
+
+  it('moves into the all-done card once the last fact is checked', async () => {
+    const one = [facts[0]!];
+    render(<ReviewQueue facts={one} published={false} footer={publish} onAccept={vi.fn().mockResolvedValue(undefined)} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+    expect(screen.getAllByRole('button', { name: 'Publish' })).toHaveLength(1);
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    expect(await screen.findByText('Nothing left to review')).toBeInTheDocument();
+    expect(screen.getByText('Last step: publish your page so visitors can see it.')).toBeInTheDocument();
+    // Once, and in the card: not also under the header.
+    expect(screen.getAllByRole('button', { name: 'Publish' })).toHaveLength(1);
+    expect(screen.queryByRole('link', { name: 'See your facts' })).toBeNull();
+  });
+
+  it('stays under the header before any fact arrives', () => {
+    render(<ReviewQueue facts={[]} published={false} footer={publish} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument();
+    expect(screen.queryByText('Nothing left to review')).toBeNull();
+  });
+
+  it('leaves the all-done card as it was on a published page', async () => {
+    render(<ReviewQueue facts={[facts[0]!]} published footer={<p>Your page is live</p>} onAccept={vi.fn().mockResolvedValue(undefined)} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    expect(await screen.findByRole('link', { name: 'See your facts' })).toBeInTheDocument();
+    expect(screen.getByText('Everything you accepted is already live on your page.')).toBeInTheDocument();
   });
 });
