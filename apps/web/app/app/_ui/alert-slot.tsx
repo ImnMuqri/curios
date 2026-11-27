@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { BANNER_ALERT_ID, SUSPENDED_ALERT_ID } from '../alert-ids.js';
+import { BANNER_ALERT_ID, PUBLISH_CARD_SCREENS, SUSPENDED_ALERT_ID, UNPUBLISHED_ALERT_ID } from '../alert-ids.js';
 import type { Alert } from '../alerts.js';
 import styles from './alert-slot.module.css';
 
@@ -36,7 +36,9 @@ function readDismissed(id: string): boolean {
  * "Your shop can't take orders right now", which says what the plan banner
  * does not), then one for every screen, then the one about this screen.
  */
-export function pickAlert(alerts: Alert[], pathname: string): Alert | null {
+export function pickAlert(all: Alert[], pathname: string): Alert | null {
+  // Review and My Curios carry the Publish card itself, so the banner would only say it twice.
+  const alerts = PUBLISH_CARD_SCREENS.some((screen) => pathname.startsWith(screen)) ? all.filter((a) => a.id !== UNPUBLISHED_ALERT_ID) : all;
   // The Curios team's banner is first on every screen.
   const banner = alerts.find((a) => a.id === BANNER_ALERT_ID);
   if (banner) return banner;

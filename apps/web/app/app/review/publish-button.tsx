@@ -83,8 +83,9 @@ export function PublishButton({
 
   // The board draws this too (its "not public yet" notice, with Publish): before the page is
   // public, this is the one place an owner makes it public.
+  // `id="publish"`: every other screen's "not public yet" banner links here.
   return (
-    <div className={styles.xpub}>
+    <div className={styles.xpub} id="publish">
       <span className={`${styles.xok} ${styles.xdot}`} aria-hidden="true">
         !
       </span>

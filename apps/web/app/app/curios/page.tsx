@@ -39,6 +39,7 @@ export default async function MyCuriosPage() {
       publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
       // Built on the server, as Review does: the address an owner pastes into a bio.
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`}
+      published={owned?.published ?? false}
     />
   );
 }

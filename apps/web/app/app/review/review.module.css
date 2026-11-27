@@ -588,6 +588,13 @@
   margin-top: 12px;
 }
 
+/* Publish as the all-done card's one action: the notice at its own width, its text to the left. */
+.alldone .doneLive {
+  width: min(100%, 560px);
+  margin-top: 12px;
+  text-align: left;
+}
+
 .burst {
   position: relative;
   width: 110px;

@@ -54,7 +54,8 @@ const page: OwnerPage = {
   id: 'p1',
   handle: 'nadia',
   displayName: 'Nadia Bakes',
-  published: false,
+  // Published, so the not-public-yet banner stays out of the other banners' tests (it has its own).
+  published: true,
   suspendedAt: null,
   suspendReason: null,
   mode: 'BUSINESS',
@@ -151,6 +152,17 @@ describe('the dashboard layout', () => {
     expect(frame.props.alerts).toEqual([expect.objectContaining({ id: 'spent', where: '/app/leads' })]);
     expect(frame.props.billingDot).toBe(true);
     expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('tells an owner who has not published that the page is not public yet, on every screen', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, published: false });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[] } };
+
+    // First, before the plan's own banners.
+    expect(frame.props.alerts[0]).toEqual(expect.objectContaining({ id: 'unpublished', where: 'all' }));
   });
 
   it('puts the suspension, with its reason, on every screen of a suspended page', async () => {

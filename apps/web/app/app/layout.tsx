@@ -83,7 +83,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       plan={planBlock({ ...page, now }, freeLeads)}
       badges={badges}
       mode={page.mode}
-      alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, banner, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
+      alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, banner, unpublished: !page.published, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
       billingDot={billingNeedsYou(plan, orders)}
       theme={parseTheme(jar.get(THEME_COOKIE)?.value)}
       bellSeen={parseBellSeen(jar.get(BELL_COOKIE)?.value)}

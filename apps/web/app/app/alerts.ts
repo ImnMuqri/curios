@@ -1,5 +1,5 @@
 import { planEndedSaid, type OrderState, type PlanState } from '@curios/core';
-import { BANNER_ALERT_ID, SUSPENDED_ALERT_ID } from './alert-ids.js';
+import { BANNER_ALERT_ID, SUSPENDED_ALERT_ID, UNPUBLISHED_ALERT_ID } from './alert-ids.js';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
 /**
@@ -138,6 +138,8 @@ export function alertsFor(input: {
   freeOrders: number;
   /** The admin's banner for every owner's dashboard, when one is showing. */
   banner?: string | null;
+  /** The owner has not published yet, so visitors to the address get "not found". */
+  unpublished?: boolean;
 }): Alert[] {
   const { plan, usage, now, freeLeads } = input;
   const alerts: Alert[] = [];
@@ -158,6 +160,21 @@ export function alertsFor(input: {
       title: 'Your page is suspended',
       text: input.suspension.reason?.trim() || 'The Curios team has taken your page down. Contact support to find out why.',
       action: { href: 'mailto:support@curios.my', label: 'Contact support' },
+    });
+  }
+
+  // New owners set everything up and never see that the page is still private (owner, 28 Nov 2026).
+  // It stays until they publish, which is once: there is no unpublishing.
+  if (input.unpublished && !input.suspension) {
+    alerts.push({
+      id: UNPUBLISHED_ALERT_ID,
+      tone: 'warn',
+      where: 'all',
+      icon: 'page',
+      title: 'Your page is not public yet',
+      text: 'Visitors to your link see “page not found” until you publish. You only do this once.',
+      action: { href: '/app/review#publish', label: 'Publish' },
+      fixed: true,
     });
   }
 

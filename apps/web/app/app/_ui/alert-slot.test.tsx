@@ -290,3 +290,14 @@ describe('the banner on a phone (Dash.html .ban9)', () => {
     expect(phone).toMatch(/\.x \{[^}]*position: absolute;[^}]*top: 8px;[^}]*right: 8px;[^}]*width: 44px;[^}]*height: 44px;/);
   });
 });
+
+describe('the not-public-yet banner', () => {
+  const unpublished: Alert = { id: 'unpublished', tone: 'warn', where: 'all', icon: 'page', title: 'Your page is not public yet', text: 'x', action: { href: '/app/review#publish', label: 'Publish' }, fixed: true };
+
+  it('shows on every screen except the two that carry the Publish card', () => {
+    expect(pickAlert([unpublished], '/app/leads')).toBe(unpublished);
+    expect(pickAlert([unpublished], '/app/settings')).toBe(unpublished);
+    expect(pickAlert([unpublished], '/app/review')).toBeNull();
+    expect(pickAlert([unpublished], '/app/curios')).toBeNull();
+  });
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, positionsAfterAdd, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageLayout, type PageStyle, type TileSize, type StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
@@ -157,6 +157,7 @@ export function MyCuriosEditor({
   uploadsEnabled,
   publicUrl,
   storageBase = '',
+  publish,
 }: {
   initial: EditorPage;
   api: CuriosApi;
@@ -165,6 +166,8 @@ export function MyCuriosEditor({
   publicUrl: string;
   /** Where stored pictures are served from (STORAGE_PUBLIC_URL); empty when storage is not set up. */
   storageBase?: string;
+  /** The Publish card, while the page is not public yet; absent once it is. */
+  publish?: ReactNode;
 }) {
   const [page, setPage] = useState(initial);
   const update = (change: Partial<EditorPage>) => setPage((current) => ({ ...current, ...change }));
@@ -345,12 +348,18 @@ export function MyCuriosEditor({
                 </svg>
               )}
             </button>
-            <span className={ui.srOnly} aria-live="polite">{copied ? 'Link copied' : ''}</span>
+            <span className={ui.srOnly} aria-live="polite">{copied ? (publish ? 'Link copied. It opens for visitors once you publish.' : 'Link copied') : ''}</span>
           </span>
           <a className={`${panel.primaryLink} ${ui.headLink} ${styles.viewLink}`} href={`/${page.handle}`} target="_blank" rel="noreferrer">
             View page
           </a>
               </div>
+              {copied && publish ? (
+                <p className={styles.notLive} aria-hidden="true">
+                  Copied. Visitors see “page not found” until you publish.
+                </p>
+              ) : null}
+              {publish ? <div className={styles.publishCard}>{publish}</div> : null}
               <PillTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} underline />
             </>
           }

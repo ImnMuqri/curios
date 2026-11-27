@@ -186,6 +186,19 @@ describe('the save status', () => {
     expect(screen.getByText('Link copied')).toBeInTheDocument();
   });
 
+  it('carries the Publish card while the page is not public, and says a copied link does not open yet', async () => {
+    const user = userEvent.setup();
+    render(
+      <SaveStatusProvider>
+        <MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" publish={<button type="button">Publish</button>} />
+      </SaveStatusProvider>,
+    );
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(screen.getByText('Link copied. It opens for visitors once you publish.')).toBeInTheDocument();
+    expect(screen.getByText('Copied. Visitors see “page not found” until you publish.')).toBeInTheDocument();
+  });
+
   it('opens the page itself from View page', () => {
     show();
     expect(screen.getByRole('link', { name: 'View page' })).toHaveAttribute('href', '/imnmuqri');

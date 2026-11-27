@@ -5,6 +5,7 @@ import { sendFile } from '../../../lib/send-file.js';
 import { coverUrlFrom, joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { resizeCover, resizeImage } from './resize-image.js';
 import { MyCuriosEditor, type CuriosApi, type EditorPage } from './my-curios.js';
+import { Publish } from '../review/publish-button.js';
 import type { LinkItem } from './links-editor.js';
 
 /**
@@ -21,11 +22,13 @@ export function MyCurios({
   uploadsEnabled,
   publicBase,
   publicUrl,
+  published,
 }: {
   initial: EditorPage;
   uploadsEnabled: boolean;
   publicBase: string;
   publicUrl: string;
+  published: boolean;
 }) {
   const avatarUrlFromKey = (key: string) => joinAvatarUrl(publicBase, key);
 
@@ -61,5 +64,15 @@ export function MyCurios({
     removeCover: async () => { await apiFetch('/pages/cover', { method: 'DELETE' }); },
     askPage: (question) => apiFetch<{ reply: string }>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history: [] }) }),
   };
-  return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} publicUrl={publicUrl} storageBase={publicBase} />;
+  return (
+    <MyCuriosEditor
+      initial={initial}
+      api={api}
+      uploadsEnabled={uploadsEnabled}
+      publicUrl={publicUrl}
+      storageBase={publicBase}
+      // Until the page is public, the editor carries the same Publish card as Review (owner, 28 Nov 2026).
+      publish={published ? undefined : <Publish publicUrl={publicUrl} published={false} />}
+    />
+  );
 }
