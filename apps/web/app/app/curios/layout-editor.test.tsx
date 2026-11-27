@@ -687,3 +687,39 @@ describe('LayoutEditor, List or Bento', () => {
     expect(screen.getAllByText('Shown Wide to fill the grid').length).toBeGreaterThan(0);
   });
 });
+
+describe('LayoutEditor, picture widgets', () => {
+  const pic = (n: number) => ({ id: `p${n}`, key: `links/pg/${n}.webp`, contentType: 'image/webp', width: 800, height: 600, bytes: 1000, position: n - 1 });
+  const base = { size: null, url: '', kind: 'WIDGET' as const, embedRef: null, embedTitle: null, embedImage: null, altText: null };
+  const gallery: LinkItem = { ...base, id: 'g', label: 'Fresh out of the oven', provider: 'PICTURES', pictureMode: 'CAROUSEL', pictures: [pic(1), pic(2), pic(3)] };
+  const gif = (mode: 'FULL' | 'SQUARE'): LinkItem => ({ ...base, id: 'f', label: 'Candle blowing', provider: 'GIF', pictureMode: mode, pictures: [pic(1)] });
+
+  function showBento(items: LinkItem[]) {
+    render(
+      <LayoutEditor
+        entries={pageEntries(items, null, null)}
+        onReorder={vi.fn(async () => undefined)}
+        faqEmpty={false}
+        layout="BENTO"
+        onLayout={vi.fn(async () => undefined)}
+        onResize={vi.fn(async () => undefined) as never}
+      />,
+    );
+  }
+  const sizes = (name: string) => within(screen.getByRole('radiogroup', { name: `Size of ${name}` })).getAllByRole('radio').map((r) => r.textContent);
+
+  it('says what a picture widget is instead of showing its empty address', () => {
+    showBento([gallery, gif('FULL')]);
+    expect(row('Fresh out of the oven')).toHaveTextContent('Gallery · 3 pictures · Carousel');
+    expect(row('Candle blowing')).toHaveTextContent('GIF · Full width');
+  });
+
+  it('keeps a gallery and a full-width GIF at Wide or more, and lets a square GIF be Small', () => {
+    showBento([gallery, gif('FULL')]);
+    expect(sizes('Fresh out of the oven')).toEqual(['Auto', 'Wide', 'Big']);
+    expect(sizes('Candle blowing')).toEqual(['Auto', 'Wide', 'Big']);
+    cleanup();
+    showBento([gif('SQUARE')]);
+    expect(sizes('Candle blowing')).toEqual(['Auto', 'Small', 'Wide', 'Tall', 'Big']);
+  });
+});

@@ -1,6 +1,7 @@
 'use client';
 
 import { apiFetch } from '../../../lib/api.js';
+import { sendFile } from '../../../lib/send-file.js';
 import { coverUrlFrom, joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { resizeCover, resizeImage } from './resize-image.js';
 import { MyCuriosEditor, type CuriosApi, type EditorPage } from './my-curios.js';
@@ -33,6 +34,11 @@ export function MyCurios({
     addWidget: async (input) => (await apiFetch<{ link: LinkItem }>('/links/widgets', { method: 'POST', body: JSON.stringify(input) })).link,
     updateLink: async (id, patch) => (await apiFetch<{ link: LinkItem }>(`/links/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).link,
     removeLink: async (id) => { await apiFetch(`/links/${id}`, { method: 'DELETE' }); },
+    createGallery: async (input) => (await apiFetch<{ link: LinkItem }>('/links/pictures', { method: 'POST', body: JSON.stringify(input) })).link,
+    // The file is the raw body, as item photos are; a bare Blob so only its type goes out as the content type.
+    addPicture: async (id, file, onProgress) => (await sendFile<{ link: LinkItem }>(`/links/${id}/pictures`, file.slice(0, file.size, file.type), onProgress)).link,
+    removePicture: async (id, pictureId) => (await apiFetch<{ link: LinkItem }>(`/links/${id}/pictures/${pictureId}`, { method: 'DELETE' })).link,
+    reorderPictures: async (id, ids) => (await apiFetch<{ link: LinkItem }>(`/links/${id}/pictures/order`, { method: 'PUT', body: JSON.stringify({ ids }) })).link,
     reorder: async (ids) => { await apiFetch('/links/order', { method: 'PUT', body: JSON.stringify({ ids }) }); },
     setShopOpen: async (enabled) => { await apiFetch('/store/settings', { method: 'PATCH', body: JSON.stringify({ enabled }) }); },
     setShopSize: async (tileSize) => { await apiFetch('/store/settings', { method: 'PATCH', body: JSON.stringify({ tileSize }) }); },
@@ -55,5 +61,5 @@ export function MyCurios({
     removeCover: async () => { await apiFetch('/pages/cover', { method: 'DELETE' }); },
     askPage: (question) => apiFetch<{ reply: string }>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history: [] }) }),
   };
-  return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} publicUrl={publicUrl} />;
+  return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} publicUrl={publicUrl} storageBase={publicBase} />;
 }

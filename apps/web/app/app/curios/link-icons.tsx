@@ -1,5 +1,5 @@
 // Shared by the Links and Layout tabs: the glyph at the start of a row, read off the address.
-import type { WidgetProvider } from '@curios/core/widgets';
+import { WIDGET_NAMES, cardTypeName, type WidgetProvider } from '@curios/core/widgets';
 import ui from '../_ui/editor.module.css';
 
 /** An address as the row shows it: without the scheme nobody reads. */
@@ -47,4 +47,46 @@ const WIDGET_GLYPHS: Record<WidgetProvider, string> = {
 
 export function WidgetIcon({ provider }: { provider: WidgetProvider }) {
   return <Icon d={WIDGET_GLYPHS[provider]} />;
+}
+
+/** The mode a picture widget really shows in: a single picture is Full width or Square, several are a Carousel or a Grid. */
+export function effectiveMode(provider: 'PICTURES' | 'GIF', count: number, mode: 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' | null): 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' {
+  if (provider === 'GIF' || count <= 1) return mode === 'SQUARE' ? 'SQUARE' : 'FULL';
+  return mode === 'GRID' ? 'GRID' : 'CAROUSEL';
+}
+
+export const MODE_NAMES = { CAROUSEL: 'Carousel', GRID: 'Grid', FULL: 'Full width', SQUARE: 'Square' } as const;
+
+type Described = { provider: WidgetProvider | null; embedRef: string | null; pictureMode: 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' | null; pictures: unknown[] };
+
+/**
+ * The line under a widget's name, in the Links and Layout tabs: what it is, never an address (a picture
+ * widget has none). "Gallery · 3 pictures · Carousel", "GIF · Full width", "Spotify · Song".
+ */
+export function widgetLine(link: Described): string {
+  const provider = link.provider;
+  if (provider === 'PICTURES') {
+    const count = link.pictures.length;
+    if (count === 0) return 'Gallery · No pictures yet';
+    return `Gallery · ${count} ${count === 1 ? 'picture' : 'pictures'} · ${MODE_NAMES[effectiveMode('PICTURES', count, link.pictureMode)]}`;
+  }
+  if (provider === 'GIF') return `GIF · ${link.pictures.length === 0 ? 'No GIF yet' : MODE_NAMES[effectiveMode('GIF', 1, link.pictureMode)]}`;
+  if (provider === null) return '';
+  const ref = link.embedRef ?? '';
+  switch (provider) {
+    case 'SPOTIFY':
+    case 'APPLE_MUSIC':
+      return `${WIDGET_NAMES[provider]} · ${cardTypeName(provider, ref) || 'Song'}`;
+    case 'SOUNDCLOUD':
+      return 'SoundCloud · Song';
+    case 'YOUTUBE':
+      return `YouTube · ${ref.startsWith('list/') ? 'Playlist' : 'Video'}`;
+    case 'GOOGLE_MAPS':
+      return 'Google Maps · Map';
+    case 'CALCOM':
+    case 'CALENDLY':
+      return `${WIDGET_NAMES[provider]} · Calendar`;
+    case 'CANVA':
+      return 'Canva · Design';
+  }
 }

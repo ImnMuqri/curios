@@ -6,8 +6,10 @@ import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, type TileSize } from '@curios/c
 import { useAutosave } from '../_ui/use-autosave.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
-import { WIDGET_NAMES, parseWidgetLink, type LinkKind, type WidgetProvider } from '@curios/core/widgets';
-import { Icon, KINDS, WidgetIcon, kindOf, shown } from './link-icons.js';
+import { WIDGET_NAMES, isPictureProvider, parseWidgetLink, type LinkKind, type PictureMode, type PictureProvider, type WidgetProvider } from '@curios/core/widgets';
+import { Icon, KINDS, WidgetIcon, kindOf, shown, widgetLine } from './link-icons.js';
+import { PicturesPanel, type PicturesApi } from './pictures-panel.js';
+import pics from './pictures-panel.module.css';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
@@ -55,19 +57,28 @@ export function LinksEditor({
   addWidget,
   updateLink,
   removeLink,
+  pictures,
   lead = null,
 }: {
   links: LinkItem[];
   onChange: (links: LinkItem[]) => void;
   addLink: (input: { label: string; url: string }) => Promise<LinkItem>;
   addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
-  updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
+  updateLink: (id: string, patch: Partial<{ label: string; url: string; pictureMode: PictureMode; altText: string | null }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
+  /** The Pictures and GIF widgets' calls: the widget, its pictures, their order. */
+  pictures: PicturesApi;
   /** A row joined to the top of the list, never moved or removed with it (the Shop link). */
   lead?: ReactNode;
 }) {
   const [adding, setAdding] = useState(false);
-  const [addingWidget, setAddingWidget] = useState(false);
+  // The widget picker ("What do you want to show?"), then either the paste-a-link form for a video, a
+  // song or anything else the paste box knows, or the Pictures panel.
+  const [picking, setPicking] = useState(false);
+  const [pasting, setPasting] = useState<PasteKind | null>(null);
+  const [panel, setPanel] = useState<{ provider: PictureProvider; id: string | null; nonce: number } | null>(null);
+  const [widgetError, setWidgetError] = useState('');
+  const addWidgetRef = useRef<HTMLButtonElement>(null);
   const [widgetUrl, setWidgetUrl] = useState('');
   const [widgetLabel, setWidgetLabel] = useState('');
   const [widgetBusy, setWidgetBusy] = useState(false);
@@ -88,8 +99,8 @@ export function LinksEditor({
   }, [adding]);
 
   useEffect(() => {
-    if (addingWidget) widgetRef.current?.focus();
-  }, [addingWidget]);
+    if (pasting) widgetRef.current?.focus();
+  }, [pasting]);
 
   async function add() {
     setError('');
@@ -120,13 +131,20 @@ export function LinksEditor({
   const widgetBlocked = recognised === null || widgetProblem !== '';
 
   function closeWidget() {
-    setAddingWidget(false);
+    setPasting(null);
     setWidgetUrl('');
     setWidgetLabel('');
+    addWidgetRef.current?.focus();
+  }
+
+  /** A row the Pictures panel made or changed: replaced in the list, or joined to its end. */
+  function upsert(link: LinkItem) {
+    const current = linksRef.current;
+    onChange(current.some((row) => row.id === link.id) ? current.map((row) => (row.id === link.id ? link : row)) : [...current, link]);
   }
 
   async function addWidgetRow() {
-    setError('');
+    setWidgetError('');
     if (widgetBlocked || widgetBusy) return;
     setWidgetBusy(true);
     try {
@@ -134,7 +152,7 @@ export function LinksEditor({
       onChange([...linksRef.current, link]);
       closeWidget();
     } catch (failure) {
-      setError(message(failure));
+      setWidgetError(message(failure));
     } finally {
       setWidgetBusy(false);
     }
@@ -184,143 +202,258 @@ export function LinksEditor({
   }
 
   const full = links.length >= MAX_LINKS;
+  const isWidget = (link: LinkItem) => link.kind === 'WIDGET' && link.provider !== null;
+  const plain = links.filter((link) => !isWidget(link));
+  const widgets = links.filter(isWidget);
+  const panelLink = panel?.id ? (links.find((link) => link.id === panel.id) ?? null) : null;
+
+  function closePanel() {
+    setPanel(null);
+    addWidgetRef.current?.focus();
+  }
+
+  function openWidget(link: LinkItem) {
+    if (isPictureProvider(link.provider)) {
+      setPicking(false);
+      setPasting(null);
+      setPanel({ provider: link.provider, id: link.id, nonce: Date.now() });
+    }
+  }
+
+  /** A tile of the picker: a paste form for a video, a song or anything else, or the Pictures panel. */
+  function choose(what: PasteKind | PictureProvider) {
+    setPicking(false);
+    setWidgetError('');
+    if (what === 'PICTURES' || what === 'GIF') setPanel({ provider: what, id: null, nonce: Date.now() });
+    else setPasting(what);
+  }
+
+  const rowFor = (link: LinkItem) => (
+    <LinkRow
+      key={link.id}
+      link={link}
+      pictureUrl={pictures.url}
+      onLiveChange={(change) => applyLocal(link.id, change)}
+      onPersist={(change) => persist(link.id, change)}
+      onOpenPictures={() => openWidget(link)}
+      onRemove={() => {
+        if (panel?.id === link.id) setPanel(null);
+        void remove(link.id);
+      }}
+    />
+  );
 
   return (
-    <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="links-title">
-      <SectionHead id="links-title" title="Links" note="Add and edit your links. Set their order in Layout. Your page can point people to them too." />
+    <>
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="links-title">
+        <SectionHead id="links-title" title="Links" note="Add and edit your links. Set their order in Layout. Your page can point people to them too." />
 
-      {lead || links.length > 0 ? (
-        <div className={styles.linkStack}>
-          {lead}
-          {links.length > 0 ? (
-            <ul className={styles.linkList}>
-              {links.map((link) => (
-                <LinkRow
-                  key={link.id}
-                  link={link}
-                  onLiveChange={(change) => applyLocal(link.id, change)}
-                  onPersist={(change) => persist(link.id, change)}
-                  onRemove={() => void remove(link.id)}
-                />
-              ))}
-            </ul>
-          ) : null}
-        </div>
-      ) : null}
-
-      {links.length === 0 && !adding && !addingWidget ? (
-        <div className={ui.empty}>
-          <div className={ui.emptyArt} aria-hidden="true">
-            <span className={ui.ghostRows}>
-              <span data-tone="biru"><i /><b /><em /></span>
-              <span data-tone="rose"><i /><b /><em /></span>
-              <span data-tone="hijau"><i /><b /><em /></span>
-            </span>
-            <span className={ui.emptyBadge}>
-              <svg viewBox="0 0 24 24" width="21" height="21">
-                <path d={'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7'} />
-              </svg>
-            </span>
+        {lead || plain.length > 0 ? (
+          <div className={styles.linkStack}>
+            {lead}
+            {plain.length > 0 ? <ul className={styles.linkList}>{plain.map(rowFor)}</ul> : null}
           </div>
-          <h3>Add your first link</h3>
-          <p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p>
-          <button type="button" className={ui.primaryButton} onClick={() => setAdding(true)}>
-            + Add a link
-          </button>
-          <button type="button" className={ui.addRow} onClick={() => setAddingWidget(true)}>
-            + Add a widget
-          </button>
-        </div>
-      ) : null}
+        ) : null}
 
-      {error ? <Callout tone="error">{error}</Callout> : null}
-
-      {adding ? (
-        <form
-          className={styles.addForm}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void add();
-          }}
-        >
-          <input ref={nameRef} className={ui.input} aria-label="Name" placeholder="Name" value={label} onChange={(event) => setLabel(event.target.value)} />
-          <input className={ui.input} aria-label="Address" placeholder="https://" autoComplete="off" value={url} onChange={(event) => setUrl(event.target.value)} />
-          <span className={styles.addActions}>
-            <button type="submit" className={ui.primaryButton}>
-              Add
-            </button>
-            <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={() => setAdding(false)}>
-              <Icon d={CLOSE} />
-            </button>
-          </span>
-        </form>
-      ) : null}
-
-      {addingWidget ? (
-        <form
-          className={`${styles.addForm} ${styles.widgetForm}`}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void addWidgetRow();
-          }}
-        >
-          <input
-            ref={widgetRef}
-            className={ui.input}
-            aria-label="Widget link"
-            aria-describedby="widget-hint"
-            placeholder="Paste a Spotify, Apple Music, YouTube Music, SoundCloud, Google Maps, Cal.com, Calendly or Canva link"
-            autoComplete="off"
-            value={widgetUrl}
-            onChange={(event) => setWidgetUrl(event.target.value)}
-          />
-          <input className={ui.input} aria-label="Name (optional)" placeholder="Name (optional)" value={widgetLabel} onChange={(event) => setWidgetLabel(event.target.value)} />
-          <span className={styles.addActions}>
-            <button type="submit" className={ui.primaryButton} disabled={widgetBlocked || widgetBusy}>
-              Add
-            </button>
-            <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={closeWidget}>
-              <Icon d={CLOSE} />
-            </button>
-          </span>
-          <span id="widget-hint" className={styles.widgetHint} aria-live="polite">
-            {widgetService ? (
-              <span data-testid="widget-service" className={styles.widgetService}>
-                <WidgetIcon provider={widgetService} />
-                {WIDGET_NAMES[widgetService]}
+        {plain.length === 0 && !adding ? (
+          <div className={ui.empty}>
+            <div className={ui.emptyArt} aria-hidden="true">
+              <span className={ui.ghostRows}>
+                <span data-tone="biru"><i /><b /><em /></span>
+                <span data-tone="rose"><i /><b /><em /></span>
+                <span data-tone="hijau"><i /><b /><em /></span>
               </span>
-            ) : widgetProblem ? (
-              <span data-testid="widget-note">{widgetProblem}</span>
-            ) : null}
-          </span>
-        </form>
-      ) : null}
+              <span className={ui.emptyBadge}>
+                <svg viewBox="0 0 24 24" width="21" height="21">
+                  <path d={'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7'} />
+                </svg>
+              </span>
+            </div>
+            <h3>Add your first link</h3>
+            <p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p>
+            <button type="button" className={ui.primaryButton} onClick={() => setAdding(true)}>
+              + Add a link
+            </button>
+          </div>
+        ) : null}
 
-      {adding || addingWidget ? null : full ? (
-        <p className={ui.note}>
-          {MAX_LINKS} links is the most a page holds. Remove one to add another.
-        </p>
-      ) : links.length > 0 ? (
-        <span className={styles.addRows}>
-          <button type="button" className={ui.addRow} onClick={() => setAdding(true)}>
-            + Add link
-          </button>
-          <button type="button" className={ui.addRow} onClick={() => setAddingWidget(true)}>
-            + Add a widget
-          </button>
-        </span>
-      ) : null}
-    </section>
+        {error ? <Callout tone="error">{error}</Callout> : null}
+
+        {adding ? (
+          <form
+            className={styles.addForm}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void add();
+            }}
+          >
+            <input ref={nameRef} className={ui.input} aria-label="Name" placeholder="Name" value={label} onChange={(event) => setLabel(event.target.value)} />
+            <input className={ui.input} aria-label="Address" placeholder="https://" autoComplete="off" value={url} onChange={(event) => setUrl(event.target.value)} />
+            <span className={styles.addActions}>
+              <button type="submit" className={ui.primaryButton}>
+                Add
+              </button>
+              <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={() => setAdding(false)}>
+                <Icon d={CLOSE} />
+              </button>
+            </span>
+          </form>
+        ) : null}
+
+        {adding ? null : full ? (
+          <p className={ui.note}>
+            {MAX_LINKS} links is the most a page holds. Remove one to add another.
+          </p>
+        ) : plain.length > 0 ? (
+          <span className={styles.addRows}>
+            <button type="button" className={ui.addRow} onClick={() => setAdding(true)}>
+              + Add link
+            </button>
+          </span>
+        ) : null}
+      </section>
+
+      <section className={`${ui.section} ${ui.sectionRow}`} aria-labelledby="widgets-title">
+        <SectionHead id="widgets-title" title="Widgets" note="Songs, videos, maps, pictures and GIFs that show on your page as they are. Set their order in Layout." />
+
+        {widgets.length > 0 ? <ul className={styles.linkList}>{widgets.map(rowFor)}</ul> : null}
+
+        {widgetError ? <Callout tone="error">{widgetError}</Callout> : null}
+
+        {picking ? (
+          <div className={pics.panel} role="group" aria-label="What do you want to show?">
+            <div className={pics.head}>
+              <div>
+                <b>What do you want to show?</b>
+              </div>
+              <button type="button" className={pics.close} aria-label="Close" onClick={() => setPicking(false)}>
+                ✕
+              </button>
+            </div>
+            <div className={pics.tiles}>
+              <button type="button" className={pics.tile} onClick={() => choose('video')}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" style={{ color: '#B3261E' }}>
+                  <path d="M6 6h12a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V9a3 3 0 0 1 3-3zM10.5 9.5l4 2.5-4 2.5z" />
+                </svg>
+                <b>Video</b>
+                <small>YouTube</small>
+              </button>
+              <button type="button" className={pics.tile} onClick={() => choose('song')}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--biru)' }}>
+                  <path d="M9 18V6l10-2v12M9 18a2.5 2.5 0 1 1-2.5-2.5A2.5 2.5 0 0 1 9 18zM19 16a2.5 2.5 0 1 1-2.5-2.5A2.5 2.5 0 0 1 19 16z" />
+                </svg>
+                <b>Song</b>
+                <small>Spotify, Apple Music, YouTube Music, SoundCloud</small>
+              </button>
+              <button type="button" className={pics.tile} onClick={() => choose('PICTURES')}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--rose)' }}>
+                  <path d="M6 4h12a3 3 0 0 1 3 3v10a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3zM9 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM21 16l-5-5-9 9" />
+                </svg>
+                <b>Pictures</b>
+                <small>One, or up to 6</small>
+              </button>
+              <button type="button" className={pics.tile} onClick={() => choose('GIF')}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" style={{ color: 'var(--rose)' }}>
+                  <path d="M6 5h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3zM10 10H8.5a1.5 1.5 0 0 0 0 3H10v-1.5M13 10v4M16 14v-4h2.5M16 12h2" />
+                </svg>
+                <b>GIF</b>
+                <small>Up to 10 MB</small>
+              </button>
+            </div>
+            <p className={pics.other}>
+              Something else?{' '}
+              <button type="button" onClick={() => choose('other')}>
+                Maps, Cal.com, Calendly, Canva
+              </button>
+            </p>
+          </div>
+        ) : null}
+
+        {pasting ? (
+          <form
+            className={`${styles.addForm} ${styles.widgetForm}`}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void addWidgetRow();
+            }}
+          >
+            <input
+              ref={widgetRef}
+              className={ui.input}
+              aria-label="Widget link"
+              aria-describedby="widget-hint"
+              placeholder={PASTE_HINTS[pasting]}
+              autoComplete="off"
+              value={widgetUrl}
+              onChange={(event) => setWidgetUrl(event.target.value)}
+            />
+            <input className={ui.input} aria-label="Name (optional)" placeholder="Name (optional)" value={widgetLabel} onChange={(event) => setWidgetLabel(event.target.value)} />
+            <span className={styles.addActions}>
+              <button type="submit" className={ui.primaryButton} disabled={widgetBlocked || widgetBusy}>
+                Add
+              </button>
+              <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={closeWidget}>
+                <Icon d={CLOSE} />
+              </button>
+            </span>
+            <span id="widget-hint" className={styles.widgetHint} aria-live="polite">
+              {widgetService ? (
+                <span data-testid="widget-service" className={styles.widgetService}>
+                  <WidgetIcon provider={widgetService} />
+                  {WIDGET_NAMES[widgetService]}
+                </span>
+              ) : widgetProblem ? (
+                <span data-testid="widget-note">{widgetProblem}</span>
+              ) : null}
+            </span>
+          </form>
+        ) : null}
+
+        {panel ? (
+          <PicturesPanel
+            key={`${panel.provider}-${panel.id ?? panel.nonce}`}
+            provider={panel.provider}
+            link={panelLink}
+            api={pictures}
+            updateLink={updateLink}
+            onLink={upsert}
+            onClose={closePanel}
+          />
+        ) : null}
+
+        {picking || pasting || panel ? null : full ? (
+          <p className={ui.note}>Your page is full. Remove a link or widget to add a widget.</p>
+        ) : (
+          <span className={styles.addRows}>
+            <button type="button" ref={addWidgetRef} className={ui.addRow} onClick={() => setPicking(true)}>
+              + Add a widget
+            </button>
+          </span>
+        )}
+      </section>
+    </>
   );
 }
 
+type PasteKind = 'video' | 'song' | 'other';
+const PASTE_HINTS: Record<PasteKind, string> = {
+  video: 'Paste a YouTube link',
+  song: 'Paste a Spotify, Apple Music, YouTube Music or SoundCloud link',
+  other: 'Paste a Google Maps, Cal.com, Calendly or Canva link',
+};
+
 function LinkRow({
   link,
+  pictureUrl,
   onLiveChange,
   onPersist,
+  onOpenPictures,
   onRemove,
 }: {
   link: LinkItem;
+  pictureUrl: (key: string) => string | null;
+  /** A Pictures or GIF row opens its panel instead of a name field. */
+  onOpenPictures: () => void;
   /** Applied to `links` (and so the live preview) immediately, synchronously. */
   onLiveChange: (change: Partial<{ label: string; url: string }>) => void;
   /** The debounced write, as a promise the field's SaveState can see fail. */
@@ -364,6 +497,7 @@ function LinkRow({
   }
 
   const widget = link.kind === 'WIDGET' && link.provider !== null;
+  const gallery = widget && isPictureProvider(link.provider);
 
   if (editing) {
     return (
@@ -408,12 +542,16 @@ function LinkRow({
 
   return (
     <li aria-label={link.label} className={styles.linkRow}>
-      <span className={styles.linkKind} data-kind={widget ? 'widget' : kindOf(link.url)} aria-hidden="true">
-        {widget ? <WidgetIcon provider={link.provider!} /> : <Icon d={KINDS[kindOf(link.url)]} />}
-      </span>
-      <button type="button" ref={editButtonRef} className={styles.linkText} aria-label={`Edit ${link.label}`} onClick={openEditor}>
+      {widget ? (
+        <WidgetThumb link={link} pictureUrl={pictureUrl} />
+      ) : (
+        <span className={styles.linkKind} data-kind={kindOf(link.url)} aria-hidden="true">
+          <Icon d={KINDS[kindOf(link.url)]} />
+        </span>
+      )}
+      <button type="button" ref={editButtonRef} className={styles.linkText} aria-label={`Edit ${link.label}`} onClick={gallery ? onOpenPictures : openEditor}>
         <b>{link.label}</b>
-        <span>{widget ? WIDGET_NAMES[link.provider!] : shown(link.url)}</span>
+        <span>{widget ? widgetLine(link) : shown(link.url)}</span>
       </button>
       {confirming ? (
         <span className={ui.confirm}>
@@ -433,5 +571,28 @@ function LinkRow({
         </span>
       )}
     </li>
+  );
+}
+
+/**
+ * A widget row's picture: a gallery's first two pictures stacked, a GIF its image, a music card its
+ * cover, anything else (or a picture that cannot be shown yet) the service's glyph.
+ */
+function WidgetThumb({ link, pictureUrl }: { link: LinkItem; pictureUrl: (key: string) => string | null }) {
+  const sources = link.pictures.slice(0, link.provider === 'GIF' ? 1 : 2).flatMap((picture) => pictureUrl(picture.key) ?? []);
+  const cover = link.embedImage;
+  if (sources.length > 0 || cover) {
+    return (
+      <span className={`${pics.thumb} ${sources.length > 1 ? pics.stack : ''}`} data-testid="widget-thumb" aria-hidden="true">
+        {(sources.length > 0 ? sources : [cover!]).map((src) => (
+          <img key={src} src={src} alt="" />
+        ))}
+      </span>
+    );
+  }
+  return (
+    <span className={styles.linkKind} data-kind="widget" aria-hidden="true">
+      <WidgetIcon provider={link.provider!} />
+    </span>
   );
 }
