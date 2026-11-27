@@ -182,3 +182,50 @@ describe('countNavBadges', () => {
     expect(await countNavBadges(accountId)).toEqual({ review: 1, questions: 1, leads: 2, orders: 0 });
   });
 });
+
+describe('getMyCurios pictures', () => {
+  it('lists every widget with its pictures in order, empty ones too, with their ids for the editor', async () => {
+    const account = await write.account.create({
+      data: {
+        email: 'pics-owner@example.com',
+        pages: {
+          create: {
+            handle: 'picowner',
+            skeleton: 'picowner',
+            displayName: 'Pic Owner',
+            links: {
+              create: [
+                { label: 'Empty', url: '', position: 0, kind: 'WIDGET', provider: 'PICTURES', pictureMode: 'GRID' },
+                {
+                  label: 'Cakes',
+                  url: '',
+                  position: 1,
+                  kind: 'WIDGET',
+                  provider: 'PICTURES',
+                  pictureMode: 'CAROUSEL',
+                  altText: 'Cakes on a tray',
+                  pictures: {
+                    create: [
+                      { key: 'links/p/b.webp', contentType: 'image/webp', width: 10, height: 20, bytes: 5, position: 1 },
+                      { key: 'links/p/a.webp', contentType: 'image/webp', width: 30, height: 40, bytes: 6, position: 0 },
+                    ],
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    const page = await getMyCurios(account.id);
+    expect(page?.links.map((l) => [l.label, l.pictureMode, l.altText, l.pictures.length])).toEqual([
+      ['Empty', 'GRID', null, 0],
+      ['Cakes', 'CAROUSEL', 'Cakes on a tray', 2],
+    ]);
+    expect(page?.links[1]?.pictures.map((p) => ({ ...p, id: typeof p.id }))).toEqual([
+      { id: 'string', key: 'links/p/a.webp', contentType: 'image/webp', width: 30, height: 40, bytes: 6, position: 0 },
+      { id: 'string', key: 'links/p/b.webp', contentType: 'image/webp', width: 10, height: 20, bytes: 5, position: 1 },
+    ]);
+  });
+});
