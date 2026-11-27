@@ -285,48 +285,36 @@ describe('Ask, and the page tabs', () => {
     back.mockRestore();
   });
 
-  it('stops a widget frame on entering chat mode and starts it again on leaving, without a history entry', async () => {
+  it('takes a widget frame out on entering chat mode and puts the same one back on leaving, never navigating it', async () => {
     stubQualifyingFetch();
     const back = vi.spyOn(window.history, 'back').mockImplementation(() => {
       window.dispatchEvent(new PopStateEvent('popstate'));
     });
     const { container } = render(
       <TabbedPage>
-        <iframe data-widget-frame src="https://open.spotify.com/embed/track/abc" title="Song" />
+        <div data-testid="box">
+          <iframe data-widget-frame src="https://www.youtube-nocookie.com/embed/abc" title="Video" />
+          <span data-widget-cover />
+        </div>
         <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
       </TabbedPage>,
     );
     const frame = container.querySelector('iframe')!;
-    // A loaded frame: setting src would navigate it and add a session-history entry, so the move
-    // must go through location.replace.
+    // Navigating a loaded frame from its about:blank sends YouTube no referrer on iOS Safari (Error 153),
+    // and setting src adds a history entry: neither may happen.
     const replace = vi.fn();
     Object.defineProperty(frame, 'contentWindow', { value: { location: { replace } }, configurable: true });
 
     await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
-    await waitFor(() => expect(replace).toHaveBeenLastCalledWith('about:blank'));
-    expect(frame.getAttribute('src')).toBe('https://open.spotify.com/embed/track/abc');
+    await waitFor(() => expect(container.querySelector('iframe')).toBeNull());
 
     await userEvent.click(screen.getByRole('link', { name: 'Links' }));
-    await waitFor(() => expect(replace).toHaveBeenLastCalledWith('https://open.spotify.com/embed/track/abc'));
-    expect(replace).toHaveBeenCalledTimes(2);
-    expect(frame.getAttribute('src')).toBe('https://open.spotify.com/embed/track/abc');
-    expect(frame.hasAttribute('data-held-src')).toBe(false);
+    await waitFor(() => expect(container.querySelector('iframe')).toBe(frame));
+    // In its own place, with its address untouched.
+    expect(screen.getByTestId('box').firstElementChild).toBe(frame);
+    expect(frame.getAttribute('src')).toBe('https://www.youtube-nocookie.com/embed/abc');
+    expect(replace).not.toHaveBeenCalled();
     back.mockRestore();
-  });
-
-  it('falls back to src for a frame that never loaded', async () => {
-    stubQualifyingFetch();
-    const { container } = render(
-      <TabbedPage>
-        <iframe data-widget-frame src="https://open.spotify.com/embed/track/abc" title="Song" />
-        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
-      </TabbedPage>,
-    );
-    const frame = container.querySelector('iframe')!;
-    Object.defineProperty(frame, 'contentWindow', { value: null, configurable: true });
-    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
-    await waitFor(() => expect(frame.getAttribute('src')).toBe('about:blank'));
-    expect(frame.getAttribute('data-held-src')).toBe('https://open.spotify.com/embed/track/abc');
   });
 
   it('opens chat mode on arrival at #ask, where the shop page and the FAQ send a visitor', async () => {

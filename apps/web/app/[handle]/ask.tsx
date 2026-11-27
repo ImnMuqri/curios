@@ -173,38 +173,26 @@ export function Ask({
 
   /*
    * Widgets are only hidden by CSS while chat mode is open, so a player already playing would play on
-   * behind the chat. Stop each frame and put its address back when the visitor returns to the links (the
-   * player starts over). Setting `src` on a loaded frame navigates it and adds a joint session-history
-   * entry, which would make the `history.back()` that closes chat mode step back inside the frame
-   * instead, so a loaded frame is moved with `location.replace`, which adds none. `src` is the fallback
-   * for a frame that never loaded (no window yet). The address is kept on the frame while it is stopped.
+   * behind the chat. Each frame is taken out of the page while chat mode is open (a comment holds its
+   * place) and the same element is put back on the way out, so the player starts over.
+   *
+   * Not by navigating the frame. Setting `src` on a loaded frame adds a joint session-history entry,
+   * which would make the `history.back()` that closes chat mode step back inside the frame instead;
+   * and `location.replace` from the frame's own about:blank sends no referrer on iOS Safari, which
+   * YouTube refuses with "Error 153". A frame put back into the page is a new one: it loads its `src`
+   * with its own `referrerPolicy`, as on first load, and that first load adds no history entry.
    */
   useEffect(() => {
     const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
-    if (!page) return;
-    const frames = () => page.querySelectorAll<HTMLIFrameElement>('iframe[data-widget-frame]');
-    const go = (frame: HTMLIFrameElement, url: string) => {
-      const win = frame.contentWindow;
-      if (win) win.location.replace(url);
-      else frame.src = url;
+    if (!page || !open) return;
+    const held = [...page.querySelectorAll<HTMLIFrameElement>('iframe[data-widget-frame]')].map((frame) => {
+      const mark = document.createComment('widget');
+      frame.replaceWith(mark);
+      return { frame, mark };
+    });
+    return () => {
+      for (const { frame, mark } of held) if (mark.parentNode) mark.replaceWith(frame);
     };
-    const restore = () => {
-      for (const frame of frames()) {
-        const held = frame.getAttribute('data-held-src');
-        if (held === null) continue;
-        frame.removeAttribute('data-held-src');
-        go(frame, held);
-      }
-    };
-    if (open) {
-      for (const frame of frames()) {
-        const src = frame.getAttribute('src');
-        if (frame.hasAttribute('data-held-src') || src === null) continue;
-        frame.setAttribute('data-held-src', src);
-        go(frame, 'about:blank');
-      }
-    } else restore();
-    return restore;
   }, [open]);
 
   /**
