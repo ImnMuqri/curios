@@ -113,7 +113,7 @@
   height: 20px;
   border-radius: 50%;
   background: rgba(4, 33, 46, 0.6);
-  color: #fff;
+  color: var(--on-photo);
   font-size: 11px;
   font-style: normal;
   font-weight: 600;
@@ -249,7 +249,7 @@
 }
 
 [aria-checked='true'] > .ico i {
-  background: var(--biru);
+  background: var(--action);
 }
 
 .icoCarousel i:first-child {
