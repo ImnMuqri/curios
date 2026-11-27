@@ -278,7 +278,7 @@ export async function deleteAccount(
     if (handle.trim().toLowerCase() !== page.handle.toLowerCase()) throw new HandleMismatchError();
 
     // Everything stored for the page, read before the rows go.
-    const [row, items, orders, digital, photos] = await Promise.all([
+    const [row, items, orders, digital, photos, widgetPictures] = await Promise.all([
       tx.page.findUniqueOrThrow({
         where: { id },
         select: { accountId: true, avatarKey: true, coverKey: true, paymentQrKey: true },
@@ -287,6 +287,7 @@ export async function deleteAccount(
       tx.order.findMany({ where: { pageId: id, receiptKey: { not: null } }, select: { receiptKey: true } }),
       tx.itemFile.findMany({ where: { item: { pageId: id } }, select: { key: true } }),
       tx.itemPhoto.findMany({ where: { item: { pageId: id } }, select: { originalKey: true, squareKey: true } }),
+      tx.linkPicture.findMany({ where: { link: { pageId: id } }, select: { key: true } }),
     ]);
 
     // Payments outlive the page (pageId goes null). Checkout does not fill these two
@@ -304,6 +305,7 @@ export async function deleteAccount(
       row.paymentQrKey,
       ...items.map((i) => i.photoKey),
       ...photos.map((p) => p.squareKey),
+      ...widgetPictures.map((p) => p.key),
       ...orders.map((o) => o.receiptKey),
     ];
     return { keys: stored.filter((key): key is string => Boolean(key)), digitalKeys: [...digital.map((f) => f.key), ...photos.map((p) => p.originalKey)] };
