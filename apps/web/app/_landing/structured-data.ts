@@ -4,6 +4,12 @@ import type { LandingCopy } from './copy.js';
 export const SITE_URL = 'https://curios.my';
 
 /**
+ * Other names people search for. "Curios" alone is a dictionary word (curio, curios), so
+ * these tell Google which site the brand is; it also uses them when it picks a site name.
+ */
+const ALTERNATE_NAMES = ['Curios.my', 'Curios Malaysia'];
+
+/**
  * JSON-LD for the landing page: the organisation, the site, the product with
  * both plans as offers, and the FAQ built from the same list the page shows.
  *
@@ -24,8 +30,10 @@ export function structuredData(copy: LandingCopy, url: string, prices: PlanTerms
         '@type': 'Organization',
         '@id': `${SITE_URL}/#organization`,
         name: 'Curios',
+        alternateName: ALTERNATE_NAMES,
         url: SITE_URL,
-        logo: `${SITE_URL}/icon.svg`,
+        // A raster logo: Google's logo guidelines want one it can show at 112px or more.
+        logo: { '@type': 'ImageObject', url: `${SITE_URL}/apple-icon.png`, width: 180, height: 180 },
         areaServed: { '@type': 'Country', name: 'Malaysia' },
       },
       {
@@ -33,6 +41,7 @@ export function structuredData(copy: LandingCopy, url: string, prices: PlanTerms
         '@id': `${SITE_URL}/#website`,
         url: SITE_URL,
         name: 'Curios',
+        alternateName: ALTERNATE_NAMES,
         publisher: { '@id': `${SITE_URL}/#organization` },
         inLanguage: ['en-MY', 'ms-MY'],
       },
