@@ -1,0 +1,331 @@
+/* Pictures and GIF widgets. Corners follow the page's button radius, capped so Soft never makes an oval. */
+.pics {
+  --pic-radius: min(var(--btn-radius, 16px), 16px);
+  min-width: 0;
+}
+
+.picsFill {
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+}
+
+.picsFill > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.cell {
+  position: relative;
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pic-radius);
+  background: var(--pill-ring, rgb(128 128 128 / 0.2));
+  color: inherit;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+
+span.cell {
+  cursor: default;
+}
+
+.cell img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cell:focus-visible,
+.step:focus-visible,
+.viewerClose:focus-visible,
+.viewerStep:focus-visible {
+  outline: 3px solid var(--accent, currentcolor);
+  outline-offset: 2px;
+}
+
+/* One picture: Full keeps its own shape, Square crops to a square. */
+.single {
+  width: 100%;
+}
+
+.single > .cell {
+  width: 100%;
+  height: 100%;
+}
+
+.single[data-mode='FULL'] > .cell img {
+  height: auto;
+}
+
+.picsFill .single {
+  aspect-ratio: auto !important;
+}
+
+/* Carousel: the next slide peeks. */
+.carousel {
+  position: relative;
+}
+
+.track {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  position: relative;
+  display: block;
+  flex: 0 0 82%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pic-radius);
+  background: var(--pill-ring, rgb(128 128 128 / 0.2));
+  overflow: hidden;
+  scroll-snap-align: start;
+  cursor: zoom-in;
+}
+
+span.slide {
+  cursor: default;
+}
+
+.slide:only-child {
+  flex-basis: 100%;
+}
+
+.slide img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* In a tile the track takes what the dots leave: at 100% it pushed the dots out under the next tile. */
+.picsFill .carousel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.picsFill .track {
+  flex: 1;
+  min-height: 0;
+}
+
+.picsFill .slide {
+  aspect-ratio: auto !important;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+.dots i {
+  width: 5px;
+  height: 5px;
+  border-radius: 3px;
+  background: currentcolor;
+  opacity: 0.3;
+  transition: width 0.3s, opacity 0.3s;
+}
+
+.dots i[data-on] {
+  width: 12px;
+  opacity: 1;
+}
+
+.step {
+  position: absolute;
+  top: calc(50% - 22px);
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 0.55);
+  color: white;
+  cursor: pointer;
+}
+
+.step[aria-disabled] {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepPrev {
+  left: 8px;
+}
+
+.stepNext {
+  right: 8px;
+}
+
+.step svg,
+.viewerStep svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A finger swipes; the buttons are for a mouse and a keyboard. */
+@media (hover: none) {
+  .step {
+    display: none;
+  }
+}
+
+/* Grid: one large, two small; the first spans both rows. */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 6px;
+  aspect-ratio: 3 / 2;
+}
+
+.grid[data-count='2'] {
+  grid-template-columns: 1fr 1fr;
+  aspect-ratio: 2 / 1;
+}
+
+.grid[data-count='3'] {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.grid[data-count='3'] > .gridFirst {
+  grid-row: span 2;
+}
+
+.picsFill .grid {
+  aspect-ratio: auto;
+  height: 100%;
+}
+
+.more {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / 0.5);
+  color: white;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+/* The full-screen viewer. */
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: black;
+}
+
+.viewerImage {
+  max-width: 100vw;
+  max-height: 100dvh;
+  object-fit: contain;
+}
+
+.viewerCount {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.viewerClose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: white;
+  cursor: pointer;
+}
+
+.viewerClose svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.viewerStep {
+  position: absolute;
+  top: calc(50% - 22px);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.16);
+  color: white;
+  cursor: pointer;
+}
+
+.viewerStep:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.viewerPrev {
+  left: 12px;
+}
+
+.viewerNext {
+  right: 12px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track {
+    scroll-behavior: smooth;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    scroll-behavior: auto;
+  }
+
+  .dots i {
+    transition: none;
+  }
+}

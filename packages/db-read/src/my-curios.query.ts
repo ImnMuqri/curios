@@ -1,5 +1,5 @@
 import { tidySocials, type SocialKind } from '@curios/core/socials';
-import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
+import type { LinkKind, PictureMode, WidgetProvider } from '@curios/core/widgets';
 import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageLayout, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
@@ -45,6 +45,10 @@ export interface MyCurios {
     embedRef: string | null;
     embedTitle: string | null;
     embedImage: string | null;
+    pictureMode: PictureMode | null;
+    altText: string | null;
+    /** In order. Every widget is returned, an empty gallery too: the owner is still setting it up. */
+    pictures: { id: string; key: string; contentType: string; width: number; height: number; bytes: number; position: number }[];
   }[];
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
@@ -91,7 +95,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       socials: true,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true },
+        select: { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true, pictureMode: true, altText: true, pictures: { orderBy: { position: 'asc' }, select: { id: true, key: true, contentType: true, width: true, height: true, bytes: true, position: true } } },
       },
     },
   });

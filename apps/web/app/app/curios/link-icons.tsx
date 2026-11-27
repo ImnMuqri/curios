@@ -1,5 +1,5 @@
 // Shared by the Links and Layout tabs: the glyph at the start of a row, read off the address.
-import type { WidgetProvider } from '@curios/core/widgets';
+import { WIDGET_NAMES, cardTypeName, effectivePictureMode as effectiveMode, type WidgetProvider } from '@curios/core/widgets';
 import ui from '../_ui/editor.module.css';
 
 /** An address as the row shows it: without the scheme nobody reads. */
@@ -41,8 +41,48 @@ const WIDGET_GLYPHS: Record<WidgetProvider, string> = {
   CALCOM: CALENDAR,
   CALENDLY: CALENDAR,
   CANVA: 'M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z',
+  PICTURES: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 16l5-5 4 4 3-3 6 6M9 9.5a1.5 1.5 0 1 0 0-.01z',
+  GIF: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM8 15v-6h-2v6zM12 9v6M15 15V9h3M15 12h2',
 };
 
 export function WidgetIcon({ provider }: { provider: WidgetProvider }) {
   return <Icon d={WIDGET_GLYPHS[provider]} />;
+}
+
+export { effectivePictureMode as effectiveMode } from '@curios/core/widgets';
+
+export const MODE_NAMES = { CAROUSEL: 'Carousel', GRID: 'Grid', FULL: 'Full width', SQUARE: 'Square' } as const;
+
+type Described = { provider: WidgetProvider | null; embedRef: string | null; pictureMode: 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' | null; pictures: unknown[] };
+
+/**
+ * The line under a widget's name, in the Links and Layout tabs: what it is, never an address (a picture
+ * widget has none). "Gallery · 3 pictures · Carousel", "GIF · Full width", "Spotify · Song".
+ */
+export function widgetLine(link: Described): string {
+  const provider = link.provider;
+  if (provider === 'PICTURES') {
+    const count = link.pictures.length;
+    if (count === 0) return 'Gallery · No pictures yet';
+    return `Gallery · ${count} ${count === 1 ? 'picture' : 'pictures'} · ${MODE_NAMES[effectiveMode('PICTURES', count, link.pictureMode)]}`;
+  }
+  if (provider === 'GIF') return `GIF · ${link.pictures.length === 0 ? 'No GIF yet' : MODE_NAMES[effectiveMode('GIF', 1, link.pictureMode)]}`;
+  if (provider === null) return '';
+  const ref = link.embedRef ?? '';
+  switch (provider) {
+    case 'SPOTIFY':
+    case 'APPLE_MUSIC':
+      return `${WIDGET_NAMES[provider]} · ${cardTypeName(provider, ref) || 'Song'}`;
+    case 'SOUNDCLOUD':
+      return 'SoundCloud · Song';
+    case 'YOUTUBE':
+      return `YouTube · ${ref.startsWith('list/') ? 'Playlist' : 'Video'}`;
+    case 'GOOGLE_MAPS':
+      return 'Google Maps · Map';
+    case 'CALCOM':
+    case 'CALENDLY':
+      return `${WIDGET_NAMES[provider]} · Calendar`;
+    case 'CANVA':
+      return 'Canva · Design';
+  }
 }

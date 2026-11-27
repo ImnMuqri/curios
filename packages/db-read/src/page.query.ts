@@ -1,9 +1,10 @@
 import { canTakeOrders, PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { DeliveryMode } from '@curios/core/store';
-import type { LinkKind, WidgetProvider } from '@curios/core/widgets';
+import { isPictureProvider, type LinkKind, type PictureMode, type WidgetProvider } from '@curios/core/widgets';
 import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
+import { pageEntries } from '@curios/core/bento';
 import type { AvatarSize, CoverLayout, HeadingFont, PageBackground, PageLayout, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { getSettings } from './settings.query.js';
@@ -22,6 +23,21 @@ export interface PublicLink {
   embedRef: string | null;
   embedTitle: string | null;
   embedImage: string | null;
+  /** CAROUSEL, GRID, FULL or SQUARE on a Pictures or GIF widget; null on every other row. */
+  pictureMode: PictureMode | null;
+  /** The description for screen readers of a Pictures or GIF widget. */
+  altText: string | null;
+  /** A Pictures or GIF widget's pictures in order, never empty on a widget that is returned; empty on every other row. */
+  pictures: PublicLinkPicture[];
+}
+
+/** One picture of a widget. `key` is a public-store key; apps/web turns it into a URL. A GIF's contentType is image/gif. */
+export interface PublicLinkPicture {
+  key: string;
+  contentType: string;
+  width: number;
+  height: number;
+  position: number;
 }
 
 export interface PublicFact {
@@ -158,7 +174,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       faqPosition: true,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true },
+        select: { id: true, label: true, url: true, icon: true, position: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true, pictureMode: true, altText: true, pictures: { orderBy: { position: 'asc' }, select: { key: true, contentType: true, width: true, height: true, position: true } } },
       },
       facts: {
         where: { verified: true },
@@ -185,10 +201,22 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
     ...rest
   } = page;
   const shop = shopTileOf(page);
+  // A Pictures or GIF widget with no pictures is not shown. Dropping it shifts the full list, so the shop and FAQ
+  // positions (indexes into the finished list) are read back from the list as it stands without it.
+  const empty = new Set(page.links.filter((l) => isPictureProvider(l.provider) && l.pictures.length === 0).map((l) => l.id));
+  const shown = empty.size === 0 ? rest.links : rest.links.filter((l) => !empty.has(l.id));
+  let faqPosition = rest.faqPosition;
+  if (empty.size > 0) {
+    const entries = pageEntries(page.links, shop ? { position: shop.position, size: shop.size } : null, { position: rest.faqPosition ?? null }).filter((e) => e.kind !== 'link' || !empty.has(e.id));
+    if (shop) shop.position = entries.findIndex((e) => e.kind === 'shop');
+    if (rest.faqPosition !== null) faqPosition = entries.findIndex((e) => e.kind === 'faq');
+  }
   const now = new Date();
   const takesOrders = canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced, ordersAtTrialReset, now }, freeOrders);
   return {
     ...rest,
+    links: shown,
+    faqPosition,
     socials: tidySocials(rest.socials),
     shop,
     shopOrdering: shop

@@ -1082,6 +1082,18 @@
   align-content: stretch;
 }
 
+.widgetPictures {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* The gallery (always the last child) takes what the tile has left, with or without a caption above it. */
+.widgetPictures > :last-child {
+  flex: 1;
+  min-height: 0;
+}
+
 .widgetFill > .widgetBox {
   display: flex;
   flex-direction: column;

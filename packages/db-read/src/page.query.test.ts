@@ -149,6 +149,53 @@ describe('getPublicPage', () => {
     expect(page?.links[1]).toMatchObject({ kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'playlist/37i9dQZF1DXcBWIGoYBM5M', embedTitle: 'Top Hits', embedImage: 'https://i.scdn.co/image/abc' });
   });
 
+  describe('Pictures and GIF widgets', () => {
+    const widget = { kind: 'WIDGET' as const, url: '' };
+    const pic = (n: number) => ({ key: `links/p/${n}.webp`, contentType: 'image/webp', width: 800 + n, height: 600, bytes: 100, position: n });
+
+    it('returns the pictures in order with their mode and description, and drops a widget with none', async () => {
+      await write.account.create({
+        data: {
+          email: 'pics@example.com',
+          pages: {
+            create: {
+              handle: 'picpage',
+              skeleton: 'picpage',
+              displayName: 'Pic Page',
+              published: true,
+              mode: 'BUSINESS',
+              storeEnabled: true,
+              shopTilePosition: 3,
+              faqPosition: 4,
+              links: {
+                create: [
+                  { label: 'Before', url: 'https://example.com', position: 0 },
+                  { label: 'Empty gallery', position: 1, ...widget, provider: 'PICTURES', pictureMode: 'GRID' },
+                  { label: 'Fresh out of the oven', position: 2, ...widget, provider: 'PICTURES', pictureMode: 'CAROUSEL', altText: 'Cakes', pictures: { create: [pic(1), pic(0)] } },
+                  { label: 'Empty GIF', position: 3, ...widget, provider: 'GIF', pictureMode: 'FULL' },
+                  { label: 'Dance', position: 4, ...widget, provider: 'GIF', pictureMode: 'SQUARE', pictures: { create: [{ ...pic(0), key: 'links/p/d.gif', contentType: 'image/gif' }] } },
+                ],
+              },
+            },
+          },
+        },
+      });
+      const page = await getPublicPage('picpage');
+      expect(page?.links.map((l) => l.label)).toEqual(['Before', 'Fresh out of the oven', 'Dance']);
+      expect(page?.links[0]).toMatchObject({ pictureMode: null, altText: null, pictures: [] });
+      expect(page?.links[1]).toMatchObject({ provider: 'PICTURES', embedRef: null, pictureMode: 'CAROUSEL', altText: 'Cakes' });
+      expect(page?.links[1]?.pictures).toEqual([
+        { key: 'links/p/0.webp', contentType: 'image/webp', width: 800, height: 600, position: 0 },
+        { key: 'links/p/1.webp', contentType: 'image/webp', width: 801, height: 600, position: 1 },
+      ]);
+      expect(page?.links[2]).toMatchObject({ provider: 'GIF', pictureMode: 'SQUARE' });
+      expect(page?.links[2]?.pictures).toHaveLength(1);
+      // The shop (was index 3 of Before, Empty, Cakes, [shop]...) and FAQ keep their place among what is left.
+      expect(page?.shop?.position).toBe(2);
+      expect(page?.faqPosition).toBe(3);
+    });
+  });
+
   it('cannot write through the read-only connection', async () => {
     const { prismaRead } = await import('./client.js');
     await expect(

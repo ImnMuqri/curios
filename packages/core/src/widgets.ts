@@ -17,8 +17,43 @@ export const WIDGET_PROVIDERS = [
   'CALCOM',
   'CALENDLY',
   'CANVA',
+  'PICTURES',
+  'GIF',
 ] as const;
 export type WidgetProvider = (typeof WIDGET_PROVIDERS)[number];
+/** The widgets that are pictures the owner uploaded: no embedded player, no embedRef, no frame. */
+export const PICTURE_PROVIDERS = ['PICTURES', 'GIF'] as const;
+export type PictureProvider = (typeof PICTURE_PROVIDERS)[number];
+export const isPictureProvider = (provider: WidgetProvider | null | undefined): provider is PictureProvider =>
+  provider === 'PICTURES' || provider === 'GIF';
+
+/** How a Pictures or GIF widget shows. Same values as the database enum PictureMode. */
+export const PICTURE_MODES = ['CAROUSEL', 'GRID', 'FULL', 'SQUARE'] as const;
+export type PictureMode = (typeof PICTURE_MODES)[number];
+/** Which modes each picture widget may take: a gallery of many, or the one-picture shapes. */
+export const MODES_FOR: Record<PictureProvider, readonly PictureMode[]> = {
+  PICTURES: PICTURE_MODES,
+  GIF: ['FULL', 'SQUARE'],
+};
+/** The mode a picture widget really shows in: a GIF or a single picture is Full width or Square, several pictures are a Carousel or a Grid. */
+export function effectivePictureMode(provider: PictureProvider, count: number, mode: PictureMode | null | undefined): PictureMode {
+  if (provider === 'GIF' || count <= 1) return mode === 'SQUARE' ? 'SQUARE' : 'FULL';
+  return mode === 'GRID' ? 'GRID' : 'CAROUSEL';
+}
+
+/** The most pictures in one Pictures widget (a GIF widget holds one). */
+export const MAX_WIDGET_PICTURES = 6;
+export const picturesAllowed = (provider: PictureProvider): number => (provider === 'GIF' ? 1 : MAX_WIDGET_PICTURES);
+/** 10 MB: the most one uploaded picture or GIF may be. */
+export const WIDGET_PICTURE_MAX_BYTES = 10_485_760;
+/** The longest edge a stored still picture is shrunk to. */
+export const WIDGET_PICTURE_EDGE = 1600;
+/** The longest alt text. */
+export const ALT_TEXT_MAX = 300;
+
+function noPlayer(provider: WidgetProvider): never {
+  throw new Error(`${provider} widgets have no embedded player`);
+}
 /** A link row is a plain link or a widget. */
 export type LinkKind = 'LINK' | 'WIDGET';
 
@@ -31,6 +66,8 @@ export const WIDGET_NAMES: Record<WidgetProvider, string> = {
   CALCOM: 'Cal.com',
   CALENDLY: 'Calendly',
   CANVA: 'Canva',
+  PICTURES: 'Pictures',
+  GIF: 'GIF',
 };
 
 /** Where each player is drawn from: exactly the page's CSP `frame-src`. */
@@ -46,14 +83,14 @@ export const WIDGET_FRAME_ORIGINS: readonly string[] = [
 ];
 
 export type WidgetParse =
-  | { ok: true; provider: WidgetProvider; embedRef: string }
-  | { ok: false; short: true; provider: WidgetProvider }
+  | { ok: true; provider: Exclude<WidgetProvider, PictureProvider>; embedRef: string }
+  | { ok: false; short: true; provider: Exclude<WidgetProvider, PictureProvider> }
   | { ok: false; short: false; message: string };
 
 const ID = /^[A-Za-z0-9_-]{1,64}$/;
 const PLACE_MAX = 200;
 
-const MESSAGES: Record<WidgetProvider, string> = {
+const MESSAGES: Record<Exclude<WidgetProvider, PictureProvider>, string> = {
   SPOTIFY: 'Paste a Spotify link to a song, album, playlist, artist or podcast.',
   APPLE_MUSIC: 'Paste an Apple Music link to a song, album, playlist or artist.',
   YOUTUBE: 'Paste a YouTube or YouTube Music link to a video or playlist.',
@@ -127,6 +164,10 @@ function placeOk(p: string): boolean {
 /** Is `ref` exactly what `parseWidgetLink` would have stored for this provider? */
 function refOk(provider: WidgetProvider, ref: string): boolean {
   switch (provider) {
+    case 'PICTURES':
+    case 'GIF':
+      // A picture widget has no embedRef at all.
+      return false;
     case 'SPOTIFY': {
       const [type, id, ...x] = ref.split('/');
       return x.length === 0 && SPOTIFY_TYPES.includes(type ?? '') && ID.test(id ?? '');
@@ -153,9 +194,9 @@ function refOk(provider: WidgetProvider, ref: string): boolean {
   }
 }
 
-const ok = (provider: WidgetProvider, embedRef: string): WidgetParse => ({ ok: true, provider, embedRef });
-const refuse = (provider: WidgetProvider): WidgetParse => ({ ok: false, short: false, message: MESSAGES[provider] });
-const shortLink = (provider: WidgetProvider): WidgetParse => ({ ok: false, short: true, provider });
+const ok = (provider: Exclude<WidgetProvider, PictureProvider>, embedRef: string): WidgetParse => ({ ok: true, provider, embedRef });
+const refuse = (provider: Exclude<WidgetProvider, PictureProvider>): WidgetParse => ({ ok: false, short: false, message: MESSAGES[provider] });
+const shortLink = (provider: Exclude<WidgetProvider, PictureProvider>): WidgetParse => ({ ok: false, short: true, provider });
 
 function parseSpotify(u: URL): WidgetParse {
   let parts = segments(u.pathname);
@@ -294,6 +335,7 @@ export function parseWidgetLink(raw: string): WidgetParse {
 
 /** The player's iframe address. Throws when `embedRef` is not one this module stored. */
 export function widgetSrc(provider: WidgetProvider, embedRef: string): string {
+  if (isPictureProvider(provider)) return noPlayer(provider);
   if (!refOk(provider, embedRef)) throw new Error(`Invalid ${provider} widget reference`);
   switch (provider) {
     case 'SPOTIFY':
@@ -322,6 +364,9 @@ export function widgetSrc(provider: WidgetProvider, embedRef: string): string {
 /** Frame height in px; 0 means the frame keeps an aspect ratio instead (YouTube 16:9, Canva 4:3). */
 export function widgetHeight(provider: WidgetProvider, embedRef: string): number {
   switch (provider) {
+    case 'PICTURES':
+    case 'GIF':
+      return noPlayer(provider);
     case 'SPOTIFY':
       return embedRef.startsWith('track/') || embedRef.startsWith('episode/') ? 152 : 352;
     case 'APPLE_MUSIC':
@@ -364,7 +409,9 @@ export function cardImageOk(provider: WidgetProvider, image: string | null | und
 }
 
 /** The smallest tile a widget reads well in. A card (Spotify, Apple Music) fits a small tile whatever it holds. */
-export function minWidgetSize(provider: WidgetProvider, _embedRef: string): TileSize {
+export function minWidgetSize(provider: WidgetProvider, _embedRef: string | null, pictureMode?: PictureMode | null): TileSize {
+  // Pictures are WIDE at the least; a GIF shown square may sit in a SMALL tile.
+  if (provider === 'GIF' && pictureMode === 'SQUARE') return 'SMALL';
   return hasCard(provider) ? 'SMALL' : 'WIDE';
 }
 

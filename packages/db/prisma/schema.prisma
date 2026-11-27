@@ -120,6 +120,16 @@ enum WidgetProvider {
   CALCOM
   CALENDLY
   CANVA
+  PICTURES
+  GIF
+}
+
+/// How a Pictures or GIF widget shows. Same values as PICTURE_MODES in @curios/core/widgets.
+enum PictureMode {
+  CAROUSEL
+  GRID
+  FULL
+  SQUARE
 }
 
 enum PageStyle {
@@ -446,8 +456,30 @@ model Link {
   /// null for every other row, and when the fetch failed (the card then falls back to the label).
   embedTitle String?
   embedImage String?
+  /// How a PICTURES or GIF widget shows; null on every other row.
+  pictureMode PictureMode?
+  /// The description for screen readers of a PICTURES or GIF widget, at most ALT_TEXT_MAX characters.
+  altText    String?
+  pictures   LinkPicture[]
 
   @@index([pageId, position])
+}
+
+/// One picture of a PICTURES widget, or the one GIF of a GIF widget. The object is in the public bucket:
+/// a still is a WEBP of at most 1600px on its long edge, a GIF is kept as uploaded.
+model LinkPicture {
+  id          String   @id @default(cuid())
+  linkId      String
+  link        Link     @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  key         String
+  contentType String
+  width       Int
+  height      Int
+  bytes       Int
+  position    Int
+  createdAt   DateTime @default(now())
+
+  @@index([linkId, position])
 }
 
 /// Something a business page sells. Either priceCents or at least one

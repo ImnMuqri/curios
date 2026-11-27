@@ -12,7 +12,7 @@ const NONE: WidgetCard = { title: null, image: null };
 /** The body as text, or null when it runs past MAX_BYTES (the rest is never read). */
 async function readCapped(res: Response): Promise<string | null> {
   if (!res.body) return null;
-  const reader = res.body.getReader();
+  const reader: ReadableStreamDefaultReader<Uint8Array> = res.body.getReader();
   const chunks: Uint8Array[] = [];
   let size = 0;
   for (;;) {

@@ -124,11 +124,11 @@ describe('OnboardingFlow', () => {
 
     // The refresh brings the facts it found.
     rerender(<OnboardingFlow page={null} facts={facts} monthlyPrice="RM49" freeLeads={3} freeOrders={3} pastedTextMax={20000} actions={a} />);
-    // The card is headed by the source and its count, one row per fact with its kind.
+    // The card is headed by the source and its count; the facts themselves wait in Review.
     expect(screen.getByText('keklina.example/menu')).toBeInTheDocument();
     expect(screen.getByText('2 facts')).toBeInTheDocument();
-    expect(screen.getByText('Kek coklat 2kg is RM170')).toBeInTheDocument();
-    expect(screen.getByText('Price')).toBeInTheDocument();
+    expect(screen.queryByText('Kek coklat 2kg is RM170')).toBeNull();
+    expect(screen.queryByText('Price')).toBeNull();
     expect(screen.getByText('They are waiting in Review. Nothing goes live until you accept each one.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add another source' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/app/review');
@@ -288,7 +288,7 @@ describe('OnboardingFlow, from the More board', () => {
     expect(screen.getByRole('heading', { name: 'Claim your page.' })).toBeInTheDocument();
   });
 
-  it('lists what it found in a card headed by the source, "N facts", and a kind tag on each row', async () => {
+  it('says how many it found, in a card headed by the source and "N facts", without listing them (owner, 27 Nov)', async () => {
     const a = actions();
     const { rerender } = flow({ page: owned, actions: a });
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example/menu');
@@ -296,12 +296,11 @@ describe('OnboardingFlow, from the More board', () => {
     await screen.findByRole('heading', { name: 'Done reading.' });
     rerender(<OnboardingFlow page={owned} facts={facts} monthlyPrice="RM49" freeLeads={3} freeOrders={3} pastedTextMax={20000} actions={a} />);
 
-    expect(screen.getByText('Here is what it picked out.')).toBeInTheDocument();
+    expect(screen.getByText('We found 2 facts.')).toBeInTheDocument();
     expect(screen.getByText('2 facts')).toBeInTheDocument();
-    expect(screen.getByText('Price')).toBeInTheDocument();
-    expect(screen.getByText('Policy')).toBeInTheDocument();
-    expect(screen.getByText('Kek coklat 2kg is RM170')).toBeInTheDocument();
-    expect(screen.getByText('2 days notice')).toBeInTheDocument();
+    // A long list pushed Review them far down: the facts wait in Review, not here.
+    expect(screen.queryByText('Kek coklat 2kg is RM170')).toBeNull();
+    expect(screen.queryByText('2 days notice')).toBeNull();
     expect(screen.getByRole('link', { name: 'Review them' })).toHaveAttribute('href', '/app/review');
   });
 

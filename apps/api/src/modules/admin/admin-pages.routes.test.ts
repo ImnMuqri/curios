@@ -394,6 +394,21 @@ describe('DELETE /admin/pages/:id', () => {
     await expect(privateFiles.read(original)).rejects.toThrow();
   });
 
+  it('removes the files of the deleted page Pictures and GIF widgets', async () => {
+    const page = await aPage();
+    const link = await app.prisma.link.create({ data: { pageId: page.id, label: 'Cakes', url: '', position: 0, kind: 'WIDGET', provider: 'PICTURES', pictureMode: 'GRID' } });
+    await app.prisma.linkPicture.createMany({
+      data: [
+        { linkId: link.id, key: `links/${page.id}/a.webp`, contentType: 'image/webp', width: 10, height: 10, bytes: 1, position: 0 },
+        { linkId: link.id, key: `links/${page.id}/b.webp`, contentType: 'image/webp', width: 10, height: 10, bytes: 1, position: 1 },
+      ],
+    });
+    const res = await call('DELETE', `/admin/pages/${page.id}`, { reason: 'Owner asked', handle: page.handle });
+    expect(res.statusCode).toBe(204);
+    const removed = store.remove.mock.calls.map((c) => c[0]);
+    expect(removed).toEqual(expect.arrayContaining([`links/${page.id}/a.webp`, `links/${page.id}/b.webp`]));
+  });
+
   it('two deletes at once: one 204, one 404, one audit row', async () => {
     const page = await aPage();
     const send = () => call('DELETE', `/admin/pages/${page.id}`, { reason: 'Owner asked', handle: page.handle });

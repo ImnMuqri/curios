@@ -1758,6 +1758,25 @@ describe('the owner\'s answers and profile in the prompt', () => {
     expect(captured.call().systemPrompt).toContain('WhatsApp: Order di WhatsApp -- https://wa.me/60123');
   });
 
+  it('sends a gallery and a GIF as their captions, never a file key, and leaves an empty gallery out', async () => {
+    const pageId = await pageIdFor('nadia');
+    const gallery = await prisma.link.create({ data: { pageId, label: 'Fresh out of the oven', url: '', position: 0, kind: 'WIDGET', provider: 'PICTURES', pictureMode: 'GRID' } });
+    await prisma.linkPicture.create({ data: { linkId: gallery.id, key: `links/${pageId}/secret-key.webp`, contentType: 'image/webp', width: 1, height: 1, bytes: 1, position: 0 } });
+    const gif = await prisma.link.create({ data: { pageId, label: 'Dancing cat', url: '', position: 1, kind: 'WIDGET', provider: 'GIF', pictureMode: 'FULL' } });
+    await prisma.linkPicture.create({ data: { linkId: gif.id, key: `links/${pageId}/cat.gif`, contentType: 'image/gif', width: 1, height: 1, bytes: 1, position: 0 } });
+    await prisma.link.create({ data: { pageId, label: 'Not yet', url: '', position: 2, kind: 'WIDGET', provider: 'PICTURES', pictureMode: 'GRID' } });
+    const captured = gatewayCapturingCall();
+
+    await collect(answer({ prisma, gateway: captured.gateway, settings, embedder: null }, { handle: 'nadia', question: 'Show me your cakes' }));
+
+    const prompt = captured.call().systemPrompt;
+    expect(prompt).toContain('a picture gallery: Fresh out of the oven');
+    expect(prompt).toContain('a GIF: Dancing cat');
+    expect(prompt).not.toContain('Not yet');
+    expect(prompt).not.toContain('secret-key');
+    expect(prompt).not.toContain('links/');
+  });
+
   it('sends a widget row as its label and the pasted link, never its frame address', async () => {
     const pageId = await pageIdFor('nadia');
     const pasted = 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M';

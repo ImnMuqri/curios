@@ -26,6 +26,14 @@ describe('Callout', () => {
     expect(error.firstElementChild?.className).not.toBe(action.firstElementChild?.className);
   });
 
+  it('marks an error with a hidden alert icon beside its words, and only an error', () => {
+    const { container: error } = render(<Callout tone="error">Could not save.</Callout>);
+    expect(error.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save.');
+    const { container: info } = render(<Callout tone="info">Reading…</Callout>);
+    expect(info.querySelector('svg')).toBeNull();
+  });
+
   it('takes a role over the one the tone gives', () => {
     render(<Callout tone="error" role="none">Could not read it.</Callout>);
     expect(screen.queryByRole('alert')).toBeNull();

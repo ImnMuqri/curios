@@ -277,7 +277,7 @@ export const ANSWER_PAGE_SELECT = {
   // The structured profile: small, always sent, so "how do I reach you?"
   // and "what's your Instagram?" are answered from the page's own links.
   bio: true,
-  links: { select: { label: true, url: true }, orderBy: { position: 'asc' } },
+  links: { select: { label: true, url: true, provider: true, _count: { select: { pictures: true } } }, orderBy: { position: 'asc' } },
   facts: {
     where: { verified: true },
     select: { id: true, category: true, claim: true },
@@ -359,7 +359,8 @@ export async function promptFor(
   const systemPrompt = buildSystemPrompt({
     displayName: page.displayName,
     mode: page.mode,
-    profile: { bio: page.bio, links: page.links },
+    // A gallery or GIF with no pictures is not on the public page, so the assistant does not know of it either.
+    profile: { bio: page.bio, links: page.links.filter((l) => (l.provider !== 'PICTURES' && l.provider !== 'GIF') || l._count.pictures > 0).map(({ label, url, provider }) => ({ label, url, provider })) },
     facts: selection.facts,
     neverSay: page.neverSay.map((n) => n.phrase),
     ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),

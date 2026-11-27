@@ -4,10 +4,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type 
 import { Callout } from '@curios/ui';
 import { cssZoom } from '../../../lib/css-zoom.js';
 import { arrangeTiles, type PageEntry, type PageLayout, type TileSize } from '@curios/core/bento';
-import { WIDGET_NAMES, minWidgetSize } from '@curios/core/widgets';
+import { minWidgetSize } from '@curios/core/widgets';
 import { Segmented } from '../_ui/segmented.js';
 import { SectionHead } from '../_ui/section-head.js';
-import { Icon, KINDS, WidgetIcon, kindOf, shown } from './link-icons.js';
+import { Icon, KINDS, WidgetIcon, kindOf, shown, widgetLine } from './link-icons.js';
 import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 import type { LinkItem } from './links-editor.js';
@@ -32,7 +32,7 @@ const SIZE_LABEL: Record<TileSize, string> = { SMALL: 'Small', WIDE: 'Wide', TAL
 
 /** The smallest tile a row reads well in: a player says so, the FAQ is Wide, anything else is free. */
 const minimumOf = (entry: LayoutEntry): TileSize =>
-  entry.kind === 'faq' ? 'WIDE' : entry.kind === 'link' && entry.link.kind === 'WIDGET' && entry.link.provider && entry.link.embedRef ? minWidgetSize(entry.link.provider, entry.link.embedRef) : 'SMALL';
+  entry.kind === 'faq' ? 'WIDE' : entry.kind === 'link' && entry.link.kind === 'WIDGET' && entry.link.provider ? minWidgetSize(entry.link.provider, entry.link.embedRef, entry.link.pictureMode) : 'SMALL';
 
 /** The sizes a row offers: Wide is not enough where Tall is the minimum, and the other way round; Big is enough for all. */
 const sizesFor = (min: TileSize): TileSize[] =>
@@ -580,7 +580,7 @@ function RowBody({ entry, faqEmpty }: { entry: LayoutEntry; faqEmpty: boolean })
       </span>
       <span className={styles.layoutText}>
         <b>{link.label}</b>
-        <span>{widget ? WIDGET_NAMES[link.provider!] : shown(link.url)}</span>
+        <span>{widget ? widgetLine(link) : shown(link.url)}</span>
       </span>
     </>
   );

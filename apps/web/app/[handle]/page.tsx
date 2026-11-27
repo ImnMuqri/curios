@@ -134,7 +134,14 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         avatarUrl={avatarUrl(page.avatarKey)}
         avatarSize={page.avatarSize}
         avatarBorder={page.avatarBorder}
-        links={page.links}
+        links={page.links.map(({ pictures, ...link }) => ({
+          ...link,
+          // Stored keys become public URLs here, on the server; storage not configured leaves a gallery empty (and so off the page).
+          gallery: pictures.flatMap((picture) => {
+            const url = avatarUrl(picture.key);
+            return url ? [{ url, width: picture.width, height: picture.height }] : [];
+          }),
+        }))}
         shop={shop}
         layout={page.layout}
         style={page.style}

@@ -1,23 +1,38 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 
 const three: LinkItem[] = [
-  { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
-  { id: 'b', label: 'WhatsApp', url: 'https://wa.me/60123', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
-  { id: 'c', label: 'GitHub', url: 'https://github.com/iman', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
+  { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
+  { id: 'b', label: 'WhatsApp', url: 'https://wa.me/60123', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
+  { id: 'c', label: 'GitHub', url: 'https://github.com/iman', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
 ];
+
+const noPictures = {
+  create: vi.fn(),
+  add: vi.fn(),
+  remove: vi.fn(),
+  reorder: vi.fn(),
+  url: (key: string) => `https://files.test/${key}`,
+};
+
+/** "+ Add a widget", then the Song tile: today's paste-a-link form. */
+async function openPaste(tile = 'Song') {
+  await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+  await userEvent.click(within(screen.getByRole('group', { name: 'What do you want to show?' })).getByRole('button', { name: new RegExp(`^${tile}`) }));
+}
 
 function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[0]> = {}) {
   const props = {
     links,
     onChange: vi.fn(),
-    addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null })),
-    addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/abc', embedTitle: null, embedImage: null })),
+    addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })),
+    addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/abc', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })),
     updateLink: vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...links.find((l) => l.id === id)!, ...patch })),
     removeLink: vi.fn(async () => undefined),
+    pictures: noPictures,
     ...overrides,
   };
   render(<LinksEditor {...props} />);
@@ -101,7 +116,7 @@ describe('LinksEditor', () => {
   });
 
   it('stops offering to add at the limit', () => {
-    setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null })));
+    setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })));
     expect(screen.queryByRole('button', { name: '+ Add link' })).toBeNull();
     expect(screen.getByText(/30 links is the most/i)).toBeInTheDocument();
   });
@@ -198,7 +213,7 @@ describe('LinksEditor', () => {
   it('drops a pending inline save when the link is removed before it fires', async () => {
     vi.useFakeTimers();
     const updateLink = vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...three.find((l) => l.id === id)!, ...patch }));
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} pictures={noPictures} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -225,7 +240,7 @@ describe('LinksEditor', () => {
     vi.useFakeTimers();
     let rejectUpdate!: (failure: Error) => void;
     const updateLink = vi.fn(() => new Promise<LinkItem>((_resolve, reject) => { rejectUpdate = reject; }));
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} pictures={noPictures} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -255,7 +270,7 @@ describe('LinksEditor', () => {
       ...patch,
       url: 'https://wa.me/60123',
     }));
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} pictures={noPictures} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -303,7 +318,7 @@ describe('LinksEditor', () => {
       return Promise.resolve({ ...three.find((l) => l.id === id)!, ...patch });
     });
     vi.useFakeTimers();
-    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} />);
+    render(<Harness addLink={vi.fn()} addWidget={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} pictures={noPictures} />);
 
     // The row's aria-label is bound to the `link.label` prop -- unlike the
     // Name field's value, which is local state -- so it shows whether the
@@ -321,7 +336,7 @@ describe('LinksEditor', () => {
 
     expect(row).toHaveAttribute('aria-label', 'Work');
 
-    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null }); });
+    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] }); });
 
     expect(row).toHaveAttribute('aria-label', 'Work');
     vi.useRealTimers();
@@ -357,7 +372,7 @@ describe('LinksEditor', () => {
 
     it('opens a widget field and names the service as the link is pasted', async () => {
       setup();
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       await userEvent.type(screen.getByLabelText('Widget link'), spotify);
       const hint = screen.getByTestId('widget-service');
       expect(hint).toHaveTextContent('Spotify');
@@ -366,14 +381,14 @@ describe('LinksEditor', () => {
 
     it('saves with the url and the label, or null when the name is blank', async () => {
       const props = setup();
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       await userEvent.type(screen.getByLabelText('Widget link'), spotify);
       await userEvent.type(screen.getByLabelText('Name (optional)'), 'My song');
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
       expect(props.addWidget).toHaveBeenCalledWith({ url: spotify, label: 'My song' });
       expect(props.onChange).toHaveBeenLastCalledWith([...three, expect.objectContaining({ id: 'w' })]);
 
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       await userEvent.type(screen.getByLabelText('Widget link'), spotify);
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
       expect(props.addWidget).toHaveBeenLastCalledWith({ url: spotify, label: null });
@@ -384,7 +399,7 @@ describe('LinksEditor', () => {
         throw new Error('That Spotify link is not one we can show.');
       });
       setup(three, { addWidget });
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       await userEvent.type(screen.getByLabelText('Widget link'), spotify);
       await userEvent.click(screen.getByRole('button', { name: 'Add' }));
       expect(screen.getByRole('alert')).toHaveTextContent('That Spotify link is not one we can show.');
@@ -392,7 +407,7 @@ describe('LinksEditor', () => {
 
     it('disables Add with the reason when the link is not a widget, but lets a short link through', async () => {
       setup();
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       await userEvent.type(screen.getByLabelText('Widget link'), 'https://example.com/x');
       expect(screen.getByRole('button', { name: 'Add' })).toBeDisabled();
       expect(screen.getByTestId('widget-note').textContent).not.toBe('');
@@ -405,7 +420,7 @@ describe('LinksEditor', () => {
 
     it('announces the recognised service and the reason Add is off, to the link field', async () => {
       setup();
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       const field = screen.getByLabelText('Widget link');
       const hint = document.getElementById(field.getAttribute('aria-describedby')!)!;
       expect(hint).toHaveAttribute('aria-live', 'polite');
@@ -421,10 +436,10 @@ describe('LinksEditor', () => {
     it('sends once when Add is pressed twice while the request is in flight', async () => {
       let release!: () => void;
       const addWidget = vi.fn(
-        () => new Promise<LinkItem>((resolve) => { release = () => resolve({ id: 'w', label: 'Spotify', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null }); }),
+        () => new Promise<LinkItem>((resolve) => { release = () => resolve({ id: 'w', label: 'Spotify', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] }); }),
       );
       setup(three, { addWidget });
-      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await openPaste();
       await userEvent.type(screen.getByLabelText('Widget link'), spotify);
       const add = screen.getByRole('button', { name: 'Add' });
       await userEvent.click(add);
@@ -435,7 +450,7 @@ describe('LinksEditor', () => {
     });
 
     it('draws a saved widget with its service and label, and no address box', async () => {
-      const widget: LinkItem = { id: 'w', label: 'My song', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null };
+      const widget: LinkItem = { id: 'w', label: 'My song', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] };
       setup([...three, widget]);
       const row = screen.getByRole('listitem', { name: 'My song' });
       expect(row).toHaveTextContent('Spotify');
@@ -443,6 +458,121 @@ describe('LinksEditor', () => {
       await userEvent.click(within(row).getByRole('button', { name: 'Edit My song' }));
       expect(screen.getByLabelText('Name')).toBeInTheDocument();
       expect(screen.queryByLabelText('Address')).toBeNull();
+    });
+  });
+
+  describe('the Widgets box', () => {
+    const pic = (n: number) => ({ id: `p${n}`, key: `links/pg/${n}.webp`, contentType: 'image/webp', width: 800, height: 600, bytes: 1000, position: n - 1 });
+    const base = { size: null, url: '', kind: 'WIDGET' as const, embedTitle: null, embedImage: null, altText: null };
+    const gal: LinkItem = { ...base, id: 'g', label: 'Fresh out of the oven', provider: 'PICTURES', embedRef: null, pictureMode: 'CAROUSEL', pictures: [pic(1), pic(2), pic(3)] };
+    const gif: LinkItem = { ...base, id: 'f', label: 'Candle blowing', provider: 'GIF', embedRef: null, pictureMode: 'FULL', pictures: [{ ...pic(1), key: 'links/pg/c.gif', contentType: 'image/gif' }] };
+    const song: LinkItem = { ...base, id: 's', label: 'Raya song', url: 'https://open.spotify.com/track/x', provider: 'SPOTIFY', embedRef: 'track/x', embedImage: 'https://i.scdn.co/cover.jpg', pictureMode: null, pictures: [] };
+    const video: LinkItem = { ...base, id: 'v', label: 'Tour', url: 'https://youtu.be/abc', provider: 'YOUTUBE', embedRef: 'v/abc', pictureMode: null, pictures: [] };
+
+    it('lists links and the shop in Links, and every widget in Widgets, each with its type line', () => {
+      setup([...three, gal, gif, song, video], { lead: <div>Shop link</div> });
+      const links = within(screen.getByRole('region', { name: 'Links' }));
+      const widgets = within(screen.getByRole('region', { name: 'Widgets' }));
+      expect(links.getByRole('listitem', { name: 'Portfolio' })).toBeInTheDocument();
+      expect(links.getByText('Shop link')).toBeInTheDocument();
+      expect(links.queryByRole('listitem', { name: 'Raya song' })).toBeNull();
+      expect(widgets.queryByRole('listitem', { name: 'Portfolio' })).toBeNull();
+      expect(widgets.getByRole('listitem', { name: 'Fresh out of the oven' })).toHaveTextContent('Gallery · 3 pictures · Carousel');
+      expect(widgets.getByRole('listitem', { name: 'Candle blowing' })).toHaveTextContent('GIF · Full width');
+      expect(widgets.getByRole('listitem', { name: 'Raya song' })).toHaveTextContent('Spotify · Song');
+      expect(widgets.getByRole('listitem', { name: 'Tour' })).toHaveTextContent('YouTube · Video');
+    });
+
+    it('draws a real thumbnail: two stacked pictures, the GIF, the cover, else the service glyph', () => {
+      setup([gal, gif, song, video]);
+      const thumb = (name: string) => within(screen.getByRole('listitem', { name })).queryByTestId('widget-thumb');
+      expect(thumb('Fresh out of the oven')!.querySelectorAll('img')).toHaveLength(2);
+      expect(thumb('Fresh out of the oven')!.querySelector('img')).toHaveAttribute('src', 'https://files.test/links/pg/1.webp');
+      expect(thumb('Candle blowing')!.querySelector('img')).toHaveAttribute('src', 'https://files.test/links/pg/c.gif');
+      expect(thumb('Raya song')!.querySelector('img')).toHaveAttribute('src', 'https://i.scdn.co/cover.jpg');
+      expect(thumb('Tour')).toBeNull();
+    });
+
+    it('never shows an empty address for a picture row', () => {
+      setup([{ ...gal, pictures: [] }]);
+      expect(screen.getByRole('listitem', { name: 'Fresh out of the oven' })).toHaveTextContent('Gallery · No pictures yet');
+    });
+
+    it('offers the four tiles', async () => {
+      setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      const picker = screen.getByRole('group', { name: 'What do you want to show?' });
+      const tiles = within(picker).getAllByRole('button').map((b) => b.textContent);
+      expect(tiles).toEqual(
+        expect.arrayContaining(['VideoYouTube', 'SongSpotify, Apple Music, YouTube Music, SoundCloud', 'PicturesOne, or up to 6', 'GIFUp to 10 MB']),
+      );
+    });
+
+    it('opens the paste form for a video with a YouTube hint, and for a song with the music services', async () => {
+      setup();
+      await openPaste('Video');
+      expect(screen.getByLabelText('Widget link')).toHaveAttribute('placeholder', 'Paste a YouTube link');
+      await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+      await openPaste('Song');
+      expect(screen.getByLabelText('Widget link').getAttribute('placeholder')).toMatch(/Spotify, Apple Music, YouTube Music or SoundCloud/);
+    });
+
+    it('still takes a map, a calendar or a Canva link through the Maps, Cal.com, Calendly, Canva link', async () => {
+      const props = setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Maps, Cal.com, Calendly, Canva' }));
+      await userEvent.type(screen.getByLabelText('Widget link'), 'https://calendly.com/iman/30min');
+      expect(screen.getByTestId('widget-service')).toHaveTextContent('Calendly');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(props.addWidget).toHaveBeenCalledWith({ url: 'https://calendly.com/iman/30min', label: null });
+    });
+
+    it('opens the Pictures panel from its tile, and makes the widget only when a picture is chosen', async () => {
+      const created: LinkItem = { ...gal, pictures: [] };
+      const pictures = { ...noPictures, create: vi.fn(async () => created), add: vi.fn(async () => ({ ...created, pictures: [pic(1)] })) };
+      const props = setup(three, { pictures });
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.click(screen.getByRole('button', { name: /^Pictures/ }));
+      expect(screen.getByRole('region', { name: 'Pictures widget' })).toBeInTheDocument();
+      expect(pictures.create).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText('Choose pictures'), { target: { files: [new File(['x'], 'a.jpg', { type: 'image/jpeg' })] } });
+      await waitFor(() => expect(pictures.add).toHaveBeenCalled());
+      expect(pictures.create).toHaveBeenCalledWith({ provider: 'PICTURES', mode: 'CAROUSEL', label: null, altText: null });
+      // The new row joined the list, then took its picture.
+      expect(props.onChange).toHaveBeenCalledWith([...three, created]);
+    });
+
+    it('opens the GIF panel from its tile', async () => {
+      setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.click(screen.getByRole('button', { name: /^GIF/ }));
+      expect(screen.getByRole('region', { name: 'GIF widget' })).toBeInTheDocument();
+    });
+
+    it('reopens a saved gallery in the same panel when its row is tapped', async () => {
+      setup([...three, gal]);
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Fresh out of the oven' }));
+      const panel = within(screen.getByRole('region', { name: 'Pictures widget' }));
+      expect(panel.getByLabelText('Caption')).toHaveValue('Fresh out of the oven');
+      expect(panel.getByText('3 of 6 · drag to reorder')).toBeInTheDocument();
+      // No name field in the row: the panel owns the caption.
+      expect(screen.queryByLabelText('Name')).toBeNull();
+    });
+
+    it('closes the picker without making anything', async () => {
+      const props = setup();
+      await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.click(within(screen.getByRole('group', { name: 'What do you want to show?' })).getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('group', { name: 'What do you want to show?' })).toBeNull();
+      expect(props.onChange).not.toHaveBeenCalled();
+    });
+
+    it('removes a picture widget from its row', async () => {
+      const props = setup([...three, gal]);
+      const row = screen.getByRole('listitem', { name: 'Fresh out of the oven' });
+      await userEvent.click(within(row).getByRole('button', { name: 'Remove Fresh out of the oven' }));
+      await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
+      expect(props.removeLink).toHaveBeenCalledWith('g');
     });
   });
 });

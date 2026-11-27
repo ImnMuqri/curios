@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MyCuriosEditor, positionsAfterAdd, positionsAfterRemoval, type EditorPage } from './my-curios.js';
+import type { LinkItem } from './links-editor.js';
 import { SaveStatusProvider, SaveStatusSlot } from '../_ui/save-status.js';
 
 const initial: EditorPage = {
@@ -11,7 +12,7 @@ const initial: EditorPage = {
   style: 'SOFT', secondaryColor: null, coverWash: true, layout: 'LIST' as const, accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, avatarSize: 'MEDIUM', avatarBorder: true, coverLayout: 'TOP',
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
   socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',
-  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null }],
+  links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] }],
 };
 
 const business: EditorPage = {
@@ -24,10 +25,14 @@ const business: EditorPage = {
 };
 
 const api = () => ({
-  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null })),
-  addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/x', embedTitle: null, embedImage: null })),
+  addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })),
+  addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/x', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })),
   updateLink: vi.fn(async (_id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
+  createGallery: vi.fn(async (i: { provider: 'PICTURES' | 'GIF' }): Promise<LinkItem> => ({ ...initial.links[0]!, id: 'g', label: i.provider === 'GIF' ? 'GIF' : 'Pictures', url: '', kind: 'WIDGET' as const, provider: i.provider, pictureMode: 'CAROUSEL' as const, pictures: [] })),
+  addPicture: vi.fn(),
+  removePicture: vi.fn(),
+  reorderPictures: vi.fn(),
   reorder: vi.fn(async () => undefined),
   setShopOpen: vi.fn(async () => undefined),
   setShopSize: vi.fn(async () => undefined),
@@ -40,11 +45,11 @@ const api = () => ({
   askPage: vi.fn(async (_q: string) => ({ reply: 'Yes, delivery to Klang is RM15.' })),
 });
 
-const show = (page: EditorPage = initial, calls = api()) => {
+const show = (page: EditorPage = initial, calls = api(), storageBase = 'https://files.test') => {
   const view = render(
     <SaveStatusProvider>
       <div data-testid="top-bar"><SaveStatusSlot /></div>
-      <MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" />
+      <MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" storageBase={storageBase} />
     </SaveStatusProvider>,
   );
   return { ...view, calls };
@@ -67,6 +72,7 @@ describe('MyCuriosEditor', () => {
     await userEvent.click(editTab('Links'));
     const panel = within(screen.getByRole('tabpanel', { name: 'Links' }));
     await userEvent.click(panel.getByRole('button', { name: '+ Add a widget' }));
+    await userEvent.click(panel.getByRole('button', { name: /^Song/ }));
     await userEvent.type(panel.getByLabelText('Widget link'), 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M');
     await userEvent.click(panel.getByRole('button', { name: 'Add' }));
     expect(calls.addWidget).toHaveBeenCalledWith({ url: 'https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M', label: null });
@@ -451,7 +457,7 @@ describe('without the template look', () => {
 
   // The v3 board brings the kind tile back on link rows and the Shop link row (.ri .ki, .shoprow .ki).
   it('marks each link row with its kind, read off the address, and the Shop link as the first row', async () => {
-    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null }] });
+    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] }] });
     await userEvent.click(editTab('Links'));
     const kinds = [...document.querySelectorAll('#panel-links [data-kind]')].filter((el) => el.tagName === 'SPAN');
     expect(kinds.map((el) => el.getAttribute('data-kind'))).toEqual(['shop', 'link', 'whatsapp']);
@@ -468,8 +474,8 @@ describe('the Layout tab', () => {
     shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] },
     faqPosition: null,
     links: [
-      { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
-      { id: 'b', label: 'Cafe menu', url: 'https://cafe.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
+      { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
+      { id: 'b', label: 'Cafe menu', url: 'https://cafe.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
     ],
   };
   const layout = () => within(screen.getByRole('tabpanel', { name: 'Layout' }));
@@ -694,5 +700,40 @@ describe('the Layout tab, List or Bento', () => {
     await userEvent.click(editTab('Layout'));
     await userEvent.click(within(layoutPanel().getByRole('radiogroup', { name: 'Size of Shop' })).getByRole('radio', { name: 'Wide' }));
     expect(calls.setShopSize).toHaveBeenCalledWith('WIDE');
+  });
+  describe('pictures and GIFs', () => {
+    const pic = (n: number) => ({ id: `p${n}`, key: `links/pg/${n}.webp`, contentType: 'image/webp', width: 800, height: 600, bytes: 1000, position: n - 1 });
+    const widget = (count: number) => ({ ...initial.links[0]!, id: 'g', label: 'Fresh out of the oven', url: '', kind: 'WIDGET' as const, provider: 'PICTURES' as const, pictureMode: 'GRID' as const, altText: 'Three bakes', pictures: Array.from({ length: count }, (_u, i) => pic(i + 1)) });
+
+    it('draws a gallery in the phone from the owner pictures, at the storage address, with the description', () => {
+      show({ ...initial, links: [initial.links[0]!, widget(3)] });
+      const imgs = within(preview()).getAllByRole('img').filter((img) => img.getAttribute('src')?.startsWith('https://files.test/links/pg/'));
+      expect(imgs.map((img) => img.getAttribute('src'))).toEqual(['https://files.test/links/pg/1.webp', 'https://files.test/links/pg/2.webp', 'https://files.test/links/pg/3.webp']);
+      expect(imgs[0]).toHaveAttribute('alt', expect.stringContaining('Three bakes'));
+    });
+
+    it('draws nothing in the phone for an empty gallery, though the Links list keeps it', async () => {
+      show({ ...initial, links: [initial.links[0]!, widget(0)] });
+      expect(within(preview()).queryByText('Fresh out of the oven')).toBeNull();
+      await userEvent.click(editTab('Links'));
+      expect(within(screen.getByRole('tabpanel', { name: 'Links' })).getByRole('listitem', { name: 'Fresh out of the oven' })).toHaveTextContent('Gallery · No pictures yet');
+    });
+
+    it('makes the widget and sends the file through the API, and the phone follows', async () => {
+      const calls = api();
+      const row = widget(0);
+      calls.createGallery.mockResolvedValue(row);
+      calls.addPicture.mockResolvedValue({ ...row, pictures: [pic(1)] });
+      show(initial, calls);
+      await userEvent.click(editTab('Links'));
+      const panel = within(screen.getByRole('tabpanel', { name: 'Links' }));
+      await userEvent.click(panel.getByRole('button', { name: '+ Add a widget' }));
+      await userEvent.click(panel.getByRole('button', { name: /^Pictures/ }));
+      const file = new File(['x'], 'a.jpg', { type: 'image/jpeg' });
+      await userEvent.upload(panel.getByLabelText('Choose pictures'), file);
+      await vi.waitFor(() => expect(calls.addPicture).toHaveBeenCalledWith('g', file, expect.any(Function)));
+      expect(calls.createGallery).toHaveBeenCalledWith({ provider: 'PICTURES', mode: 'CAROUSEL', label: null, altText: null });
+      expect(await panel.findByRole('listitem', { name: 'Fresh out of the oven' })).toHaveTextContent('Gallery · 1 picture · Full width');
+    });
   });
 });

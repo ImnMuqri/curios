@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import { FAQ_TILE_ID, SHOP_TILE_ID, pageEntries, positionsAfterAdd, type AvatarSize, type CoverLayout, type HeadingFont, type PageBackground, type PageLayout, type PageStyle, type TileSize, type StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
+import { isPictureProvider, type PictureMode, type PictureProvider } from '@curios/core/widgets';
 import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
 import { BentoPage, type BentoPageProps } from '../../_bento/BentoPage.js';
@@ -18,6 +19,7 @@ import { AppearanceEditor } from './appearance-editor.js';
 import { CoverEditor } from './cover-editor.js';
 import { LayoutEditor } from './layout-editor.js';
 import { LinksEditor, type LinkItem } from './links-editor.js';
+import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { ProfileEditor } from './profile-editor.js';
 import { ShopSwitch } from './shop-switch.js';
 import { SocialsEditor } from './socials-editor.js';
@@ -48,8 +50,13 @@ export type AppearancePatch = Partial<{
 export interface CuriosApi {
   addLink: (input: { label: string; url: string }) => Promise<LinkItem>;
   addWidget: (input: { url: string; label: string | null }) => Promise<LinkItem>;
-  updateLink: (id: string, patch: Partial<{ label: string; url: string; size: TileSize | null }>) => Promise<LinkItem>;
+  updateLink: (id: string, patch: Partial<{ label: string; url: string; size: TileSize | null; pictureMode: PictureMode; altText: string | null }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
+  /** A Pictures or GIF widget: made first, then its pictures one at a time (the file as the raw body). Each answers with the whole row. */
+  createGallery: (input: { provider: PictureProvider; mode: PictureMode; label: string | null; altText: string | null }) => Promise<LinkItem>;
+  addPicture: (id: string, file: File, onProgress: (done: number) => void) => Promise<LinkItem>;
+  removePicture: (id: string, pictureId: string) => Promise<LinkItem>;
+  reorderPictures: (id: string, pictureIds: string[]) => Promise<LinkItem>;
   reorder: (ids: string[]) => Promise<void>;
   /** Opens or closes the shop, which is what gives the page its Shop link. */
   setShopOpen: (open: boolean) => Promise<void>;
@@ -94,6 +101,10 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
     addWidget: (input) => track(api.addWidget(input)),
     updateLink: (id, patch) => track(api.updateLink(id, patch)),
     removeLink: (id) => track(api.removeLink(id)),
+    createGallery: (input) => track(api.createGallery(input)),
+    addPicture: (id, file, onProgress) => track(api.addPicture(id, file, onProgress)),
+    removePicture: (id, pictureId) => track(api.removePicture(id, pictureId)),
+    reorderPictures: (id, ids) => track(api.reorderPictures(id, ids)),
     reorder: (ids) => track(api.reorder(ids)),
     setShopOpen: (open) => track(api.setShopOpen(open)),
     setShopSize: (size) => track(api.setShopSize(size)),
@@ -145,12 +156,15 @@ export function MyCuriosEditor({
   api: rawApi,
   uploadsEnabled,
   publicUrl,
+  storageBase = '',
 }: {
   initial: EditorPage;
   api: CuriosApi;
   uploadsEnabled: boolean;
   /** The page's full address, for the copy button. */
   publicUrl: string;
+  /** Where stored pictures are served from (STORAGE_PUBLIC_URL); empty when storage is not set up. */
+  storageBase?: string;
 }) {
   const [page, setPage] = useState(initial);
   const update = (change: Partial<EditorPage>) => setPage((current) => ({ ...current, ...change }));
@@ -206,6 +220,23 @@ export function MyCuriosEditor({
   }
   const addLinkAndRepositionTiles = async (input: { label: string; url: string }) => afterAdd(await api.addLink(input));
   const addWidgetAndRepositionTiles = async (input: { url: string; label: string | null }) => afterAdd(await api.addWidget(input));
+  const createGalleryAndRepositionTiles = async (input: Parameters<CuriosApi['createGallery']>[0]) => afterAdd(await api.createGallery(input));
+
+  /** A stored picture's address, as visitors get it; null when there is no storage to serve it from. */
+  const pictureUrl = (key: string) => (storageBase ? joinAvatarUrl(storageBase, key) : null);
+  const picturesApi = {
+    create: createGalleryAndRepositionTiles,
+    add: api.addPicture,
+    remove: api.removePicture,
+    reorder: api.reorderPictures,
+    url: pictureUrl,
+  };
+
+  // What the preview draws for a gallery or GIF: its pictures as addresses, in order. One with none draws nothing.
+  const previewLinks = page.links.map((link) => ({
+    ...link,
+    gallery: isPictureProvider(link.provider) ? link.pictures.flatMap((picture) => (pictureUrl(picture.key) ? [{ url: pictureUrl(picture.key)!, width: picture.width, height: picture.height }] : [])) : undefined,
+  }));
 
   /**
    * The server pulls the shop and People often ask up a place when a link above them is removed (their
@@ -379,6 +410,7 @@ export function MyCuriosEditor({
               addWidget={addWidgetAndRepositionTiles}
               updateLink={api.updateLink}
               removeLink={removeLinkAndRepositionTiles}
+              pictures={picturesApi}
               // The Shop link is the first row of the list (v3), with its switch.
               lead={
                 page.shopTab ? (
@@ -439,6 +471,7 @@ export function MyCuriosEditor({
       >
         <BentoPage
           {...page}
+          links={previewLinks}
           shop={previewPill}
           faq={page.faq}
           faqPosition={page.shopTab ? page.faqPosition : undefined}

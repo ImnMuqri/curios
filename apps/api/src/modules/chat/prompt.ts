@@ -95,7 +95,7 @@ export function buildSystemPrompt(input: {
    * every turn: a few lines, the same for every visitor, so it costs little
    * and keeps the prompt cacheable. Optional: no profile, no section.
    */
-  profile?: { bio: string | null; links: { label: string; url: string }[] };
+  profile?: { bio: string | null; links: { label: string; url: string; provider?: string | null }[] };
   facts: PromptFact[];
   neverSay: string[];
   /**
@@ -160,7 +160,10 @@ export function buildSystemPrompt(input: {
   const line = (text: string) => escapeForPrompt(text.replace(/\s+/g, ' ').trim());
   const profileLines = [
     ...(input.profile?.bio ? [`About: ${line(input.profile.bio)}`] : []),
-    ...(input.profile?.links ?? []).map((l) => `${linkKind(l.url)}: ${line(l.label)} -- ${line(l.url)}`),
+    ...(input.profile?.links ?? []).map((l) =>
+      // A gallery or GIF is told by its caption alone: it has no address, and its files are never shown to the model.
+      l.provider === 'PICTURES' ? `a picture gallery: ${line(l.label)}` : l.provider === 'GIF' ? `a GIF: ${line(l.label)}` : `${linkKind(l.url)}: ${line(l.label)} -- ${line(l.url)}`,
+    ),
   ];
   const profileBlock = profileLines.length
     ? `PROFILE
