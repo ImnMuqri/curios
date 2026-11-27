@@ -12,6 +12,9 @@ import {
   parseWidgetLink,
   widgetHeight,
   widgetSrc,
+  isPictureProvider,
+  picturesAllowed,
+  MODES_FOR,
 } from './widgets.js';
 
 const refused = (raw: string) => {
@@ -21,8 +24,8 @@ const refused = (raw: string) => {
 };
 
 describe('the provider list', () => {
-  it('names all eight, each with a display name and a frame origin', () => {
-    expect(WIDGET_PROVIDERS).toHaveLength(8);
+  it('names ten, each with a display name; the eight players have a frame origin', () => {
+    expect(WIDGET_PROVIDERS).toHaveLength(10);
     expect(WIDGET_NAMES).toEqual({
       SPOTIFY: 'Spotify',
       APPLE_MUSIC: 'Apple Music',
@@ -32,6 +35,8 @@ describe('the provider list', () => {
       CALCOM: 'Cal.com',
       CALENDLY: 'Calendly',
       CANVA: 'Canva',
+      PICTURES: 'Pictures',
+      GIF: 'GIF',
     });
     expect([...WIDGET_FRAME_ORIGINS].sort()).toEqual(
       [
@@ -411,5 +416,42 @@ describe('what is never accepted', () => {
     expect(() => widgetSrc('SOUNDCLOUD', 'https://evil.example/a/b')).toThrow();
     expect(() => widgetSrc('APPLE_MUSIC', 'us/album/../x/1')).toThrow();
     expect(() => widgetSrc('GOOGLE_MAPS', '')).toThrow();
+  });
+});
+
+describe('Pictures and GIF', () => {
+  it('are the last two providers and have no player', () => {
+    expect(WIDGET_PROVIDERS.slice(-2)).toEqual(['PICTURES', 'GIF']);
+    expect(isPictureProvider('PICTURES')).toBe(true);
+    expect(isPictureProvider('GIF')).toBe(true);
+    expect(isPictureProvider('SPOTIFY')).toBe(false);
+    expect(isPictureProvider(null)).toBe(false);
+    for (const p of ['PICTURES', 'GIF'] as const) {
+      expect(() => widgetSrc(p, '')).toThrow(/no embedded player/);
+      expect(() => widgetHeight(p, '')).toThrow(/no embedded player/);
+      expect(() => widgetOpenUrl(p, '')).toThrow();
+    }
+  });
+
+  it('are never produced by parsing a pasted link', () => {
+    for (const raw of ['https://open.spotify.com/track/abc', 'https://example.com/a.gif', 'PICTURES', 'https://giphy.com/gifs/x']) {
+      const r = parseWidgetLink(raw);
+      expect(r.ok ? r.provider : null).not.toBe('PICTURES');
+      expect(r.ok ? r.provider : null).not.toBe('GIF');
+    }
+  });
+
+  it('take a WIDE tile, a square GIF a SMALL one', () => {
+    expect(minWidgetSize('PICTURES', null)).toBe('WIDE');
+    expect(minWidgetSize('PICTURES', null, 'SQUARE')).toBe('WIDE');
+    expect(minWidgetSize('GIF', null, 'FULL')).toBe('WIDE');
+    expect(minWidgetSize('GIF', null, 'SQUARE')).toBe('SMALL');
+  });
+
+  it('hold six pictures, a GIF one, with the modes that suit', () => {
+    expect(picturesAllowed('PICTURES')).toBe(6);
+    expect(picturesAllowed('GIF')).toBe(1);
+    expect(MODES_FOR.GIF).toEqual(['FULL', 'SQUARE']);
+    expect(MODES_FOR.PICTURES).toEqual(['CAROUSEL', 'GRID', 'FULL', 'SQUARE']);
   });
 });
