@@ -53,7 +53,7 @@ export type PictureDeps = {
 type Tx = Prisma.TransactionClient;
 
 /** The owner's picture widget, checked before any picture work or upload: another owner's put nothing. */
-async function ownWidget(prisma: PrismaClient, accountId: string, linkId: string): Promise<{ pageId: string; gif: boolean }> {
+export async function ownWidget(prisma: PrismaClient, accountId: string, linkId: string): Promise<{ pageId: string; gif: boolean }> {
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });
   if (!page) throw new NoPageError();
   const link = await prisma.link.findFirst({ where: { id: linkId, pageId: page.id, kind: 'WIDGET' }, select: { provider: true } });

@@ -53,7 +53,7 @@ export async function getOwnerView(pageId: string, now = new Date()): Promise<Ow
       published: true,
       paidUntil: true,
       leadsCaptured: true,
-      links: { orderBy: { position: 'asc' }, select: { label: true, url: true } },
+      links: { orderBy: { position: 'asc' }, select: { label: true, url: true, provider: true, _count: { select: { pictures: true } } } },
     },
   });
   if (!page) return null;
@@ -90,7 +90,8 @@ export async function getOwnerView(pageId: string, now = new Date()): Promise<Ow
       mode: page.mode,
       language: page.language,
       published: page.published,
-      links: page.links,
+      // A Pictures or GIF widget has no address: say what it is instead.
+      links: page.links.map((l) => ({ label: l.label, url: l.provider === 'PICTURES' ? `Pictures · ${l._count.pictures}` : l.provider === 'GIF' ? 'GIF' : l.url })),
     },
     plan: {
       plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now, settings.freeLeads),

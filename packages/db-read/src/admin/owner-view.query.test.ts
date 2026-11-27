@@ -105,6 +105,23 @@ describe('getOwnerView', () => {
     }
   });
 
+  it('shows a Pictures or GIF widget by what it is, not an empty address', async () => {
+    const gallery = await write.link.create({ data: { pageId, label: 'Cakes', url: '', position: 5, kind: 'WIDGET', provider: 'PICTURES', pictureMode: 'GRID' } });
+    const gif = await write.link.create({ data: { pageId, label: 'Cat', url: '', position: 6, kind: 'WIDGET', provider: 'GIF', pictureMode: 'FULL' } });
+    try {
+      await write.linkPicture.createMany({
+        data: [0, 1, 2].map((position) => ({ linkId: gallery.id, key: `links/x/${position}.webp`, contentType: 'image/webp', width: 1, height: 1, bytes: 1, position })),
+      });
+      const view = await getOwnerView(pageId, NOW);
+      expect(view?.profile.links.filter((l) => l.label === 'Cakes' || l.label === 'Cat')).toEqual([
+        { label: 'Cakes', url: 'Pictures · 3' },
+        { label: 'Cat', url: 'GIF' },
+      ]);
+    } finally {
+      await write.link.deleteMany({ where: { id: { in: [gallery.id, gif.id] } } });
+    }
+  });
+
   it('is null for an unknown page', async () => {
     expect(await getOwnerView('nope', NOW)).toBeNull();
   });

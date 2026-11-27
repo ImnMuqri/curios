@@ -56,6 +56,11 @@ async function uprightSize(body: Buffer): Promise<{ width: number; height: numbe
 /** A picture for a Pictures or GIF widget, ready to store: the bytes, their type, extension and upright size. */
 export type WidgetPictureFile = { body: Buffer; contentType: 'image/webp' | 'image/gif'; ext: 'webp' | 'gif'; width: number; height: number };
 
+/** A GIF is stored as sent, so what it may decode to is capped here: its edge, its frames, and width x height x frames. */
+export const GIF_MAX_EDGE = 2000;
+export const GIF_MAX_FRAMES = 300;
+export const GIF_MAX_FRAME_PIXELS = 150_000_000;
+
 const GIF_MAGIC = ['GIF87a', 'GIF89a'];
 const isGif = (b: Buffer) => b.length > 6 && GIF_MAGIC.includes(b.toString('ascii', 0, 6));
 
@@ -74,7 +79,8 @@ export async function prepareWidgetPicture(
   try {
     if (opts.gif) {
       if (contentType !== 'image/gif' || !isGif(body)) return null;
-      const { width = 0, height = 0 } = await sharp(body, SHARP_OPTIONS).metadata();
+      const { width = 0, height = 0, pages = 1 } = await sharp(body, SHARP_OPTIONS).metadata();
+      if (width > GIF_MAX_EDGE || height > GIF_MAX_EDGE || pages > GIF_MAX_FRAMES || width * height * pages > GIF_MAX_FRAME_PIXELS) return null;
       return width > 0 && height > 0 ? { body, contentType: 'image/gif', ext: 'gif', width, height } : null;
     }
     if (!Object.hasOwn(SIGNATURES, contentType) || !SIGNATURES[contentType as keyof typeof SIGNATURES].matches(body)) return null;

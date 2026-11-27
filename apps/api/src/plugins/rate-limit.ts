@@ -446,6 +446,24 @@ export function adminSigninPerEmailLimit(redis: IORedis): RateLimitPluginOptions
  * shape and the reason of ingestPerPageLimit: a shared constant bucket fills once and
  * locks everyone out.
  */
+/**
+ * Per account, on uploading a picture or GIF to a widget: each one is up to 10 MB read, decoded and put in
+ * the public bucket. Keyed on the account, falling back to the caller, never to a constant.
+ */
+export function linkPictureUploadPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('link-picture-account:'),
+    max: limit('RATE_LIMIT_LINK_PICTURE_PER_ACCOUNT', 20),
+    timeWindow: '1 minute',
+    keyGenerator: (request) => request.account?.id ?? caller(request),
+    errorResponseBuilder: tooMany((after) => `Too many pictures at once. Try again in ${after}.`),
+  };
+}
+
 export function billingPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
   return {
     ...FAIL_CLOSED,

@@ -304,6 +304,8 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
   const pageId = await pageIdFor(prisma, accountId);
   let pictureKeys: string[] = [];
   await prisma.$transaction(async (tx) => {
+    // The row's lock, as a picture upload takes it: an upload racing this delete lands first (and is read below) or finds the link gone.
+    await tx.$queryRaw`SELECT "id" FROM "Link" WHERE "id" = ${id} AND "pageId" = ${pageId} FOR UPDATE`;
     const link = await tx.link.findFirst({ where: { id, pageId }, select: { position: true, pictures: { select: { key: true } } } });
     if (!link) throw new LinkNotFoundError();
     pictureKeys = link.pictures.map((p) => p.key);

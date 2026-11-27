@@ -9,7 +9,7 @@ import { resolveShortLink } from './widget-resolve.js';
 import { fetchWidgetCard, type FetchWidgetCard } from './widget-card.js';
 import { StorageNotConfiguredError } from '../pages/page.routes.js';
 import { resolveStore, type AvatarStore } from '../pages/storage.js';
-import { addLinkPicture, discardPictureFiles, InvalidPictureError, removeLinkPicture, reorderLinkPictures, type PictureDeps } from './link-picture.service.js';
+import { addLinkPicture, discardPictureFiles, ownWidget, InvalidPictureError, removeLinkPicture, reorderLinkPictures, type PictureDeps } from './link-picture.service.js';
 import { addLink, addPictureWidget, addWidget, listLinks, removeLink, reorderLinks, updateLink } from './link.service.js';
 
 // Payload bounds only. Every rule an owner can break is checked in the service,
@@ -35,10 +35,12 @@ async function pictureBody(request: FastifyRequest, gif: boolean): Promise<{ bod
   return { body: Buffer.concat(chunks, total), contentType };
 }
 
+const isGifType = (request: FastifyRequest) => (request.headers['content-type'] ?? '').toLowerCase().startsWith('image/gif');
+
 /** Refuses an oversize declared length before any byte is read. */
 async function pictureLengthFits(request: FastifyRequest): Promise<void> {
   const length = Number(request.headers['content-length']);
-  if (Number.isFinite(length) && length > WIDGET_PICTURE_MAX_BYTES) throw new InvalidPictureError(false);
+  if (Number.isFinite(length) && length > WIDGET_PICTURE_MAX_BYTES) throw new InvalidPictureError(isGifType(request));
 }
 
 export interface LinkRouteOptions {
@@ -114,24 +116,6 @@ export const linkRoutes: FastifyPluginAsyncZod<LinkRouteOptions> = async (app, o
     return { link: await removeLinkPicture(pictureDeps(request.log), request.account.id, request.params.id, request.params.pictureId) };
   });
 
-  // The upload gets its own plugin scope so its parser, which passes the request stream through
-  // unbuffered, reaches no other route. One picture per request, as the raw body (its type in Content-Type).
-  const uploadRoutes: FastifyPluginAsyncZod = async (upload) => {
-    upload.addContentTypeParser('*', (_request, payload, done) => done(null, payload));
-    upload.post(
-      '/links/:id/pictures',
-      { bodyLimit: WIDGET_PICTURE_MAX_BYTES, onRequest: pictureLengthFits, schema: { params } },
-      async (request, reply) => {
-        if (!request.account) throw new UnauthenticatedError();
-        const deps = pictureDeps(request.log);
-        const gif = (request.headers['content-type'] ?? '').toLowerCase().startsWith('image/gif');
-        const picture = await pictureBody(request, gif);
-        return reply.status(201).send({ link: await addLinkPicture(deps, request.account.id, request.params.id, picture) });
-      },
-    );
-  };
-  await app.register(uploadRoutes);
-
   app.patch(
     '/links/:id',
     {
@@ -166,6 +150,27 @@ export const linkRoutes: FastifyPluginAsyncZod<LinkRouteOptions> = async (app, o
       if (!request.account) throw new UnauthenticatedError();
       await reorderLinks(app.prisma, request.account.id, request.body.ids);
       return { status: 'reordered' };
+    },
+  );
+};
+
+/**
+ * The picture upload, in a plugin of its own so its parser, which passes the request stream through
+ * unbuffered, reaches no other route, and so app.ts can give it a per-account limit.
+ */
+export const linkPictureUploadRoutes: FastifyPluginAsyncZod<Pick<LinkRouteOptions, 'store'>> = async (app, options) => {
+  const store = resolveStore(options.store);
+  app.addContentTypeParser('*', (_request, payload, done) => done(null, payload));
+  app.post(
+    '/links/:id/pictures',
+    { bodyLimit: WIDGET_PICTURE_MAX_BYTES, onRequest: pictureLengthFits, schema: { params } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      if (!store) throw new StorageNotConfiguredError();
+      // The widget is the owner's, and a picture widget, before a byte of the body is read: a wrong id costs nothing.
+      await ownWidget(app.prisma, request.account.id, request.params.id);
+      const picture = await pictureBody(request, isGifType(request));
+      return reply.status(201).send({ link: await addLinkPicture({ prisma: app.prisma, store, log: request.log }, request.account.id, request.params.id, picture) });
     },
   );
 };

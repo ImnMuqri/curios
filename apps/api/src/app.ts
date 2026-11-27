@@ -32,6 +32,7 @@ import {
   authPerEmailLimit,
   authPerIpLimit,
   billingPerAccountLimit,
+  linkPictureUploadPerAccountLimit,
   chatTestPerAccountLimit,
   helpAskPerAccountLimit,
   helpSupportPerAccountLimit,
@@ -77,7 +78,7 @@ import {
   shopPayStartRoutes,
   shopPayStatusRoutes,
 } from './modules/orders/pay-online.routes.js';
-import { linkRoutes, type LinkRouteOptions } from './modules/links/link.routes.js';
+import { linkPictureUploadRoutes, linkRoutes, type LinkRouteOptions } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
 import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
@@ -358,6 +359,11 @@ export async function buildApp(overrides: AppOverrides = {}) {
     scope.addHook('onRequest', requireSession);
     await scope.register(pageRoutes, overrides.pages ?? {});
     await scope.register(linkRoutes, { store: overrides.pages?.store, ...(overrides.links ?? {}) });
+    // Its own limiter and its own parser (raw body), so neither reaches another route.
+    await scope.register(async (uploads) => {
+      await uploads.register(rateLimit, linkPictureUploadPerAccountLimit(app.rateLimitRedis));
+      await uploads.register(linkPictureUploadRoutes, { store: overrides.pages?.store, ...(overrides.links ?? {}) });
+    });
     await scope.register(factRoutes, overrides.facts ?? {});
     await scope.register(sourceRoutes);
     await scope.register(neverSayRoutes);

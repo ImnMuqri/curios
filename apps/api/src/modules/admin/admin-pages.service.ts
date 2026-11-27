@@ -274,6 +274,8 @@ export async function deleteAccount(
     await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${id} FOR UPDATE`;
     // Then its items' rows, the photo mutations' lock, so photos committed meanwhile are read below and their files removed.
     await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "pageId" = ${id} ORDER BY "id" FOR UPDATE`;
+    // And its links' rows, the picture uploads' lock, so a picture committed meanwhile is read below.
+    await tx.$queryRaw`SELECT "id" FROM "Link" WHERE "pageId" = ${id} ORDER BY "id" FOR UPDATE`;
     const page = await loadPage(tx, id);
     if (handle.trim().toLowerCase() !== page.handle.toLowerCase()) throw new HandleMismatchError();
 

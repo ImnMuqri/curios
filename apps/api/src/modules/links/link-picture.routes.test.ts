@@ -194,6 +194,44 @@ describe('POST /links/:id/pictures', () => {
     expect(again.json().error.code).toBe('PICTURE_LIMIT');
   });
 
+  it('refuses a GIF that is too wide, has too many frames, or is too big in all', async () => {
+    const owner = await anOwner();
+    const widget = await aWidget(owner, { provider: 'GIF' });
+    const wide = await sharp({ create: { width: 2001, height: 4, channels: 3, background: '#fff' } }).gif().toBuffer();
+    // A 1x1 GIF with 301 frames, written by hand: sharp cannot make an animated one here.
+    const frame = Buffer.from([0x21, 0xf9, 4, 0, 0, 0, 0, 0, 0x2c, 0, 0, 0, 0, 1, 0, 1, 0, 0, 2, 2, 0x44, 1, 0]);
+    const head = Buffer.from([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 1, 0, 1, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255]);
+    const many = Buffer.concat([head, ...Array<Buffer>(301).fill(frame), Buffer.from([0x3b])]);
+    const few = Buffer.concat([head, ...Array<Buffer>(300).fill(frame), Buffer.from([0x3b])]);
+    for (const body of [wide, many]) {
+      const res = await upload(owner.cookie, widget.id, body, 'image/gif');
+      expect(res.statusCode).toBe(400);
+      expect(res.json().error.code).toBe('INVALID_PICTURE');
+    }
+    expect(store.put).not.toHaveBeenCalled();
+    expect((await upload(owner.cookie, widget.id, few, 'image/gif')).statusCode).toBe(201);
+  });
+
+  it('answers an oversize GIF with the GIF sentence', async () => {
+    const owner = await anOwner();
+    const widget = await aWidget(owner, { provider: 'GIF' });
+    const res = await upload(owner.cookie, widget.id, await gif(), 'image/gif', { 'content-length': String(10 * 1024 * 1024 + 1) });
+    expect(res.json().error.message).toBe('Use a GIF, up to 10 MB.');
+  });
+
+  it('checks the widget before the body: a wrong id is a 404 even for garbage', async () => {
+    const owner = await anOwner();
+    const res = await upload(owner.cookie, 'nope', Buffer.from('garbage'), 'image/png');
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('limits uploads per account', async () => {
+    const owner = await anOwner();
+    let last = 0;
+    for (let i = 0; i < 21; i++) last = (await upload(owner.cookie, 'nope', Buffer.from('x'), 'image/png')).statusCode;
+    expect(last).toBe(429);
+  });
+
   it('takes nothing for a plain link, a missing link, or another owner widget', async () => {
     const owner = await anOwner();
     const other = await anOwner();
