@@ -270,6 +270,23 @@ describe('buildSystemPrompt, the profile', () => {
     expect(prompt).not.toContain('output=embed');
   });
 
+  it('describes a Pictures or GIF widget by its caption alone, never a file address', () => {
+    const prompt = buildSystemPrompt({
+      ...base,
+      profile: {
+        bio: null,
+        links: [
+          { label: 'Fresh out of the oven', url: '', provider: 'PICTURES' },
+          { label: 'Dancing cat', url: '', provider: 'GIF' },
+        ],
+      },
+    });
+    expect(prompt).toContain('a picture gallery: Fresh out of the oven');
+    expect(prompt).toContain('a GIF: Dancing cat');
+    expect(prompt).not.toContain('Web:');
+    expect(prompt).not.toContain('Fresh out of the oven --');
+  });
+
   it('sends the bio and each link, named by its kind, so contact questions answer from them', () => {
     const prompt = buildSystemPrompt({
       ...base,
