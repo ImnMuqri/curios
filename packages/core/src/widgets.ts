@@ -35,6 +35,12 @@ export const MODES_FOR: Record<PictureProvider, readonly PictureMode[]> = {
   PICTURES: PICTURE_MODES,
   GIF: ['FULL', 'SQUARE'],
 };
+/** The mode a picture widget really shows in: a GIF or a single picture is Full width or Square, several pictures are a Carousel or a Grid. */
+export function effectivePictureMode(provider: PictureProvider, count: number, mode: PictureMode | null | undefined): PictureMode {
+  if (provider === 'GIF' || count <= 1) return mode === 'SQUARE' ? 'SQUARE' : 'FULL';
+  return mode === 'GRID' ? 'GRID' : 'CAROUSEL';
+}
+
 /** The most pictures in one Pictures widget (a GIF widget holds one). */
 export const MAX_WIDGET_PICTURES = 6;
 export const picturesAllowed = (provider: PictureProvider): number => (provider === 'GIF' ? 1 : MAX_WIDGET_PICTURES);

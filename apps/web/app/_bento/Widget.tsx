@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react';
-import { cardImageOk, cardTypeName, hasCard, isPictureProvider, WIDGET_NAMES, widgetHeight, widgetOpenUrl, widgetSrc, type PictureMode, type WidgetProvider } from '@curios/core/widgets';
+import { cardImageOk, cardTypeName, effectivePictureMode, hasCard, isPictureProvider, WIDGET_NAMES, widgetHeight, widgetOpenUrl, widgetSrc, type PictureMode, type WidgetProvider } from '@curios/core/widgets';
 import type { PictureWords } from './page-copy.js';
 import { Pictures, type PublicPicture } from './Pictures.js';
 import styles from './Bento.module.css';
@@ -30,7 +30,7 @@ export interface WidgetProps {
 const TAKES_FORMS: WidgetProvider[] = ['CALCOM', 'CALENDLY'];
 const ASPECT: Partial<Record<WidgetProvider, string>> = { YOUTUBE: '16 / 9', CANVA: '4 / 3' };
 
-const ENGLISH_PICTURES: PictureWords = { open: 'Open picture {n}', previous: 'Previous picture', next: 'Next picture', close: 'Close', viewer: 'Pictures', of: '{n} of {total}' };
+const ENGLISH_PICTURES: PictureWords = { open: '{alt}, open full screen', previous: 'Previous picture', next: 'Next picture', close: 'Close', viewer: 'Pictures', of: '{n} of {total}' };
 
 const PLAY = 'M10 8.5v7l6-3.5z';
 
@@ -110,10 +110,10 @@ export function Widget({ provider, embedRef, label, url, title = null, image = n
   if (isPictureProvider(provider)) {
     // No player: a gallery or a GIF. A widget with nothing uploaded draws nothing (the public read leaves it off anyway).
     if (pictures.length === 0) return null;
-    const mode = pictureMode ?? (provider === 'GIF' ? 'FULL' : 'CAROUSEL');
+    const mode = effectivePictureMode(provider, pictures.length, pictureMode);
     const showCaption = label.trim() !== '' && label !== WIDGET_NAMES[provider];
     return (
-      <div className={fill ? `${styles.widget} ${styles.widgetFill}` : styles.widget} data-fill={fill || undefined}>
+      <div className={fill ? `${styles.widget} ${styles.widgetPictures}` : styles.widget} data-fill={fill || undefined}>
         {showCaption ? (
           <p className={styles.widgetLabel} data-widget-label>
             {label}

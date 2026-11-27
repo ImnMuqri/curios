@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import type { PictureMode } from '@curios/core/widgets';
+import { effectivePictureMode, type PictureMode } from '@curios/core/widgets';
 import type { PictureWords } from './page-copy.js';
 import styles from './Pictures.module.css';
 
@@ -50,6 +50,8 @@ function Viewer(props: { pictures: PublicPicture[]; start: number; alt: string; 
   const [index, setIndex] = useState(start);
   const closeRef = useRef<HTMLButtonElement>(null);
   const box = useRef<HTMLDivElement>(null);
+  const prevRef = useRef<HTMLButtonElement>(null);
+  const nextRef = useRef<HTMLButtonElement>(null);
   const onCloseRef = useRef(onClose);
   onCloseRef.current = onClose;
   const touch = useRef<{ x: number; y: number } | null>(null);
@@ -63,7 +65,7 @@ function Viewer(props: { pictures: PublicPicture[]; start: number; alt: string; 
       else if (event.key === 'ArrowRight') move(1);
       else if (event.key === 'ArrowLeft') move(-1);
       else if (event.key === 'Tab') {
-        const stops = Array.from(box.current?.querySelectorAll<HTMLElement>('button') ?? []);
+        const stops = Array.from(box.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? []);
         const first = stops[0];
         const last = stops[stops.length - 1];
         if (!first || !last) return;
@@ -85,6 +87,15 @@ function Viewer(props: { pictures: PublicPicture[]; start: number; alt: string; 
       document.body.style.overflow = overflow;
     };
   }, [move]);
+
+  // A step button that has just been disabled (the first or last picture) must not take the focus with it.
+  useEffect(() => {
+    const active = document.activeElement;
+    if (active === document.body || (active instanceof HTMLButtonElement && active.disabled)) {
+      const other = [prevRef.current, nextRef.current].find((b) => b && !b.disabled);
+      (other ?? closeRef.current)?.focus();
+    }
+  }, [index]);
 
   const picture = pictures[index]!;
   return createPortal(
@@ -118,10 +129,10 @@ function Viewer(props: { pictures: PublicPicture[]; start: number; alt: string; 
       <img className={styles.viewerImage} src={picture.url} alt={altFor(alt, index, n, words.of)} draggable={false} />
       {n > 1 ? (
         <>
-          <button type="button" className={`${styles.viewerStep} ${styles.viewerPrev}`} aria-label={words.previous} disabled={index === 0} onClick={() => move(-1)}>
+          <button ref={prevRef} type="button" className={`${styles.viewerStep} ${styles.viewerPrev}`} aria-label={words.previous} disabled={index === 0} onClick={() => move(-1)}>
             <Chevron flip />
           </button>
-          <button type="button" className={`${styles.viewerStep} ${styles.viewerNext}`} aria-label={words.next} disabled={index === n - 1} onClick={() => move(1)}>
+          <button ref={nextRef} type="button" className={`${styles.viewerStep} ${styles.viewerNext}`} aria-label={words.next} disabled={index === n - 1} onClick={() => move(1)}>
             <Chevron />
           </button>
         </>
@@ -135,13 +146,16 @@ function Viewer(props: { pictures: PublicPicture[]; start: number; alt: string; 
  * A Pictures or GIF widget on the public page. Carousel (scroll-snap, the next slide peeking, dots, previous/next),
  * grid (one large, two small, "+N" on the third), or a single picture, Full width or Square. A picture opens the viewer.
  */
-export function Pictures({ label, mode, pictures, altText = null, words, interactive = true, fill: fills = false }: PicturesProps) {
+export function Pictures({ label, mode: asked, pictures, altText = null, words, interactive = true, fill: fills = false }: PicturesProps) {
   const [open, setOpen] = useState<number | null>(null);
   const opener = useRef<HTMLElement | null>(null);
   const track = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
+  // The slide the visitor is heading for, so two quick presses advance twice before the scroll reports back.
+  const want = useRef(0);
   const alt = (altText ?? '').trim() || label;
   const total = pictures.length;
+  const mode = effectivePictureMode('PICTURES', total, asked);
 
   const close = useCallback(() => {
     setOpen(null);
@@ -169,12 +183,15 @@ export function Pictures({ label, mode, pictures, altText = null, words, interac
         best = i;
       }
     });
+    want.current = best;
     setCurrent(best);
   }
 
   function step(by: number) {
     const el = track.current;
-    const slide = el?.children[Math.min(total - 1, Math.max(0, current + by))] as HTMLElement | undefined;
+    const to = Math.min(total - 1, Math.max(0, want.current + by));
+    const slide = el?.children[to] as HTMLElement | undefined;
+    want.current = to;
     if (el && slide && typeof el.scrollTo === 'function') el.scrollTo({ left: slide.offsetLeft });
   }
 
@@ -183,7 +200,7 @@ export function Pictures({ label, mode, pictures, altText = null, words, interac
     const pic = pictures[i]!;
     const img = <img src={pic.url} alt={altFor(alt, i, total, words.of)} width={pic.width} height={pic.height} loading="lazy" draggable={false} />;
     return interactive ? (
-      <button key={pic.url + i} type="button" className={className} style={style} aria-label={fill(words.open, i + 1, total)} onClick={(event) => show(i, event)}>
+      <button key={pic.url + i} type="button" className={className} style={style} aria-label={words.open.replace('{alt}', altFor(alt, i, total, words.of))} onClick={(event) => show(i, event)}>
         {img}
         {extra}
       </button>
@@ -196,7 +213,7 @@ export function Pictures({ label, mode, pictures, altText = null, words, interac
   }
 
   let body: ReactNode;
-  if (total === 1 || mode === 'FULL' || mode === 'SQUARE') {
+  if (mode === 'FULL' || mode === 'SQUARE') {
     const pic = pictures[0]!;
     const square = mode === 'SQUARE';
     body = (
@@ -231,10 +248,10 @@ export function Pictures({ label, mode, pictures, altText = null, words, interac
         </div>
         {interactive ? (
           <>
-            <button type="button" className={`${styles.step} ${styles.stepPrev}`} aria-label={words.previous} disabled={current === 0} onClick={() => step(-1)}>
+            <button type="button" className={`${styles.step} ${styles.stepPrev}`} aria-label={words.previous} aria-disabled={current === 0 || undefined} onClick={() => step(-1)}>
               <Chevron flip />
             </button>
-            <button type="button" className={`${styles.step} ${styles.stepNext}`} aria-label={words.next} disabled={current === total - 1} onClick={() => step(1)}>
+            <button type="button" className={`${styles.step} ${styles.stepNext}`} aria-label={words.next} aria-disabled={current === total - 1 || undefined} onClick={() => step(1)}>
               <Chevron />
             </button>
           </>

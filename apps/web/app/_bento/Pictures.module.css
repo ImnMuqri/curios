@@ -158,8 +158,9 @@ span.slide {
   cursor: pointer;
 }
 
-.step:disabled {
-  display: none;
+.step[aria-disabled] {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .stepPrev {

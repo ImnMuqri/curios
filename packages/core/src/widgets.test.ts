@@ -455,3 +455,19 @@ describe('Pictures and GIF', () => {
     expect(MODES_FOR.PICTURES).toEqual(['CAROUSEL', 'GRID', 'FULL', 'SQUARE']);
   });
 });
+
+describe('effectivePictureMode', () => {
+  it('a GIF is Full or Square whatever was asked', async () => {
+    const { effectivePictureMode } = await import('./widgets.js');
+    expect(effectivePictureMode('GIF', 1, 'CAROUSEL')).toBe('FULL');
+    expect(effectivePictureMode('GIF', 1, 'SQUARE')).toBe('SQUARE');
+  });
+  it('one picture is Full or Square; several are a Carousel or a Grid', async () => {
+    const { effectivePictureMode } = await import('./widgets.js');
+    expect(effectivePictureMode('PICTURES', 1, 'GRID')).toBe('FULL');
+    expect(effectivePictureMode('PICTURES', 1, 'SQUARE')).toBe('SQUARE');
+    expect(effectivePictureMode('PICTURES', 3, 'FULL')).toBe('CAROUSEL');
+    expect(effectivePictureMode('PICTURES', 3, 'GRID')).toBe('GRID');
+    expect(effectivePictureMode('PICTURES', 3, null)).toBe('CAROUSEL');
+  });
+});

@@ -44,7 +44,7 @@ describe('Pictures', () => {
 
   it('opens a viewer: arrows move, Escape closes and focus goes back', () => {
     render(<Pictures {...props()} />);
-    const first = screen.getAllByRole('button', { name: /Open picture/ })[0]!;
+    const first = screen.getAllByRole('button', { name: /open full screen/ })[0]!;
     first.focus();
     fireEvent.click(first);
     const dialog = screen.getByRole('dialog');
@@ -69,6 +69,31 @@ describe('Pictures', () => {
     expect(css).toMatch(/var\(--btn-radius, 16px\)/);
     expect(css).toMatch(/scroll-snap-type:\s*x mandatory/);
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)/);
+  });
+});
+
+describe('mode follows the count', () => {
+  it('several pictures asked for Full draw a carousel; one asked for Carousel draws a single', () => {
+    const { container, rerender } = render(<Pictures {...props({ mode: 'FULL', pictures: pics(3) })} />);
+    expect(container.querySelector('[data-pic-carousel]')).not.toBeNull();
+    rerender(<Pictures {...props({ mode: 'CAROUSEL', pictures: pics(1) })} />);
+    expect(container.querySelector('[data-pic-single]')?.getAttribute('data-mode')).toBe('FULL');
+  });
+  it('a button is named by the description, and an uncaptioned gallery tile still fills', () => {
+    render(<Pictures {...props()} />);
+    expect(screen.getByRole('button', { name: 'Our cakes (2 of 3), open full screen' })).toBeInTheDocument();
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.widgetPictures > :last-child\s*\{[^}]*flex:\s*1;/s);
+  });
+  it('the viewer moves focus off a step button that has just been disabled', () => {
+    render(<Pictures {...props({ pictures: pics(2) })} />);
+    fireEvent.click(screen.getAllByRole('button', { name: /open full screen/ })[0]!);
+    const dialog = screen.getByRole('dialog');
+    const next = within(dialog).getByRole('button', { name: 'Next picture' });
+    next.focus();
+    fireEvent.click(next);
+    expect(next).toBeDisabled();
+    expect(document.activeElement).toBe(within(dialog).getByRole('button', { name: 'Previous picture' }));
   });
 });
 

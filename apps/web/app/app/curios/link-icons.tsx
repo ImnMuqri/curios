@@ -1,5 +1,5 @@
 // Shared by the Links and Layout tabs: the glyph at the start of a row, read off the address.
-import { WIDGET_NAMES, cardTypeName, type WidgetProvider } from '@curios/core/widgets';
+import { WIDGET_NAMES, cardTypeName, effectivePictureMode as effectiveMode, type WidgetProvider } from '@curios/core/widgets';
 import ui from '../_ui/editor.module.css';
 
 /** An address as the row shows it: without the scheme nobody reads. */
@@ -49,11 +49,7 @@ export function WidgetIcon({ provider }: { provider: WidgetProvider }) {
   return <Icon d={WIDGET_GLYPHS[provider]} />;
 }
 
-/** The mode a picture widget really shows in: a single picture is Full width or Square, several are a Carousel or a Grid. */
-export function effectiveMode(provider: 'PICTURES' | 'GIF', count: number, mode: 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' | null): 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' {
-  if (provider === 'GIF' || count <= 1) return mode === 'SQUARE' ? 'SQUARE' : 'FULL';
-  return mode === 'GRID' ? 'GRID' : 'CAROUSEL';
-}
+export { effectivePictureMode as effectiveMode } from '@curios/core/widgets';
 
 export const MODE_NAMES = { CAROUSEL: 'Carousel', GRID: 'Grid', FULL: 'Full width', SQUARE: 'Square' } as const;
 
