@@ -14,7 +14,7 @@ import {
   type PageStyle,
   type TileSize,
 } from '@curios/core/bento';
-import { minWidgetSize, type LinkKind, type WidgetProvider } from '@curios/core/widgets';
+import { isPictureProvider, minWidgetSize, type LinkKind, type PictureMode, type WidgetProvider } from '@curios/core/widgets';
 import { socialUrl, type SocialKind } from '@curios/core/socials';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
@@ -42,6 +42,10 @@ export interface BentoPageProps {
     /** A music card's title and cover (Spotify, Apple Music); null or left out, the card falls back to the label and the service's mark. */
     embedTitle?: string | null;
     embedImage?: string | null;
+    /** Pictures and GIF: how they are laid out, their alt text and the pictures in order, as public URLs (the page turns the stored keys into these). */
+    pictureMode?: PictureMode | null;
+    altText?: string | null;
+    gallery?: { url: string; width: number; height: number }[];
   }[];
   style: PageStyle;
   accentColor: string;
@@ -269,7 +273,9 @@ export function BentoPage(props: BentoPageProps) {
     else runs.push({ kind: 'list', entries: [entry] });
   }
   // The first link that draws a button wears the accent (a widget is a player, with no button to colour).
-  const isWidgetRow = (link: BentoPageProps['links'][number]) => link.kind === 'WIDGET' && !!link.provider && !!link.embedRef;
+  const isWidgetRow = (link: BentoPageProps['links'][number]) => link.kind === 'WIDGET' && !!link.provider && (isPictureProvider(link.provider) || !!link.embedRef);
+  // A gallery with nothing in it draws nothing (the public read already leaves it off; the editor's preview may still hold one).
+  const isEmptyGallery = (link: BentoPageProps['links'][number]) => isPictureProvider(link.provider) && (link.gallery?.length ?? 0) === 0;
   const leadId = props.links.find((link) => !isWidgetRow(link))?.id;
   const bento = props.layout === 'BENTO';
 
@@ -315,9 +321,9 @@ export function BentoPage(props: BentoPageProps) {
     const lead = link.id === leadId ? true : undefined;
     if (isWidgetRow(link)) {
       // A page drawn mid-conversation (the landing's demos) shows no players.
-      return props.mode === 'chat' ? null : (
+      return props.mode === 'chat' || isEmptyGallery(link) ? null : (
         <li key={link.id} data-widget data-size={size ?? undefined}>
-          <Widget provider={link.provider!} embedRef={link.embedRef!} label={link.label} url={link.url} title={link.embedTitle ?? null} image={link.embedImage ?? null} words={{ types: copy.cardTypes, on: copy.cardOn }} interactive={interactive} fill={size !== null} />
+          <Widget provider={link.provider!} embedRef={link.embedRef ?? null} label={link.label} url={link.url} title={link.embedTitle ?? null} image={link.embedImage ?? null} pictureMode={link.pictureMode ?? null} altText={link.altText ?? null} pictures={link.gallery} words={{ types: copy.cardTypes, on: copy.cardOn, pictures: copy.pictures }} interactive={interactive} fill={size !== null} />
         </li>
       );
     }
@@ -407,8 +413,8 @@ export function BentoPage(props: BentoPageProps) {
           {bento ? (
             <ul className={`${styles.links} ${styles.bentoGrid}`} role="list" data-bento-grid>
               {arrangeTiles(
-                entries.filter((entry) => (entry.kind === 'faq' ? !!faq : entry.kind === 'link' && isWidgetRow(entry.link) ? props.mode !== 'chat' : true)),
-                (entry) => (entry.kind === 'faq' ? 'WIDE' : entry.kind === 'link' && isWidgetRow(entry.link) ? minWidgetSize(entry.link.provider!, entry.link.embedRef!) : 'SMALL'),
+                entries.filter((entry) => (entry.kind === 'faq' ? !!faq : entry.kind === 'link' && isWidgetRow(entry.link) ? props.mode !== 'chat' && !isEmptyGallery(entry.link) : true)),
+                (entry) => (entry.kind === 'faq' ? 'WIDE' : entry.kind === 'link' && isWidgetRow(entry.link) ? minWidgetSize(entry.link.provider!, entry.link.embedRef ?? null, entry.link.pictureMode) : 'SMALL'),
               ).map(({ link: entry, size }) =>
                 entry.kind === 'faq' ? (
                   <li key="faq" data-size={size} data-faq>

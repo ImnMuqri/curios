@@ -17,6 +17,17 @@ export interface PageCopy {
   cardTypes: Record<string, string>;
   /** A music card's spoken name; `{type}` and `{service}` are filled in. */
   cardOn: string;
+  /** The picture widgets' words; plain strings (`{n}` and `{total}` filled in), so the object can cross to a client component. */
+  pictures: PictureWords;
+}
+
+export interface PictureWords {
+  open: string;
+  previous: string;
+  next: string;
+  close: string;
+  viewer: string;
+  of: string;
 }
 
 const EN: PageCopy = {
@@ -31,6 +42,7 @@ const EN: PageCopy = {
   report: 'Report this page',
   cardTypes: { Song: 'Song', Album: 'Album', Playlist: 'Playlist', Artist: 'Artist', Podcast: 'Podcast', Episode: 'Episode' },
   cardOn: '{type} on {service}',
+  pictures: { open: 'Open picture {n}', previous: 'Previous picture', next: 'Next picture', close: 'Close', viewer: 'Pictures', of: '{n} of {total}' },
 };
 
 const MS: PageCopy = {
@@ -45,6 +57,7 @@ const MS: PageCopy = {
   report: 'Laporkan halaman ini',
   cardTypes: { Song: 'Lagu', Album: 'Album', Playlist: 'Senarai main', Artist: 'Artis', Podcast: 'Podcast', Episode: 'Episod' },
   cardOn: '{type} di {service}',
+  pictures: { open: 'Buka gambar {n}', previous: 'Gambar sebelum', next: 'Gambar seterusnya', close: 'Tutup', viewer: 'Gambar', of: '{n} daripada {total}' },
 };
 
 export function pageCopy(language: string | undefined): PageCopy {

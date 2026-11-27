@@ -1,10 +1,13 @@
 import type { CSSProperties } from 'react';
-import { cardImageOk, cardTypeName, hasCard, WIDGET_NAMES, widgetHeight, widgetOpenUrl, widgetSrc, type WidgetProvider } from '@curios/core/widgets';
+import { cardImageOk, cardTypeName, hasCard, isPictureProvider, WIDGET_NAMES, widgetHeight, widgetOpenUrl, widgetSrc, type PictureMode, type WidgetProvider } from '@curios/core/widgets';
+import type { PictureWords } from './page-copy.js';
+import { Pictures, type PublicPicture } from './Pictures.js';
 import styles from './Bento.module.css';
 
 export interface WidgetProps {
   provider: WidgetProvider;
-  embedRef: string;
+  /** Null for Pictures and GIF, which have no player. */
+  embedRef: string | null;
   label: string;
   /** The owner's pasted share link; the way through when the frame is blocked. */
   url: string;
@@ -12,7 +15,11 @@ export interface WidgetProps {
   title?: string | null;
   image?: string | null;
   /** The page's words for a card's type line and spoken name (page-copy); English when left out. */
-  words?: { types: Record<string, string>; on: string };
+  words?: { types: Record<string, string>; on: string; pictures?: PictureWords };
+  /** Pictures and GIF: their mode, alt text and pictures (public URLs, in order). */
+  pictureMode?: PictureMode | null;
+  altText?: string | null;
+  pictures?: PublicPicture[];
   /** False in the editor's preview: a cover over the frame, nothing to press. */
   interactive?: boolean;
   /** In a Bento tile: the player fills the tile, never shorter than its own height. */
@@ -22,6 +29,8 @@ export interface WidgetProps {
 /** Players that take a booking need forms; the rest never do. */
 const TAKES_FORMS: WidgetProvider[] = ['CALCOM', 'CALENDLY'];
 const ASPECT: Partial<Record<WidgetProvider, string>> = { YOUTUBE: '16 / 9', CANVA: '4 / 3' };
+
+const ENGLISH_PICTURES: PictureWords = { open: 'Open picture {n}', previous: 'Previous picture', next: 'Next picture', close: 'Close', viewer: 'Pictures', of: '{n} of {total}' };
 
 const PLAY = 'M10 8.5v7l6-3.5z';
 
@@ -44,7 +53,7 @@ function ServiceMark({ provider }: { provider: WidgetProvider }) {
  * opens the item in the service. Drawn like a link button, so it sits with the links in List and Bento.
  * Null when the stored ref is not one of ours; the caller then draws the plain fallback.
  */
-function CardWidget({ provider, embedRef, label, title, image, words, interactive, fill }: Required<Pick<WidgetProps, 'interactive' | 'fill'>> & Pick<WidgetProps, 'provider' | 'embedRef' | 'label' | 'title' | 'image' | 'words'>) {
+function CardWidget({ provider, embedRef, label, title, image, words, interactive, fill }: Required<Pick<WidgetProps, 'interactive' | 'fill'>> & { embedRef: string } & Pick<WidgetProps, 'provider' | 'label' | 'title' | 'image' | 'words'>) {
   let href: string;
   try {
     href = widgetOpenUrl(provider, embedRef);
@@ -97,7 +106,24 @@ function CardWidget({ provider, embedRef, label, title, image, words, interactiv
 }
 
 /** Server-safe: no hooks. One bad stored row (widgetSrc throws) draws the fallback only. */
-export function Widget({ provider, embedRef, label, url, title = null, image = null, words, interactive = true, fill = false }: WidgetProps) {
+export function Widget({ provider, embedRef, label, url, title = null, image = null, words, pictureMode = null, altText = null, pictures = [], interactive = true, fill = false }: WidgetProps) {
+  if (isPictureProvider(provider)) {
+    // No player: a gallery or a GIF. A widget with nothing uploaded draws nothing (the public read leaves it off anyway).
+    if (pictures.length === 0) return null;
+    const mode = pictureMode ?? (provider === 'GIF' ? 'FULL' : 'CAROUSEL');
+    const showCaption = label.trim() !== '' && label !== WIDGET_NAMES[provider];
+    return (
+      <div className={fill ? `${styles.widget} ${styles.widgetFill}` : styles.widget} data-fill={fill || undefined}>
+        {showCaption ? (
+          <p className={styles.widgetLabel} data-widget-label>
+            {label}
+          </p>
+        ) : null}
+        <Pictures label={label} mode={mode} pictures={pictures} altText={altText} words={words?.pictures ?? ENGLISH_PICTURES} interactive={interactive} fill={fill} />
+      </div>
+    );
+  }
+  if (embedRef === null) return null;
   if (hasCard(provider)) {
     const card = CardWidget({ provider, embedRef, label, title, image, words, interactive, fill });
     if (card) return card;
