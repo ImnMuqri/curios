@@ -114,7 +114,7 @@ type Reading = {
  */
 export function OnboardingFlow({
   page,
-  facts,
+  facts: _facts,
   monthlyPrice,
   freeLeads,
   freeOrders,
@@ -305,8 +305,6 @@ export function OnboardingFlow({
   const found = done && result.status === 'SUCCEEDED' && foundCount > 0;
   const quiet = done && result.status === 'SUCCEEDED' && foundCount === 0;
   const failed = done && result.status === 'FAILED';
-  // What this read found: the newest facts in the queue, once the refresh brings them.
-  const justFound = found ? facts.slice(-foundCount) : [];
 
   const terms: Terms = { monthly: monthlyPrice, freeLeads, freeOrders };
 
@@ -551,7 +549,7 @@ export function OnboardingFlow({
             <h1 className={styles.h}>{found ? 'Done reading.' : quiet ? 'That one was quiet.' : failed ? 'That didn’t work.' : 'Reading it now…'}</h1>
             <p className={styles.lede} role="status">
               {found
-                ? 'Here is what it picked out.'
+                ? `We found ${foundCount === 1 ? '1 fact' : `${foundCount} facts`}.`
                 : quiet
                   ? 'Some pages hide their text from us.'
                   : failed
@@ -602,12 +600,6 @@ export function OnboardingFlow({
                       <span className={styles.src}>{reading.label}</span>
                       <span className={styles.ok3}>{foundCount === 1 ? '1 fact' : `${foundCount} facts`}</span>
                     </div>
-                    {justFound.map((fact) => (
-                      <div key={fact.id} className={styles.fr}>
-                        <span className={styles.tag}>{KIND_LABELS[fact.category]}</span>
-                        {fact.claim}
-                      </div>
-                    ))}
                   </div>
                   <p className={`${styles.hint} ${styles.mid}`}>They are waiting in Review. Nothing goes live until you accept each one.</p>
                   <a className={styles.go} href="/app/review">

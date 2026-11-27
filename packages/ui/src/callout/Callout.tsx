@@ -21,7 +21,13 @@ export function Callout({
 }) {
   return (
     <p className={`${styles.callout} ${styles[tone]}`} role={role ?? (tone === 'error' ? 'alert' : 'status')}>
-      {children}
+      {tone === 'error' ? (
+        // The owner's pick (26 Nov): the item editor's price-problem line, pink with an alert mark.
+        <svg className={styles.mark} viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 8v5M12 16.5h.01M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z" />
+        </svg>
+      ) : null}
+      {tone === 'error' ? <span className={styles.words}>{children}</span> : children}
     </p>
   );
 }

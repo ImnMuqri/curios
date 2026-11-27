@@ -15,10 +15,31 @@
   margin-top: 12px;
 }
 
+/* Pink with an alert mark (owner, 26 Nov: "I like this error"), as the item editor's price line draws a problem. */
 .error {
-  background: var(--paper);
-  border: 1.5px solid var(--merah);
-  color: var(--merah);
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.mark {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  /* On the first line of the words, whatever the text size. */
+  margin-top: 0.15em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.words {
+  flex: 1;
+  min-width: 0;
 }
 
 .info {
