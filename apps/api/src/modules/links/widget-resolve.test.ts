@@ -8,7 +8,7 @@ describe('resolveShortLink', () => {
     const guard = vi.fn(ok);
     const fetchStub = vi.fn(async () => new Response(null, { status: 302, headers: { location: 'https://open.spotify.com/track/abc' } }));
 
-    const result = await resolveShortLink('https://spotify.link/xyz', { fetch: fetchStub as unknown as typeof fetch, guard });
+    const result = await resolveShortLink('https://spotify.link/xyz', { fetch: fetchStub, guard });
 
     expect(result).toBe('https://open.spotify.com/track/abc');
     expect(guard).toHaveBeenCalledWith('spotify.link');
@@ -32,23 +32,23 @@ describe('resolveShortLink', () => {
     };
     const fetchStub = vi.fn();
 
-    expect(await resolveShortLink('https://spotify.link/xyz', { fetch: fetchStub as unknown as typeof fetch, guard })).toBeNull();
+    expect(await resolveShortLink('https://spotify.link/xyz', { fetch: fetchStub, guard })).toBeNull();
     expect(fetchStub).not.toHaveBeenCalled();
   });
 
   it('returns null when there is no Location, or the fetch fails', async () => {
     const noLocation = vi.fn(async () => new Response('hi', { status: 200 }));
-    expect(await resolveShortLink('https://spotify.link/a', { fetch: noLocation as unknown as typeof fetch, guard: ok })).toBeNull();
+    expect(await resolveShortLink('https://spotify.link/a', { fetch: noLocation, guard: ok })).toBeNull();
 
     const boom = vi.fn(async () => {
       throw new Error('network');
     });
-    expect(await resolveShortLink('https://spotify.link/a', { fetch: boom as unknown as typeof fetch, guard: ok })).toBeNull();
+    expect(await resolveShortLink('https://spotify.link/a', { fetch: boom, guard: ok })).toBeNull();
   });
 
   it('resolves a relative Location against the short link', async () => {
     const fetchStub = vi.fn(async () => new Response(null, { status: 301, headers: { location: '/maps/place/Cafe' } }));
-    expect(await resolveShortLink('https://goo.gl/maps/x', { fetch: fetchStub as unknown as typeof fetch, guard: ok })).toBe(
+    expect(await resolveShortLink('https://goo.gl/maps/x', { fetch: fetchStub, guard: ok })).toBe(
       'https://goo.gl/maps/place/Cafe',
     );
   });
