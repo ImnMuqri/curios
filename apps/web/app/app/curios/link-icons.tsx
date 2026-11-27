@@ -41,6 +41,8 @@ const WIDGET_GLYPHS: Record<WidgetProvider, string> = {
   CALCOM: CALENDAR,
   CALENDLY: CALENDAR,
   CANVA: 'M12 3l9 9-9 9-9-9zM12 8l4 4-4 4-4-4z',
+  PICTURES: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 16l5-5 4 4 3-3 6 6M9 9.5a1.5 1.5 0 1 0 0-.01z',
+  GIF: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM8 15v-6h-2v6zM12 9v6M15 15V9h3M15 12h2',
 };
 
 export function WidgetIcon({ provider }: { provider: WidgetProvider }) {

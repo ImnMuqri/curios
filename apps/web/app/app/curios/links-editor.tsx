@@ -22,6 +22,10 @@ export type LinkItem = {
   /** A music card's title and cover (Spotify, Apple Music), fetched when the widget was saved; null otherwise. */
   embedTitle: string | null;
   embedImage: string | null;
+  /** A Pictures or GIF widget's display mode, description and pictures (the owner's editor sets them); null/empty on every other row. */
+  pictureMode: 'CAROUSEL' | 'GRID' | 'FULL' | 'SQUARE' | null;
+  altText: string | null;
+  pictures: { id: string; key: string; contentType: string; width: number; height: number; bytes: number; position: number }[];
 };
 
 const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';

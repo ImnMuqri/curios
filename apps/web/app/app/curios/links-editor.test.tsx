@@ -5,17 +5,17 @@ import userEvent from '@testing-library/user-event';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 
 const three: LinkItem[] = [
-  { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
-  { id: 'b', label: 'WhatsApp', url: 'https://wa.me/60123', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
-  { id: 'c', label: 'GitHub', url: 'https://github.com/iman', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null },
+  { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
+  { id: 'b', label: 'WhatsApp', url: 'https://wa.me/60123', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
+  { id: 'c', label: 'GitHub', url: 'https://github.com/iman', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] },
 ];
 
 function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[0]> = {}) {
   const props = {
     links,
     onChange: vi.fn(),
-    addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null })),
-    addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/abc', embedTitle: null, embedImage: null })),
+    addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', ...i, url: `https://${i.url}`, size: null, kind: 'LINK' as const, provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })),
+    addWidget: vi.fn(async (i: { url: string; label: string | null }) => ({ id: 'w', label: i.label ?? 'Spotify', url: i.url, size: null, kind: 'WIDGET' as const, provider: 'SPOTIFY' as const, embedRef: 'track/abc', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })),
     updateLink: vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...links.find((l) => l.id === id)!, ...patch })),
     removeLink: vi.fn(async () => undefined),
     ...overrides,
@@ -101,7 +101,7 @@ describe('LinksEditor', () => {
   });
 
   it('stops offering to add at the limit', () => {
-    setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null })));
+    setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] })));
     expect(screen.queryByRole('button', { name: '+ Add link' })).toBeNull();
     expect(screen.getByText(/30 links is the most/i)).toBeInTheDocument();
   });
@@ -321,7 +321,7 @@ describe('LinksEditor', () => {
 
     expect(row).toHaveAttribute('aria-label', 'Work');
 
-    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null }); });
+    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] }); });
 
     expect(row).toHaveAttribute('aria-label', 'Work');
     vi.useRealTimers();
@@ -421,7 +421,7 @@ describe('LinksEditor', () => {
     it('sends once when Add is pressed twice while the request is in flight', async () => {
       let release!: () => void;
       const addWidget = vi.fn(
-        () => new Promise<LinkItem>((resolve) => { release = () => resolve({ id: 'w', label: 'Spotify', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null }); }),
+        () => new Promise<LinkItem>((resolve) => { release = () => resolve({ id: 'w', label: 'Spotify', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] }); }),
       );
       setup(three, { addWidget });
       await userEvent.click(screen.getByRole('button', { name: '+ Add a widget' }));
@@ -435,7 +435,7 @@ describe('LinksEditor', () => {
     });
 
     it('draws a saved widget with its service and label, and no address box', async () => {
-      const widget: LinkItem = { id: 'w', label: 'My song', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null };
+      const widget: LinkItem = { id: 'w', label: 'My song', url: spotify, size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] };
       setup([...three, widget]);
       const row = screen.getByRole('listitem', { name: 'My song' });
       expect(row).toHaveTextContent('Spotify');

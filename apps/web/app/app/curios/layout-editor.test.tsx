@@ -4,8 +4,8 @@ import { pageEntries } from '@curios/core/bento';
 import { LayoutEditor, edgeScroll } from './layout-editor.js';
 import type { LinkItem } from './links-editor.js';
 
-const link = (id: string, label: string, url = `https://${id}.example.com`): LinkItem => ({ id, label, url, size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null });
-const spotify: LinkItem = { id: 'w', label: 'Mix', url: 'https://open.spotify.com/track/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null };
+const link = (id: string, label: string, url = `https://${id}.example.com`): LinkItem => ({ id, label, url, size: null, kind: 'LINK', provider: null, embedRef: null, embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] });
+const spotify: LinkItem = { id: 'w', label: 'Mix', url: 'https://open.spotify.com/track/x', size: null, kind: 'WIDGET', provider: 'SPOTIFY', embedRef: 'track/x', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] };
 const links = [link('a', 'Portfolio'), link('b', 'WhatsApp'), link('c', 'GitHub')];
 
 const names = () => screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
@@ -556,7 +556,7 @@ describe('LayoutEditor', () => {
 });
 
 describe('LayoutEditor, List or Bento', () => {
-  const playlist: LinkItem = { id: 'p', label: 'Mix', url: 'https://calendly.com/nadia', size: null, kind: 'WIDGET', provider: 'CALENDLY', embedRef: 'nadia', embedTitle: null, embedImage: null };
+  const playlist: LinkItem = { id: 'p', label: 'Mix', url: 'https://calendly.com/nadia', size: null, kind: 'WIDGET', provider: 'CALENDLY', embedRef: 'nadia', embedTitle: null, embedImage: null, pictureMode: null, altText: null, pictures: [] };
   const sizeGroup = (name: string) => screen.queryByRole('radiogroup', { name: `Size of ${name}` });
 
   function showBento(over: Partial<{ layout: 'LIST' | 'BENTO'; onLayout: (l: 'LIST' | 'BENTO') => Promise<void>; onResize: (id: string, size: string) => Promise<void> }> = {}) {
