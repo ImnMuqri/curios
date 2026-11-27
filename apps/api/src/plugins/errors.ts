@@ -156,6 +156,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_FRAME',
   'PHOTO_LIMIT',
   'PHOTO_NOT_FOUND',
+  // A Pictures or GIF widget's pictures: not one, a seventh (or a second GIF), gone, or an order from a stale list.
+  'INVALID_PICTURE',
+  'PICTURE_LIMIT',
+  'PICTURE_NOT_FOUND',
+  'PICTURE_ORDER_STALE',
   // Digital items: files, codes and session times (each says what to change).
   'TOO_MANY_FILES',
   'FILE_TOO_BIG',

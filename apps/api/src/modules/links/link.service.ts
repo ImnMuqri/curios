@@ -1,6 +1,6 @@
-import type { Prisma, PrismaClient, WidgetProvider as DbWidgetProvider } from '@curios/db';
+import type { Prisma, PrismaClient, PictureMode as DbPictureMode, WidgetProvider as DbWidgetProvider } from '@curios/db';
 import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, FAQ_TILE_ID, SHOP_TILE_ID, positionsAfterAdd, type TileSize } from '@curios/core/bento';
-import { hasCard, parseWidgetLink, WIDGET_NAMES } from '@curios/core/widgets';
+import { ALT_TEXT_MAX, hasCard, isPictureProvider, MODES_FOR, parseWidgetLink, PICTURE_PROVIDERS, WIDGET_NAMES, type PictureMode, type PictureProvider } from '@curios/core/widgets';
 import { NoPageError } from '../pages/page.service.js';
 import type { FetchWidgetCard } from './widget-card.js';
 
@@ -50,7 +50,24 @@ export class LinkOrderStaleError extends Error {
   }
 }
 
-const SELECT = { id: true, label: true, url: true, size: true, kind: true, provider: true, embedRef: true, embedTitle: true, embedImage: true } as const;
+/** A picture of a Pictures or GIF widget as its owner's editor sees it. `key` is a public-store key; apps/web turns it into a URL. */
+export type PictureRow = { id: string; key: string; contentType: string; width: number; height: number; bytes: number; position: number };
+const PICTURE_SELECT = { id: true, key: true, contentType: true, width: true, height: true, bytes: true, position: true } as const;
+const SELECT = {
+  id: true,
+  label: true,
+  url: true,
+  size: true,
+  kind: true,
+  provider: true,
+  embedRef: true,
+  embedTitle: true,
+  embedImage: true,
+  pictureMode: true,
+  altText: true,
+  pictures: { orderBy: { position: 'asc' }, select: PICTURE_SELECT },
+} as const;
+export const LINK_SELECT = SELECT;
 export type LinkRow = {
   id: string;
   label: string;
@@ -61,6 +78,12 @@ export type LinkRow = {
   embedRef: string | null;
   embedTitle: string | null;
   embedImage: string | null;
+  /** CAROUSEL, GRID, FULL or SQUARE on a Pictures or GIF widget; null on every other row. */
+  pictureMode: DbPictureMode | null;
+  /** The description for screen readers of a Pictures or GIF widget. */
+  altText: string | null;
+  /** A Pictures or GIF widget's pictures in order; empty on every other row. */
+  pictures: PictureRow[];
 };
 export type ResolveShort = (url: string) => Promise<string | null>;
 
@@ -69,6 +92,19 @@ async function cardFor(provider: DbWidgetProvider, embedRef: string, card: Fetch
   if (!hasCard(provider)) return { embedTitle: null, embedImage: null };
   const { title, image } = await card(provider, embedRef);
   return { embedTitle: title, embedImage: image };
+}
+
+export function checkAltText(raw: string | null | undefined): string | null {
+  const alt = (raw ?? '').trim();
+  if (alt === '') return null;
+  if (charCount(alt) > ALT_TEXT_MAX) throw new InvalidWidgetError(`Describe the pictures in up to ${ALT_TEXT_MAX} characters.`);
+  return alt;
+}
+
+function checkMode(provider: PictureProvider, mode: PictureMode): void {
+  if (!MODES_FOR[provider].includes(mode)) {
+    throw new InvalidWidgetError(provider === 'GIF' ? 'A GIF shows full width or square.' : 'Pick how the pictures show.');
+  }
 }
 
 async function pageIdFor(prisma: PrismaClient, accountId: string): Promise<string> {
@@ -181,17 +217,47 @@ export async function addWidget(
   });
 }
 
+/** A Pictures or GIF widget with no pictures yet, joining the end of the links. Its url is empty: it has nothing to open. */
+export async function addPictureWidget(
+  prisma: PrismaClient,
+  accountId: string,
+  input: { provider: PictureProvider; mode?: PictureMode | undefined; label?: string | null | undefined; altText?: string | null | undefined },
+): Promise<LinkRow> {
+  if (!PICTURE_PROVIDERS.includes(input.provider)) throw new InvalidWidgetError('Pick Pictures or GIF.');
+  const pageId = await pageIdFor(prisma, accountId);
+  const mode = input.mode ?? (input.provider === 'GIF' ? 'FULL' : 'CAROUSEL');
+  checkMode(input.provider, mode);
+  const label = input.label == null || input.label.trim() === '' ? WIDGET_NAMES[input.provider] : checkLabel(input.label);
+  const altText = checkAltText(input.altText);
+
+  const count = await prisma.link.count({ where: { pageId } });
+  if (count >= MAX_LINKS) throw new LinkLimitError();
+  return prisma.$transaction(async (tx) => {
+    await makeRoomAtEndOfLinks(tx, pageId, count);
+    return tx.link.create({
+      data: { pageId, label, url: '', position: count, kind: 'WIDGET', provider: input.provider, pictureMode: mode, altText },
+      select: SELECT,
+    });
+  });
+}
+
 export async function updateLink(
   prisma: PrismaClient,
   accountId: string,
   id: string,
-  input: { label?: string; url?: string; size?: TileSize | null },
+  input: { label?: string; url?: string; size?: TileSize | null; pictureMode?: PictureMode; altText?: string | null },
   resolve: ResolveShort = async () => null,
   card: FetchWidgetCard = async () => ({ title: null, image: null }),
 ): Promise<LinkRow> {
   const pageId = await pageIdFor(prisma, accountId);
   const existing = await prisma.link.findFirst({ where: { id, pageId }, select: { kind: true, provider: true } });
   if (!existing) throw new LinkNotFoundError();
+  const pictureProvider = existing.kind === 'WIDGET' && isPictureProvider(existing.provider) ? existing.provider : null;
+  if (!pictureProvider) {
+    if (input.pictureMode !== undefined || input.altText !== undefined) throw new InvalidWidgetError('Only Pictures and GIF widgets have a display mode or a description.');
+  } else if (input.url !== undefined) {
+    throw new InvalidWidgetError('A Pictures or GIF widget has no address.');
+  }
 
   const data: {
     label?: string;
@@ -201,6 +267,8 @@ export async function updateLink(
     embedRef?: string;
     embedTitle?: string | null;
     embedImage?: string | null;
+    pictureMode?: PictureMode;
+    altText?: string | null;
   } = {};
   if (input.url !== undefined) {
     if (existing.kind === 'WIDGET') {
@@ -218,17 +286,27 @@ export async function updateLink(
     data.label = named && input.label.trim() === '' ? WIDGET_NAMES[named] : checkLabel(input.label);
   }
   if (input.size !== undefined) data.size = input.size;
+  if (pictureProvider) {
+    if (input.pictureMode !== undefined) {
+      checkMode(pictureProvider, input.pictureMode);
+      data.pictureMode = input.pictureMode;
+    }
+    if (input.altText !== undefined) data.altText = checkAltText(input.altText);
+  }
 
   const updated = await prisma.link.updateMany({ where: { id, pageId }, data });
   if (updated.count !== 1) throw new LinkNotFoundError();
   return prisma.link.findUniqueOrThrow({ where: { id }, select: SELECT });
 }
 
-export async function removeLink(prisma: PrismaClient, accountId: string, id: string): Promise<void> {
+/** The row goes, and with it its pictures' rows; the keys come back so the caller can delete their objects. */
+export async function removeLink(prisma: PrismaClient, accountId: string, id: string): Promise<{ pictureKeys: string[] }> {
   const pageId = await pageIdFor(prisma, accountId);
+  let pictureKeys: string[] = [];
   await prisma.$transaction(async (tx) => {
-    const link = await tx.link.findFirst({ where: { id, pageId }, select: { position: true } });
+    const link = await tx.link.findFirst({ where: { id, pageId }, select: { position: true, pictures: { select: { key: true } } } });
     if (!link) throw new LinkNotFoundError();
+    pictureKeys = link.pictures.map((p) => p.key);
     await tx.link.delete({ where: { id } });
     // Close the gap, so positions stay 0..n-1 and the next add lands last.
     await tx.link.updateMany({ where: { pageId, position: { gt: link.position } }, data: { position: { decrement: 1 } } });
@@ -251,6 +329,7 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
     for (const tile of tiles) if (tile.position > removedAt) data[tile.key] = tile.position - 1;
     if (Object.keys(data).length > 0) await tx.page.update({ where: { id: pageId }, data });
   });
+  return { pictureKeys };
 }
 
 /**

@@ -357,7 +357,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     scope.addHook('onRequest', requireSession);
     await scope.register(pageRoutes, overrides.pages ?? {});
-    await scope.register(linkRoutes, overrides.links ?? {});
+    await scope.register(linkRoutes, { store: overrides.pages?.store, ...(overrides.links ?? {}) });
     await scope.register(factRoutes, overrides.facts ?? {});
     await scope.register(sourceRoutes);
     await scope.register(neverSayRoutes);
